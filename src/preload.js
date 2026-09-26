@@ -68,6 +68,11 @@ contextBridge.exposeInMainWorld('jarves', {
     laden: () => ipcRenderer.invoke('einstellungen:laden'),
     speichern: (neu) => ipcRenderer.invoke('einstellungen:speichern', neu)
   },
+  sicherung: {
+    liste: () => ipcRenderer.invoke('sicherung:liste'),
+    anlegen: () => ipcRenderer.invoke('sicherung:anlegen'),
+    ordner: () => ipcRenderer.invoke('sicherung:ordner')
+  },
   system: {
     werte: () => ipcRenderer.invoke('system:werte'),
     details: () => ipcRenderer.invoke('system:details')

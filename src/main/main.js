@@ -204,6 +204,14 @@ ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
 })
 
 ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
+// Sicherung auf Knopfdruck (wie npm run backup)
+const sicherung = require('../../scripts/backup')
+ipcMain.handle('sicherung:liste', () => sicherung.sicherungen())
+ipcMain.handle('sicherung:anlegen', () => sicherung.sichern())
+ipcMain.handle('sicherung:ordner', () => {
+  require('node:fs').mkdirSync(sicherung.ORDNER, { recursive: true })
+  return shell.openPath(sicherung.ORDNER)
+})
 ipcMain.handle('einstellungen:speichern', (_e, neu) => einstellungen.speichern(neu || {}))
 
 // System-Details für den Bereich "System": Festplatte, Grafikkarte, lokale Modelle (Ollama)
