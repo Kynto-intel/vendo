@@ -1,0 +1,111 @@
+{
+  "routinen": [
+    {
+      "name": "Morgenbericht",
+      "ausloeser": [
+        "morgenbericht",
+        "guten morgen"
+      ],
+      "prompt": "Gib mir meinen Morgenbericht. Kurz und klar, das Wichtigste zuerst.\n\nDarin:\n- Meine Termine der nächsten Tage (aus dem Kalender).\n- Postfach: neue Mails und welche davon eine Antwort von mir brauchen.\n- Wetter heute und morgen in Schongau.\n- Die wichtigsten aktuellen News zu Wikinger- und Norse-Mode, Shopify, Print-Branche (höchstens 3, mit Quelle).",
+      "bausteine": [],
+      "vorlesen": true,
+      "speichern": false,
+      "pfad": "Donnerwolf-Shop\\04_Analytics\\Morgenberichte\\{datum}.md",
+      "knopf": true,
+      "zeitplan": {
+        "aktiv": false,
+        "zeit": "07:30",
+        "tage": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "id": "rmuikc1864x3"
+    },
+    {
+      "name": "Wie läuft der Shop?",
+      "ausloeser": [
+        "shop check",
+        "wie läuft der shop"
+      ],
+      "prompt": "Wie läuft der Shop? Kurz und mit Zahlen.\n\nDarin:\n- Shop: Bestellungen und Umsatz seit gestern und in dieser Woche, offene Zahlungen, live aus Shopify.",
+      "bausteine": [],
+      "vorlesen": true,
+      "speichern": false,
+      "pfad": "",
+      "knopf": true,
+      "zeitplan": {
+        "aktiv": false,
+        "zeit": "08:00",
+        "tage": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "id": "rmuikc18645k"
+    },
+    {
+      "name": "Neue Mails?",
+      "ausloeser": [
+        "neue mails",
+        "postfach"
+      ],
+      "prompt": "Was ist neu im Postfach? Welche Mails brauchen eine Antwort von mir? Kurz.\n\nDarin:\n- Postfach: neue Mails und welche davon eine Antwort von mir brauchen.",
+      "bausteine": [],
+      "vorlesen": true,
+      "speichern": false,
+      "pfad": "",
+      "knopf": true,
+      "zeitplan": {
+        "aktiv": false,
+        "zeit": "08:00",
+        "tage": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "id": "rmuikc186m47"
+    },
+    {
+      "name": "Was steht an?",
+      "ausloeser": [
+        "was steht an"
+      ],
+      "prompt": "Was steht heute und in den nächsten Tagen an?\n\nDarin:\n- Meine Termine der nächsten Tage (aus dem Kalender).\n- Geplante Hermes-Jobs: was lief, was ist fehlgeschlagen, was steht heute an.\n- Entscheidungen im Vault (Donnerwolf-Shop\\04_Decision_Log), deren Prüfdatum fällig ist.",
+      "bausteine": [],
+      "vorlesen": true,
+      "speichern": false,
+      "pfad": "",
+      "knopf": true,
+      "zeitplan": {
+        "aktiv": false,
+        "zeit": "08:00",
+        "tage": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "id": "rmuikc186w1u"
+    }
+  ],
+  "einstellungen": {
+    "ort": "Schongau",
+    "newsThemen": "Wikinger- und Norse-Mode, Shopify, Print-Branche"
+  },
+  "gelaufen": {
+    "rmuikc1864x3": 1790438589301,
+    "rmuikc186w1u": 1790437634894
+  }
+}

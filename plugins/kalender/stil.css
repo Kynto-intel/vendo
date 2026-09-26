@@ -1,0 +1,41 @@
+/* Kalender-Plugin */
+.plugin-ansicht[data-ansicht='plugin-kalender'] { overflow: hidden; }
+.plugin-inhalt { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.kal-monat { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-hell); min-width: 150px; text-align: center; align-self: center; }
+.kal-raster { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; }
+.kal-monatsblatt { display: flex; flex-direction: column; min-height: 0; padding: 10px; background-color: #2c2c2c; }
+.kal-wochentage { display: grid; grid-template-columns: repeat(7, 1fr); font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--text-leise); text-align: center; padding-bottom: 6px; }
+.kal-tage { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); gap: 4px; min-height: 0; }
+.kal-tag { background: var(--flaeche); border: 1px solid #444; padding: 4px 5px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; cursor: pointer; min-height: 0; }
+.kal-tag:hover { border-color: #5a4a2a; }
+.kal-tag.fremd { opacity: 0.4; }
+.kal-tag.heute { border-color: var(--gold); box-shadow: inset 0 0 0 1px rgba(194, 154, 64, 0.3); }
+.kal-tag.heute .kal-nummer { color: var(--gold-hell); font-weight: 700; }
+.kal-nummer { font-family: var(--mono); font-size: 11px; color: var(--text-leise); }
+.kal-termin { text-align: left; font-size: 10px; line-height: 1.3; background: rgba(194, 154, 64, 0.14); border: 0; border-left: 2px solid var(--gold); color: var(--text); padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.kal-termin b { color: var(--gold-hell); font-weight: 600; }
+.kal-mehr { font-size: 9px; color: var(--text-leise); }
+.kal-seite { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+.kal-form { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.kal-form h3, .kal-kommend h3 { margin: 0 0 4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
+.kal-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-leise); }
+.kal-form input, .kal-form select, .kal-form textarea { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 13px; color: var(--text); color-scheme: dark; outline: none; resize: vertical; }
+.kal-form input:focus, .kal-form select:focus, .kal-form textarea:focus { border-color: var(--gold); }
+.kal-zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kal-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.kal-knoepfe .knopf-gold { padding: 7px 12px; }
+.kal-knoepfe .knopf-flach { padding: 6px 10px; }
+.kal-kommend { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.kal-eintrag { display: flex; flex-direction: column; text-align: left; background: none; border: 0; border-left: 2px solid var(--gold-leise); padding: 5px 8px; cursor: pointer; color: var(--text); }
+.kal-eintrag:hover { border-left-color: var(--gold); background: rgba(194, 154, 64, 0.06); }
+.kal-eintrag span { font-size: 13px; }
+.kal-eintrag small { font-size: 11px; color: var(--text-leise); }
+.kal-heute-zeile { display: grid; grid-template-columns: 70px 1fr; gap: 8px; font-size: 12px; padding: 2px 0; }
+.kal-heute-zeile b { font-family: var(--mono); font-size: 11px; color: var(--gold-hell); font-weight: 600; }
+.kal-naechster { margin-top: 6px; }
+.plugin-karte { cursor: default; }
+.kal-form[hidden] { display: none; }
+.kal-tag.gewaehlt { border-color: var(--gold-hell); background: #3b3528; }
+.kal-form-kopf { display: flex; justify-content: space-between; align-items: center; }
+.kal-zu { background: none; border: 1px solid var(--rahmen); color: var(--text-leise); width: 24px; height: 24px; cursor: pointer; font-size: 12px; line-height: 1; }
+.kal-zu:hover { border-color: var(--gold); color: var(--gold-hell); }

@@ -1,0 +1,75 @@
+// Sichere Brücke zwischen Oberfläche und Hauptprozess. Die Oberfläche bekommt nur diese Funktionen.
+
+const { contextBridge, ipcRenderer } = require('electron')
+
+const abonnieren = (kanal) => (rueckruf) => {
+  const hoerer = (_e, daten) => rueckruf(daten)
+  ipcRenderer.on(kanal, hoerer)
+  return () => ipcRenderer.removeListener(kanal, hoerer)
+}
+
+contextBridge.exposeInMainWorld('jarves', {
+  hermes: {
+    status: () => ipcRenderer.invoke('hermes:status'),
+    info: () => ipcRenderer.invoke('hermes:info'),
+    senden: (kanal, text) => ipcRenderer.invoke('hermes:senden', kanal, text),
+    abbrechen: (kanal) => ipcRenderer.invoke('hermes:abbrechen', kanal),
+    crewOeffnen: () => ipcRenderer.invoke('hermes:crewOeffnen'),
+    lesen: (pfad) => ipcRenderer.invoke('hermes:lesen', pfad),
+    aktion: (art, daten) => ipcRenderer.invoke('hermes:aktion', art, daten),
+    beiStatus: abonnieren('hermes:status'),
+    beiEreignis: abonnieren('hermes:ereignis'),
+    beiVerlauf: abonnieren('hermes:verlauf'),
+    verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal)
+  },
+  plugins: {
+    liste: () => ipcRenderer.invoke('plugins:liste'),
+    datenLaden: (id) => ipcRenderer.invoke('plugins:datenLaden', id),
+    datenSpeichern: (id, daten) => ipcRenderer.invoke('plugins:datenSpeichern', id, daten),
+    aufrufen: (id, name, ...argumente) => ipcRenderer.invoke('plugins:aufrufen', id, name, argumente)
+  },
+  waechter: {
+    beiMeldung: abonnieren('waechter:meldung'),
+    beiProblem: abonnieren('waechter:problem'),
+    beiVerbindung: abonnieren('waechter:verbindung'),
+    verbindungen: () => ipcRenderer.invoke('waechter:verbindungen'),
+    pruefen: () => ipcRenderer.invoke('waechter:pruefen')
+  },
+  wissen: {
+    vault: () => ipcRenderer.invoke('wissen:vault'),
+    suchen: (anfrage) => ipcRenderer.invoke('wissen:suchen', anfrage),
+    lesen: (rel) => ipcRenderer.invoke('wissen:lesen', rel),
+    notizFinden: (name) => ipcRenderer.invoke('wissen:notizFinden', name),
+    morgenberichte: () => ipcRenderer.invoke('wissen:morgenberichte'),
+    entscheidungen: () => ipcRenderer.invoke('wissen:entscheidungen'),
+    bibliothek: () => ipcRenderer.invoke('wissen:bibliothek'),
+    dateien: () => ipcRenderer.invoke('wissen:dateien')
+  },
+  datei: {
+    oeffnen: (rel) => ipcRenderer.invoke('datei:oeffnen', rel),
+    zeigen: (rel) => ipcRenderer.invoke('datei:zeigen', rel)
+  },
+  sprache: {
+    transkribieren: (bytes, mime) => ipcRenderer.invoke('sprache:transkribieren', bytes, mime),
+    beiUmschalten: abonnieren('mikrofon:umschalten')
+  },
+  wake: {
+    starten: () => ipcRenderer.invoke('wake:starten'),
+    fortsetzen: () => ipcRenderer.invoke('wake:fortsetzen'),
+    pausieren: () => ipcRenderer.invoke('wake:pausieren'),
+    stoppen: () => ipcRenderer.invoke('wake:stoppen'),
+    fuettern: (bytes) => ipcRenderer.send('wake:fuettern', bytes)
+  },
+  stimme: {
+    liste: () => ipcRenderer.invoke('stimme:liste'),
+    sprechen: (text, optionen) => ipcRenderer.invoke('stimme:sprechen', text, optionen)
+  },
+  einstellungen: {
+    laden: () => ipcRenderer.invoke('einstellungen:laden'),
+    speichern: (neu) => ipcRenderer.invoke('einstellungen:speichern', neu)
+  },
+  system: {
+    werte: () => ipcRenderer.invoke('system:werte'),
+    details: () => ipcRenderer.invoke('system:details')
+  }
+})

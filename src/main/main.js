@@ -1,0 +1,298 @@
+// Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
+
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut } = require('electron')
+
+// Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
+if (process.env.JARVES_TEST_MIKROFON) {
+  app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+  app.commandLine.appendSwitch('use-fake-ui-for-media-stream')
+  app.commandLine.appendSwitch('use-file-for-fake-audio-capture', `${process.env.JARVES_TEST_MIKROFON}%noloop`)
+}
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+const os = require('node:os')
+const path = require('node:path')
+const { Hermes, PROFIL } = require('./hermes')
+const stimme = require('./stimme')
+const einstellungen = require('./einstellungen')
+
+const hermes = new Hermes()
+// Die Zentrale-Unterhaltung über ihre feste ID wiederfinden (Titel kann Hermes ändern)
+hermes.gemerkteSession = () => einstellungen.laden().zentraleSession || null
+hermes.sessionMerken = (id) => {
+  if (einstellungen.laden().zentraleSession !== id) einstellungen.speichern({ zentraleSession: id })
+}
+let fenster = null
+
+function senden(kanal, daten) {
+  if (fenster && !fenster.isDestroyed()) fenster.webContents.send(kanal, daten)
+}
+
+function fensterErstellen() {
+  fenster = new BrowserWindow({
+    width: 1440,
+    height: 900,
+    minWidth: 1000,
+    minHeight: 640,
+    backgroundColor: '#2B2B2B',
+    title: 'Jarves-OS',
+    autoHideMenuBar: true,
+    show: false,
+    // Keine Titelleiste; Windows zeichnet nur die drei Fensterknöpfe, in der Farbe der rechten Spalte
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#2B2B2B', symbolColor: '#C29A40', height: 38 },
+    webPreferences: {
+      preload: path.join(__dirname, '..', 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false // Mikrofon und Stille-Erkennung laufen auch im Hintergrund
+    }
+  })
+  fenster.once('ready-to-show', () => fenster.show())
+  fenster.webContents.on('before-input-event', (ereignis, eingabe) => {
+    if (eingabe.type === 'keyDown' && eingabe.key === 'F12') {
+      fenster.webContents.openDevTools({ mode: 'detach' })
+    }
+  })
+  const query = {}
+  if (process.env.JARVES_TEST_NACHRICHT) query.test = process.env.JARVES_TEST_NACHRICHT
+  if (process.env.JARVES_TEST_PANEL) query.panel = process.env.JARVES_TEST_PANEL
+  if (process.env.JARVES_TEST_STUMM) query.stumm = '1'
+  if (process.env.JARVES_TEST_ANSICHT) query.ansicht = process.env.JARVES_TEST_ANSICHT
+  if (process.env.JARVES_TEST_INTRO) query.intro = '1'
+  if (process.env.JARVES_TEST_CREW) query.crewtest = process.env.JARVES_TEST_CREW
+  if (process.env.JARVES_TEST_MELDUNG) query.meldungtest = '1'
+  fenster.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), { query })
+  // Links aus Antworten im Standardbrowser öffnen, nie im Jarves-OS-Fenster
+  fenster.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  fenster.webContents.on('will-navigate', (e, url) => {
+    if (!url.startsWith('file://')) {
+      e.preventDefault()
+      if (/^https?:\/\//.test(url)) shell.openExternal(url)
+    }
+  })
+}
+
+// Wächter: neue Bestellungen, Mails, fehlgeschlagene Jobs (Phase 5)
+const { Waechter } = require('./waechter')
+const waechter = new Waechter(hermes)
+waechter.on('meldung', (m) => senden('waechter:meldung', m))
+waechter.on('problem', (p) => senden('waechter:problem', p))
+waechter.on('verbindung', (v) => senden('waechter:verbindung', v))
+ipcMain.handle('waechter:verbindungen', () => waechter.verbindungen)
+ipcMain.handle('waechter:pruefen', () => waechter.pruefen())
+
+// ── Hermes → Oberfläche ──
+hermes.on('status', (s) => {
+  senden('hermes:status', s)
+  if (s.zustand === 'bereit') waechter.starten()
+})
+hermes.on('ereignis', (e) => senden('hermes:ereignis', e))
+const letzterVerlauf = {} // pro Kanal (zentrale, crew)
+hermes.on('verlauf', (v) => {
+  letzterVerlauf[v.kanal] = v
+  senden('hermes:verlauf', v)
+})
+ipcMain.handle('hermes:verlaufHolen', (_e, kanal = 'zentrale') => letzterVerlauf[kanal] || null)
+
+// ── Oberfläche → Hauptprozess ──
+const KANAELE = new Set(['zentrale', 'crew'])
+const kanalPruefen = (k) => (KANAELE.has(k) ? k : 'zentrale')
+ipcMain.handle('hermes:status', () => ({ zustand: hermes.zustand, text: hermes.statusText, profil: PROFIL }))
+ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(kanal), String(text || '').slice(0, 20000)))
+ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
+ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
+
+// Nur lesende Abfragen an diese Hermes-Bereiche (Jobs, Crew, Kosten, Kanban, Status)
+const LESEN_ERLAUBT = [/^\/api\/cron\/jobs/, /^\/api\/profiles/, /^\/api\/analytics\//, /^\/api\/plugins\/kanban\//, /^\/api\/status$/, /^\/api\/sessions/]
+ipcMain.handle('hermes:lesen', (_e, pfad) => {
+  if (typeof pfad !== 'string' || !LESEN_ERLAUBT.some((m) => m.test(pfad))) throw new Error('Abfrage nicht erlaubt.')
+  return hermes.rest(pfad)
+})
+
+// Gezielte Aktionen (Jobs steuern, Modell eines Agenten ändern)
+const sicher = (s) => encodeURIComponent(String(s || ''))
+ipcMain.handle('hermes:aktion', (_e, art, daten = {}) => {
+  const profil = daten.profil ? `?profile=${sicher(daten.profil)}` : ''
+  switch (art) {
+    case 'job-ausfuehren':
+      return hermes.rest(`/api/cron/jobs/${sicher(daten.id)}/trigger${profil}`, { method: 'POST' })
+    case 'job-pausieren':
+      return hermes.rest(`/api/cron/jobs/${sicher(daten.id)}/pause${profil}`, { method: 'POST' })
+    case 'job-fortsetzen':
+      return hermes.rest(`/api/cron/jobs/${sicher(daten.id)}/resume${profil}`, { method: 'POST' })
+    case 'job-loeschen':
+      return hermes.rest(`/api/cron/jobs/${sicher(daten.id)}${profil}`, { method: 'DELETE' })
+    case 'modell-setzen':
+      return hermes.rest(`/api/profiles/${sicher(daten.name)}/model`, {
+        method: 'PUT',
+        body: { provider: String(daten.provider || ''), model: String(daten.model || '') }
+      })
+    default:
+      throw new Error('Unbekannte Aktion.')
+  }
+})
+ipcMain.handle('hermes:info', async () => {
+  const [status, profile] = await Promise.all([
+    hermes.rest('/api/status').catch(() => null),
+    hermes.rest('/api/profiles').catch(() => null)
+  ])
+  const luzzy = profile?.profiles?.find((p) => p.name === PROFIL)
+  return { version: status?.version || '', modell: luzzy?.model || '', anbieter: luzzy?.provider || '' }
+})
+
+ipcMain.handle('sprache:transkribieren', (_e, bytes, mime) => hermes.transkribieren(bytes, String(mime || 'audio/webm')))
+ipcMain.handle('wake:starten', () => hermes.wakeStarten())
+ipcMain.handle('wake:fortsetzen', () => hermes.wakeFortsetzen())
+ipcMain.handle('wake:pausieren', () => hermes.wakePausieren())
+ipcMain.handle('wake:stoppen', () => hermes.wakeStoppen())
+ipcMain.on('wake:fuettern', (_e, bytes) => hermes.wakeFuettern(bytes))
+
+// Plugins (jarves-os\plugins\<id>\)
+const plugins = require('./plugins')
+ipcMain.handle('plugins:liste', () => plugins.alleLaden())
+ipcMain.handle('plugins:datenLaden', (_e, id) => plugins.datenLaden(String(id)))
+ipcMain.handle('plugins:datenSpeichern', (_e, id, daten) => plugins.datenSpeichern(String(id), daten))
+ipcMain.handle('plugins:aufrufen', (_e, id, name, argumente) => plugins.aufrufen(String(id), String(name), Array.isArray(argumente) ? argumente : []))
+
+// Wissen (nur lesen, nur im Donnerwolf-Ordner)
+const wissen = require('./wissen')
+ipcMain.handle('wissen:vault', () => wissen.vault())
+ipcMain.handle('wissen:suchen', (_e, anfrage) => wissen.suchen(anfrage))
+ipcMain.handle('wissen:lesen', (_e, rel) => wissen.lesen(rel))
+ipcMain.handle('wissen:notizFinden', (_e, name) => wissen.notizFinden(name))
+ipcMain.handle('wissen:morgenberichte', () => wissen.morgenberichte())
+ipcMain.handle('wissen:entscheidungen', () => wissen.entscheidungen())
+ipcMain.handle('wissen:bibliothek', () => wissen.bibliothek())
+ipcMain.handle('wissen:dateien', () => wissen.dateien())
+ipcMain.handle('datei:oeffnen', async (_e, rel) => {
+  const fehler = await shell.openPath(wissen.sicher(rel))
+  if (fehler) throw new Error(fehler)
+})
+ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher(rel)))
+
+ipcMain.handle('stimme:liste', () => stimme.STIMMEN)
+ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
+  const mp3 = await stimme.sprechen(String(text || '').slice(0, 3000), optionen || einstellungen.laden())
+  return mp3 // Buffer kommt in der Oberfläche als Uint8Array an
+})
+
+ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
+ipcMain.handle('einstellungen:speichern', (_e, neu) => einstellungen.speichern(neu || {}))
+
+// System-Details für den Bereich "System": Festplatte, Grafikkarte, lokale Modelle (Ollama)
+const { execFile } = require('node:child_process')
+const ausfuehren = (befehl, argumente) =>
+  new Promise((fertig) =>
+    execFile(befehl, argumente, { windowsHide: true, timeout: 8000 }, (fehler, ausgabe) => fertig(fehler ? '' : String(ausgabe)))
+  )
+let grafikkarten = null
+// Ollama lauscht je nach Einstellung nur auf IPv4 oder nur auf IPv6: beide probieren
+async function ollama(pfad) {
+  for (const basis of ['http://127.0.0.1:11434', 'http://[::1]:11434']) {
+    try {
+      return await (await fetch(basis + pfad, { signal: AbortSignal.timeout(1500) })).json()
+    } catch {
+      // nächste Adresse
+    }
+  }
+  return null
+}
+ipcMain.handle('system:details', async () => {
+  const [plattenText, ollamaLaeuft, ollamaInstalliert] = await Promise.all([
+    ausfuehren('powershell.exe', ['-NoProfile', '-Command', "Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | ForEach-Object { '{0};{1};{2}' -f $_.Name, $_.Used, $_.Free }"]),
+    ollama('/api/ps'),
+    ollama('/api/tags')
+  ])
+  if (grafikkarten === null) {
+    const text = await ausfuehren('powershell.exe', ['-NoProfile', '-Command', 'Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }'])
+    grafikkarten = text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+  }
+  const platten = plattenText.split(/\r?\n/).filter(Boolean).map((z) => {
+    const [name, belegt, frei] = z.split(';')
+    return { name, belegt: Number(belegt), frei: Number(frei) }
+  })
+  return {
+    platten,
+    grafikkarten,
+    ollama: ollamaInstalliert
+      ? {
+          installiert: (ollamaInstalliert.models || []).map((m) => ({ name: m.name, groesse: m.size })),
+          geladen: (ollamaLaeuft?.models || []).map((m) => ({ name: m.name, vram: m.size_vram, bis: m.expires_at }))
+        }
+      : null,
+    betriebssystem: `${os.type()} ${os.release()}`,
+    laufzeit: os.uptime()
+  }
+})
+
+let letzteCpu = os.cpus()
+ipcMain.handle('system:werte', () => {
+  const jetzt = os.cpus()
+  let leer = 0
+  let gesamt = 0
+  jetzt.forEach((kern, i) => {
+    const vorher = letzteCpu[i]?.times || kern.times
+    const d = Object.keys(kern.times).reduce((s, k) => s + (kern.times[k] - vorher[k]), 0)
+    gesamt += d
+    leer += kern.times.idle - vorher.idle
+  })
+  letzteCpu = jetzt
+  return {
+    cpu: gesamt ? Math.round(100 - (leer / gesamt) * 100) : 0,
+    ramBelegt: os.totalmem() - os.freemem(),
+    ramGesamt: os.totalmem()
+  }
+})
+
+// ── Start ──
+app.whenReady().then(() => {
+  // Mikrofon nur für Jarves-OS selbst erlauben
+  session.defaultSession.setPermissionRequestHandler((_wc, recht, antwort) => antwort(recht === 'media'))
+  session.defaultSession.setPermissionCheckHandler((_wc, recht) => recht === 'media')
+  fensterErstellen()
+  // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
+  globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))
+  hermes.neuVerbinden()
+  bildschirmfotoFuerTest()
+  skriptFuerTest()
+})
+
+// Testmodus: JARVES_TEST_JS=<JavaScript> [JARVES_TEST_JS_NACH=<ms>] führt Code in der Oberfläche aus
+// und schreibt das Ergebnis in die Konsole (nur zum Entwickeln, z. B. Klicks simulieren).
+function skriptFuerTest() {
+  const code = process.env.JARVES_TEST_JS
+  if (!code) return
+  setTimeout(async () => {
+    try {
+      const ergebnis = await fenster.webContents.executeJavaScript(code, true)
+      console.log('TEST-ERGEBNIS:', JSON.stringify(ergebnis))
+    } catch (e) {
+      console.log('TEST-FEHLER:', e.message)
+    }
+  }, Number(process.env.JARVES_TEST_JS_NACH || 10000))
+}
+
+// Testmodus: JARVES_SCREENSHOT=<datei.png> [JARVES_SCREENSHOT_NACH=<ms>] macht ein Bild der App und beendet sie.
+function bildschirmfotoFuerTest() {
+  const ziel = process.env.JARVES_SCREENSHOT
+  if (!ziel) return
+  setTimeout(async () => {
+    const bild = await fenster.webContents.capturePage()
+    require('node:fs').writeFileSync(ziel, bild.toPNG())
+    hermes.beenden()
+    app.quit()
+  }, Number(process.env.JARVES_SCREENSHOT_NACH || 15000))
+}
+
+app.on('will-quit', () => globalShortcut.unregisterAll())
+
+app.on('window-all-closed', () => {
+  waechter.stoppen()
+  hermes.wakeStoppen()
+  hermes.beenden()
+  app.quit()
+})

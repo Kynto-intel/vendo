@@ -1,0 +1,12 @@
+{
+  "id": "wetter",
+  "name": "Wetter",
+  "version": "1.0.0",
+  "beschreibung": "Wetter für deinen Ort von Open-Meteo (kostenlos, ohne Konto). Luzzy bekommt die Daten direkt und muss nicht suchen.",
+  "bereich": {
+    "name": "Wetter"
+  },
+  "luzzy": {
+    "stichwoerter": "wetter|regen|regnet|schnee|schneit|temperatur|wie warm|wie kalt|sonnig|gewitter|sonnenaufgang|sonnenuntergang|windig|\bwind\b|regenschirm|jacke"
+  }
+}

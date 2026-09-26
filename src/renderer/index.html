@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'"
+    />
+    <title>Jarves-OS</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="intro-an" data-ansicht="zentrale">
+    <!-- Donnerwolf-Startsequenz (src/renderer/startsequenz.js); wird nach dem Intro entfernt -->
+    <div class="intro" id="intro">
+      <div class="intro-mitte">
+        <div class="intro-reaktor"><div class="intro-ring r1"></div><div class="intro-ring r2"></div><div class="intro-ring r3"></div><div class="intro-kern"></div></div>
+        <div class="intro-titel">JARVES-OS</div>
+        <div class="intro-unter">Donnerwolf · Kommandozentrale</div>
+        <div class="intro-log" id="intro-log"></div>
+        <div class="intro-status">Alle Systeme bereit</div>
+      </div>
+      <div class="intro-hinweis">Klick oder Esc überspringt</div>
+    </div>
+    <!-- Keine eigene Titelleiste: die Spalten reichen bis oben. Der obere Rand jeder Spalte
+         verschiebt das Fenster (.zug), rechts oben zeichnet Windows die Fensterknöpfe. -->
+    <div class="app" id="app">
+      <!-- Links: Bereiche -->
+      <aside class="leiste">
+        <div class="zug marke">
+          <span class="marke-zeichen">ᛃ</span>
+          <span class="marke-name">JARVES<span>-OS</span></span>
+        </div>
+        <nav class="bereiche" id="bereiche"></nav>
+        <div class="leiste-fuss">
+          <button class="knopf-flach" id="einstellungen-oeffnen" type="button">Einstellungen</button>
+        </div>
+      </aside>
+
+      <!-- Mitte: Luzzy -->
+      <main class="mitte">
+        <div class="zug mitte-kopf">
+          <div class="verbindung" id="verbindung" data-kurz="Hermes">
+            <span class="punkt"></span><span class="verbindung-text">Verbinde …</span>
+          </div>
+          <div class="verbindung" id="mikrofon-status" data-zustand="aus" data-kurz="Mikrofon">
+            <span class="punkt"></span><span class="verbindung-text">Mikrofon …</span>
+          </div>
+          <button class="verbindung verbindung-knopf" id="shopify-status" data-zustand="verbinde" data-kurz="Shopify" type="button" title="Wird geprüft … (Klick: jetzt prüfen)">
+            <span class="punkt"></span><span class="verbindung-text">Shopify …</span>
+          </button>
+          <button class="verbindung verbindung-knopf" id="mail-status" data-zustand="verbinde" data-kurz="Postfach" type="button" title="Wird geprüft … (Klick: jetzt prüfen)">
+            <span class="punkt"></span><span class="verbindung-text">Postfach …</span>
+          </button>
+          <div class="uhr" id="uhr"><span class="uhr-datum" id="uhr-datum"></span><span class="uhr-datum-kurz" id="uhr-datum-kurz"></span><span class="uhr-zeit" id="uhr-zeit"></span></div>
+        </div>
+        <!-- Zentrale: Luzzy -->
+        <section class="ansicht ansicht-zentrale" data-ansicht="zentrale">
+          <section class="luzzy-bereich">
+            <div class="reaktor-rahmen" id="reaktor-rahmen"></div>
+            <div class="luzzy-name">LUZZY</div>
+            <div class="luzzy-zustand" id="luzzy-zustand">Verbinde mit Hermes …</div>
+            <div class="welle" id="welle"></div>
+            <div class="untertitel" id="untertitel"></div>
+          </section>
+
+          <div class="schnellbefehle" id="schnellbefehle" hidden></div>
+          <form class="befehl hud eingabe-form" data-quelle="mitte">
+            <span class="eingabe-zeichen">›</span>
+            <textarea class="eingabe-text" rows="1" placeholder="Sag Luzzy, was ansteht …" autocomplete="off"></textarea>
+            <button class="knopf-rund mikrofon" id="mikrofon" type="button" title="Sprechen (Strg+Leertaste)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2z"/></svg>
+            </button>
+            <button class="knopf-gold senden" type="submit">Senden</button>
+          </form>
+        </section>
+
+        <!-- Crew: Luzzy als Chefin, Aufträge laufen über ihren Bot Chat -->
+        <section class="ansicht ansicht-seite" data-ansicht="crew" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Crew</h2><p class="leise">Luzzy verteilt Aufträge an Recherche-, Schreib- und Code-Bot und berichtet dir.</p></div>
+            <button class="knopf-flach" data-neu-laden="crew" type="button">Aktualisieren</button>
+          </header>
+          <div class="crew-raster" id="crew-karten"><div class="leise">Lade …</div></div>
+          <section class="crew-chat hud">
+            <header class="crew-chat-kopf"><h3>Aufträge an die Crew</h3><span class="leise klein">Luzzys Bot Chat · sie gibt Aufgaben mit message_agent weiter</span></header>
+            <div class="gespraech" id="crew-gespraech"></div>
+            <form class="eingabe hud" id="crew-form">
+              <span class="eingabe-zeichen">›</span>
+              <textarea rows="1" placeholder="Auftrag für die Crew, z. B. „Recherchier das Thema Fenrir für einen Blogartikel“ …" autocomplete="off"></textarea>
+              <button class="knopf-gold senden" type="submit">Senden</button>
+            </form>
+          </section>
+        </section>
+
+        <!-- Jobs: geplante Hermes-Jobs -->
+        <section class="ansicht ansicht-seite" data-ansicht="jobs" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Jobs <span class="leise klein" id="jobs-anzahl"></span></h2><p class="leise">Geplante Aufgaben aller Agenten. Neue Jobs legst du einfach bei Luzzy an.</p></div>
+            <button class="knopf-flach" data-neu-laden="jobs" type="button">Aktualisieren</button>
+          </header>
+          <div class="jobs-raster" id="jobs-liste"><div class="leise">Lade …</div></div>
+        </section>
+
+        <!-- Kanban -->
+        <section class="ansicht ansicht-seite" data-ansicht="kanban" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Kanban <span class="leise klein" id="kanban-anzahl"></span></h2><p class="leise">Aufgaben der Agenten mit Status.</p></div>
+            <div class="seiten-knoepfe">
+              <select id="kanban-auswahl" class="auswahl"></select>
+              <button class="knopf-flach" data-neu-laden="kanban" type="button">Aktualisieren</button>
+            </div>
+          </header>
+          <div class="leer-hinweis" id="kanban-hinweis" hidden>Die Tafel ist leer. Wenn Luzzy oder die Bots größere Aufgaben in Hermes' Kanban anlegen, erscheinen sie hier.</div>
+          <div class="kanban-tafel" id="kanban-tafel"></div>
+        </section>
+
+        <!-- Bibliothek: lange Texte der Agenten -->
+        <section class="ansicht ansicht-seite" data-ansicht="bibliothek" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Bibliothek <span class="leise klein" id="bibliothek-anzahl"></span></h2><p class="leise">Recherchen, Entwürfe und fertige Artikel der Agenten.</p></div>
+            <button class="knopf-flach" data-neu-laden="bibliothek" type="button">Aktualisieren</button>
+          </header>
+          <div class="zweispaltig">
+            <div class="liste-spalte hud" id="bibliothek-liste"><div class="leise">Lade …</div></div>
+            <article class="leser hud" id="bibliothek-leser"></article>
+          </div>
+        </section>
+
+        <!-- Entscheidungen -->
+        <section class="ansicht ansicht-seite" data-ansicht="entscheidungen" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Entscheidungen <span class="leise klein" id="entscheidungen-anzahl"></span></h2><p class="leise">Das Entscheidungs-Tagebuch aus dem Vault: was gilt, was überholt ist, was geprüft werden muss.</p></div>
+            <div class="seiten-knoepfe">
+              <select id="entscheidungen-filter" class="auswahl">
+                <option value="alle">Alle</option>
+                <option value="gilt">Gilt</option>
+                <option value="faellig">Prüfung fällig</option>
+                <option value="ueberholt">Überholt</option>
+              </select>
+              <button class="knopf-flach" data-neu-laden="entscheidungen" type="button">Aktualisieren</button>
+            </div>
+          </header>
+          <div class="zweispaltig">
+            <div class="liste-spalte hud" id="entscheidungen-liste"><div class="leise">Lade …</div></div>
+            <article class="leser hud" id="entscheidungen-leser"></article>
+          </div>
+        </section>
+
+        <!-- Wissen: Obsidian-Vault -->
+        <section class="ansicht ansicht-seite" data-ansicht="wissen" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Wissen</h2><p class="leise">Dein Donnerwolf-Vault. Status aus der Übersicht: aktuell, prüfen, historisch.</p></div>
+            <div class="seiten-knoepfe">
+              <input id="wissen-suche" class="suche" type="search" placeholder="Im Vault suchen …" />
+              <button class="knopf-flach" data-neu-laden="wissen" type="button">Aktualisieren</button>
+            </div>
+          </header>
+          <div class="zweispaltig">
+            <div class="liste-spalte hud" id="wissen-liste"><div class="leise">Lade …</div></div>
+            <article class="leser hud" id="wissen-leser"></article>
+          </div>
+        </section>
+
+        <!-- Dateien -->
+        <section class="ansicht ansicht-seite" data-ansicht="dateien" hidden>
+          <header class="seiten-kopf">
+            <div><h2>Dateien</h2><p class="leise">Dein Donnerwolf-Ordner und die zuletzt geänderten Dateien.</p></div>
+            <button class="knopf-flach" data-neu-laden="dateien" type="button">Aktualisieren</button>
+          </header>
+          <div class="ordner-leiste" id="dateien-ordner"></div>
+          <section class="karte hud"><h3>Zuletzt geändert</h3><div id="dateien-liste"><div class="leise">Lade …</div></div></section>
+        </section>
+
+        <!-- System -->
+        <section class="ansicht ansicht-seite" data-ansicht="system" hidden>
+          <header class="seiten-kopf">
+            <div><h2>System</h2><p class="leise">Hermes, dein PC und die lokalen Modelle.</p></div>
+            <button class="knopf-flach" data-neu-laden="system" type="button">Aktualisieren</button>
+          </header>
+          <div class="system-raster">
+            <section class="karte hud"><h3>Hermes</h3><div id="system-hermes"><div class="leise">Lade …</div></div></section>
+            <section class="karte hud"><h3>PC</h3><div id="system-pc"><div class="leise">Lade …</div></div></section>
+            <section class="karte hud"><h3>Lokale Modelle (Ollama)</h3><div id="system-ollama"><div class="leise">Lade …</div></div></section>
+            <section class="karte hud"><h3>Luzzy · Nutzung 30 Tage</h3><div id="system-kosten"><div class="leise">Lade …</div></div></section>
+          </div>
+        </section>
+      </main>
+
+      <!-- Gespräch: rechts angedockt, ein-/ausblendbar, Breite ziehbar -->
+      <section class="gespraech-panel" id="gespraech-panel" hidden>
+        <div class="griff" id="griff" title="Ziehen, um die Breite zu ändern"></div>
+        <header class="zug panel-kopf">
+          <h3>Gespräch mit Luzzy</h3>
+          <button class="titel-knopf klein" id="gespraech-schliessen" type="button" title="Schließen (Strg+K)">✕</button>
+        </header>
+        <div class="gespraech" id="gespraech">
+          <div class="gespraech-leer" id="gespraech-leer">Noch nichts gesagt.</div>
+        </div>
+        <form class="eingabe hud eingabe-form" data-quelle="panel">
+          <span class="eingabe-zeichen">›</span>
+          <textarea class="eingabe-text" rows="1" placeholder="Nachricht an Luzzy …" autocomplete="off"></textarea>
+          <button class="knopf-gold senden" type="submit">Senden</button>
+        </form>
+      </section>
+
+      <!-- Rechte Spalte: Live (Reihenfolge per CSS: Wetter, Meldungen, Heute, Crew, Gespräch unten;
+           Morgenbericht, Gerade und Luzzy sind auf Felix' Wunsch ausgeblendet) -->
+      <aside class="live">
+        <div class="zug live-kopf"></div>
+        <!-- Vorschau aufs Gespräch; Klick dockt das ganze Gespräch hier an -->
+        <button class="karte hud vorschau" id="vorschau" type="button" title="Gespräch öffnen (Strg+K)">
+          <h3><span>Gespräch</span><span class="vorschau-aktion" id="vorschau-aktion">Öffnen ›</span></h3>
+          <div class="vorschau-liste" id="vorschau-liste"><div class="leise">Noch nichts gesagt.</div></div>
+        </button>
+        <section class="karte hud">
+          <h3><span>Meldungen</span> <button class="knopf-mini" id="meldungen-leeren" type="button" hidden>Leeren</button></h3>
+          <div class="meldungen-liste" id="meldungen-liste"></div>
+        </section>
+        <section class="karte hud" hidden>
+          <h3>Morgenbericht</h3>
+          <div id="morgenbericht"><div class="leise">Lade …</div></div>
+        </section>
+        <section class="karte hud" id="karte-gerade" hidden>
+          <h3>Gerade</h3>
+          <div class="aktivitaet" id="aktivitaet"><div class="leise">Nichts los.</div></div>
+        </section>
+        <section class="karte hud" hidden>
+          <h3>Luzzy</h3>
+          <dl class="werte">
+            <dt>Profil</dt><dd id="info-profil">donnerwolf</dd>
+            <dt>Modell</dt><dd id="info-modell">…</dd>
+            <dt>Hermes</dt><dd id="info-version">…</dd>
+          </dl>
+        </section>
+        <button class="karte hud vorschau" data-bereich-oeffnen="crew" type="button" title="Crew öffnen">
+          <h3><span>Crew</span><span class="vorschau-aktion">Öffnen ›</span></h3>
+          <div class="crew-kurz" id="crew-kurz"><div class="leise">Lade …</div></div>
+        </button>
+      </aside>
+    </div>
+
+    <!-- Einstellungen -->
+    <dialog class="dialog hud" id="einstellungen">
+      <form method="dialog" id="einstellungen-form">
+        <h2>Einstellungen</h2>
+        <fieldset>
+          <legend>Luzzys Stimme</legend>
+          <label>Stimme <select id="e-stimme"></select></label>
+          <label>Tempo <input id="e-tempo" type="range" min="-20" max="20" step="1" /> <output id="e-tempo-wert"></output></label>
+          <label>Tonhöhe <input id="e-hoehe" type="range" min="-10" max="10" step="1" /> <output id="e-hoehe-wert"></output></label>
+          <label class="haken"><input id="e-vorlesen" type="checkbox" /> Antworten automatisch vorlesen</label>
+          <button class="knopf-flach" id="e-probe" type="button">Probe hören</button>
+        </fieldset>
+        <fieldset>
+          <legend>Sprechen</legend>
+          <label class="haken"><input id="e-wake" type="checkbox" /> Auf „Hey Luzzy“ hören</label>
+          <label class="haken"><input id="e-auto-senden" type="checkbox" /> Gesprochenes sofort abschicken</label>
+          <label class="haken"><input id="e-weiter" type="checkbox" /> Nach Luzzys Antwort kurz weiter zuhören</label>
+          <div class="leise" id="e-mikrofon-status">Mikrofon: wird geprüft …</div>
+          <div class="leise">Sprechen: Mikrofon-Knopf oder <b>Strg+Leertaste</b> (geht auch, wenn Jarves-OS im Hintergrund ist).</div>
+        </fieldset>
+        <fieldset>
+          <legend>Meldungen</legend>
+          <label class="haken"><input id="e-m-vorlesen" type="checkbox" /> Luzzy sagt Meldungen laut</label>
+          <label class="haken"><input id="e-m-bestellung" type="checkbox" /> Neue Bestellungen</label>
+          <label class="haken"><input id="e-m-mail" type="checkbox" /> Neue Mails</label>
+          <label class="haken"><input id="e-m-job" type="checkbox" /> Fehlgeschlagene Jobs</label>
+          <label class="haken"><input id="e-m-crew" type="checkbox" /> Crew ist fertig</label>
+          <label>Ruhezeit <span class="zeitspanne"><input id="e-m-ruhe-von" type="time" /> bis <input id="e-m-ruhe-bis" type="time" /></span></label>
+          <div class="leise">In der Ruhezeit erscheinen Meldungen nur in der Liste, Luzzy bleibt still.</div>
+        </fieldset>
+        <fieldset>
+          <legend>Animationen</legend>
+          <label class="haken"><input id="e-anim-reaktor" type="checkbox" /> Reaktor dreht sich</label>
+          <label class="haken"><input id="e-anim-welle" type="checkbox" /> Sprach-Welle</label>
+          <label class="haken"><input id="e-anim-scanlinie" type="checkbox" /> Scanlinie</label>
+          <label class="haken"><input id="e-anim-hintergrund" type="checkbox" /> Hintergrund-Raster</label>
+          <label class="haken"><input id="e-start-intro" type="checkbox" /> Startsequenz beim Öffnen</label>
+          <label class="haken"><input id="e-start-gruss" type="checkbox" /> Luzzy begrüßt mich beim Start</label>
+        </fieldset>
+        <div class="dialog-knoepfe">
+          <button class="knopf-flach" value="abbrechen" type="submit">Abbrechen</button>
+          <button class="knopf-gold" id="e-speichern" value="speichern" type="submit">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

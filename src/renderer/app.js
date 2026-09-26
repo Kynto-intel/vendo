@@ -1,0 +1,923 @@
+// Jarves-OS Oberfläche: Luzzy in der Mitte, Gespräch, Live-Spalte, Einstellungen.
+
+import { reaktorErstellen, welleErstellen } from './reaktor.js'
+import { markdownZuHtml } from './markdown.js'
+import { vorleserErstellen } from './vorlesen.js'
+import { mikrofonErstellen } from './mikrofon.js'
+import { unterhaltungErstellen } from './unterhaltung.js'
+import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
+import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
+import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
+import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
+import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
+
+const $ = (id) => document.getElementById(id)
+const api = window.jarves
+
+const BEREICHE = [
+  { id: 'zentrale', name: 'Zentrale', aktiv: true },
+  { id: 'crew', name: 'Crew', aktiv: true },
+  { id: 'jobs', name: 'Jobs', aktiv: true },
+  { id: 'kanban', name: 'Kanban', aktiv: true },
+  { id: 'bibliothek', name: 'Bibliothek', aktiv: true },
+  { id: 'entscheidungen', name: 'Entscheidungen', aktiv: true },
+  { id: 'wissen', name: 'Wissen', aktiv: true },
+  { id: 'dateien', name: 'Dateien', aktiv: true },
+  { id: 'system', name: 'System', aktiv: true }
+]
+
+const ZUSTAND_TEXT = {
+  bereit: 'Bereit',
+  denkt: 'Denke nach',
+  antwortet: 'Antworte',
+  spricht: 'Spreche',
+  hoert: 'Höre zu',
+  versteht: 'Verstehe',
+  getrennt: 'Nicht verbunden'
+}
+
+let einstellungen = null
+let verbunden = false
+let beschaeftigt = false
+let aktuelleAntwort = null // { el, textEl, roh }
+let werkzeug = ''
+let spricht = false
+let hoert = false // Mikrofon nimmt gerade auf
+let versteht = false // Hermes schreibt das Gesprochene gerade mit
+let letzteEingabeGesprochen = false
+let wakeAktiv = false
+
+const reaktor = reaktorErstellen($('reaktor-rahmen'))
+const welle = welleErstellen($('welle'))
+
+const vorleser = vorleserErstellen({
+  beiStart: () => {
+    spricht = true
+    mikrofon.wakeSetzen(false) // Luzzys eigene Stimme soll das Aktivierungswort nicht auslösen
+    zustandZeigen()
+  },
+  beiEnde: () => {
+    spricht = false
+    mikrofon.wakeSetzen(wakeAktiv)
+    zustandZeigen()
+    weiterZuhoeren()
+  },
+  beiPegel: (werte, mittel) => {
+    welle.pegel(werte)
+    document.documentElement.style.setProperty('--pegel', String(mittel || 0))
+  },
+  beiFehler: (e) => systemNachricht(`Stimme: ${e.message}`)
+})
+
+// ── Sprechen: Mikrofon → Hermes schreibt mit → an Luzzy ──
+const mikrofon = mikrofonErstellen({
+  beiZustand: mikrofonStatusZeigen,
+  beiPegel: (p) => {
+    if (!hoert) return
+    welle.pegel(Array.from({ length: 24 }, (_, i) => p * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.7 + performance.now() / 120)))))
+    document.documentElement.style.setProperty('--pegel', String(p * 0.8))
+  },
+  beiPcm: (bytes) => api.wake.fuettern(bytes)
+})
+
+function mikrofonStatusZeigen(z, text) {
+  const el = $('mikrofon-status')
+  const anzeige = z === 'bereit' && wakeAktiv ? 'wake' : z
+  el.dataset.zustand = anzeige
+  const texte = {
+    aus: 'Mikrofon …',
+    bereit: 'Mikrofon bereit',
+    wake: 'Hört auf „Hey Luzzy“',
+    'nimmt-auf': 'Nimmt auf',
+    'kein-mikrofon': 'Kein Mikrofon',
+    verweigert: 'Mikrofon verweigert'
+  }
+  el.querySelector('.verbindung-text').textContent = texte[anzeige] || text || z
+  $('mikrofon').classList.toggle('fehlt', z === 'kein-mikrofon' || z === 'verweigert')
+  $('mikrofon').title = z === 'kein-mikrofon' ? 'Kein Mikrofon gefunden. Einstecken, dann klicken.' : 'Sprechen (Strg+Leertaste)'
+  const e = $('e-mikrofon-status')
+  if (e) e.textContent = `Mikrofon: ${texte[anzeige] || text || z}`
+}
+
+// Kurzer Signalton, wenn Luzzy zuhört
+function piep(hoch = true) {
+  try {
+    const ctx = new AudioContext()
+    const osz = ctx.createOscillator()
+    const laut = ctx.createGain()
+    osz.frequency.value = hoch ? 880 : 520
+    laut.gain.setValueAtTime(0.0001, ctx.currentTime)
+    laut.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02)
+    laut.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18)
+    osz.connect(laut).connect(ctx.destination)
+    osz.start()
+    osz.stop(ctx.currentTime + 0.2)
+    osz.onended = () => ctx.close()
+  } catch {
+    // ohne Ton weiter
+  }
+}
+
+let sprichtGerade = false // verhindert doppelten Start
+async function sprechenStarten({ ohneSpracheNach = 7000, leise = false } = {}) {
+  if (mikrofon.nimmtAuf()) return mikrofon.stoppen() // zweiter Druck = fertig gesprochen
+  if (sprichtGerade || !verbunden) return
+  sprichtGerade = true
+  try {
+    if (beschaeftigt) {
+      api.hermes.abbrechen('zentrale') // wer spricht, unterbricht Luzzy
+    }
+    vorleser.stoppen()
+    if (!(await mikrofon.starten())) {
+      untertitelZeigen('Kein Mikrofon gefunden. Steck eins ein, dann klick auf das Mikrofon.', { fertig: true })
+      return
+    }
+    if (!leise) piep(true)
+    hoert = true
+    zustandZeigen()
+    const ton = await mikrofon.aufnehmen({ ohneSpracheNach })
+    hoert = false
+    welle.pegel(null)
+    document.documentElement.style.setProperty('--pegel', '0')
+    if (!ton) {
+      zustandZeigen()
+      return
+    }
+    piep(false)
+    versteht = true
+    zustandZeigen()
+    let text = ''
+    try {
+      text = await api.sprache.transkribieren(ton.bytes, ton.mime)
+    } catch (e) {
+      systemNachricht(`Spracherkennung: ${e.message}`)
+    }
+    versteht = false
+    zustandZeigen()
+    if (!text) {
+      untertitelZeigen('Hab dich nicht verstanden. Nochmal?', { fertig: true })
+      return
+    }
+    const feld = document.querySelector('.befehl .eingabe-text')
+    feld.value = text
+    feldHoehe(feld)
+    if (einstellungen.sprache?.automatischSenden) await abschicken(feld, { gesprochen: true })
+    else feld.focus()
+  } finally {
+    hoert = false
+    versteht = false
+    sprichtGerade = false
+    zustandZeigen()
+    if (wakeAktiv) api.wake.fortsetzen()
+  }
+}
+
+// Nach Luzzys Antwort kurz weiter zuhören, wenn die Frage gesprochen war (Gesprächsmodus)
+function weiterZuhoeren() {
+  if (!letzteEingabeGesprochen || !einstellungen?.sprache?.weiterZuhoeren) return
+  letzteEingabeGesprochen = false
+  setTimeout(() => {
+    if (!beschaeftigt && !spricht && !hoert) sprechenStarten({ ohneSpracheNach: 8000, leise: false })
+  }, 350)
+}
+
+// Aktivierungswort bei Hermes scharf schalten (oder aus)
+async function wakeEinrichten() {
+  const soll = Boolean(einstellungen?.sprache?.aktivierungswort) && verbunden
+  if (!soll) {
+    if (wakeAktiv) await api.wake.stoppen()
+    wakeAktiv = false
+    mikrofon.wakeSetzen(false)
+    mikrofonStatusZeigen(mikrofon.zustand())
+    return
+  }
+  if (!(await mikrofon.starten())) return
+  try {
+    const antwort = await api.wake.starten()
+    wakeAktiv = Boolean(antwort?.started)
+    if (!wakeAktiv && antwort?.reason) console.warn('Aktivierungswort nicht aktiv:', antwort.reason)
+  } catch (e) {
+    wakeAktiv = false
+    console.warn('Aktivierungswort:', e.message)
+  }
+  mikrofon.wakeSetzen(wakeAktiv && !spricht)
+  mikrofonStatusZeigen(mikrofon.zustand())
+}
+
+$('mikrofon').addEventListener('click', () => sprechenStarten())
+api.sprache.beiUmschalten(() => sprechenStarten())
+// Mikrofon eingesteckt: automatisch aufnehmen
+navigator.mediaDevices.addEventListener('devicechange', () => {
+  if (['kein-mikrofon', 'aus'].includes(mikrofon.zustand())) wakeEinrichten()
+})
+
+// ── Zustand von Luzzy ──
+function zustand() {
+  if (!verbunden) return 'getrennt'
+  if (hoert) return 'hoert'
+  if (versteht) return 'versteht'
+  if (spricht) return 'spricht'
+  if (beschaeftigt) return aktuelleAntwort?.roh ? 'antwortet' : 'denkt'
+  return 'bereit'
+}
+
+function zustandZeigen() {
+  const z = zustand()
+  reaktor.zustand(z === 'versteht' ? 'denkt' : z)
+  const el = $('luzzy-zustand')
+  if (werkzeug && beschaeftigt) el.innerHTML = `Arbeite · <b>${maskieren(werkzeug)}</b>`
+  else if (z === 'hoert') el.innerHTML = `<b>${ZUSTAND_TEXT[z]}</b> …`
+  else el.innerHTML = z === 'bereit' ? `<b>${ZUSTAND_TEXT[z]}</b>` : `${ZUSTAND_TEXT[z]}${z === 'denkt' || z === 'versteht' ? ' …' : ''}`
+  const welleAktiv = ['denkt', 'antwortet', 'spricht', 'hoert', 'versteht'].includes(z)
+  $('welle').className = `welle${welleAktiv ? ' aktiv' : ''}${z === 'denkt' || z === 'versteht' ? ' denkt' : ''}`
+  $('mikrofon').classList.toggle('an', hoert)
+  for (const knopf of document.querySelectorAll('.senden')) {
+    knopf.textContent = beschaeftigt ? 'Stopp' : 'Senden'
+    knopf.classList.toggle('stopp', beschaeftigt)
+    knopf.type = beschaeftigt ? 'button' : 'submit'
+  }
+}
+
+// ── Untertitel unter dem Reaktor: Luzzys aktuelle Antwort in Kurzform ──
+function klartext(text) {
+  return String(text || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[*_`#>]/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+function untertitelZeigen(text, { fertig = false } = {}) {
+  const el = $('untertitel')
+  const kurz = klartext(text)
+  if (!kurz) return (el.textContent = '')
+  const zuLang = kurz.length > 320
+  const sichtbar = fertig ? kurz.slice(0, 320) : kurz.slice(-320)
+  el.innerHTML = `${!fertig && zuLang ? '… ' : ''}${maskieren(sichtbar)}${fertig && zuLang ? ' …' : ''}${
+    fertig && zuLang && panelGeschlossen() ? '<span class="leise-hinweis">Ganze Antwort im Gespräch</span>' : ''
+  }`
+}
+
+const maskieren = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+// ── Gespräch ──
+function nachrichtAnzeigen(rolle, text, { laeuft = false } = {}) {
+  $('gespraech-leer')?.remove()
+  const el = document.createElement('div')
+  el.className = `msg ${rolle}`
+  const wer = document.createElement('div')
+  wer.className = 'msg-wer'
+  wer.textContent = rolle === 'luzzy' ? 'LUZZY' : 'FELIX'
+  const textEl = document.createElement('div')
+  textEl.className = 'msg-text'
+  if (rolle === 'felix') textEl.textContent = text
+  else textEl.innerHTML = markdownZuHtml(text) + (laeuft ? '<span class="cursor"></span>' : '')
+  el.append(wer, textEl)
+  $('gespraech').appendChild(el)
+  runterScrollen()
+  return { el, textEl }
+}
+
+function systemNachricht(text) {
+  $('gespraech-leer')?.remove()
+  const el = document.createElement('div')
+  el.className = 'msg system'
+  el.textContent = text
+  $('gespraech').appendChild(el)
+  runterScrollen()
+}
+
+function runterScrollen() {
+  const g = $('gespraech')
+  g.scrollTop = g.scrollHeight
+  vorschauAktualisieren()
+}
+
+// Vorschau rechts: die letzten drei Nachrichten, je zwei Zeilen
+function vorschauAktualisieren() {
+  const letzte = [...$('gespraech').querySelectorAll('.msg.luzzy, .msg.felix')].slice(-3)
+  const liste = $('vorschau-liste')
+  if (!letzte.length) return (liste.innerHTML = '<div class="leise">Noch nichts gesagt.</div>')
+  liste.innerHTML = letzte
+    .map((m) => {
+      const luzzy = m.classList.contains('luzzy')
+      const text = klartext(m.querySelector('.msg-text')?.textContent || '') || '…'
+      return `<div class="vorschau-zeile ${luzzy ? 'luzzy' : 'felix'}"><b>${luzzy ? 'LUZZY' : 'FELIX'}</b>${maskieren(text)}</div>`
+    })
+    .join('')
+}
+
+function antwortAktualisieren() {
+  if (!aktuelleAntwort) return
+  const hinweis = werkzeug ? `<div class="werkzeug-hinweis">Werkzeug: <b>${maskieren(werkzeug)}</b></div>` : ''
+  aktuelleAntwort.textEl.innerHTML = markdownZuHtml(aktuelleAntwort.roh) + '<span class="cursor"></span>' + hinweis
+  runterScrollen()
+}
+
+// ── Aktivität rechts ──
+const aktivitaeten = []
+function aktivitaetMelden(text, laeuft = false) {
+  const zeit = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  aktivitaeten.unshift({ zeit, text, laeuft })
+  aktivitaeten.length = Math.min(aktivitaeten.length, 8)
+  aktivitaetZeigen()
+}
+function aktivitaetZeigen() {
+  const el = $('aktivitaet')
+  if (!aktivitaeten.length) return (el.innerHTML = '<div class="leise">Nichts los.</div>')
+  el.innerHTML = aktivitaeten
+    .map((a) => `<div class="eintrag${a.laeuft ? ' laeuft' : ''}"><time>${a.zeit}</time><span>${maskieren(a.text)}</span></div>`)
+    .join('')
+}
+function laufendeBeenden() {
+  aktivitaeten.forEach((a) => (a.laeuft = false))
+  aktivitaetZeigen()
+}
+
+// ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
+async function abschicken(feld, { gesprochen = false } = {}) {
+  const text = feld.value.trim()
+  if (!text || beschaeftigt) return
+  if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
+  feld.value = ''
+  feldHoehe(feld)
+  // Plugins dürfen die Eingabe abfangen, z. B. das Auslösewort einer Routine ("Morgenbericht")
+  const treffer = await pluginEingabe(text)
+  if (treffer) return anLuzzy(treffer.text, { anzeige: treffer.anzeige || text, vorlesen: treffer.vorlesen, gesprochen })
+  // Fragt Felix nach Wetter oder Terminen, schickt Jarves-OS die Daten gleich mit (Luzzy muss nicht suchen)
+  const mitgeliefert = await kontextFuer(text)
+  if (mitgeliefert) {
+    const jetzt = new Date()
+    const stand = `${jetzt.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+    return anLuzzy(`${text}\n\n[Von Jarves-OS mitgeschickt, Stand ${stand}. Nutze diese Daten direkt statt zu suchen:]\n${mitgeliefert}`, { anzeige: text, gesprochen })
+  }
+  return anLuzzy(text, { gesprochen })
+}
+
+// Schickt einen Auftrag an Luzzy. anzeige = was im Gespräch als Felix' Nachricht erscheint.
+let vorlesenErzwungen = false
+async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false } = {}) {
+  if (!text || beschaeftigt || !verbunden) return false
+  letzteEingabeGesprochen = gesprochen
+  vorlesenErzwungen = Boolean(vorlesen)
+  vorleser.stoppen()
+  nachrichtAnzeigen('felix', anzeige)
+  untertitelZeigen('')
+  beschaeftigt = true
+  werkzeug = ''
+  zustandZeigen()
+  aktivitaetMelden('Luzzy denkt nach', true)
+  try {
+    await api.hermes.senden('zentrale', text)
+  } catch (e) {
+    beschaeftigt = false
+    laufendeBeenden()
+    zustandZeigen()
+    systemNachricht(`Konnte nicht senden: ${e.message}`)
+    return false
+  }
+  return true
+}
+
+function feldHoehe(feld) {
+  feld.style.height = 'auto'
+  feld.style.height = `${Math.min(feld.scrollHeight, 160)}px`
+}
+
+for (const form of document.querySelectorAll('.eingabe-form')) {
+  const feld = form.querySelector('.eingabe-text')
+  form.addEventListener('submit', (e) => {
+    e.preventDefault()
+    abschicken(feld)
+  })
+  form.querySelector('.senden').addEventListener('click', (e) => {
+    if (beschaeftigt) {
+      e.preventDefault()
+      api.hermes.abbrechen('zentrale')
+      vorleser.stoppen()
+    }
+  })
+  feld.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      abschicken(feld)
+    }
+  })
+  feld.addEventListener('input', () => feldHoehe(feld))
+}
+
+// ── Gesprächs-Fenster rechts: öffnen/schließen, Breite ziehen ──
+const panel = $('gespraech-panel')
+const panelGeschlossen = () => panel.hidden
+
+function panelSetzen(offen, { speichern = true } = {}) {
+  panel.hidden = !offen
+  $('vorschau').classList.toggle('an', offen)
+  $('vorschau-aktion').textContent = offen ? 'Schließen ‹' : 'Öffnen ›'
+  if (offen) {
+    runterScrollen()
+    if (aktuelleAnsicht === 'zentrale') document.querySelector('.befehl .eingabe-text').focus()
+    else panel.querySelector('.eingabe-text').focus()
+  } else document.querySelector('.befehl .eingabe-text').focus()
+  if (speichern && einstellungen) {
+    einstellungen.panel = { ...einstellungen.panel, offen }
+    api.einstellungen.speichern({ panel: einstellungen.panel })
+  }
+}
+function breiteSetzen(px) {
+  const breite = Math.round(Math.max(320, Math.min(px, window.innerWidth * 0.7)))
+  document.documentElement.style.setProperty('--panel-breite', `${breite}px`)
+  return breite
+}
+
+$('vorschau').addEventListener('click', () => panelSetzen(panelGeschlossen()))
+$('gespraech-schliessen').addEventListener('click', () => panelSetzen(false))
+$('untertitel').addEventListener('click', () => {
+  if ($('untertitel').textContent) panelSetzen(true)
+})
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    panelSetzen(panelGeschlossen())
+  }
+})
+
+$('griff').addEventListener('pointerdown', (e) => {
+  const griff = e.currentTarget
+  griff.setPointerCapture(e.pointerId)
+  griff.classList.add('zieht')
+  const startX = e.clientX
+  const startBreite = panel.getBoundingClientRect().width
+  let breite = startBreite
+  const bewegen = (ev) => (breite = breiteSetzen(startBreite + (startX - ev.clientX)))
+  const loslassen = () => {
+    griff.classList.remove('zieht')
+    griff.removeEventListener('pointermove', bewegen)
+    griff.removeEventListener('pointerup', loslassen)
+    einstellungen.panel = { ...einstellungen.panel, breite }
+    api.einstellungen.speichern({ panel: einstellungen.panel })
+  }
+  griff.addEventListener('pointermove', bewegen)
+  griff.addEventListener('pointerup', loslassen)
+})
+
+// ── Hermes-Ereignisse ──
+api.hermes.beiEreignis((ev) => {
+  if (ev.kanal === 'crew') return crewGespraech.ereignis(ev)
+  const p = ev.payload || {}
+  switch (ev.type) {
+    case 'message.start':
+      beschaeftigt = true
+      vorleser.stoppen()
+      if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
+      zustandZeigen()
+      break
+    case 'message.delta':
+      if (typeof p.text !== 'string') break
+      if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
+      aktuelleAntwort.roh += p.text
+      antwortAktualisieren()
+      untertitelZeigen(aktuelleAntwort.roh)
+      zustandZeigen()
+      break
+    case 'tool.start':
+      werkzeug = p.name || 'Werkzeug'
+      aktivitaetMelden(`Werkzeug: ${werkzeug}`, true)
+      antwortAktualisieren()
+      zustandZeigen()
+      break
+    case 'tool.complete':
+      werkzeug = ''
+      laufendeBeenden()
+      antwortAktualisieren()
+      zustandZeigen()
+      break
+    case 'message.complete': {
+      const text = typeof p.text === 'string' && p.text ? p.text : aktuelleAntwort?.roh || ''
+      untertitelZeigen(text, { fertig: true })
+      if (aktuelleAntwort) aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
+      else if (text) nachrichtAnzeigen('luzzy', text)
+      if (p.status === 'error' || p.error) systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
+      aktuelleAntwort = null
+      beschaeftigt = false
+      werkzeug = ''
+      laufendeBeenden()
+      aktivitaetMelden('Luzzy hat geantwortet')
+      zustandZeigen()
+      if ((einstellungen?.vorlesen || vorlesenErzwungen) && text && p.status !== 'error') vorleser.sprechen(text, stimmOptionen())
+      else weiterZuhoeren()
+      vorlesenErzwungen = false
+      break
+    }
+    case 'wake.detected':
+      // "Hey Luzzy" gehört: zuhören
+      sprechenStarten()
+      break
+    case 'error':
+      systemNachricht(p.message || 'Fehler in Hermes.')
+      beschaeftigt = false
+      aktuelleAntwort = null
+      zustandZeigen()
+      break
+  }
+})
+
+api.hermes.beiVerlauf((v) => (v?.kanal === 'crew' ? crewGespraech.verlauf(v.verlauf) : verlaufZeigen(v?.verlauf)))
+
+// Derselbe Verlauf kommt u. U. zweimal (Ereignis + Abfrage beim Start). Nur neu zeichnen, wenn
+// er sich geändert hat und gerade kein Gespräch läuft, sonst würde eine frische Antwort überschrieben.
+let gezeigterVerlauf = ''
+function verlaufZeigen(verlauf) {
+  if (!verlauf || beschaeftigt || aktuelleAntwort) return
+  const fingerabdruck = JSON.stringify(verlauf.slice(-3))
+  if (fingerabdruck === gezeigterVerlauf) return
+  gezeigterVerlauf = fingerabdruck
+  $('gespraech').replaceChildren()
+  if (!verlauf.length) {
+    const leer = document.createElement('div')
+    leer.className = 'gespraech-leer'
+    leer.id = 'gespraech-leer'
+    leer.textContent = 'Noch nichts gesagt. Schreib Luzzy einfach unten.'
+    $('gespraech').appendChild(leer)
+  }
+  for (const n of verlauf) nachrichtAnzeigen(n.rolle, n.text)
+  vorschauAktualisieren()
+}
+
+api.hermes.beiStatus(statusZeigen)
+
+function statusZeigen({ zustand: z, text }) {
+  verbunden = z === 'bereit'
+  const v = $('verbindung')
+  v.dataset.zustand = z
+  v.querySelector('.verbindung-text').textContent =
+    z === 'bereit' ? 'Mit Hermes verbunden' : text || (z === 'verbinde' ? 'Verbinde …' : 'Getrennt')
+  if (!verbunden) {
+    beschaeftigt = false
+    aktuelleAntwort = null
+    $('luzzy-zustand').textContent = text || 'Nicht verbunden'
+    reaktor.zustand('getrennt')
+  } else {
+    zustandZeigen()
+    infoLaden()
+    wakeEinrichten()
+    if (aktuelleAnsicht !== 'crew') crewLaden()
+    testNachrichtSenden()
+  }
+}
+
+async function infoLaden() {
+  try {
+    const info = await api.hermes.info()
+    if (!info.modell) setTimeout(infoLaden, 5000) // Hermes noch nicht ganz bereit: später nochmal
+    $('info-modell').textContent = info.modell || '–'
+    $('info-modell').title = info.modell || ''
+    $('info-version').textContent = info.version ? `v${info.version}` : '–'
+  } catch {
+    // nicht so wichtig
+  }
+}
+
+// ── Bereiche links ──
+function bereicheZeigen() {
+  $('bereiche').innerHTML = BEREICHE.map(
+    (b) =>
+      `<button class="bereich${b.id === aktuelleAnsicht ? ' gewaehlt' : ''}" data-bereich="${b.id}" type="button" ${
+        b.aktiv ? '' : 'disabled'
+      } title="${b.aktiv ? '' : `Kommt in Phase ${b.phase}`}"><span>${b.name}</span>${b.aktiv ? '' : `<small>P${b.phase}</small>`}</button>`
+  ).join('')
+}
+
+// ── Bereiche wechseln; offene Bereiche aktualisieren sich regelmäßig ──
+const LADEN = {
+  crew: crewLaden, jobs: jobsLaden, kanban: kanbanLaden, system: systemLaden,
+  bibliothek: bibliothekLaden, entscheidungen: entscheidungenLaden, wissen: wissenLaden, dateien: dateienLaden
+}
+const TAKT = { crew: 15000, jobs: 20000, kanban: 15000, system: 5000, bibliothek: 30000, entscheidungen: 30000, wissen: 60000, dateien: 30000 }
+let aktuelleAnsicht = 'zentrale'
+let taktUhr = 0
+let crewGeoeffnet = false
+
+function ansichtZeigen(id) {
+  aktuelleAnsicht = id
+  document.body.dataset.ansicht = id // Zentrale: Gespräch rechts ohne eigene Eingabe (siehe style.css)
+  for (const el of document.querySelectorAll('.ansicht')) el.hidden = el.dataset.ansicht !== id
+  bereicheZeigen()
+  clearInterval(taktUhr)
+  if (LADEN[id]) {
+    LADEN[id]()
+    taktUhr = setInterval(() => verbunden && LADEN[id](), TAKT[id])
+  }
+  if (id === 'crew' && !crewGeoeffnet && verbunden) {
+    crewGeoeffnet = true
+    api.hermes.crewOeffnen().then(() => {
+      // nur Testmodus: ?crewtest=<Nachricht> schickt sie einmal in den Crew-Chat
+      const test = new URLSearchParams(location.search).get('crewtest')
+      if (!test) return
+      $('crew-form').querySelector('textarea').value = test
+      $('crew-form').requestSubmit()
+    }).catch((e) => {
+      crewGeoeffnet = false
+      console.warn('Crew:', e.message)
+    })
+  }
+  if (id === 'zentrale') document.querySelector('.befehl .eingabe-text')?.focus()
+}
+
+$('bereiche').addEventListener('click', (e) => {
+  const knopf = e.target.closest('[data-bereich]')
+  if (knopf && !knopf.disabled) ansichtZeigen(knopf.dataset.bereich)
+})
+document.addEventListener('click', (e) => {
+  const knopf = e.target.closest('[data-neu-laden]')
+  if (knopf) LADEN[knopf.dataset.neuLaden]?.()
+  const oeffnen = e.target.closest('[data-bereich-oeffnen]')
+  if (oeffnen) ansichtZeigen(oeffnen.dataset.bereichOeffnen)
+})
+// Wissen-Bereiche: Vorlesen, Bereich wechseln, Auftrag an Luzzy
+wissenEinrichten({
+  vorlesen: (text) => vorleser.sprechen(text, stimmOptionen()),
+  ansichtZeigen: (id) => ansichtZeigen(id),
+  anLuzzy: (text) => {
+    ansichtZeigen('zentrale')
+    anLuzzy(text)
+  }
+})
+morgenberichtLaden()
+setInterval(morgenberichtLaden, 5 * 60 * 1000)
+
+// Uhrzeit und Datum oben rechts in der Kopfzeile
+function uhrZeigen() {
+  const jetzt = new Date()
+  document.getElementById('uhr-zeit').textContent = jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  document.getElementById('uhr-datum').textContent = jetzt.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  document.getElementById('uhr-datum-kurz').textContent = jetzt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) // bei wenig Platz
+}
+uhrZeigen()
+setInterval(uhrZeigen, 1000)
+
+// Meldungen (Phase 5): Wächter im Hauptprozess + "Crew ist fertig"
+meldungenEinrichten({
+  vorlesen: (text) => vorleser.sprechen(text, stimmOptionen()),
+  istBeschaeftigt: () => !verbunden || beschaeftigt || spricht || hoert || versteht || sprichtGerade,
+  einstellungen: () => einstellungen
+})
+api.waechter.beiMeldung(meldungNeu)
+api.waechter.beiProblem(problemNeu)
+
+// Verbindungsanzeige oben: Shopify und Postfach (grün = verbunden, rot = Problem, Klick = jetzt prüfen)
+const QUELLEN = { shopify: ['shopify-status', 'Shopify'], mail: ['mail-status', 'Postfach'] }
+const verbindungStand = {} // quelle → { ok, text }, auch für die Startsequenz
+function verbindungZeigen({ quelle, ok, text }) {
+  verbindungStand[quelle] = { ok, text }
+  const [id, name] = QUELLEN[quelle] || []
+  if (!id) return
+  const el = $(id)
+  el.dataset.zustand = ok ? 'bereit' : 'fehler'
+  el.querySelector('.verbindung-text').textContent = ok ? `${name} verbunden` : `${name}: Problem`
+  el.title = `${text || ''}
+(Klick: jetzt prüfen)`
+}
+api.waechter.beiVerbindung(verbindungZeigen)
+api.waechter.verbindungen().then((v) => Object.entries(v || {}).forEach(([quelle, info]) => verbindungZeigen({ quelle, ...info })))
+for (const [quelle, [id, name]] of Object.entries(QUELLEN)) {
+  $(id).addEventListener('click', () => {
+    $(id).dataset.zustand = 'verbinde'
+    $(id).querySelector('.verbindung-text').textContent = `${name} …`
+    api.waechter.pruefen()
+  })
+}
+
+// Schnellbefehle über der Eingabe kommen aus dem Routinen-Plugin (plugins/routinen)
+
+// Crew-Übersicht rechts aktuell halten, auch wenn der Crew-Bereich zu ist
+setInterval(() => verbunden && aktuelleAnsicht !== 'crew' && crewLaden(), 30000)
+
+// Gespräch im Crew-Bereich: Luzzys Bot Chat
+const crewGespraech = unterhaltungErstellen({
+  kanal: 'crew',
+  liste: $('crew-gespraech'),
+  form: $('crew-form'),
+  leerText: 'Noch keine Crew-Aufträge. Sag Luzzy, was die Bots erledigen sollen.',
+  beiAktivitaet: (text, laeuft) => {
+    if (laeuft) return aktivitaetMelden(text, true)
+    laufendeBeenden()
+    aktivitaetMelden(text)
+    // Crew fertig, während Felix woanders ist: melden
+    if (text === 'Crew-Antwort da' && aktuelleAnsicht !== 'crew') {
+      meldungNeu({ art: 'crew', titel: 'Die Crew ist fertig', text: 'Felix, die Crew hat ein Ergebnis für dich. Schau mal in den Crew-Bereich.', anzeige: 'Antwort im Crew-Bereich', zeit: Date.now() })
+    }
+  }
+})
+
+// ── Einstellungen ──
+const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, hoehe: einstellungen.hoehe })
+const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
+
+function animationenAnwenden() {
+  const a = einstellungen.animationen
+  document.body.classList.toggle('anim-reaktor', a.reaktor)
+  document.body.classList.toggle('anim-welle', a.welle)
+  document.body.classList.toggle('anim-scanlinie', a.scanlinie)
+  document.body.classList.toggle('anim-hintergrund', a.hintergrund)
+}
+
+function formularFuellen() {
+  $('e-stimme').value = einstellungen.stimme
+  $('e-tempo').value = zahl(einstellungen.tempo)
+  $('e-hoehe').value = zahl(einstellungen.hoehe)
+  $('e-vorlesen').checked = einstellungen.vorlesen
+  $('e-wake').checked = einstellungen.sprache.aktivierungswort
+  $('e-auto-senden').checked = einstellungen.sprache.automatischSenden
+  $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
+  const m = einstellungen.meldungen
+  $('e-m-vorlesen').checked = m.vorlesen
+  for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
+  $('e-m-ruhe-von').value = m.ruheVon || ''
+  $('e-m-ruhe-bis').value = m.ruheBis || ''
+  mikrofonStatusZeigen(mikrofon.zustand())
+  for (const k of ['reaktor', 'welle', 'scanlinie', 'hintergrund']) $(`e-anim-${k}`).checked = einstellungen.animationen[k]
+  $('e-start-intro').checked = einstellungen.start?.intro !== false
+  $('e-start-gruss').checked = einstellungen.start?.begruessung !== false
+  reglerAnzeigen()
+}
+
+function reglerAnzeigen() {
+  const t = Number($('e-tempo').value)
+  const h = Number($('e-hoehe').value)
+  $('e-tempo-wert').textContent = `${t > 0 ? '+' : ''}${t} %`
+  $('e-hoehe-wert').textContent = `${h > 0 ? '+' : ''}${h} Hz`
+}
+
+function formularLesen() {
+  const t = Number($('e-tempo').value)
+  const h = Number($('e-hoehe').value)
+  return {
+    stimme: $('e-stimme').value,
+    tempo: `${t >= 0 ? '+' : ''}${t}%`,
+    hoehe: `${h >= 0 ? '+' : ''}${h}Hz`,
+    vorlesen: $('e-vorlesen').checked,
+    meldungen: {
+      vorlesen: $('e-m-vorlesen').checked,
+      bestellung: $('e-m-bestellung').checked,
+      mail: $('e-m-mail').checked,
+      job: $('e-m-job').checked,
+      crew: $('e-m-crew').checked,
+      ruheVon: $('e-m-ruhe-von').value,
+      ruheBis: $('e-m-ruhe-bis').value
+    },
+    sprache: {
+      aktivierungswort: $('e-wake').checked,
+      automatischSenden: $('e-auto-senden').checked,
+      weiterZuhoeren: $('e-weiter').checked
+    },
+    animationen: {
+      reaktor: $('e-anim-reaktor').checked,
+      welle: $('e-anim-welle').checked,
+      scanlinie: $('e-anim-scanlinie').checked,
+      hintergrund: $('e-anim-hintergrund').checked
+    },
+    start: {
+      intro: $('e-start-intro').checked,
+      begruessung: $('e-start-gruss').checked
+    }
+  }
+}
+
+$('einstellungen-oeffnen').addEventListener('click', () => {
+  formularFuellen()
+  $('einstellungen').showModal()
+})
+$('e-tempo').addEventListener('input', reglerAnzeigen)
+$('e-hoehe').addEventListener('input', reglerAnzeigen)
+$('e-probe').addEventListener('click', () => {
+  const f = formularLesen()
+  vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
+})
+$('einstellungen').addEventListener('close', async () => {
+  if ($('einstellungen').returnValue !== 'speichern') return
+  einstellungen = await api.einstellungen.speichern(formularLesen())
+  animationenAnwenden()
+  wakeEinrichten()
+})
+
+// Testmodus (nur beim Entwickeln): ?test=<Nachricht> schickt sie einmal automatisch, ohne Vorlesen
+const testNachricht = new URLSearchParams(location.search).get('test')
+let testGesendet = false
+function testNachrichtSenden() {
+  if (!testNachricht || testGesendet) return
+  testGesendet = true
+  einstellungen = { ...einstellungen, vorlesen: false }
+  const feld = document.querySelector('.befehl .eingabe-text')
+  feld.value = testNachricht
+  abschicken(feld)
+}
+
+// ── Donnerwolf-Startsequenz: Intro mit Systemcheck, danach begrüßt Luzzy ──
+let stimmenListe = []
+async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
+  const gruss = einstellungen.start?.begruessung !== false
+  if (gruss) meldungenSammeln(true) // Bestellungen über Nacht nicht einzeln vorlesen, sondern in der Begrüßung zählen
+  // Wächter gleich nach dem Verbinden prüfen lassen, nicht erst nach seiner ersten Runde
+  ;(async () => {
+    for (let i = 0; i < 60 && !verbunden; i++) await new Promise((r) => setTimeout(r, 200))
+    if (verbunden) api.waechter.pruefen()
+  })()
+  let pluginAnzahl = null
+  pluginsFertig.then((n) => (pluginAnzahl = n))
+  const verbindungInfo = (q) => verbindungStand[q] && { ok: verbindungStand[q].ok, text: verbindungStand[q].ok ? (q === 'mail' ? verbindungStand[q].text.replace(/^Verbunden,?\s*/, '') || 'verbunden' : 'verbunden') : 'Problem' }
+  const schritte = [
+    { name: 'Hermes-Kern', pruefen: () => verbunden && { ok: true, text: 'verbunden' }, zeit: 8000 },
+    { name: 'Luzzy · Profil donnerwolf', pruefen: () => verbunden && { ok: true, text: 'bereit' }, zeit: 800 },
+    { name: 'Stimme', pruefen: () => { const st = stimmenListe.find((x) => x.id === einstellungen.stimme); return st && { ok: true, text: st.name } }, zeit: 1500 },
+    { name: 'Plugins', pruefen: () => pluginAnzahl != null && { ok: true, text: `${pluginAnzahl} geladen` }, zeit: 5000 },
+    { name: 'Shopify', pruefen: () => verbindungInfo('shopify'), zeit: 5000 },
+    { name: 'Postfach', pruefen: () => verbindungInfo('mail'), zeit: 3000 }
+  ]
+  if (mitIntro) await introAbspielen(schritte)
+  if (!gruss) return
+  // Auf den ersten Wächter-Durchlauf warten (ohne Intro), damit die Zahlen stimmen
+  const ende = Date.now() + 12000
+  while (Date.now() < ende && !(verbunden && verbindungStand.shopify && verbindungStand.mail && pluginAnzahl != null)) await new Promise((r) => setTimeout(r, 250))
+  await new Promise((r) => setTimeout(r, 600)) // Meldungen des Durchlaufs kommen direkt danach
+  const gesammelt = meldungenSammeln(false)
+  const probleme = Object.keys(QUELLEN).filter((q) => verbindungStand[q] && !verbindungStand[q].ok).map((q) => QUELLEN[q][1])
+  if (!verbunden) probleme.unshift('Hermes')
+  const ungelesen = /(\d+) ungelesen/.exec(verbindungStand.mail?.text || '')
+  const text = begruessungBauen({
+    probleme,
+    bestellungen: verbindungStand.shopify?.ok ? gesammelt.filter((m) => m.art === 'bestellung').length : null,
+    ungelesen: verbindungStand.mail?.ok && ungelesen ? Number(ungelesen[1]) : null,
+    jobsFehler: gesammelt.filter((m) => m.art === 'job').length,
+    pluginSaetze: await pluginBegruessung()
+  })
+  window.__begruessung = text // für den Testmodus
+  if (beschaeftigt || hoert || versteht) return // Felix hat schon losgelegt
+  untertitelZeigen(text, { fertig: true })
+  if (!stumm) vorleser.sprechen(text, stimmOptionen())
+}
+
+// ── Start ──
+async function start() {
+  bereicheZeigen()
+  einstellungen = await api.einstellungen.laden()
+  if (new URLSearchParams(location.search).has('stumm')) window.__testEingabe = pluginEingabe // nur Testmodus
+  if (new URLSearchParams(location.search).has('stumm')) {
+    // nur Testmodus: nichts laut
+    einstellungen.vorlesen = false
+    einstellungen.meldungen = { ...einstellungen.meldungen, vorlesen: false }
+  }
+  if (new URLSearchParams(location.search).has('meldungtest')) {
+    setTimeout(() => {
+      meldungNeu({ art: 'bestellung', titel: 'Neue Bestellung #1411', text: 'Felix, neue Bestellung reingekommen: #1411 über 49,90 Euro.', anzeige: '#1411 · 49,90 Euro', zeit: Date.now() })
+      meldungNeu({ art: 'mail', titel: 'Mail von Max Muster', text: 'Neue Mail von Max Muster: Frage zur Lieferung.', anzeige: 'Frage zur Lieferung', zeit: Date.now() })
+      meldungNeu({ art: 'job', titel: 'Job fehlgeschlagen: Morgenbericht', text: 'Achtung, der Job Morgenbericht ist fehlgeschlagen.', anzeige: 'Timeout beim Abruf', zeit: Date.now() })
+    }, 3000)
+  }
+  const suche = new URLSearchParams(location.search)
+  const stumm = suche.has('stumm')
+  const mitIntro = einstellungen.start?.intro !== false && (!stumm || suche.has('intro')) // Testmodus: ohne Intro
+  if (!mitIntro) introAus()
+  let pluginsBereit
+  const pluginsFertig = new Promise((r) => (pluginsBereit = r))
+  startsequenzLaufen({ mitIntro, pluginsFertig, stumm })
+  const stimmen = await api.stimme.liste()
+  stimmenListe = stimmen
+  $('e-stimme').innerHTML = stimmen.map((s) => `<option value="${s.id}">${s.name} (${s.herkunft})</option>`).join('')
+  animationenAnwenden()
+  zustandZeigen()
+  const s = await api.hermes.status()
+  if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
+  statusZeigen({ zustand: s.zustand, text: s.text })
+  breiteSetzen(einstellungen.panel?.breite || 460)
+  const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
+  if (testAnsicht) setTimeout(() => LADEN[testAnsicht] && ansichtZeigen(testAnsicht), 5000)
+  // Plugins (jarves-os\plugins): eigener Bereich links, Karte rechts
+  const pluginBereiche = await pluginsStarten({
+    mitte: document.querySelector('.mitte'),
+    rechts: document.querySelector('.live'),
+    vorKarte: $('karte-gerade'),
+    schnellbefehle: $('schnellbefehle'),
+    melden: meldungNeu,
+    vorlesen: (text) => vorleser.sprechen(text, stimmOptionen()),
+    // luzzy(text, { anzeige, vorlesen, ansichtWechseln })
+    luzzy: (text, optionen = {}) => {
+      if (optionen.ansichtWechseln !== false) ansichtZeigen('zentrale')
+      return anLuzzy(text, optionen)
+    },
+    ansichtZeigen,
+    bereit: () => verbunden && !beschaeftigt && !hoert && !versteht
+  })
+  const vorSystem = BEREICHE.findIndex((b) => b.id === 'system')
+  BEREICHE.splice(vorSystem, 0, ...pluginBereiche.map((b) => ({ id: b.id, name: b.name, aktiv: true })))
+  for (const b of pluginBereiche) {
+    if (b.laden) LADEN[b.id] = b.laden
+    TAKT[b.id] = b.takt || 60000
+  }
+  bereicheZeigen()
+  pluginsBereit(pluginBereiche.length)
+  const testPanel = new URLSearchParams(location.search).get('panel') // nur Testmodus: '1' offen, '0' zu
+  panelSetzen(testPanel ? testPanel === '1' : Boolean(einstellungen.panel?.offen), { speichern: false })
+}
+
+start()

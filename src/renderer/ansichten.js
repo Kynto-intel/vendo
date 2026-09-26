@@ -1,0 +1,308 @@
+// Bereiche der Zentrale: Crew, Jobs, Kanban, System. Alle Daten kommen live aus Hermes.
+
+const api = window.jarves
+const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const $ = (id) => document.getElementById(id)
+
+const CREW = ['donnerwolf', 'recherche-bot', 'schreib-bot', 'code-bot']
+const CREW_NAMEN = { donnerwolf: 'Luzzy', 'recherche-bot': 'Recherche-Bot', 'schreib-bot': 'Schreib-Bot', 'code-bot': 'Code-Bot' }
+
+// ── Helfer ──
+function zeitpunkt(wert) {
+  if (wert == null || wert === '') return null
+  const d = typeof wert === 'number' ? new Date(wert < 1e12 ? wert * 1000 : wert) : new Date(wert)
+  return isNaN(d) ? null : d
+}
+export function vorWann(wert) {
+  const d = zeitpunkt(wert)
+  if (!d) return '–'
+  const s = Math.round((Date.now() - d.getTime()) / 1000)
+  if (s < 0) return inWann(wert)
+  if (s < 60) return 'gerade eben'
+  if (s < 3600) return `vor ${Math.round(s / 60)} Min.`
+  if (s < 86400) return `vor ${Math.round(s / 3600)} Std.`
+  const tage = Math.round(s / 86400)
+  return tage === 1 ? 'gestern' : `vor ${tage} Tagen`
+}
+function inWann(wert) {
+  const d = zeitpunkt(wert)
+  if (!d) return '–'
+  const s = Math.round((d.getTime() - Date.now()) / 1000)
+  if (s <= 0) return 'jetzt'
+  if (s < 3600) return `in ${Math.round(s / 60)} Min.`
+  if (s < 86400) return `in ${Math.round(s / 3600)} Std.`
+  return d.toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+const zahl = (n) => (Number(n) || 0).toLocaleString('de-DE')
+const tokens = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} Mio.` : n >= 1e3 ? `${Math.round(n / 1e3)} Tsd.` : zahl(n))
+const euro = (n) => (Number(n) ? `${Number(n).toFixed(2).replace('.', ',')} $` : 'kostenlos')
+const gb = (b) => `${(Number(b) / 1024 ** 3).toFixed(1).replace('.', ',')} GB`
+const DEUTSCH = { running: 'läuft', stopped: 'gestoppt', connected: 'verbunden', disconnected: 'getrennt', connecting: 'verbindet', error: 'Fehler', scheduled: 'geplant', paused: 'pausiert', completed: 'erledigt', ok: 'ok', success: 'erfolgreich' }
+const deutsch = (s) => DEUTSCH[String(s || '').toLowerCase()] || s
+const lesen = (pfad) => api.hermes.lesen(pfad).catch(() => null)
+
+function fehlerKarte(el, text) {
+  el.innerHTML = `<div class="leer-hinweis">${maskieren(text)}</div>`
+}
+
+// ── Crew ──
+let modellOptionen = null
+async function modelleLaden() {
+  if (modellOptionen) return modellOptionen
+  const antwort = await lesen('/api/plugins/kanban/model-options')
+  modellOptionen = antwort?.providers || []
+  return modellOptionen
+}
+
+export async function crewLaden() {
+  const el = $('crew-karten')
+  const profile = (await lesen('/api/profiles'))?.profiles
+  if (!profile) return fehlerKarte(el, 'Hermes antwortet gerade nicht.')
+  const karten = await Promise.all(
+    CREW.map(async (name) => {
+      const p = profile.find((x) => x.name === name)
+      if (!p) return null
+      const [nutzung, sitzungen] = await Promise.all([
+        lesen(`/api/analytics/usage?days=30&profile=${encodeURIComponent(name)}`),
+        lesen(`/api/sessions?profile=${encodeURIComponent(name)}&limit=1`)
+      ])
+      const summe = (nutzung?.daily || []).reduce(
+        (s, t) => ({ tokens: s.tokens + (t.input_tokens || 0) + (t.output_tokens || 0), kosten: s.kosten + (t.actual_cost || t.estimated_cost || 0), aufrufe: s.aufrufe + (t.api_calls || 0) }),
+        { tokens: 0, kosten: 0, aufrufe: 0 }
+      )
+      const letzte = sitzungen?.sessions?.[0]
+      let zuletzt = letzte ? letzte.last_active || letzte.updated_at || letzte.ended_at || letzte.started_at : null
+      // Ersatz: letzter Tag mit Aktivität aus der Nutzungsstatistik
+      if (!zuletzt) {
+        const tag = [...(nutzung?.daily || [])].reverse().find((t) => (t.api_calls || 0) > 0 || (t.input_tokens || 0) > 0)
+        if (tag) zuletzt = `${tag.day}T12:00:00`
+      }
+      return { p, summe, zuletzt, letzterTitel: letzte?.title || '' }
+    })
+  )
+  crewKurzZeigen(karten.filter(Boolean))
+  el.innerHTML = karten
+    .filter(Boolean)
+    .map(({ p, summe, zuletzt, letzterTitel }) => {
+      const chef = p.name === 'donnerwolf'
+      const aktiv = zuletzt && Date.now() - zeitpunkt(zuletzt).getTime() < 3 * 60 * 1000
+      return `
+      <article class="bot hud${chef ? ' chef' : ''}" data-profil="${maskieren(p.name)}">
+        <header>
+          <span class="bot-punkt${aktiv ? ' aktiv' : ''}" title="${aktiv ? 'gerade aktiv' : 'ruhig'}"></span>
+          <h3>${maskieren(CREW_NAMEN[p.name] || p.bot_title || p.name)}</h3>
+          ${chef ? '<span class="abzeichen">Chefin</span>' : ''}
+        </header>
+        <p class="bot-rolle">${maskieren(p.description || 'Keine Beschreibung.')}</p>
+        <dl class="werte">
+          <dt>Modell</dt><dd title="${maskieren(p.provider)} · ${maskieren(p.model)}">${maskieren(p.model || '–')}</dd>
+          <dt>Zuletzt</dt><dd title="${maskieren(letzterTitel)}">${vorWann(zuletzt)}</dd>
+          <dt>30 Tage</dt><dd title="${zahl(summe.tokens)} Tokens, ${zahl(summe.aufrufe)} Aufrufe">${tokens(summe.tokens)} Tok. · ${zahl(summe.aufrufe)}×</dd>
+          <dt>Kosten</dt><dd>${euro(summe.kosten)}</dd>
+        </dl>
+        <button class="knopf-flach modell-aendern" type="button" data-profil="${maskieren(p.name)}" data-anbieter="${maskieren(p.provider)}" data-modell="${maskieren(p.model)}">Modell ändern</button>
+        <div class="modell-wahl" hidden></div>
+      </article>`
+    })
+    .join('')
+}
+
+// Kurzübersicht in der rechten Spalte
+function crewKurzZeigen(karten) {
+  const el = $('crew-kurz')
+  if (!el) return
+  el.innerHTML = karten
+    .map(({ p, zuletzt }) => {
+      const aktiv = zuletzt && Date.now() - zeitpunkt(zuletzt).getTime() < 3 * 60 * 1000
+      return `<div class="crew-zeile"><span class="bot-punkt${aktiv ? ' aktiv' : ''}"></span><span>${maskieren(CREW_NAMEN[p.name] || p.name)}</span><time>${vorWann(zuletzt)}</time></div>`
+    })
+    .join('')
+}
+
+// Modell eines Agenten ändern (Hermes: PUT /api/profiles/{name}/model)
+document.addEventListener('click', async (e) => {
+  const knopf = e.target.closest('.modell-aendern')
+  if (!knopf) return
+  const wahl = knopf.nextElementSibling
+  if (!wahl.hidden) return (wahl.hidden = true)
+  wahl.hidden = false
+  wahl.innerHTML = '<div class="leise">Lade Modelle …</div>'
+  const anbieter = await modelleLaden()
+  const optionen = anbieter
+    .map((a) => `<optgroup label="${maskieren(a.label)}">${a.models.map((m) => {
+      const id = typeof m === 'string' ? m : m.id || m.model || m.name
+      const gewaehlt = a.slug === knopf.dataset.anbieter && id === knopf.dataset.modell ? ' selected' : ''
+      return `<option value="${maskieren(a.slug)}|${maskieren(id)}"${gewaehlt}>${maskieren(id)}</option>`
+    }).join('')}</optgroup>`)
+    .join('')
+  wahl.innerHTML = anbieter.length
+    ? `<select>${optionen}</select><div class="modell-knoepfe"><button class="knopf-flach" data-los type="button">Übernehmen</button></div>`
+    : '<div class="leise">Keine Modell-Liste verfügbar.</div>'
+  wahl.querySelector('[data-los]')?.addEventListener('click', async () => {
+    const [provider, model] = wahl.querySelector('select').value.split('|')
+    try {
+      await api.hermes.aktion('modell-setzen', { name: knopf.dataset.profil, provider, model })
+      wahl.hidden = true
+      crewLaden()
+    } catch (err) {
+      wahl.insertAdjacentHTML('beforeend', `<div class="fehler">${maskieren(err.message)}</div>`)
+    }
+  })
+})
+
+// ── Jobs ──
+export async function jobsLaden() {
+  const el = $('jobs-liste')
+  const profile = (await lesen('/api/profiles'))?.profiles?.map((p) => p.name) || ['default']
+  const listen = await Promise.all(
+    profile.map(async (name) => {
+      const jobs = await lesen(`/api/cron/jobs?profile=${encodeURIComponent(name)}`)
+      return (Array.isArray(jobs) ? jobs : jobs?.jobs || []).map((j) => ({ ...j, profil: name }))
+    })
+  )
+  // Doppelte (derselbe Job über mehrere Profile gemeldet) entfernen
+  const gesehen = new Set()
+  const jobs = listen.flat().filter((j) => (gesehen.has(j.id) ? false : gesehen.add(j.id)))
+  $('jobs-anzahl').textContent = jobs.length ? `${jobs.length} ${jobs.length === 1 ? 'Job' : 'Jobs'}` : ''
+  if (!jobs.length) {
+    return fehlerKarte(el, 'Noch keine geplanten Jobs. Sag Luzzy zum Beispiel: „Schick mir jeden Morgen um 8 den Morgenbericht.“ Der Job erscheint dann hier.')
+  }
+  el.innerHTML = jobs
+    .map((j) => {
+      const pausiert = j.enabled === false || j.state === 'paused'
+      const fehler = j.last_status === 'error'
+      const status = pausiert ? 'pausiert' : fehler ? 'Fehler beim letzten Lauf' : j.state === 'running' ? 'läuft gerade' : 'geplant'
+      return `
+      <article class="job hud${pausiert ? ' pausiert' : ''}${fehler ? ' fehler' : ''}">
+        <header>
+          <h3>${maskieren(j.name || j.id)}</h3>
+          <span class="abzeichen">${maskieren(status)}</span>
+        </header>
+        <p class="job-zeitplan">${maskieren(j.schedule_display || j.schedule?.display || '')}</p>
+        ${j.prompt ? `<p class="job-auftrag">${maskieren(String(j.prompt).slice(0, 220))}</p>` : ''}
+        <dl class="werte">
+          <dt>Agent</dt><dd>${maskieren(CREW_NAMEN[j.profil] || j.profil)}</dd>
+          <dt>Nächster Lauf</dt><dd>${pausiert ? '–' : inWann(j.next_run_at)}</dd>
+          <dt>Letzter Lauf</dt><dd>${vorWann(j.last_run_at)}${j.last_status ? ` · ${maskieren(deutsch(j.last_status))}` : ''}</dd>
+        </dl>
+        ${fehler && j.last_error ? `<div class="fehler">${maskieren(String(j.last_error).slice(0, 240))}</div>` : ''}
+        <div class="job-knoepfe">
+          <button class="knopf-flach" data-job="ausfuehren" data-id="${maskieren(j.id)}" data-profil="${maskieren(j.profil)}" type="button">Jetzt ausführen</button>
+          <button class="knopf-flach" data-job="${pausiert ? 'fortsetzen' : 'pausieren'}" data-id="${maskieren(j.id)}" data-profil="${maskieren(j.profil)}" type="button">${pausiert ? 'Fortsetzen' : 'Pausieren'}</button>
+          <button class="knopf-flach gefahr" data-job="loeschen" data-id="${maskieren(j.id)}" data-profil="${maskieren(j.profil)}" data-name="${maskieren(j.name || j.id)}" type="button">Löschen</button>
+        </div>
+      </article>`
+    })
+    .join('')
+}
+
+document.addEventListener('click', async (e) => {
+  const knopf = e.target.closest('[data-job]')
+  if (!knopf) return
+  const art = knopf.dataset.job
+  if (art === 'loeschen' && !confirm(`Job „${knopf.dataset.name}“ wirklich löschen?`)) return
+  knopf.disabled = true
+  try {
+    await api.hermes.aktion(`job-${art}`, { id: knopf.dataset.id, profil: knopf.dataset.profil })
+  } catch (err) {
+    alert(`Hat nicht geklappt: ${err.message}`)
+  }
+  jobsLaden()
+})
+
+// ── Kanban ──
+const SPALTEN = { triage: 'Eingang', todo: 'Zu tun', scheduled: 'Geplant', ready: 'Bereit', running: 'Läuft', blocked: 'Blockiert', review: 'Prüfen', done: 'Erledigt' }
+
+export async function kanbanLaden() {
+  const el = $('kanban-tafel')
+  const tafeln = await lesen('/api/plugins/kanban/boards')
+  const auswahl = $('kanban-auswahl')
+  const aktuell = auswahl.value || tafeln?.current || 'default'
+  if (tafeln?.boards) {
+    auswahl.innerHTML = tafeln.boards
+      .filter((b) => !b.archived)
+      .map((b) => `<option value="${maskieren(b.slug)}"${b.slug === aktuell ? ' selected' : ''}>${maskieren(b.name || b.slug)}</option>`)
+      .join('')
+  }
+  const tafel = await lesen(`/api/plugins/kanban/board?board=${encodeURIComponent(aktuell)}`)
+  if (!tafel?.columns) return fehlerKarte(el, 'Kanban ist gerade nicht erreichbar.')
+  const gesamt = tafel.columns.reduce((s, c) => s + c.tasks.length, 0)
+  $('kanban-anzahl').textContent = gesamt ? `${gesamt} Aufgaben` : ''
+  el.innerHTML = tafel.columns
+    .map(
+      (spalte) => `
+      <section class="spalte">
+        <h3>${maskieren(SPALTEN[spalte.name] || spalte.name)} <span>${spalte.tasks.length}</span></h3>
+        <div class="spalte-inhalt">
+          ${spalte.tasks.length ? spalte.tasks.map((t) => `
+            <article class="aufgabe">
+              <div class="aufgabe-titel">${maskieren(t.title || t.id)}</div>
+              <div class="aufgabe-info">${maskieren(CREW_NAMEN[t.assignee] || t.assignee || 'offen')}${t.priority ? ` · ${maskieren(t.priority)}` : ''}</div>
+            </article>`).join('') : '<div class="spalte-leer">–</div>'}
+        </div>
+      </section>`
+    )
+    .join('')
+  if (!gesamt) $('kanban-hinweis').hidden = false
+  else $('kanban-hinweis').hidden = true
+}
+$('kanban-auswahl')?.addEventListener('change', kanbanLaden)
+
+// ── System ──
+export async function systemLaden() {
+  const [status, details, werte, nutzung] = await Promise.all([
+    lesen('/api/status'),
+    api.system.details().catch(() => null),
+    api.system.werte().catch(() => null),
+    lesen('/api/analytics/usage?days=30&profile=donnerwolf')
+  ])
+  const hermesEl = $('system-hermes')
+  if (status) {
+    const plattformen = Object.entries(status.gateway_platforms || {})
+      .filter(([name]) => !name.includes(':'))
+      .map(([name, p]) => `<li><span class="punkt-klein ${p.state === 'connected' ? 'gut' : 'schlecht'}"></span>${maskieren(name)} · ${maskieren(deutsch(p.state))}</li>`)
+      .join('')
+    hermesEl.innerHTML = `
+      <dl class="werte">
+        <dt>Version</dt><dd>v${maskieren(status.version)} (${maskieren(status.release_date || '')})</dd>
+        <dt>Gateway</dt><dd>${maskieren(deutsch(status.gateway_state) || (status.gateway_running ? 'läuft' : 'gestoppt'))}</dd>
+        <dt>Update</dt><dd>${status.config_version === status.latest_config_version ? 'Einstellungen aktuell' : 'Einstellungen veraltet'}</dd>
+      </dl>
+      ${plattformen ? `<ul class="plattformen">${plattformen}</ul>` : ''}`
+  } else hermesEl.innerHTML = '<div class="leise">Hermes antwortet nicht.</div>'
+
+  const pcEl = $('system-pc')
+  if (werte) {
+    const ram = Math.round((werte.ramBelegt / werte.ramGesamt) * 100)
+    pcEl.innerHTML = `
+      <div class="balken-zeile"><span>CPU</span><div class="balken"><div style="width:${werte.cpu}%"></div></div><span>${werte.cpu} %</span></div>
+      <div class="balken-zeile"><span>RAM</span><div class="balken"><div style="width:${ram}%"></div></div><span>${ram} %</span></div>
+      ${(details?.platten || []).map((p) => {
+        const anteil = Math.round((p.belegt / (p.belegt + p.frei)) * 100)
+        return `<div class="balken-zeile"><span>${maskieren(p.name)}:</span><div class="balken"><div style="width:${anteil}%"></div></div><span>${anteil} %</span></div><div class="leise klein">${gb(p.frei)} frei von ${gb(p.belegt + p.frei)}</div>`
+      }).join('')}
+      <dl class="werte">
+        <dt>RAM</dt><dd>${gb(werte.ramBelegt)} von ${gb(werte.ramGesamt)}</dd>
+        <dt>Grafik</dt><dd>${maskieren((details?.grafikkarten || []).join(', ') || '–')}</dd>
+        <dt>System</dt><dd>${maskieren(details?.betriebssystem || '')}</dd>
+        <dt>Läuft seit</dt><dd>${details ? `${Math.floor(details.laufzeit / 3600)} Std.` : '–'}</dd>
+      </dl>`
+  }
+
+  const ollamaEl = $('system-ollama')
+  const o = details?.ollama
+  ollamaEl.innerHTML = o
+    ? `<div class="leise klein">Geladen (im Speicher):</div>
+       ${o.geladen.length ? `<ul class="liste">${o.geladen.map((m) => `<li><b>${maskieren(m.name)}</b> · ${gb(m.vram)} Grafikspeicher</li>`).join('')}</ul>` : '<div class="leise">gerade keins</div>'}
+       <div class="leise klein" style="margin-top:10px">Installiert (${o.installiert.length}):</div>
+       <ul class="liste">${o.installiert.map((m) => `<li>${maskieren(m.name)} · ${gb(m.groesse)}</li>`).join('')}</ul>`
+    : '<div class="leise">Ollama läuft nicht oder ist nicht installiert.</div>'
+
+  const kostenEl = $('system-kosten')
+  const modelle = (nutzung?.by_model || []).filter((m) => (m.input_tokens || 0) + (m.output_tokens || 0) > 0)
+  kostenEl.innerHTML = modelle.length
+    ? `<table class="tabelle"><thead><tr><th>Modell</th><th>Tokens</th><th>Aufrufe</th><th>Kosten</th></tr></thead><tbody>
+        ${modelle.map((m) => `<tr><td>${maskieren(m.model)}</td><td>${tokens((m.input_tokens || 0) + (m.output_tokens || 0))}</td><td>${zahl(m.api_calls)}</td><td>${euro(m.estimated_cost)}</td></tr>`).join('')}
+       </tbody></table>`
+    : '<div class="leise">Keine Nutzung in den letzten 30 Tagen.</div>'
+}

@@ -1,0 +1,12 @@
+{
+  "id": "kalender",
+  "name": "Kalender",
+  "version": "1.0.0",
+  "beschreibung": "Dein eigener Kalender in Jarves-OS. Luzzy erinnert dich vor Terminen und kennt sie, wenn du fragst, was ansteht.",
+  "bereich": {
+    "name": "Kalender"
+  },
+  "luzzy": {
+    "stichwoerter": "termin|kalender|was steht an|was liegt an|verabredung"
+  }
+}

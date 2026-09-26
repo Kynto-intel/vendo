@@ -1,0 +1,30 @@
+/* Wetter-Plugin */
+.wt-raster { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); grid-template-rows: auto 1fr; gap: 12px; max-width: 1000px; }
+.wt-jetzt, .wt-ort, .wt-tage { padding: 14px 16px; }
+.wt-tage { grid-column: 1 / 3; }
+.wt-jetzt h3, .wt-ort h3, .wt-tage h3 { margin: 0 0 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
+.wt-gross { display: flex; align-items: center; gap: 14px; }
+.wt-symbol { font-size: 54px; line-height: 1; }
+.wt-temp { font-family: var(--mono); font-size: 52px; color: var(--gold-hell); }
+.wt-text { margin: 6px 0 12px; font-size: 14px; }
+.wt-ort-name { font-size: 15px; margin-bottom: 10px; }
+.wt-suche { display: flex; gap: 8px; margin-bottom: 8px; }
+.wt-suche input { flex: 1; background: var(--eingabe); border: 1px solid var(--rahmen); padding: 7px 9px; font-size: 13px; color: var(--text); outline: none; }
+.wt-suche input:focus { border-color: var(--gold); }
+.wt-treffer { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.wt-treffer-knopf { text-align: left; background: var(--flaeche); border: 1px solid var(--rahmen); padding: 7px 10px; cursor: pointer; color: var(--text); font-size: 13px; }
+.wt-treffer-knopf:hover { border-color: var(--gold); }
+.wt-tag { display: grid; grid-template-columns: 110px 34px 1fr 110px 60px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #3a3a3a; font-size: 13px; }
+.wt-tag:last-child { border-bottom: 0; }
+.wt-tag-symbol { font-size: 20px; text-align: center; }
+.wt-tag-text { color: var(--text-leise); }
+.wt-tag-temp { font-family: var(--mono); font-size: 12px; text-align: right; }
+.wt-tag-temp b { color: var(--gold-hell); font-weight: 600; }
+.wt-tag-regen { font-family: var(--mono); font-size: 11px; color: #7fa7c9; text-align: right; }
+/* Karte rechts */
+.wt-karte-jetzt { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer; }
+.wt-karte-symbol { font-size: 28px; }
+.wt-karte-temp { font-family: var(--mono); font-size: 24px; color: var(--gold-hell); }
+.wt-karte-text { font-size: 12px; line-height: 1.35; }
+.wt-karte-zeile { display: grid; grid-template-columns: 52px 1fr; gap: 6px; font-size: 11px; color: var(--text-leise); padding: 2px 0; }
+.wt-karte-zeile span:first-child { color: var(--text); }

@@ -1,0 +1,7 @@
+{
+  "id": "routinen",
+  "name": "Routinen",
+  "version": "1.0.0",
+  "beschreibung": "Deine Standardaufgaben: Auslösewort sagen oder tippen, Luzzy erledigt den hinterlegten Auftrag. Alles selbst einstellbar.",
+  "bereich": { "name": "Routinen" }
+}
