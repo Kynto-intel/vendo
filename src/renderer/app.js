@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
@@ -803,6 +804,7 @@ function formularFuellen() {
   const m = einstellungen.meldungen
   $('e-m-vorlesen').checked = m.vorlesen
   $('e-m-ton').checked = m.ton !== false
+  kartenFormularFuellen(einstellungen.karten)
   for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
   $('e-m-ruhe-von').value = m.ruheVon || ''
   $('e-m-ruhe-bis').value = m.ruheBis || ''
@@ -852,7 +854,8 @@ function formularLesen() {
     start: {
       intro: $('e-start-intro').checked,
       begruessung: $('e-start-gruss').checked
-    }
+    },
+    karten: kartenFormularLesen() ?? einstellungen.karten
   }
 }
 
@@ -902,6 +905,7 @@ $('einstellungen').addEventListener('close', async () => {
   if ($('einstellungen').returnValue !== 'speichern') return
   einstellungen = await api.einstellungen.speichern(formularLesen())
   animationenAnwenden()
+  kartenAnwenden(einstellungen.karten)
   wakeEinrichten()
 })
 
@@ -1022,6 +1026,9 @@ async function start() {
   }
   bereicheZeigen()
   pluginsBereit(pluginBereiche.length)
+  // Rechte Spalte: eigene Auswahl und Reihenfolge (Einstellungen → Rechte Spalte)
+  kartenEinrichten(document.querySelector('.live'))
+  kartenAnwenden(einstellungen.karten)
   // Zuletzt offenen Bereich wieder öffnen (nur wenn es ihn noch gibt, z. B. Plugin gelöscht)
   const letzte = einstellungen.letzteAnsicht
   if (!testAnsicht && letzte && letzte !== 'zentrale' && BEREICHE.some((b) => b.id === letzte && b.aktiv)) ansichtZeigen(letzte)

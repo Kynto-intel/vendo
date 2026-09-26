@@ -212,23 +212,23 @@
       <aside class="live">
         <div class="zug live-kopf"></div>
         <!-- Vorschau aufs Gespräch; Klick dockt das ganze Gespräch hier an -->
-        <button class="karte hud vorschau" id="vorschau" type="button" title="Gespräch öffnen (Strg+K)">
+        <button class="karte hud vorschau" id="vorschau" data-karte="gespraech" data-name="Gespräch" type="button" title="Gespräch öffnen (Strg+K)">
           <h3><span>Gespräch</span><span class="vorschau-aktion" id="vorschau-aktion">Öffnen ›</span></h3>
           <div class="vorschau-liste" id="vorschau-liste"><div class="leise">Noch nichts gesagt.</div></div>
         </button>
-        <section class="karte hud">
+        <section class="karte hud" data-karte="meldungen" data-name="Meldungen">
           <h3><span>Meldungen</span> <button class="knopf-mini" id="meldungen-leeren" type="button" hidden>Leeren</button></h3>
           <div class="meldungen-liste" id="meldungen-liste"></div>
         </section>
-        <section class="karte hud" hidden>
+        <section class="karte hud" data-karte="morgenbericht" data-name="Morgenbericht" hidden>
           <h3>Morgenbericht</h3>
           <div id="morgenbericht"><div class="leise">Lade …</div></div>
         </section>
-        <section class="karte hud" id="karte-gerade" hidden>
+        <section class="karte hud" id="karte-gerade" data-karte="gerade" data-name="Gerade (was Luzzy tut)" hidden>
           <h3>Gerade</h3>
           <div class="aktivitaet" id="aktivitaet"><div class="leise">Nichts los.</div></div>
         </section>
-        <section class="karte hud" hidden>
+        <section class="karte hud" data-karte="luzzy" data-name="Luzzy (Profil, Modell)" hidden>
           <h3>Luzzy</h3>
           <dl class="werte">
             <dt>Profil</dt><dd id="info-profil">donnerwolf</dd>
@@ -236,7 +236,7 @@
             <dt>Hermes</dt><dd id="info-version">…</dd>
           </dl>
         </section>
-        <button class="karte hud vorschau" data-bereich-oeffnen="crew" type="button" title="Crew öffnen">
+        <button class="karte hud vorschau" data-bereich-oeffnen="crew" data-karte="crew" data-name="Crew" type="button" title="Crew öffnen">
           <h3><span>Crew</span><span class="vorschau-aktion">Öffnen ›</span></h3>
           <div class="crew-kurz" id="crew-kurz"><div class="leise">Lade …</div></div>
         </button>
@@ -287,6 +287,11 @@
           <label class="haken"><input id="e-anim-hintergrund" type="checkbox" /> Hintergrund-Raster</label>
           <label class="haken"><input id="e-start-intro" type="checkbox" /> Startsequenz beim Öffnen</label>
           <label class="haken"><input id="e-start-gruss" type="checkbox" /> Luzzy begrüßt mich beim Start</label>
+        </fieldset>
+        <fieldset>
+          <legend>Rechte Spalte</legend>
+          <ol class="karten-liste" id="e-karten"></ol>
+          <button class="knopf-mini" id="e-karten-standard" type="button">Standard wiederherstellen</button>
         </fieldset>
         <fieldset>
           <legend>Sicherung</legend>
