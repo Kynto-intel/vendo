@@ -1,0 +1,463 @@
+# Jarves-OS
+
+Plan und Anforderungen für Felix' Hermes-Kommandozentrale mit Luzzy.
+Stand: 26.09.2026 · Status: Entwurf zum Lesen und Optimieren
+
+> **So benutzt du diese Datei:** Lies sie in Ruhe durch, streich raus, was nicht passt, schreib dazu, was fehlt.
+> Stellen mit **[OFFEN]** brauchen noch eine Entscheidung von dir. Solange du nichts anderes sagst, gilt jeweils der **Vorschlag**.
+> **Hinweis (26.09.2026):** Die [OFFEN]-Marken im Text stammen aus der Planung. Was davon erledigt ist und was wirklich
+> noch offen ist, steht aktuell in **Abschnitt 12**.
+
+## Stand der Umsetzung
+
+**Alle sechs Bauphasen sind umgesetzt (26.09.2026).** Was noch offen ist, sind keine Baustellen, sondern Entscheidungen und Erweiterungen, siehe Abschnitt 12.
+
+| Phase | Status |
+|---|---|
+| 0 · Prüfen | **fertig** (26.09.2026), Ergebnisse in Abschnitt 13 |
+| 1 · Luzzy spricht | **fertig** (26.09.2026): Verbindung, Reaktor, Gespräch live, Stimme, Layout nach Felix' Wünschen |
+| 2 · Luzzy hört | **fertig** (26.09.2026): Mikrofon-Knopf, Strg+Leertaste, „Hey Luzzy“, Stille-Erkennung, Hermes-Spracherkennung, Gesprächsmodus. Von Felix mit echtem Mikrofon getestet: alles funktioniert |
+| 3 · Zentrale | **fertig** (26.09.2026, Crew-Karten kompakt nach Felix' Wunsch): Crew (Bot-Karten mit Rolle, Modell, Aktivität, Tokens/Kosten, Modell ändern; Crew-Chat = Luzzys Bot Chat), Jobs (anzeigen, ausführen, pausieren, löschen), Kanban (Tafeln und Spalten), System (Hermes, PC, Ollama, Nutzung). Crew-Übersicht rechts. Bots bleiben vorerst wie sie sind (Felix, 26.09.) |
+| 4 · Wissen | **fertig** (26.09.2026, Reiter standardmäßig zugeklappt): Wissen (Vault mit Status aus der Übersicht, Suche, Notiz-Links, Zugangsdaten verdeckt), Bibliothek (Blog-Recherchen, Entwürfe, fertige Artikel + Ordner `Donnerwolf\Bibliothek`, sobald es ihn gibt), Entscheidungen (04_Decision_Log, Filter gilt/überholt/fällig), Dateien (Ordner + zuletzt geändert, Öffnen/Explorer), Morgenbericht-Karte rechts (Lesen, Vorlesen, „Heute erstellen“ über Luzzy). Nur lesend, nur im Donnerwolf-Ordner |
+| 5 · Meldungen | **fertig** (26.09.2026): Wächter prüft jede Minute neue Bestellungen (direkt bei Shopify, Zugang aus der Hermes-Einstellung wie beim IONOS-Mail-Plugin), neue ungelesene Mails (IONOS-Mail-Plugin), fehlgeschlagene Jobs; dazu „Crew ist fertig“. Luzzy sagt es laut (Warteschlange, redet nicht dazwischen), Liste „Meldungen“ rechts, Einstellungen pro Art + Ruhezeit (Standard 22:00 bis 07:00). **Shopify-Zugang ist abgelaufen (401)**: Felix muss den Token erneuern (siehe Vault-Notiz shopify-token), dann laufen die Bestellmeldungen |
+| 6 · Feinschliff | **fertig** (26.09.2026, Kalender-Formular nur bei Klick, Verbindungsanzeige Shopify/Postfach): **Plugin-System** (Ordner `jarves-os\plugins\<id>\`, Anleitung in `plugins\README.md`: eigener Bereich links, Karte rechts, eigener Speicher, Meldungen, Vorlesen, Luzzy-Kontext), **Kalender-Plugin** (eigener Kalender statt Google/Outlook: Monatsansicht, Termine, Erinnerung über Luzzy-Meldung, „Heute“-Karte, Termine gehen bei „Was steht an?“ an Luzzy), **Schnellbefehle** über der Eingabe (Morgenbericht, Wie läuft der Shop?, Neue Mails?, Was steht an?). Start bleibt per Terminal (Felix' Wunsch). Animationen waren schon in Phase 1 abschaltbar |
+
+---
+
+## 1. Worum es geht
+
+Jarves-OS ist ein eigenes Programm auf Felix' PC: die **Kommandozentrale für Hermes und alle Agenten**.
+Darin arbeitet **Luzzy**, Felix' rechte Hand bei Donnerwolf. Mit ihr redet Felix per Stimme oder Text, sie verteilt Aufgaben an die Crew, holt Daten, überwacht Automationen und meldet sich, wenn etwas Wichtiges passiert.
+
+**Grundprinzip: Hermes ist das Gehirn, Jarves-OS ist das Gesicht.**
+Hermes kann schon alles Wichtige: Agenten, Werkzeuge, Skills, Gedächtnis, geplante Jobs, Kanban, Spracherkennung, Profile, Modelle. Jarves-OS baut davon **nichts nach**. Es zeigt Hermes schöner an, macht es per Stimme bedienbar und bündelt alles an einem Ort.
+
+### Ziele
+1. **Sprach-Assistent:** Mit Luzzy reden wie Tony Stark mit JARVIS: fragen, beauftragen, Antwort hören.
+2. **Hermes-Kommandozentrale:** Alle Agenten, Jobs und Aufgaben auf einen Blick.
+3. **Shop-Kommandozentrale:** Alles zu Donnerwolf auf Zuruf. Luzzy holt die Daten, die Felix gerade braucht.
+4. **Crew steuern:** Luzzy ist Chefin, verteilt Arbeit an die Bots und prüft die Ergebnisse.
+5. **Automationen überwachen:** geplante Jobs, Kanban, Morgenbericht, Benachrichtigungen.
+
+### Nicht-Ziele
+- Kein Nachbau von Hermes-Funktionen (kein eigener Agent, keine eigene Werkzeugsammlung, keine eigene Job-Planung).
+- Keine Änderungen an Hermes selbst (Code, `config.yaml`). Siehe Regeln in Abschnitt 11.
+- Kein Server im Internet, keine Handy-App. Nur auf Felix' PC.
+
+---
+
+## 2. Entscheidungen im Überblick
+
+| Thema | Entscheidung |
+|---|---|
+| Name | **Jarves-OS** |
+| Wer spricht | **Luzzy** (Charakter aus dem Hermes-Profil `donnerwolf`, Datei `SOUL.md`) |
+| Luzzys Hermes-Profil | **donnerwolf** (mit allen Skills, Plugins und Erinnerungen, die schon da sind) |
+| Crew-Aufbau | **Luzzy als Chefin**: Felix redet mit Luzzy, sie verteilt an die Bots, prüft und berichtet |
+| Geräte | **PC**, eigenes Fenster |
+| Technik | **Electron**-App |
+| Start | per **Terminal-Befehl** (solange noch gebaut wird, später evtl. Autostart) |
+| Bedienung | **Sprechen und Tippen gleichwertig** |
+| Zuhören | **Aktivierungswort und Taste/Knopf** |
+| Stimme | deutsche **Frauenstimme**, Auswahl in den Einstellungen, Felix testet selbst (siehe 6.3) |
+| Persönlichkeit | **exakt wie Luzzy** bei Donnerwolf |
+| Look | **Donnerwolf Gold/Anthrazit** |
+| Animation | **viel, aber abschaltbar** |
+| Hauptansicht | **Luzzy in der Mitte** |
+| Benachrichtigungen | **Luzzy sagt es laut** |
+| Bibliothek für lange Texte | **ja** |
+| Vom alten Jarvis übernehmen | Morgenbericht, Entscheidungen-Tab, Vault/Wissen |
+
+---
+
+## 3. Luzzy
+
+### 3.1 Charakter
+Luzzy bleibt, wer sie ist. Ihr Charakter und ihre Regeln stehen in
+`C:\Users\Felix\AppData\Local\hermes\profiles\donnerwolf\SOUL.md` und gelten in Jarves-OS unverändert:
+direkt, warm, trocken im Humor, loyal, ehrliche Meinung, Ergebnis zuerst, immer Deutsch, "du" und "Felix", keine Floskeln, keine Gedankenstriche, keine Emojis.
+
+Jarves-OS schickt **keinen eigenen Persona-Text** mit. Weil Luzzy im Profil `donnerwolf` läuft, bringt Hermes ihren Charakter selbst mit. So gibt es nur eine Luzzy, egal ob Felix sie in Hermes oder in Jarves-OS anspricht.
+
+### 3.2 Sprech-Modus
+Wenn Luzzy vorliest, soll sie gesprochen natürlich klingen. Jarves-OS bereitet den Text vor dem Vorlesen auf:
+- Links, Code, Tabellen, Sternchen und Aufzählungszeichen werden nicht mitgelesen.
+- Lange Antworten liest sie nicht komplett vor, sondern die Kernaussage, und sagt: "Den Rest hab ich dir in die Bibliothek gelegt."
+- **[OFFEN]** Soll Luzzy bei Sprach-Eingaben automatisch kürzer antworten als bei getippten? (Vorschlag: ja, per kurzem Hinweis an Hermes, dass die Frage gesprochen kam.)
+
+### 3.3 Freigaben: Widerspruch klären
+Felix hat angegeben, dass Luzzy und die Crew **ohne Freigabe** lesen, Entwürfe erstellen, veröffentlichen/senden und Dateien/Code ändern dürfen.
+
+**Aber:** Luzzys `SOUL.md` sagt ausdrücklich (Regeln 1, 5, 7): nie veröffentlichen ohne Felix' "Ja", Shop-Änderungen nur nach Freigabe, keine neuen Dateien ohne Freigabe.
+
+**[OFFEN]** Was gilt?
+- **Variante A (Vorschlag):** SOUL.md-Regeln bleiben. Jarves-OS macht Freigaben nur bequemer: Luzzy fragt per Stimme, Felix sagt "Ja" oder klickt "Freigeben".
+- **Variante B:** Felix passt die SOUL.md selbst an und lockert die Regeln. Jarves-OS protokolliert dann jede Aktion im Aktivitäts-Log, damit alles nachvollziehbar bleibt.
+
+---
+
+## 4. Die Crew
+
+| Agent | Hermes-Profil | Rolle |
+|---|---|---|
+| **Luzzy** | `donnerwolf` | Chefin. Redet mit Felix, verteilt Aufgaben, prüft Ergebnisse, berichtet in klaren Worten |
+| Code-Bot | `code-bot` | Technik: Programme, Skripte, Fehler beheben, Jarves-OS weiterbauen |
+| Recherche-Bot | `recherche-bot` | Web-Recherche, Konkurrenz, Trends, belegte Fakten statt Erfundenem |
+| Schreib-Bot | `schreib-bot` | Texte: Produktbeschreibungen, Mails, Posts, Blog-Entwürfe |
+
+### 4.1 Wie Luzzy delegiert
+Felix redet nur mit Luzzy. Luzzy entscheidet, wer zuständig ist, gibt die Aufgabe weiter, prüft das Ergebnis und fasst es für Felix zusammen. Braucht es zwei Bots nacheinander (erst Recherche, dann Text), organisiert Luzzy die Reihenfolge selbst.
+
+**Technik:** Hermes bringt dafür schon Werkzeuge mit (Bot-Modus, Delegation, Kanban). Jarves-OS nutzt diese, statt eigene zu erfinden.
+**[OFFEN]** In Phase 0 prüfen, welcher Hermes-Weg für "Luzzy beauftragt Bot" am besten passt: Bot-Modus / `delegate_task` / Kanban-Aufgaben.
+
+**[OFFEN]** Soll Felix einzelne Bots trotzdem direkt ansprechen können (z. B. Tasten 1 bis 4 wie im Video)? Vorschlag: ja, als Zusatz, Standard bleibt Luzzy.
+
+### 4.2 Was Felix über die Crew sieht
+- **Was gerade läuft:** welcher Agent arbeitet woran, welches Werkzeug gerade läuft, live.
+- **Aktivitäts-Log:** was wurde wann erledigt oder ist fehlgeschlagen.
+- **Kosten und Tokens:** Verbrauch pro Agent und Modell (Hermes zählt das bereits).
+- **Modell pro Agent wählen:** direkt in Jarves-OS umstellen, welches Modell ein Agent nutzt (über Hermes' eigene Modell-Einstellung pro Profil).
+
+---
+
+## 5. Aufbau der Oberfläche
+
+### 5.1 Hauptansicht: Luzzy in der Mitte
+
+> **Geändert am 26.09.2026 (Felix' Wunsch):** Der Reaktor steht allein in der Mitte, nicht mehr über dem Chat.
+> Rechts in der Live-Spalte steht oben eine **Gesprächs-Vorschau** (letzte Nachrichten). Ein Klick darauf (oder
+> **Strg+K**) dockt das **ganze Gespräch** links an die Live-Spalte an; Breite mit der Maus ziehbar (wird gemerkt).
+> Unter dem Reaktor steht Luzzys aktuelle Antwort als Untertitel, darunter eine Eingabezeile.
+> **Keine Titelleiste:** Die Spalten reichen bis oben, der obere Rand verschiebt das Fenster, die Windows-Fensterknöpfe
+> sitzen oben rechts in Gold. Die Skizze unten zeigt noch den alten Stand.
+>
+> **Zentrale vs. Crew (entschieden 26.09.2026):** Die Zentrale ist ein **normaler Chat mit Luzzy** (eigene Unterhaltung
+> "Jarves-OS" im Profil donnerwolf, über ihre ID gemerkt). Luzzy kann dort mit `delegate_task` kurzfristige Hilfs-Agenten
+> losschicken. Die **feste Crew** (Bot Chat mit `message_agent` an code-bot, recherche-bot, schreib-bot) bekommt den
+> **eigenen Tab "Crew"** in Phase 3.
+
+```
+┌───────────┬──────────────────────────────────────────┬─────────────┐
+│           │                                          │             │
+│  Bereiche │            ◯  Reaktor / Avatar           │  Live:      │
+│           │              L U Z Z Y                   │  Crew-      │
+│  Zentrale │           "Höre zu …" / "Bereit"         │  Aktivität  │
+│  Crew     │             ▂▅▇▅▂ Sprach-Welle           │             │
+│  Jobs     │                                          │  Meldungen  │
+│  Kanban   │  ┌────────────────────────────────────┐  │             │
+│  Biblioth.│  │ Gespräch (Text läuft live mit)     │  │  System     │
+│  Entscheid│  │                                    │  │  CPU/RAM    │
+│  Wissen   │  └────────────────────────────────────┘  │             │
+│  Kalender │  [ Nachricht an Luzzy …        ] (🎤)    │             │
+│  Dateien  │                                          │             │
+│  System   │                                          │             │
+└───────────┴──────────────────────────────────────────┴─────────────┘
+```
+
+- **Mitte:** großer animierter Reaktor als Luzzys "Gesicht". Er reagiert auf ihren Zustand: bereit, hört zu, denkt, arbeitet mit Werkzeug, spricht.
+- **Darunter:** das Gespräch. Antworten laufen live Wort für Wort mit, darunter die Eingabe mit Mikrofon-Knopf.
+- **Links:** die Bereiche (Abschnitt 5.2).
+- **Rechts:** Live-Spalte mit Crew-Aktivität, Meldungen und einer kleinen System-Anzeige.
+- **Ergebnisse:** Fragt Felix nach Daten ("Wie lief die Woche?"), zeigt Luzzy das Ergebnis als Karte oder Tabelle im Gespräch an, nicht nur als Text.
+
+### 5.2 Bereiche (Seitenleiste)
+
+| Bereich | Inhalt | Quelle in Hermes |
+|---|---|---|
+| **Zentrale** | Hauptansicht mit Luzzy | Sessions, Live-Ereignisse |
+| **Crew** | Agenten, Status, Log, Kosten, Modellwahl | Profile, Sessions, Nutzungsdaten |
+| **Jobs** | geplante Jobs: sehen, jetzt ausführen, pausieren, löschen | Hermes-Cron |
+| **Kanban** | Aufgaben der Agenten, Status, Freigaben | Hermes-Kanban |
+| **Bibliothek** | lange Berichte und Recherchen als lesbare Dokumente | Ordner im Dateisystem (siehe 7.3) |
+| **Entscheidungen** | Entscheidungs-Tagebuch: gilt/überholt, Prüfdatum | Vault `04_Decision_Log\` |
+| **Wissen** | Obsidian-Vault durchsuchen und lesen | Vault `Donnerwolf-Shop\` |
+| **Kalender** | Termine, Fokuszeiten, Luzzy kann eintragen | **[OFFEN]** welcher Kalender? (siehe 7.4) |
+| **Dateien** | Donnerwolf-Ordner, Projekte, zuletzt geänderte Dateien | Dateisystem |
+| **System** | CPU, RAM, GPU, Gateway-Status, lokale Modelle (Ollama) | PC + Hermes-Status |
+| **Einstellungen** | Stimme, Aktivierungswort, Animationen, Tastenkürzel | Jarves-OS selbst |
+
+### 5.3 Shop-Kommandozentrale
+Keine festen Shop-Kacheln. Felix fragt, Luzzy holt, was er braucht: Bestellungen, Umsatz, Kundenmails, Social-Media-Stand, Trend-Board. Sie nutzt dafür die Werkzeuge, die Hermes schon hat (Shopify, IONOS-Mail, Buffer, Trend-Board).
+Ergebnisse erscheinen als Karten im Gespräch und lassen sich in die Bibliothek legen.
+
+**[OFFEN]** Schnellbefehle als Knöpfe über der Eingabe? Vorschlag: "Morgenbericht", "Wie läuft der Shop?", "Neue Mails?", "Was steht an?". Felix kann sie in den Einstellungen selbst anlegen.
+
+---
+
+## 6. Sprache
+
+### 6.1 Zuhören
+Zwei Wege, beide gleichzeitig aktiv:
+1. **Aktivierungswort:** Felix sagt z. B. "Hey Luzzy", sie hört zu. Hermes hat dafür eine eigene Funktion (`wake.start`, lokal auf dem PC).
+   **[OFFEN]** Welches Wort? "Hey Luzzy", "Luzzy" oder "Jarves"? In Phase 0 prüfen, welche Wörter Hermes' Erkennung zuverlässig kann.
+2. **Taste oder Knopf:** globales Tastenkürzel (funktioniert auch, wenn das Fenster nicht vorne ist) oder Klick auf den Reaktor.
+   **[OFFEN]** Welches Tastenkürzel? Vorschlag: `Strg + Leertaste` halten zum Sprechen.
+
+### 6.2 Spracherkennung
+Die eingebaute Chrome-Spracherkennung funktioniert in Electron nicht. Jarves-OS nutzt deshalb **Hermes' eigene Spracherkennung** (`voice.record`, läuft lokal mit Whisper, nichts geht ins Internet).
+
+**Wichtig, Felix muss selbst ändern:** In Hermes steht die Spracherkennung aktuell auf Englisch (`stt.language: en`). Für Deutsch in Hermes unter Einstellungen die Sprache auf Deutsch stellen. Jarves-OS ändert keine Hermes-Einstellungen.
+**[OFFEN]** Ob das kleine lokale Modell (`base`) Deutsch gut genug versteht, testen. Sonst in Hermes ein größeres Modell wählen.
+
+### 6.3 Luzzys Stimme
+- Microsoft-Edge-Neural-Stimmen, kostenlos, hohe Qualität (96 kbit/s).
+- Erzeugt von Jarves-OS selbst (im Electron-Hintergrundprozess). Unabhängig von Hermes' Stimmen-Einstellung.
+- **Stimmen-Auswahl in den Einstellungen**, Felix testet selbst:
+  - de-AT-IngridNeural (Österreich)
+  - de-CH-LeniNeural (Schweiz)
+  - de-DE-SeraphinaMultilingualNeural
+  - de-DE-KatjaNeural
+  - de-DE-AmalaNeural
+  - Regler für Tempo und Tonhöhe, Knopf "Probe hören"
+- Hinweis: Es gibt nur **eine** österreichische Frauenstimme (Ingrid). Die zweite österreichische Stimme (Jonas) ist männlich.
+  **[OFFEN]** Waren mit "alle 3 Österreich-Stimmen" Ingrid, Leni und eine dritte gemeint? Vorschlag: alle deutschsprachigen Frauenstimmen zur Auswahl.
+- Lange Antworten werden in Satzgruppen zerlegt: Der erste Teil kommt schnell, der Rest lädt, während sie spricht. Keine Hänger mitten im Satz.
+- Neue Frage von Felix unterbricht sie sofort.
+- **Später optional:** ElevenLabs (kostenpflichtig, noch menschlicher).
+
+### 6.4 Ablauf eines Sprach-Gesprächs
+1. Felix sagt "Hey Luzzy" oder drückt die Taste. Kurzer Ton, Reaktor leuchtet: "Höre zu".
+2. Felix spricht. Der erkannte Text erscheint live im Gespräch.
+3. Stille erkannt: Text geht an Luzzy (Hermes, Profil `donnerwolf`). Reaktor: "Denke nach", bei Werkzeugen "Prüfe Shopify …".
+4. Antwort läuft als Text mit und wird gleichzeitig vorgelesen. Reaktor und Welle bewegen sich zur Stimme.
+5. **[OFFEN]** Danach automatisch weiter zuhören (Gesprächsmodus) oder warten auf das nächste Aktivierungswort? Vorschlag: 8 Sekunden weiter zuhören, dann zurück in Bereitschaft.
+
+---
+
+## 7. Funktionen im Detail
+
+### 7.1 Morgenbericht
+- Luzzy begrüßt Felix morgens und liest den Bericht vor: neue Bestellungen, Postfach (was Antwort braucht), Termine, offene Aufgaben, fehlgeschlagene Jobs.
+- Der Bericht wird von einem Hermes-Job erstellt und liegt im Vault unter `04_Analytics\Morgenberichte\JJJJ-MM-TT.md` (wie beim alten Jarvis).
+- Jarves-OS zeigt ihn als Karte und liest ihn vor, wenn Felix das Programm startet oder "Morgenbericht" sagt.
+- **[OFFEN]** Uhrzeit des Berichts und ob er automatisch beim Start vorgelesen wird oder nur auf Zuruf.
+
+### 7.2 Benachrichtigungen
+Luzzy **sagt wichtige Ereignisse laut**, auch wenn Jarves-OS im Hintergrund ist.
+**[OFFEN]** Welche Ereignisse sind wichtig? Vorschlag:
+- neue Bestellung
+- Kundenmail, die eine Antwort braucht
+- geplanter Job fehlgeschlagen
+- Agent braucht eine Freigabe
+- große Aufgabe der Crew fertig
+
+**[OFFEN]** Ruhezeiten (z. B. nachts keine Ansagen)?
+
+### 7.3 Bibliothek
+- Lange Texte (Recherchen, Berichte, Strategien) schreiben die Agenten als Markdown-Datei in einen festen Ordner statt in den Chat. Das spart Tokens und hält das Gespräch kurz.
+- Jarves-OS zeigt die Dokumente schön formatiert an, sortiert nach Agent und Datum, mit Suche.
+- **[OFFEN]** Ordner: im Vault (`Donnerwolf-Shop\Bibliothek\`) oder separat (`Documents\Donnerwolf\Bibliothek\`)?
+- Damit die Agenten das wissen, braucht es eine Regel für sie, die **Felix freigibt**: entweder als Eintrag in der SOUL.md oder als Hermes-Skill. Jarves-OS legt das nicht eigenmächtig an.
+
+### 7.4 Kalender
+**[OFFEN]** Welcher Kalender? Google, Outlook oder IONOS? Hat Hermes dafür schon ein Werkzeug? In Phase 0 prüfen. Anbindung nur über Hermes-Werkzeuge, nicht im Jarves-OS nachgebaut.
+
+### 7.5 Entscheidungen
+- Zeigt das Entscheidungs-Tagebuch aus `Donnerwolf-Shop\04_Decision_Log\`: Datum, Titel, Begründung, Status (gilt / überholt), Prüfdatum.
+- Filter: nur geltende, fällige Prüfungen zuerst.
+- Neue Entscheidungen legt Luzzy an (wie schon in ihrer SOUL.md vorgesehen). Jarves-OS zeigt sie an.
+
+### 7.6 Wissen (Vault)
+- Obsidian-Vault durchsuchen und Notizen lesen, Einstieg über `00_Übersicht.md`.
+- Nur lesen. Änderungen am Vault macht Luzzy nach Felix' Ja, wie in ihrer SOUL.md festgelegt.
+
+### 7.7 Jobs
+Hermes-Cron-Jobs aller Profile: Name, Zeitplan, letzter Lauf, Ergebnis, nächster Lauf. Knöpfe: **Jetzt ausführen**, **Pausieren**, **Löschen** (Löschen mit Rückfrage).
+
+### 7.8 Kanban
+Hermes-Kanban: Aufgaben der Agenten mit Status, Blockaden, Kommentaren und Freigabe-Anfragen. Freigeben/Ablehnen direkt in Jarves-OS oder per Stimme.
+
+### 7.9 System
+CPU, RAM, GPU, Speicherplatz, Status des Hermes-Gateways, laufende lokale Modelle (Ollama), Verbindung zu Hermes.
+
+### 7.10 Dateien und Projekte
+Donnerwolf-Hauptordner, Projekte aus Hermes, zuletzt geänderte Dateien. Öffnen im Explorer oder im Standardprogramm.
+
+---
+
+## 8. Design
+
+- **Farben** wie das Donnerwolf-Theme:
+  - Anthrazit-Hintergrund `#333333`, Seitenleiste `#2B2B2B`, Flächen `#3A3A3A`
+  - Gold `#C29A40`, helles Gold `#D9B25F`
+  - Text `#E8E2D6`, leiser Text `#9A9387`, Rahmen `#4A4A4A`
+- **Formen:** kantig, wenig Rundungen, goldene Linien als Akzente.
+- **HUD-Elemente:** Reaktor mit drehenden Ringen, Sprach-Welle, feine goldene Eckklammern an Panels, dezente Scanlinie.
+- **Animationen:** viel, aber in den Einstellungen abschaltbar: alles aus, oder einzeln (Reaktor-Ringe, Scanlinie, Welle, Hintergrund).
+- **Schrift:** klare Schrift für Text, Monospace (z. B. JetBrains Mono) für Status und Zahlen.
+- **[OFFEN]** Soll Luzzy statt Reaktor ein eigenes Gesicht bekommen (Avatar-Bild, das beim Sprechen pulsiert)? Oder Reaktor mit Wolf/Rune in der Mitte als Donnerwolf-Zeichen?
+
+---
+
+## 9. Technik
+
+### 9.1 Übersicht
+
+```
+┌──────────────── Jarves-OS (Electron) ────────────────┐
+│  Oberfläche (React)                                  │
+│    Reaktor · Gespräch · Bereiche · Einstellungen     │
+│                        │                             │
+│  Hintergrundprozess (Node)                           │
+│    Hermes-Verbindung · Luzzys Stimme (Edge TTS)      │
+│    globales Tastenkürzel · System-Werte              │
+└────────────────────────┬─────────────────────────────┘
+                         │  lokal, nur auf dem PC
+┌────────────────────────▼─────────────────────────────┐
+│  Hermes (unverändert)                                │
+│    Dashboard-Schnittstelle: REST /api/*, Live /api/ws│
+│    Profile · Sessions · Werkzeuge · Cron · Kanban    │
+│    Spracherkennung · Aktivierungswort                │
+└──────────────────────────────────────────────────────┘
+```
+
+### 9.2 Anbindung an Hermes
+- Hermes bringt ein lokales **Dashboard** mit (`hermes dashboard`, Port 9119). Es hat eine REST-Schnittstelle (`/api/...`) und eine Live-Verbindung (`/api/ws`) mit denselben Befehlen, die auch die Hermes-Desktop-App nutzt: Sessions anlegen, Nachrichten schicken, Antworten live empfangen, Cron, Kanban, Profile, Spracherkennung, Aktivierungswort.
+- Jarves-OS verbindet sich damit **nur lokal** (127.0.0.1). Nichts ist aus dem Internet erreichbar.
+- **Alternative/Ergänzung:** Hermes' offizieller API-Server (OpenAI-kompatibel, Port 8642). Einfacher, aber ohne Cron, Kanban und Sprache. Nur als Notlösung.
+- **[OFFEN]** In Phase 0 klären: Wie meldet sich ein eigenes Programm am lokalen Dashboard an (Token)? Muss Felix dafür etwas einschalten? Falls ja, schreibt Jarves-OS ihm genau auf, was, und Felix macht es selbst.
+
+### 9.3 Sessions
+- Luzzy hat in Jarves-OS eine eigene, feste Session im Profil `donnerwolf` (Titel "Jarves-OS").
+- Ist die Session weg (gelöscht, archiviert), legt Jarves-OS automatisch eine neue an. Kein toter Bildschirm wie beim alten Plugin.
+- **[OFFEN]** Eine Dauer-Session oder jeden Tag eine neue (z. B. "Jarves-OS 26.09.")? Vorschlag: eine pro Tag, damit der Verlauf nicht endlos wächst.
+
+### 9.4 Projekt und Start
+- Ordner (entschieden): `C:\Users\Felix\Desktop\jarves-os\jarves-os\` für den Live-Bau, `C:\Users\Felix\Desktop\jarves-os\backup\` für Sicherungen (`npm run backup`).
+- Start per Terminal:
+  ```
+  cd C:\Users\Felix\Desktop\jarves-os\jarves-os
+  npm start
+  ```
+- Voraussetzung: Hermes läuft (Gateway/Dashboard). Jarves-OS prüft das beim Start und sagt klar, was fehlt.
+- Später optional: Autostart mit Windows, Desktop-Symbol, fertige .exe.
+
+---
+
+## 10. Bauphasen
+
+| Phase | Inhalt | Ergebnis |
+|---|---|---|
+| **0 · Prüfen** | Hermes-Schnittstelle testen: Anmeldung, Sessions, Live-Antworten, Cron, Kanban, `voice.record`, `wake.start`, Delegation an Bots | kurzer Bericht: was geht, was fehlt |
+| **1 · Luzzy spricht** | Electron-Grundgerüst, Hauptansicht mit Reaktor, Gespräch mit Luzzy (Text), Antworten live, Luzzys Stimme mit Auswahl | Felix kann mit Luzzy schreiben und sie hören |
+| **2 · Luzzy hört** | Taste/Knopf zum Sprechen, Hermes-Spracherkennung, dann Aktivierungswort | Felix kann mit Luzzy reden |
+| **3 · Zentrale** | Crew-Bereich (live, Log, Kosten, Modellwahl), Jobs, Kanban, System | Hermes-Kommandozentrale |
+| **4 · Wissen** | Morgenbericht, Bibliothek, Entscheidungen, Vault, Dateien | alles Wissen an einem Ort |
+| **5 · Meldungen** | Luzzy sagt wichtige Ereignisse laut, Ruhezeiten | Luzzy meldet sich von selbst |
+| **6 · Feinschliff** | Kalender, Animations-Schalter, Schnellbefehle, Autostart, optional ElevenLabs | fertig für den Alltag |
+
+Nach jeder Phase testet Felix. Erst dann geht es weiter.
+
+---
+
+## 11. Regeln für den Bau
+
+1. **Hermes wird nicht verändert.** Kein Hermes-Code, keine `config.yaml`, keine anderen Hermes-Einstellungen. Braucht es eine Einstellung in Hermes, bekommt Felix eine genaue Anleitung und macht es selbst.
+2. **Nichts nachbauen, was Hermes kann.** Jarves-OS nutzt Hermes-Funktionen über die offizielle Schnittstelle.
+3. **Luzzys Regeln gelten.** Ihre SOUL.md bleibt maßgeblich (siehe Freigaben, Abschnitt 3.3).
+4. **Alles lokal.** Keine Daten ins Internet außer: Modell-Anbieter (wie bisher in Hermes) und die Edge-Stimme (nur der vorzulesende Text).
+5. **Robust:** Fällt Hermes aus oder fehlt eine Session, sagt Jarves-OS klar, was los ist, und repariert, was es selbst reparieren darf.
+6. **Einfache Sprache:** Felix programmiert nicht. Fehlermeldungen und Anleitungen in Jarves-OS sind verständlich und auf Deutsch.
+
+---
+
+## 12. Offene Punkte (Sammelliste)
+
+### Erledigt
+
+- [x] **Aktivierungswort:** „Hey Luzzy“ (Hermes sherpa, von Felix getestet) → 6.1
+- [x] **Tastenkürzel:** Strg+Leertaste, auch im Hintergrund → 6.1
+- [x] **Stimmen:** alle deutschsprachigen Frauenstimmen zur Auswahl, Felix hat Seraphina gewählt → 6.3
+- [x] **Gesprächsmodus:** nach einer gesprochenen Frage 8 Sekunden weiter zuhören (abschaltbar) → 6.4
+- [x] **Benachrichtigungen:** Bestellung, Mail, fehlgeschlagener Job, Crew fertig, Termine; Ruhezeit 22 bis 7 Uhr (einstellbar) → 7.2
+- [x] **Kalender:** eigener Kalender als Jarves-OS-Plugin statt Google/Outlook → 7.4
+- [x] **Luzzys Gesicht:** Reaktor → 8
+- [x] **Session:** Zentrale = normaler Chat „Jarves-OS“, Crew-Tab = Luzzys Bot Chat (nur dort kann sie an die Bots delegieren) → 13.3
+- [x] **Whisper-Modell:** base reicht (Felix hat mit echtem Mikrofon getestet) → 13.4
+- [x] **Projektordner:** Desktop\jarves-os (Live-Bau + Backup) → 9.4
+- [x] **Schnellbefehle:** Morgenbericht, Wie läuft der Shop?, Neue Mails?, Was steht an? → 5.3
+- [x] **Start:** weiter per Terminal (`npm start`), kein Autostart (Felix' Wunsch)
+
+### Noch offen (Entscheidungen von Felix)
+
+- [ ] **Freigaben:** Luzzys SOUL.md-Regeln behalten (Variante A) oder lockern (Variante B)? Aktuell gilt A. → 3.3
+- [ ] **Kürzere Antworten** bei Spracheingabe? → 3.2
+- [ ] **Bots direkt ansprechen** zusätzlich zu Luzzy (z. B. im Crew-Tab)? → 4.1
+- [ ] **Rollen der Bots** breiter fassen (aktuell nur Blog)? Felix: vorerst so lassen. → 13.3
+- [ ] **Morgenbericht automatisch:** Hermes-Job jeden Morgen? Uhrzeit? (Heute geht es per Knopf / Schnellbefehl) → 7.1
+- [ ] **Bibliothek-Regel:** Sollen die Agenten lange Texte automatisch in `Donnerwolf\Bibliothek` ablegen? (Anzeige ist vorbereitet) → 7.3
+- [ ] **Termine per Sprache:** Hermes-Skill, damit Luzzy selbst Termine in den Jarves-Kalender eintragen kann → 7.4
+
+### Später / optional
+
+- [ ] ElevenLabs-Stimme (kostenpflichtig) → 6.3
+- [ ] Weitere Plugins nach Bedarf (Anleitung in `jarves-os\plugins\README.md`)
+
+---
+
+## 13. Ergebnisse Phase 0 (26.09.2026)
+
+Alles praktisch getestet, nicht nur in der Doku nachgelesen.
+
+### 13.1 Anbindung an Hermes: funktioniert
+- **Nur ein Hermes-Backend pro PC.** Jarves-OS macht es wie die Hermes-App: Läuft schon eins (z. B. weil die Hermes-App offen ist), dockt Jarves-OS an. Die Adresse steht in `hermes\spawn-ledger.json`, den Zugangsschlüssel liefert das Backend selbst. Läuft keins, startet Jarves-OS eines mit `hermes serve --host 127.0.0.1 --port 0`.
+- Zugang: REST mit Kopfzeile `X-Hermes-Session-Token`, Live-Verbindung `ws://127.0.0.1:<port>/api/ws?token=…`.
+- **Gesprächstest mit Luzzy bestanden:** Session im Profil donnerwolf angelegt, Frage geschickt, Antwort kam live Wort für Wort in 11,5 s: *"Luzzy, Felix' rechte Hand bei Donnerwolf, ich denk mit, pack an und zieh mit dir an einem Strang."* Ihr Charakter kommt also ohne Zutun aus dem Profil.
+- Live-Ereignisse, die ankommen: `message.start`, `thinking.delta`, `reasoning.delta`, `message.delta`, `message.complete`, `session.title`, `session.info` (dazu `tool.start` und `tool.complete` bei Werkzeugen).
+- Wichtig für Phase 1: Das Arbeitsverzeichnis der Session ausdrücklich auf `C:\Users\Felix\Documents\Donnerwolf` setzen.
+
+### 13.2 Weitere Schnittstellen: vorhanden
+| Bereich | Schnittstelle |
+|---|---|
+| Geplante Jobs | `/api/cron/jobs` (anzeigen, anlegen, ändern, löschen), `…/{id}/trigger`, `…/pause`, `…/resume`, `…/runs` |
+| Profile / Crew | `/api/profiles`, `…/{name}/model` (Modell pro Agent), `…/{name}/soul`, `…/description` |
+| Kosten & Tokens | `/api/analytics/usage`, `/api/analytics/models` |
+| Kanban | `/api/plugins/kanban/*` (Hermes' mitgeliefertes Kanban-Plugin) |
+| Sessions | `/api/sessions`, dazu `session.*` über die Live-Verbindung |
+| Einstellungen | `/api/config` |
+
+### 13.3 Crew: Hermes kann Delegieren schon ("Bot Mode")
+- Deine Bots sind bereits ein Bot-Mode-Team ("Donnerwolf Gruppe"). Luzzy ist laut Beschreibung schon die Chefin.
+- In Luzzys fester Unterhaltung mit dem Titel **"Bot Chat"** bekommt sie automatisch das Werkzeug `message_agent` und kennt Namen und Rollen aller Bots. Damit gibt sie Aufgaben weiter, und die Antwort kommt zu ihr zurück.
+- **Folge für Abschnitt 9.3:** Jarves-OS nutzt Luzzys feste "Bot Chat"-Unterhaltung statt einer eigenen Session. Nur dort kann sie delegieren. Wird sie zu lang, fasst Hermes sie mit `/compact` zusammen, der Verlauf bleibt erhalten. Damit ist der offene Punkt "eine Session oder eine pro Tag" erledigt.
+- **[OFFEN] Rollen der Bots:** Die drei Bots sind aktuell **nur auf den Blog** zugeschnitten (Recherche für Blogartikel, Artikel schreiben, Artikel in die HTML-Vorlage setzen). Für eine Allround-Crew wie im Video müssten ihre Rollen breiter werden (Beschreibung und SOUL.md der Bots). Vorschlag: in Phase 3 gemeinsam neu festlegen.
+
+### 13.4 Spracherkennung: funktioniert, auf Deutsch
+- **Eingerichtet** im Profil donnerwolf, über Hermes' eigenen Befehl, update-fest:
+  `stt.enabled = true`, `stt.language = de` (vorher: aus / Englisch). Sicherung der alten Einstellung: `profiles\donnerwolf\config.yaml.vor-jarves-os-20260926-0207.bak`
+- **Weg:** Jarves-OS nimmt das Mikrofon selbst auf und schickt den Ton an Hermes (`POST /api/audio/transcribe`). Hermes schreibt ihn lokal mit faster-whisper mit. Nichts geht ins Internet. Das umgeht auch das Problem, dass Hermes dein Standard-Mikrofon nicht findet ("Error querying device -1").
+- **Test** mit einer deutschen Hörprobe: fast fehlerfrei. Erster Lauf 19 s (Modell lädt einmal), danach **3 s**.
+- **[OFFEN]** Reicht das kleine Modell `base`? Vorschlag: erst im echten Gebrauch testen, bei Bedarf auf `small` wechseln (genauer, etwas langsamer).
+- **Hinweis:** Beim Test war **kein Mikrofon angeschlossen** (G432-Headset und Realtek-Mikrofon nicht aktiv). Für Phase 2 das Headset einstecken.
+
+### 13.5 Aktivierungswort: möglich, kommt in Phase 2
+- Hermes kann jedes Wort ohne Training erkennen (Engine "sherpa", ist installiert), z. B. **"Hey Luzzy"**.
+- Jarves-OS schickt dafür den Mikrofon-Ton an Hermes (`wake.feed`, Modus "client"), wie bei der Spracherkennung.
+- Einrichtung (Profil donnerwolf, update-fest): `wake_word.provider = sherpa`, `wake_word.phrase = "hey luzzy"`, `wake_word.capture = client`. Wird erst in Phase 2 gesetzt, damit die Hermes-App bis dahin nicht das Mikrofon beansprucht.
+- Hermes' Erkennung ist auf englische Laute trainiert. "Hey Luzzy" sollte gut gehen (zwei Silben, deutlich). Falls nicht, Empfindlichkeit anpassen.
+
+### 13.6 Luzzys Stimme: funktioniert aus Electron heraus
+- Edge-Neural-Stimme direkt im Node-Hintergrundprozess von Electron erzeugt: **0,85 s** für einen Satz, 96 kbit/s, ohne Python, ohne Hermes-Einstellung. Getestet mit de-AT-IngridNeural.
+
+### 13.7 In Hermes geändert (Übersicht)
+| Was | Wo | Update-fest | Rückgängig |
+|---|---|---|---|
+| Spracherkennung an, Deutsch | `profiles\donnerwolf\config.yaml` (`stt.enabled`, `stt.language`) | ja (Profil-Einstellung) | Sicherung `.vor-jarves-os-20260926-0207.bak` |
+| Aktivierungswort „Hey Luzzy“ | `profiles\donnerwolf\config.yaml` (`wake_word`: enabled, provider sherpa, phrase "hey luzzy", capture client, surface tui, start_new_session false, sensitivity 0.45) | ja (Profil-Einstellung) | Sicherung `.vor-jarves-os-phase2-*.bak` |
+| Neuer Shopify-Token auch allgemein (26.09., auf Felix' Wunsch) | `config.yaml` (mcp_servers.shopify) und `.env` im Hermes-Hauptordner: alter, abgelaufener Token durch den neuen aus Luzzys Profil ersetzt. Jetzt überall derselbe | ja (Nutzer-Einstellung) | Sicherungen `config.yaml.vor-jarves-os-token-20260926-1731.bak`, `.env.vor-jarves-os-token-20260926-1731.bak` |
+
+Hinweis zu `surface: tui`: So schnappt sich nur Jarves-OS das Aktivierungswort, nicht die Hermes-App.
+Empfindlichkeit: höher = strenger. Mit Kunststimmen getestet; mit Felix' echter Stimme nachjustieren.
+
+Sonst wurde an Hermes nichts verändert.
+
+---
+
+## 14. Notizen von Felix
+
+_Platz für deine Ergänzungen, Ideen und Änderungswünsche._
+
+-
+-
+-
