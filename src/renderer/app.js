@@ -562,6 +562,8 @@ function statusZeigen({ zustand: z, text }) {
     infoLaden()
     wakeEinrichten()
     if (aktuelleAnsicht !== 'crew') crewLaden()
+    // Beim Start wiederhergestellter Bereich: jetzt mit Verbindung richtig laden (Crew-Chat öffnen usw.)
+    if (aktuelleAnsicht !== 'zentrale') ansichtZeigen(aktuelleAnsicht)
     testNachrichtSenden()
   }
 }
@@ -600,6 +602,11 @@ let crewGeoeffnet = false
 
 function ansichtZeigen(id) {
   aktuelleAnsicht = id
+  // Zuletzt offenen Bereich merken (nicht im Testmodus), damit er beim nächsten Start wieder aufgeht
+  if (einstellungen && einstellungen.letzteAnsicht !== id && !new URLSearchParams(location.search).has('stumm')) {
+    einstellungen.letzteAnsicht = id
+    api.einstellungen.speichern({ letzteAnsicht: id })
+  }
   document.body.dataset.ansicht = id // Zentrale: Gespräch rechts ohne eigene Eingabe (siehe style.css)
   for (const el of document.querySelectorAll('.ansicht')) el.hidden = el.dataset.ansicht !== id
   bereicheZeigen()
@@ -916,6 +923,9 @@ async function start() {
   }
   bereicheZeigen()
   pluginsBereit(pluginBereiche.length)
+  // Zuletzt offenen Bereich wieder öffnen (nur wenn es ihn noch gibt, z. B. Plugin gelöscht)
+  const letzte = einstellungen.letzteAnsicht
+  if (!testAnsicht && letzte && letzte !== 'zentrale' && BEREICHE.some((b) => b.id === letzte && b.aktiv)) ansichtZeigen(letzte)
   const testPanel = new URLSearchParams(location.search).get('panel') // nur Testmodus: '1' offen, '0' zu
   panelSetzen(testPanel ? testPanel === '1' : Boolean(einstellungen.panel?.offen), { speichern: false })
 }

@@ -1,6 +1,6 @@
 // Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
 
-const { app, BrowserWindow, ipcMain, shell, session, globalShortcut } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen } = require('electron')
 
 // Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
 if (process.env.JARVES_TEST_MIKROFON) {
@@ -27,10 +27,29 @@ function senden(kanal, daten) {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send(kanal, daten)
 }
 
+// Fenster merken: Größe und Position vom letzten Mal, aber nur, wenn es noch auf einen Bildschirm passt
+// (z. B. zweiter Monitor abgesteckt). Sonst Standardgröße in der Mitte.
+function gemerktesFenster() {
+  const f = einstellungen.laden().fenster
+  if (!f || !Number.isFinite(f.width) || !Number.isFinite(f.height)) return null
+  const sichtbar = screen.getAllDisplays().some(({ workArea: b }) =>
+    f.x < b.x + b.width - 100 && f.x + f.width > b.x + 100 && f.y >= b.y - 20 && f.y < b.y + b.height - 100
+  )
+  return sichtbar ? f : null
+}
+
+function fensterMerken() {
+  if (!fenster || fenster.isDestroyed()) return
+  const { x, y, width, height } = fenster.getNormalBounds()
+  einstellungen.speichern({ fenster: { x, y, width, height, maximiert: fenster.isMaximized() } })
+}
+
 function fensterErstellen() {
+  const gemerkt = gemerktesFenster()
   fenster = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: gemerkt?.width || 1440,
+    height: gemerkt?.height || 900,
+    ...(gemerkt ? { x: gemerkt.x, y: gemerkt.y } : {}),
     minWidth: 1000,
     minHeight: 640,
     backgroundColor: '#2B2B2B',
@@ -48,7 +67,11 @@ function fensterErstellen() {
       backgroundThrottling: false // Mikrofon und Stille-Erkennung laufen auch im Hintergrund
     }
   })
-  fenster.once('ready-to-show', () => fenster.show())
+  fenster.once('ready-to-show', () => {
+    if (gemerkt?.maximiert) fenster.maximize()
+    fenster.show()
+  })
+  fenster.on('close', fensterMerken)
   fenster.webContents.on('before-input-event', (ereignis, eingabe) => {
     if (eingabe.type === 'keyDown' && eingabe.key === 'F12') {
       fenster.webContents.openDevTools({ mode: 'detach' })

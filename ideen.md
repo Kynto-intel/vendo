@@ -92,7 +92,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 
 ### ⚡ Klein: je ungefähr ein Abend (20 Ideen)
 
-1. **Fenster merken** (Optimierung) – Größe, Position und zuletzt offener Tab werden beim Neustart wiederhergestellt.
+1. ✅ **Fenster merken** (Optimierung, gebaut 26.09.2026) – Größe, Position und zuletzt offener Tab werden beim Neustart wiederhergestellt.
 2. **Schneller starten** (Optimierung) – Jarves-OS als Verknüpfung auf dem Desktop/in der Taskleiste statt Terminal,
    optional Autostart mit Windows.
 3. **Ton für Meldungen** (Optimierung) – Dezenter Donnerwolf-Ton (z. B. Horn) bei neuer Bestellung,
