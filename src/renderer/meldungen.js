@@ -1,6 +1,9 @@
 // Meldungen: Luzzy sagt wichtige Ereignisse laut und listet sie rechts auf.
 // Warteschlange: Sie redet nicht dazwischen, wenn Felix spricht oder sie gerade antwortet.
 // Ruhezeit: in der eingestellten Zeit nur anzeigen, nicht vorlesen.
+// Ton: vor dem Vorlesen ein kurzer Ton (Horn bei Bestellungen, Warnton bei Problemen, sonst Glocke).
+
+import { tonSpielen, wichtigsterTon } from './toene.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -8,7 +11,8 @@ const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinwei
 
 let h = { vorlesen: () => {}, istBeschaeftigt: () => false, einstellungen: () => ({}) }
 const liste = []
-const warteschlange = []
+const warteschlange = [] // { art, text } – text leer, wenn nur der Ton kommen soll
+let spielt = false
 let gesammelt = null // während der Startsequenz: Meldungen sammeln statt einzeln vorlesen
 
 // Sammeln an/aus; beim Ausschalten kommen die gesammelten Meldungen zurück (für die Begrüßung)
@@ -63,7 +67,9 @@ export function meldungNeu(m) {
   liste.length = Math.min(liste.length, 40)
   zeigen()
   if (gesammelt) return gesammelt.push(m)
-  if (m.art !== 'hinweis' && e.vorlesen !== false && !inRuhezeit(e)) warteschlange.push(m.text)
+  if (inRuhezeit(e)) return
+  const text = m.art !== 'hinweis' && e.vorlesen !== false ? m.text : ''
+  if (text || e.ton !== false) warteschlange.push({ art: m.art, text })
 }
 
 export function problemNeu(p) {
@@ -71,11 +77,19 @@ export function problemNeu(p) {
   meldungNeu({ art: 'hinweis', titel: `${namen[p.quelle] || p.quelle}: nicht erreichbar`, anzeige: p.text, zeit: Date.now() })
 }
 
-function abarbeiten() {
-  if (!warteschlange.length || h.istBeschaeftigt()) return
-  // Mehrere auf einmal zusammenfassen, damit Luzzy nicht ewig redet
-  const texte = warteschlange.splice(0, warteschlange.length)
-  h.vorlesen(texte.length > 3 ? `${texte.slice(0, 3).join(' ')} Und noch ${texte.length - 3} weitere Meldungen.` : texte.join(' '))
+async function abarbeiten() {
+  if (spielt || !warteschlange.length || h.istBeschaeftigt()) return
+  spielt = true
+  try {
+    // Mehrere auf einmal zusammenfassen: ein Ton (der wichtigste), Luzzy redet nicht ewig
+    const neu = warteschlange.splice(0, warteschlange.length)
+    if (h.einstellungen()?.meldungen?.ton !== false) await tonSpielen(wichtigsterTon(neu.map((m) => m.art)))
+    const texte = neu.map((m) => m.text).filter(Boolean)
+    if (!texte.length) return
+    h.vorlesen(texte.length > 3 ? `${texte.slice(0, 3).join(' ')} Und noch ${texte.length - 3} weitere Meldungen.` : texte.join(' '))
+  } finally {
+    spielt = false
+  }
 }
 
 zeigen()

@@ -7,6 +7,7 @@ import { mikrofonErstellen } from './mikrofon.js'
 import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
+import { tonSpielen } from './toene.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -774,6 +775,7 @@ function formularFuellen() {
   $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
   const m = einstellungen.meldungen
   $('e-m-vorlesen').checked = m.vorlesen
+  $('e-m-ton').checked = m.ton !== false
   for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
   $('e-m-ruhe-von').value = m.ruheVon || ''
   $('e-m-ruhe-bis').value = m.ruheBis || ''
@@ -801,6 +803,7 @@ function formularLesen() {
     vorlesen: $('e-vorlesen').checked,
     meldungen: {
       vorlesen: $('e-m-vorlesen').checked,
+      ton: $('e-m-ton').checked,
       bestellung: $('e-m-bestellung').checked,
       mail: $('e-m-mail').checked,
       job: $('e-m-job').checked,
@@ -835,6 +838,11 @@ $('e-hoehe').addEventListener('input', reglerAnzeigen)
 $('e-probe').addEventListener('click', () => {
   const f = formularLesen()
   vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
+})
+// Töne für Meldungen probehören
+document.querySelector('.ton-probe').addEventListener('click', (e) => {
+  const knopf = e.target.closest('[data-ton-probe]')
+  if (knopf) tonSpielen(knopf.dataset.tonProbe)
 })
 $('einstellungen').addEventListener('close', async () => {
   if ($('einstellungen').returnValue !== 'speichern') return

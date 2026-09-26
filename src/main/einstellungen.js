@@ -15,7 +15,7 @@ const STANDARD = {
   start: { intro: true, begruessung: true },
   panel: { offen: false, breite: 460 },
   sprache: { aktivierungswort: true, automatischSenden: true, weiterZuhoeren: true },
-  meldungen: { vorlesen: true, bestellung: true, mail: true, job: true, crew: true, ruheVon: '22:00', ruheBis: '07:00' }
+  meldungen: { vorlesen: true, ton: true, bestellung: true, mail: true, job: true, crew: true, ruheVon: '22:00', ruheBis: '07:00' }
 }
 
 function laden() {
