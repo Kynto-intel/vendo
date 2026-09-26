@@ -120,7 +120,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 12. ✅ **Donnerwolf-Startsequenz** (Extra, gebaut 26.09.2026) – Beim Start ein kurzes Intro: Reaktor fährt hoch,
     Luzzy begrüßt dich passend zur Tageszeit.
 13. **Erfolge / Meilensteine** (Extra) – „1.500. Bestellung!“ – Luzzy feiert mit, eine Liste der Meilensteine im Vault.
-14. **Selbsttest-Knopf** (Optimierung) – Ein Klick prüft Hermes, Mikrofon, Shopify, Postfach, Wetter, Stimme
+14. ✅ **Selbsttest-Knopf** (Optimierung, gebaut 27.09.2026) – Ein Klick prüft Hermes, Mikrofon, Shopify, Postfach, Wetter, Stimme
     und sagt klar, was nicht geht und was zu tun ist.
 15. 🆕 **Zwischenablage an Luzzy** (Killer) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
     Luzzy fasst zusammen, verbessert, übersetzt oder beantwortet ihn. Funktioniert auch, wenn Jarves-OS im Hintergrund ist.

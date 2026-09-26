@@ -179,7 +179,10 @@
         <section class="ansicht ansicht-seite" data-ansicht="system" hidden>
           <header class="seiten-kopf">
             <div><h2>System</h2><p class="leise">Hermes, dein PC und die lokalen Modelle.</p></div>
-            <button class="knopf-flach" data-neu-laden="system" type="button">Aktualisieren</button>
+            <div class="seiten-knoepfe">
+              <button class="knopf-flach" id="selbsttest-starten" type="button" title="Prüft Hermes, Mikrofon, Stimme, Shopify, Postfach, Wetter">Selbsttest</button>
+              <button class="knopf-flach" data-neu-laden="system" type="button">Aktualisieren</button>
+            </div>
           </header>
           <div class="system-raster">
             <section class="karte hud"><h3>Hermes</h3><div id="system-hermes"><div class="leise">Lade …</div></div></section>
@@ -242,6 +245,19 @@
         </button>
       </aside>
     </div>
+
+    <!-- Selbsttest (src/renderer/selbsttest.js) -->
+    <dialog class="dialog hud" id="selbsttest">
+      <form method="dialog">
+        <h2>Selbsttest</h2>
+        <div class="selbsttest-ergebnis" id="selbsttest-ergebnis"></div>
+        <ul class="selbsttest-liste" id="selbsttest-liste"></ul>
+        <div class="dialog-knoepfe">
+          <button class="knopf-flach" id="selbsttest-nochmal" type="button">Nochmal testen</button>
+          <button class="knopf-gold" value="schliessen" type="submit">Schließen</button>
+        </div>
+      </form>
+    </dialog>
 
     <!-- Einstellungen -->
     <dialog class="dialog hud" id="einstellungen">

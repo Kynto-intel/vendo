@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { selbsttestStarten } from './selbsttest.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
@@ -386,6 +387,27 @@ async function nichtStoerenSetzen(bis, { gesprochen = false, bestaetigen = true 
 $('nicht-stoeren').addEventListener('click', () => nichtStoerenSetzen(0))
 setInterval(nichtStoerenZeigen, 30000) // Symbol verschwindet von selbst, wenn die Zeit um ist
 
+// ── Selbsttest: prüft alles und Luzzy sagt, was nicht geht ──
+let geladenePlugins = null
+const SELBSTTEST = /^(?:(?:hey )?luzzy )?(?:mach |starte? )?(?:(?:einen|den|mal einen) )?(?:selbsttest|systemcheck|systemtest|system check)(?: machen| starten)?$/
+async function selbsttest({ gesprochen = false } = {}) {
+  const zusammenfassung = await selbsttestStarten({
+    verbunden: () => verbunden,
+    hermesText: () => $('verbindung').querySelector('.verbindung-text').textContent,
+    mikrofonZustand: () => mikrofon.zustand(),
+    wakeGewuenscht: () => Boolean(einstellungen?.sprache?.aktivierungswort),
+    wakeAktiv: () => wakeAktiv,
+    stimmOptionen,
+    pluginAnzahl: () => geladenePlugins
+  })
+  if (!zusammenfassung) return
+  letzteEingabeGesprochen = gesprochen
+  untertitelZeigen(zusammenfassung, { fertig: true })
+  vorleser.sprechen(zusammenfassung, stimmOptionen())
+}
+$('selbsttest-starten').addEventListener('click', () => selbsttest())
+$('selbsttest-nochmal').addEventListener('click', () => selbsttest())
+
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
@@ -394,6 +416,11 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feld.value = ''
     feldHoehe(feld)
     return wiederholen({ gesprochen })
+  }
+  if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) {
+    feld.value = ''
+    feldHoehe(feld)
+    return selbsttest({ gesprochen })
   }
   const stoeren = nichtStoerenErkennen(text)
   if (stoeren) {
@@ -1026,6 +1053,7 @@ async function start() {
   }
   bereicheZeigen()
   pluginsBereit(pluginBereiche.length)
+  geladenePlugins = pluginBereiche.length
   // Rechte Spalte: eigene Auswahl und Reihenfolge (Einstellungen → Rechte Spalte)
   kartenEinrichten(document.querySelector('.live'))
   kartenAnwenden(einstellungen.karten)
