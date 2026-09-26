@@ -334,10 +334,44 @@ function laufendeBeenden() {
   aktivitaetZeigen()
 }
 
+// ── „Wiederhol das“: Luzzys letzte Antwort nochmal vorlesen, sofort und ohne Hermes zu fragen ──
+let letzteAntwort = ''
+const WIEDERHOLEN = new Set([
+  'wiederhol', 'wiederhole', 'wiederhol das', 'wiederhole das', 'wiederhol es', 'wiederhole es',
+  'wiederhol das nochmal', 'wiederhole das nochmal', 'wiederhol das noch mal', 'wiederhole das noch mal',
+  'sag das nochmal', 'sag das noch mal', 'sag es nochmal', 'sag es noch mal', 'kannst du das wiederholen',
+  'was hast du gesagt', 'was hast du gerade gesagt', 'wie' // 'wie' = „Wie bitte?“ (bitte wird vorher entfernt)
+])
+function istWiederholen(text) {
+  const kern = text.toLowerCase()
+    .replace(/[.,!?;:"„“]/g, ' ')
+    .replace(/\bbitte\b/g, ' ')
+    .replace(/^\s*(hey\s+)?luzzy\b/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return WIEDERHOLEN.has(kern)
+}
+function letzteAntwortMerken(text) {
+  letzteAntwort = text || ''
+  $('nochmal').hidden = !letzteAntwort
+}
+function wiederholen({ gesprochen = false } = {}) {
+  letzteEingabeGesprochen = gesprochen // Gesprächsmodus: danach wie gewohnt weiter zuhören
+  const text = letzteAntwort || 'Ich hab noch nichts gesagt, was ich wiederholen könnte.'
+  untertitelZeigen(text, { fertig: true })
+  vorleser.sprechen(text, stimmOptionen())
+}
+$('nochmal').addEventListener('click', () => !beschaeftigt && wiederholen())
+
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
   if (!text || beschaeftigt) return
+  if (istWiederholen(text)) {
+    feld.value = ''
+    feldHoehe(feld)
+    return wiederholen({ gesprochen })
+  }
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
   feld.value = ''
   feldHoehe(feld)
@@ -503,6 +537,7 @@ api.hermes.beiEreignis((ev) => {
       werkzeug = ''
       laufendeBeenden()
       aktivitaetMelden('Luzzy hat geantwortet')
+      if (text && p.status !== 'error' && !p.error) letzteAntwortMerken(text)
       zustandZeigen()
       if ((einstellungen?.vorlesen || vorlesenErzwungen) && text && p.status !== 'error') vorleser.sprechen(text, stimmOptionen())
       else weiterZuhoeren()
@@ -861,6 +896,7 @@ async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
   window.__begruessung = text // für den Testmodus
   if (beschaeftigt || hoert || versteht) return // Felix hat schon losgelegt
   untertitelZeigen(text, { fertig: true })
+  letzteAntwortMerken(text)
   if (!stumm) vorleser.sprechen(text, stimmOptionen())
 }
 

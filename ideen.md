@@ -97,7 +97,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    optional Autostart mit Windows.
 3. **Ton für Meldungen** (Optimierung) – Dezenter Donnerwolf-Ton (z. B. Horn) bei neuer Bestellung,
    anderer Ton bei Problemen.
-4. 🆕 **„Wiederhol das“** (Optimierung) – Knopf und Sprachbefehl: Luzzy liest ihre letzte Antwort nochmal vor,
+4. ✅ **„Wiederhol das“** (Optimierung, gebaut 26.09.2026) – Knopf und Sprachbefehl: Luzzy liest ihre letzte Antwort nochmal vor,
    sofort und ohne Hermes zu fragen.
 6. 🆕 **Antwort merken** (Optimierung) – Kleiner 📌-Knopf an jeder Antwort von Luzzy: speichert sie als Notiz im Vault,
    damit gute Antworten nicht im Verlauf untergehen.
