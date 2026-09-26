@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -364,6 +365,26 @@ function wiederholen({ gesprochen = false } = {}) {
 }
 $('nochmal').addEventListener('click', () => !beschaeftigt && wiederholen())
 
+// ── „Nicht stören“: Meldungen nur in der Liste, ohne Ton und Ansage, bis zur gewählten Uhrzeit ──
+function nichtStoerenZeigen() {
+  const bis = einstellungen?.nichtStoerenBis || 0
+  const aktiv = bis > Date.now()
+  $('nicht-stoeren').hidden = !aktiv
+  if (aktiv) $('nicht-stoeren').querySelector('.verbindung-text').textContent = `Ruhe bis ${uhrzeitText(bis)}`
+  return aktiv
+}
+async function nichtStoerenSetzen(bis, { gesprochen = false, bestaetigen = true } = {}) {
+  einstellungen = await api.einstellungen.speichern({ nichtStoerenBis: bis })
+  nichtStoerenZeigen()
+  if (!bestaetigen) return
+  letzteEingabeGesprochen = gesprochen
+  const text = bis ? `Alles klar, bis ${uhrzeitText(bis)} Uhr keine Meldungen. Ich sammle sie für dich.` : 'Meldungen sind wieder an.'
+  untertitelZeigen(text, { fertig: true })
+  vorleser.sprechen(text, stimmOptionen())
+}
+$('nicht-stoeren').addEventListener('click', () => nichtStoerenSetzen(0))
+setInterval(nichtStoerenZeigen, 30000) // Symbol verschwindet von selbst, wenn die Zeit um ist
+
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
@@ -372,6 +393,12 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feld.value = ''
     feldHoehe(feld)
     return wiederholen({ gesprochen })
+  }
+  const stoeren = nichtStoerenErkennen(text)
+  if (stoeren) {
+    feld.value = ''
+    feldHoehe(feld)
+    return nichtStoerenSetzen(stoeren.an || 0, { gesprochen })
   }
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
   feld.value = ''
@@ -968,6 +995,7 @@ async function start() {
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)
+  nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
   if (testAnsicht) setTimeout(() => LADEN[testAnsicht] && ansichtZeigen(testAnsicht), 5000)
   // Plugins (jarves-os\plugins): eigener Bereich links, Karte rechts

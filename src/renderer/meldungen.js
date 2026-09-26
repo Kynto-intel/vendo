@@ -67,7 +67,7 @@ export function meldungNeu(m) {
   liste.length = Math.min(liste.length, 40)
   zeigen()
   if (gesammelt) return gesammelt.push(m)
-  if (inRuhezeit(e)) return
+  if (inRuhezeit(e) || h.einstellungen()?.nichtStoerenBis > Date.now()) return // Ruhezeit oder „Nicht stören“
   const text = m.art !== 'hinweis' && e.vorlesen !== false ? m.text : ''
   if (text || e.ton !== false) warteschlange.push({ art: m.art, text })
 }
