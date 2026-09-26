@@ -497,13 +497,23 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 /* ── Phase 6: Schnellbefehle ── */
 .schnellbefehle { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: min(720px, 100%); margin-bottom: -14px; }
 .schnell { border: 1px solid var(--gold-leise); background: rgba(38, 38, 38, 0.8); color: var(--text); padding: 6px 12px; font-size: 12px; cursor: pointer; transition: border-color 150ms, color 150ms; }
+.live > [data-karte][hidden] { display: none; } /* ausgeblendete Karten, auch mit eigenem display */
 .karten-liste { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .karten-liste li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .karten-pfeile { display: flex; gap: 4px; }
+.selbsttest-ergebnis { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; color: var(--gold-hell); margin-bottom: 10px; }
+.selbsttest-liste { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.selbsttest-liste li { display: flex; gap: 10px; align-items: baseline; }
+.selbsttest-zeichen { font-family: var(--mono); width: 12px; flex: none; }
+.selbsttest-liste .ok .selbsttest-zeichen { color: var(--gruen); }
+.selbsttest-liste .fehler .selbsttest-zeichen { color: var(--rot); }
+.selbsttest-liste .uebersprungen { opacity: 0.6; }
+.selbsttest-tun { margin-top: 2px; color: var(--text); font-size: 12px; }
 .sicherung-knoepfe { display: flex; gap: 8px; margin-bottom: 8px; }
 .mitte-kopf .nicht-stoeren { color: var(--gold-hell); flex-shrink: 0; }
 .mitte-kopf .nicht-stoeren .verbindung-text { overflow: visible; }
 .nicht-stoeren-zeichen { font-size: 12px; line-height: 1; }
+.mitte-kopf .nicht-stoeren[hidden] { display: none; }
 .ton-probe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 6px 24px; font-size: 12px; color: var(--text-leise); }
 .ton-probe .schnell { padding: 3px 8px; font-size: 11px; }
 .schnell:hover { border-color: var(--gold); color: var(--gold-hell); }
