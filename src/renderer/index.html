@@ -285,6 +285,15 @@
           <label class="haken"><input id="e-start-intro" type="checkbox" /> Startsequenz beim Öffnen</label>
           <label class="haken"><input id="e-start-gruss" type="checkbox" /> Luzzy begrüßt mich beim Start</label>
         </fieldset>
+        <fieldset>
+          <legend>Sicherung</legend>
+          <div class="sicherung-knoepfe">
+            <button class="knopf-flach" id="e-sichern" type="button">Jetzt sichern</button>
+            <button class="knopf-flach" id="e-sicherung-ordner" type="button">Ordner öffnen</button>
+          </div>
+          <div class="leise" id="e-sicherung-stand">…</div>
+          <div class="leise">Kopie von Jarves-OS samt Einstellungen und Plugin-Daten (ohne node_modules) nach <code>Desktop\jarves-os\backup</code>. Am besten vor jedem Update.</div>
+        </fieldset>
         <div class="dialog-knoepfe">
           <button class="knopf-flach" value="abbrechen" type="submit">Abbrechen</button>
           <button class="knopf-gold" id="e-speichern" value="speichern" type="submit">Speichern</button>

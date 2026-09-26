@@ -103,7 +103,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    damit gute Antworten nicht im Verlauf untergehen.
 7. **Rechte Spalte selbst einstellen** (Optimierung) – In den Einstellungen per Haken wählen, welche Karten sichtbar
    sind und in welcher Reihenfolge.
-8. **Sicherung auf Knopfdruck** (Extra) – In den Einstellungen ein Knopf „Jarves-OS sichern“
+8. ✅ **Sicherung auf Knopfdruck** (Extra, Knopf gebaut 26.09.2026; automatische Sicherung vor Updates noch offen) – In den Einstellungen ein Knopf „Jarves-OS sichern“
    (statt `npm run backup`), und automatische Sicherung vor jedem Update.
 9. 🆕 **Nicht stören per Stimme** (Optimierung) – „Luzzy, bis 15 Uhr keine Meldungen.“ Oben erscheint ein kleines
    Symbol, danach ist alles wieder normal. Meldungen landen trotzdem in der Liste.

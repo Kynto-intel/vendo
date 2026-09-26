@@ -831,6 +831,7 @@ function formularLesen() {
 
 $('einstellungen-oeffnen').addEventListener('click', () => {
   formularFuellen()
+  sicherungStandZeigen()
   $('einstellungen').showModal()
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
@@ -839,6 +840,32 @@ $('e-probe').addEventListener('click', () => {
   const f = formularLesen()
   vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
 })
+// Sicherung auf Knopfdruck
+async function sicherungStandZeigen(vorweg = '') {
+  const el = $('e-sicherung-stand')
+  try {
+    const { anzahl, letzte } = await api.sicherung.liste()
+    const wann = letzte ? new Date(letzte.zeit).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : ''
+    el.textContent = vorweg + (letzte ? `Letzte Sicherung: ${wann} Uhr (${anzahl} insgesamt)` : 'Noch keine Sicherung.')
+  } catch (e) {
+    el.textContent = `Sicherungen nicht lesbar: ${e.message}`
+  }
+}
+$('e-sichern').addEventListener('click', async () => {
+  const knopf = $('e-sichern')
+  knopf.disabled = true
+  $('e-sicherung-stand').textContent = 'Sichere …'
+  try {
+    await api.sicherung.anlegen()
+    await sicherungStandZeigen('Gesichert. ')
+  } catch (e) {
+    $('e-sicherung-stand').textContent = `Sicherung fehlgeschlagen: ${e.message}`
+  } finally {
+    knopf.disabled = false
+  }
+})
+$('e-sicherung-ordner').addEventListener('click', () => api.sicherung.ordner())
+
 // Töne für Meldungen probehören
 document.querySelector('.ton-probe').addEventListener('click', (e) => {
   const knopf = e.target.closest('[data-ton-probe]')
