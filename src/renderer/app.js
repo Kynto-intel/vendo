@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { ablageEinrichten, ablageErgebnis, ablageOeffnen } from './zwischenablage.js'
 import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
@@ -474,6 +475,7 @@ function paletteBefehle() {
       : { name: 'Nicht stören (1 Stunde)', gruppe: 'Meldungen', stichwoerter: 'ruhe still keine meldungen', ausfuehren: () => nichtStoerenSetzen(Date.now() + 3600000) },
     ...(timerListe().length ? [{ name: 'Alle Timer stoppen', gruppe: 'Timer', stichwoerter: 'wecker erinnerung löschen', ausfuehren: () => lokalAntworten(timerBefehl('alle timer stoppen')) }] : []),
     { name: 'Meldungen leeren', gruppe: 'Meldungen', stichwoerter: 'liste löschen', ausfuehren: () => $('meldungen-leeren').click() },
+    { name: 'Zwischenablage an Luzzy', gruppe: 'Luzzy', stichwoerter: 'kopiert strg+umschalt+l zusammenfassen übersetzen verbessern', ausfuehren: () => ablageOeffnen() },
     { name: 'Selbsttest', gruppe: 'System', stichwoerter: 'prüfen check test fehler', ausfuehren: () => selbsttest() },
     {
       name: 'Jarves-OS sichern', gruppe: 'System', stichwoerter: 'backup sicherung',
@@ -500,6 +502,14 @@ function paletteBefehle() {
   )
   return liste
 }
+ablageEinrichten({
+  verbunden: () => verbunden,
+  luzzy: (text, optionen) => {
+    ansichtZeigen('zentrale')
+    return anLuzzy(text, optionen)
+  }
+})
+
 paletteEinrichten({
   befehle: paletteBefehle,
   luzzy: (text) => {
@@ -718,6 +728,14 @@ api.hermes.beiEreignis((ev) => {
       laufendeBeenden()
       aktivitaetMelden('Luzzy hat geantwortet')
       if (text && p.status !== 'error' && !p.error) letzteAntwortMerken(text)
+      // Zwischenablage an Luzzy: Ergebnis gleich wieder in die Zwischenablage
+      ablageErgebnis(p.status !== 'error' && !p.error ? text : '')
+        .then((hinweis) => {
+          if (!hinweis) return
+          aktivitaetMelden(hinweis)
+          $('untertitel').insertAdjacentHTML('beforeend', `<span class="leise-hinweis">📋 ${maskieren(hinweis)}</span>`)
+        })
+        .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
       zustandZeigen()
       if ((einstellungen?.vorlesen || vorlesenErzwungen) && text && p.status !== 'error') vorleser.sprechen(text, stimmOptionen())
       else weiterZuhoeren()

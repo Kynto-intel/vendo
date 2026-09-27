@@ -524,6 +524,17 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 .palette-liste li.gewaehlt { background: rgba(194, 154, 64, 0.12); border-left-color: var(--gold); color: var(--gold-hell); }
 .palette-liste li.palette-luzzy span { font-style: italic; }
 .palette-hilfe { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-align: right; }
+.ablage { width: 680px; }
+.ablage-vorschau { max-height: 180px; overflow-y: auto; white-space: pre-wrap; font-size: 13px; line-height: 1.5; background: var(--eingabe); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold); padding: 10px 12px; user-select: text; }
+.ablage-laenge { font-family: var(--mono); font-size: 10px; text-align: right; margin: 4px 0 12px; }
+.ablage-knoepfe { display: grid; grid-template-columns: repeat(4, auto); gap: 8px; }
+.ablage-knoepfe button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+.ablage-knoepfe kbd { font-family: var(--mono); font-size: 9px; opacity: 0.6; margin-right: 4px; }
+.ablage-eigen-zeile { display: flex; gap: 8px; margin: 10px 0; }
+.ablage-eigen-zeile input { flex: 1; background: var(--eingabe); border: 1px solid var(--rahmen); padding: 8px 10px; font-size: 13px; color: var(--text); outline: none; }
+.ablage-eigen-zeile input:focus { border-color: var(--gold); }
+.ablage-hilfe { font-size: 11px; line-height: 1.5; }
+.ablage-warnung { color: var(--rot); }
 .sicherung-knoepfe { display: flex; gap: 8px; margin-bottom: 8px; }
 .mitte-kopf .nicht-stoeren { color: var(--gold-hell); flex-shrink: 0; }
 .mitte-kopf .nicht-stoeren .verbindung-text { overflow: visible; }

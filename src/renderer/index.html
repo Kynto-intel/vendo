@@ -258,6 +258,24 @@
       <div class="palette-hilfe leise">↑ ↓ wählen · Enter ausführen · Esc schließen</div>
     </dialog>
 
+    <!-- Zwischenablage an Luzzy (src/renderer/zwischenablage.js), Strg+Umschalt+L -->
+    <dialog class="dialog hud ablage" id="ablage">
+      <h2>Zwischenablage an Luzzy</h2>
+      <div class="ablage-vorschau" id="ablage-vorschau"></div>
+      <div class="leise ablage-laenge" id="ablage-laenge"></div>
+      <div class="ablage-knoepfe">
+        <button class="knopf-gold" data-ablage="zusammenfassen" type="button"><kbd>1</kbd> Zusammenfassen</button>
+        <button class="knopf-flach" data-ablage="verbessern" type="button"><kbd>2</kbd> Verbessern</button>
+        <button class="knopf-flach" data-ablage="uebersetzen" type="button"><kbd>3</kbd> Übersetzen</button>
+        <button class="knopf-flach" data-ablage="beantworten" type="button"><kbd>4</kbd> Beantworten</button>
+      </div>
+      <div class="ablage-eigen-zeile">
+        <input id="ablage-eigen" type="text" placeholder="Oder eigene Anweisung, z. B. „Mach daraus einen Instagram-Post“ (Enter)" autocomplete="off" />
+        <button class="knopf-flach" data-ablage="eigen" type="button">Los</button>
+      </div>
+      <div class="leise ablage-hilfe">Verbessern, Übersetzen, Beantworten und eigene Anweisungen: Das Ergebnis liegt danach in der Zwischenablage. <span id="ablage-hinweis" class="ablage-warnung"></span></div>
+    </dialog>
+
     <!-- Selbsttest (src/renderer/selbsttest.js) -->
     <dialog class="dialog hud" id="selbsttest">
       <form method="dialog">

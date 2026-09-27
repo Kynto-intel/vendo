@@ -71,6 +71,11 @@ contextBridge.exposeInMainWorld('jarves', {
   vault: {
     antwortMerken: (antwort, frage) => ipcRenderer.invoke('vault:antwortMerken', antwort, frage)
   },
+  zwischenablage: {
+    beiNeu: abonnieren('zwischenablage:neu'),
+    lesen: () => ipcRenderer.invoke('zwischenablage:lesen'),
+    schreiben: (text) => ipcRenderer.invoke('zwischenablage:schreiben', text)
+  },
   fenster: {
     aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit')
   },

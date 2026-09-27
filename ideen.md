@@ -122,7 +122,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 13. **Erfolge / Meilensteine** (Extra) – „1.500. Bestellung!“ – Luzzy feiert mit, eine Liste der Meilensteine im Vault.
 14. ✅ **Selbsttest-Knopf** (Optimierung, gebaut 27.09.2026) – Ein Klick prüft Hermes, Mikrofon, Shopify, Postfach, Wetter, Stimme
     und sagt klar, was nicht geht und was zu tun ist.
-15. 🆕 **Zwischenablage an Luzzy** (Killer) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
+15. ✅ **Zwischenablage an Luzzy** (Killer, gebaut 27.09.2026) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
     Luzzy fasst zusammen, verbessert, übersetzt oder beantwortet ihn. Funktioniert auch, wenn Jarves-OS im Hintergrund ist.
 16. ✅ **Befehlspalette (Strg+P)** (Optimierung, gebaut 27.09.2026) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
     Plugin aufrufen. Tippen statt klicken.

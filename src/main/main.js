@@ -1,6 +1,6 @@
 // Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
 
-const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard } = require('electron')
 
 // Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
 if (process.env.JARVES_TEST_MIKROFON) {
@@ -205,6 +205,10 @@ ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
 })
 
 ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
+// Ergebnis zurück in die Zwischenablage (Zwischenablage an Luzzy)
+ipcMain.handle('zwischenablage:schreiben', (_e, text) => clipboard.writeText(String(text || '').slice(0, 100000)))
+ipcMain.handle('zwischenablage:lesen', () => clipboard.readText().slice(0, 15000))
+
 // Taskleiste blinken lassen, wenn Jarves-OS im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
 ipcMain.handle('fenster:aufmerksamkeit', () => {
   if (fenster && !fenster.isDestroyed() && !fenster.isFocused()) fenster.flashFrame(true)
@@ -308,6 +312,15 @@ app.whenReady().then(() => {
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))
+  // Strg+Umschalt+L: kopierten Text an Luzzy (auch aus jedem anderen Programm)
+  const ok = globalShortcut.register('Control+Shift+L', () => {
+    if (!fenster || fenster.isDestroyed()) return
+    if (fenster.isMinimized()) fenster.restore()
+    fenster.show()
+    fenster.focus()
+    senden('zwischenablage:neu', clipboard.readText().slice(0, 15000))
+  })
+  if (!ok) console.warn('Strg+Umschalt+L ist schon von einem anderen Programm belegt.')
   hermes.neuVerbinden()
   bildschirmfotoFuerTest()
   skriptFuerTest()
