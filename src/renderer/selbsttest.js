@@ -48,7 +48,7 @@ async function pruefungen(h) {
     await pruefen('„Hey Luzzy“', async () =>
       h.wakeAktiv()
         ? { ok: true, text: 'hört zu' }
-        : h.verbunden() ? { ok: false, text: 'aus', tun: 'Mikrofon prüfen; sonst in Hermes (Profil donnerwolf) das Aktivierungswort prüfen.' } : OHNE_HERMES)
+        : h.verbunden() ? { ok: false, text: 'aus', tun: h.wakeHinweis?.() || 'Mikrofon prüfen; sonst in Hermes (Profil donnerwolf) das Aktivierungswort prüfen.' } : OHNE_HERMES)
   }
 
   await pruefen('Stimme', async () => {

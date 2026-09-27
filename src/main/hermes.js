@@ -307,7 +307,9 @@ class Hermes extends EventEmitter {
 
   // Aktivierungswort: Hermes hört auf "Hey Luzzy", den Ton liefert Jarves-OS (wake.feed, 16 kHz)
   async wakeStarten() {
-    const antwort = await this.rpc('wake.start', { surface: 'tui', session_id: this.sessionId || '' })
+    // Profil ausdrücklich mitgeben: dockt Jarves-OS an ein Hermes der Hermes-App an, läuft das evtl. mit einem
+    // anderen Profil, in dem „Hey Luzzy“ nicht eingerichtet ist
+    const antwort = await this.rpc('wake.start', { surface: 'tui', session_id: this.sessionId || '', profile: PROFIL })
     return antwort || { started: false }
   }
 

@@ -71,7 +71,21 @@ function shopifyZugang() {
 const ungelesenAnzahl = (antwort) => (antwort?.messages || []).length
 
 // Meilensteine bei der Anzahl aller Bestellungen
-const istMeilenstein = (n) => [10, 25, 50, 100, 250, 500, 750].includes(n) || (n >= 1000 && n % 500 === 0)
+// Einstellbar im Bereich Meilensteine (plugins/meilensteine/daten.json): Schrittweite ab 1.000 und eigene Ziele
+const MEILENSTEIN_DATEN = path.join(__dirname, '..', '..', 'plugins', 'meilensteine', 'daten.json')
+function meilensteinEinstellungen() {
+  try {
+    const d = JSON.parse(fs.readFileSync(MEILENSTEIN_DATEN, 'utf8'))
+    return {
+      schritt: [250, 500, 1000].includes(Number(d.schritt)) ? Number(d.schritt) : 500,
+      eigene: (Array.isArray(d.eigene) ? d.eigene : []).filter((e) => Number.isInteger(e?.anzahl) && e.anzahl > 0)
+    }
+  } catch {
+    return { schritt: 500, eigene: [] }
+  }
+}
+const istMeilenstein = (n, e = meilensteinEinstellungen()) =>
+  [10, 25, 50, 100, 250, 500, 750].includes(n) || (n >= 1000 && n % e.schritt === 0) || e.eigene.some((x) => x.anzahl === n)
 const tausender = (n) => n.toLocaleString('de-DE')
 
 class Waechter extends EventEmitter {
@@ -183,17 +197,24 @@ class Waechter extends EventEmitter {
       this.stand.bestellAnzahl = anzahl
       this.stand.bestellAnzahlZeit = Date.now()
       if (vorher == null || anzahl <= vorher) return // erster Durchlauf: nur merken, Vergangenes nicht nachfeiern
+      const e = meilensteinEinstellungen()
       const erreicht = []
-      for (let n = vorher + 1; n <= anzahl; n++) if (istMeilenstein(n)) erreicht.push(n)
+      for (let n = vorher + 1; n <= anzahl; n++) if (istMeilenstein(n, e)) erreicht.push(n)
       if (!erreicht.length) return
       const n = erreicht.at(-1)
-      this.melden('meilenstein', `Meilenstein: ${tausender(n)}. Bestellung`, `Felix! Das ist die ${tausender(n)}. Bestellung bei Donnerwolf. Skål, darauf kannst du stolz sein!`, {
-        anzeige: `${letzte?.name ? `${letzte.name} · ` : ''}${tausender(anzahl)} Bestellungen insgesamt`
-      })
+      const ziel = e.eigene.find((x) => x.anzahl === n)?.text // eigenes Ziel mit Text, z. B. „Neues Lager“
+      this.melden(
+        'meilenstein',
+        `Meilenstein: ${tausender(n)}. Bestellung${ziel ? ` · ${ziel}` : ''}`,
+        ziel
+          ? `Felix! Die ${tausender(n)}. Bestellung ist da. Dein Ziel ist erreicht: ${ziel}. Skål!`
+          : `Felix! Das ist die ${tausender(n)}. Bestellung bei Donnerwolf. Skål, darauf kannst du stolz sein!`,
+        { anzeige: `${letzte?.name ? `${letzte.name} · ` : ''}${tausender(anzahl)} Bestellungen insgesamt` }
+      )
       const heute = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
       for (const m of erreicht) {
         await require('./vaultschreiben')
-          .anhaengen('Meilensteine.md', `- ${heute} · ${tausender(m)}. Bestellung${letzte?.name ? ` (um ${letzte.name})` : ''}`, {
+          .anhaengen('Meilensteine.md', `- ${heute} · ${tausender(m)}. Bestellung${letzte?.name ? ` (um ${letzte.name})` : ''}${(t => (t ? `: ${t}` : ''))(e.eigene.find((x) => x.anzahl === m)?.text)}`, {
             kopf: '# Meilensteine\n\nVon Jarves-OS: jede besondere Bestellung bei Donnerwolf.'
           })
           .catch(() => {}) // Vault nicht da: Meldung kam trotzdem
@@ -259,4 +280,4 @@ class Waechter extends EventEmitter {
   }
 }
 
-module.exports = { istMeilenstein, STAND_DATEI, Waechter, shopifyZugang }
+module.exports = { istMeilenstein, meilensteinEinstellungen, STAND_DATEI, Waechter, shopifyZugang }
