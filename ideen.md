@@ -124,7 +124,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     und sagt klar, was nicht geht und was zu tun ist.
 15. 🆕 **Zwischenablage an Luzzy** (Killer) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
     Luzzy fasst zusammen, verbessert, übersetzt oder beantwortet ihn. Funktioniert auch, wenn Jarves-OS im Hintergrund ist.
-16. 🆕 **Befehlspalette (Strg+P)** (Optimierung) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
+16. ✅ **Befehlspalette (Strg+P)** (Optimierung, gebaut 27.09.2026) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
     Plugin aufrufen. Tippen statt klicken.
 17. **Gedankenspeicher** (Plugin) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
     oder Sprache. Landet im Vault in einem festen Ordner, Luzzy kennt die Notizen.

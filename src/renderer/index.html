@@ -32,6 +32,7 @@
         </div>
         <nav class="bereiche" id="bereiche"></nav>
         <div class="leiste-fuss">
+          <button class="knopf-flach" id="palette-oeffnen" type="button" title="Befehlspalette: Bereich öffnen, Routine starten, Einstellung ändern …">Befehle · Strg+P</button>
           <button class="knopf-flach" id="einstellungen-oeffnen" type="button">Einstellungen</button>
         </div>
       </aside>
@@ -245,6 +246,13 @@
         </button>
       </aside>
     </div>
+
+    <!-- Befehlspalette (src/renderer/palette.js) -->
+    <dialog class="dialog hud palette" id="palette">
+      <input class="palette-eingabe" id="palette-eingabe" type="text" placeholder="Befehl suchen oder Luzzy fragen …" autocomplete="off" spellcheck="false" />
+      <ul class="palette-liste" id="palette-liste"></ul>
+      <div class="palette-hilfe leise">↑ ↓ wählen · Enter ausführen · Esc schließen</div>
+    </dialog>
 
     <!-- Selbsttest (src/renderer/selbsttest.js) -->
     <dialog class="dialog hud" id="selbsttest">

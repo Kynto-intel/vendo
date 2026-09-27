@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
@@ -407,6 +408,62 @@ async function selbsttest({ gesprochen = false } = {}) {
 }
 $('selbsttest-starten').addEventListener('click', () => selbsttest())
 $('selbsttest-nochmal').addEventListener('click', () => selbsttest())
+
+// ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
+function paletteBefehle() {
+  const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
+  for (const knopf of document.querySelectorAll('#schnellbefehle [data-plugin-knopf]')) {
+    liste.push({ name: knopf.textContent.trim(), gruppe: 'Schnellbefehl', stichwoerter: `routine ${knopf.title}`, ausfuehren: () => knopf.click() })
+  }
+  const ruhe = einstellungen?.nichtStoerenBis > Date.now()
+  const bescheid = (text) => {
+    untertitelZeigen(text, { fertig: true })
+    aktivitaetMelden(text)
+  }
+  liste.push(
+    { name: 'Sprechen', gruppe: 'Luzzy', stichwoerter: 'mikrofon zuhören reden', ausfuehren: () => sprechenStarten() },
+    { name: 'Letzte Antwort nochmal hören', gruppe: 'Luzzy', stichwoerter: 'wiederhol vorlesen', ausfuehren: () => wiederholen() },
+    { name: panelGeschlossen() ? 'Gespräch öffnen' : 'Gespräch schließen', gruppe: 'Ansicht', stichwoerter: 'chat verlauf strg+k', ausfuehren: () => panelSetzen(panelGeschlossen()) },
+    ruhe
+      ? { name: 'Nicht stören beenden', gruppe: 'Meldungen', stichwoerter: 'ruhe meldungen wieder an', ausfuehren: () => nichtStoerenSetzen(0) }
+      : { name: 'Nicht stören (1 Stunde)', gruppe: 'Meldungen', stichwoerter: 'ruhe still keine meldungen', ausfuehren: () => nichtStoerenSetzen(Date.now() + 3600000) },
+    { name: 'Meldungen leeren', gruppe: 'Meldungen', stichwoerter: 'liste löschen', ausfuehren: () => $('meldungen-leeren').click() },
+    { name: 'Selbsttest', gruppe: 'System', stichwoerter: 'prüfen check test fehler', ausfuehren: () => selbsttest() },
+    {
+      name: 'Jarves-OS sichern', gruppe: 'System', stichwoerter: 'backup sicherung',
+      ausfuehren: async () => {
+        bescheid('Sichere Jarves-OS …')
+        try {
+          await api.sicherung.anlegen()
+          bescheid('Jarves-OS ist gesichert.')
+        } catch (e) {
+          bescheid(`Sicherung fehlgeschlagen: ${e.message}`)
+        }
+      }
+    },
+    { name: 'Sicherungsordner öffnen', gruppe: 'System', stichwoerter: 'backup explorer', ausfuehren: () => api.sicherung.ordner() },
+    {
+      name: `Vorlesen ${einstellungen?.vorlesen ? 'ausschalten' : 'einschalten'}`, gruppe: 'Einstellung', stichwoerter: 'stimme stumm leise laut',
+      ausfuehren: async () => {
+        einstellungen = await api.einstellungen.speichern({ vorlesen: !einstellungen.vorlesen })
+        if (!einstellungen.vorlesen) vorleser.stoppen()
+        bescheid(einstellungen.vorlesen ? 'Vorlesen ist an.' : 'Vorlesen ist aus.')
+      }
+    },
+    { name: 'Einstellungen öffnen', gruppe: 'Einstellung', stichwoerter: 'optionen stimme animationen', ausfuehren: () => $('einstellungen-oeffnen').click() }
+  )
+  return liste
+}
+paletteEinrichten({
+  befehle: paletteBefehle,
+  luzzy: (text) => {
+    ansichtZeigen('zentrale')
+    const feld = document.querySelector('.befehl .eingabe-text')
+    feld.value = text
+    abschicken(feld)
+  }
+})
+$('palette-oeffnen').addEventListener('click', paletteOeffnen)
 
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
 async function abschicken(feld, { gesprochen = false } = {}) {
