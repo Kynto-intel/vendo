@@ -38,7 +38,7 @@ const SUCHEN = wort('such|suche|suchen|finde|find|schau|spiel|spiele|abspielen')
 // Wörter, die nicht zum Suchbegriff gehören
 const FUELL = new Set(('such suche suchen finde find schau spiel spiele abspielen ab öffne öffnen oeffne starte start starten geh gehe besuch besuche ruf ' +
   'auf mach und da dort darauf drauf dann mal mir bitte nach bei in im mit den die das der dem ein eine einen browser internet seite webseite website ' +
-  'noch kurz schnell hey luzzy ok jetzt nachher gleich').split(' '))
+  'noch kurz schnell hey luzzy ok jetzt nachher gleich app startseite film filme serie folge zu zum für').split(' '))
 
 const ohneLuzzy = (text) => String(text || '').trim().replace(/^\s*(hey|hi|hallo|ok)?\s*luzzy[,!.:\s]*/i, '')
 
@@ -92,7 +92,9 @@ export function pcBefehlErkennen(text) {
   if (gefunden || domain || browser || browserWort || googleVorn) {
     // Suchbegriff: aus dem Teil mit „such/finde/spiel …“ (oder alles nach „google …“)
     let begriff = ''
-    const teil = rest.split(/(?<![\p{L}])und(?![\p{L}])/u).find((x) => SUCHEN.test(x)) || (googleVorn ? rest.replace(/^google/, '') : '')
+    let teil = rest.split(/(?<![\p{L}])und(?![\p{L}])/u).find((x) => SUCHEN.test(x)) || (googleVorn ? rest.replace(/^google/, '') : '')
+    // „Öffne Netflix auf Terminator“, „Netflix mit Terminator“: was nach der Seite übrig bleibt, ist der Suchbegriff
+    if (!teil && gefunden?.seite.suche) teil = rest
     if (teil) begriff = teil.split(/\s+/).filter((w) => w && !FUELL.has(w)).join(' ').trim()
     const seite = gefunden?.seite || (googleVorn && !domain ? SEITEN.find((x) => x.name === 'Google') : null)
     if (begriff && seite?.suche) return { art: 'web', url: seite.suche(begriff), browser, sagen: `Ich suche auf ${seite.name} nach ${begriff}.` }
