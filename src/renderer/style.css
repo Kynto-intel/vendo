@@ -256,6 +256,11 @@ body.anim-scanlinie .mitte::after {
 .nochmal { border: 1px solid var(--gold-leise); background: transparent; color: var(--text-leise); padding: 3px 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: border-color 150ms, color 150ms; }
 .nochmal:hover { border-color: var(--gold); color: var(--gold-hell); }
 .nochmal[hidden] { display: none; }
+.nochmal:disabled { cursor: default; color: var(--gold); }
+.unter-knoepfe { display: flex; gap: 8px; }
+.msg-merken { background: none; border: 0; padding: 0 0 0 8px; cursor: pointer; font-size: 11px; opacity: 0; transition: opacity 150ms; }
+.msg:hover .msg-merken, .msg-merken:disabled { opacity: 1; }
+.msg-merken:disabled { cursor: default; color: var(--gold); }
 .untertitel .leise-hinweis { display: block; margin-top: 4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); }
 .befehl { width: min(720px, 100%); }
 .luzzy-name { font-family: var(--mono); font-size: 26px; font-weight: 700; letter-spacing: 0.5em; margin-right: -0.5em; color: var(--gold-hell); text-shadow: 0 0 14px rgba(217, 178, 95, 0.4); }

@@ -209,6 +209,22 @@ ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
 ipcMain.handle('fenster:aufmerksamkeit', () => {
   if (fenster && !fenster.isDestroyed() && !fenster.isFocused()) fenster.flashFrame(true)
 })
+// Antwort merken (📌): als Notiz in Donnerwolf-Shop\Jarves-OS\Gemerkte Antworten
+const vaultSchreiben = require('./vaultschreiben')
+ipcMain.handle('vault:antwortMerken', async (_e, antwort, frage) => {
+  antwort = String(antwort || '').slice(0, 100000)
+  frage = String(frage || '').slice(0, 2000)
+  if (!antwort.trim()) throw new Error('Keine Antwort zum Merken.')
+  const jetzt = new Date()
+  const zwei = (n) => String(n).padStart(2, '0')
+  const datum = `${jetzt.getFullYear()}-${zwei(jetzt.getMonth() + 1)}-${zwei(jetzt.getDate())}`
+  // Titel: erster Satz der Antwort, ohne Markdown-Zeichen
+  const erster = antwort.replace(/[#*_`>\[\]]/g, '').split(/(?<=[.!?])\s|\n/).map((s) => s.trim()).find(Boolean) || 'Antwort'
+  const titel = `${datum} ${erster.slice(0, 60).replace(/[.!?:,;\s]+$/, '')}`
+  const inhalt = `---\ndatum: ${datum} ${zwei(jetzt.getHours())}:${zwei(jetzt.getMinutes())}\nquelle: Luzzy (Jarves-OS)\ntags: [gemerkt]\n---\n\n${frage ? `**Frage:** ${frage}\n\n---\n\n` : ''}${antwort}\n`
+  return vaultSchreiben.anlegen('Gemerkte Antworten', titel, inhalt)
+})
+
 // Sicherung auf Knopfdruck (wie npm run backup)
 const sicherung = require('../../scripts/backup')
 ipcMain.handle('sicherung:liste', () => sicherung.sicherungen())

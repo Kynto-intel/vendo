@@ -274,6 +274,10 @@ function nachrichtAnzeigen(rolle, text, { laeuft = false } = {}) {
   const wer = document.createElement('div')
   wer.className = 'msg-wer'
   wer.textContent = rolle === 'luzzy' ? 'LUZZY' : 'FELIX'
+  if (rolle === 'luzzy') {
+    el.roh = text // Markdown für „Antwort merken“
+    wer.insertAdjacentHTML('beforeend', '<button class="msg-merken" type="button" title="Antwort im Vault merken (Jarves-OS\\Gemerkte Antworten)">📌</button>')
+  }
   const textEl = document.createElement('div')
   textEl.className = 'msg-text'
   if (rolle === 'felix') textEl.textContent = text
@@ -360,6 +364,8 @@ function istWiederholen(text) {
 function letzteAntwortMerken(text) {
   letzteAntwort = text || ''
   $('nochmal').hidden = !letzteAntwort
+  $('antwort-merken').hidden = !letzteAntwort
+  $('antwort-merken').textContent = '📌 Merken'
 }
 function wiederholen({ gesprochen = false } = {}) {
   letzteEingabeGesprochen = gesprochen // Gesprächsmodus: danach wie gewohnt weiter zuhören
@@ -368,6 +374,29 @@ function wiederholen({ gesprochen = false } = {}) {
   vorleser.sprechen(text, stimmOptionen())
 }
 $('nochmal').addEventListener('click', () => !beschaeftigt && wiederholen())
+
+// ── Antwort merken (📌): Luzzys Antwort als Notiz in den Vault (Jarves-OS\Gemerkte Antworten) ──
+let letzteFrage = ''
+async function antwortMerken(antwort, frage, knopf) {
+  try {
+    const pfad = await api.vault.antwortMerken(antwort, frage)
+    knopf.textContent = knopf.id === 'antwort-merken' ? '✓ Gemerkt' : '✓'
+    knopf.disabled = true
+    knopf.title = `Gemerkt: ${pfad}`
+    aktivitaetMelden('Antwort im Vault gemerkt')
+  } catch (e) {
+    systemNachricht(`Merken ging nicht: ${e.message}`)
+  }
+}
+$('antwort-merken').addEventListener('click', (e) => antwortMerken(letzteAntwort, letzteFrage, e.currentTarget))
+$('gespraech').addEventListener('click', (e) => {
+  const knopf = e.target.closest('.msg-merken')
+  if (!knopf) return
+  const msg = knopf.closest('.msg')
+  let frage = msg.previousElementSibling
+  while (frage && !frage.classList.contains('felix')) frage = frage.previousElementSibling
+  antwortMerken(msg.roh || msg.querySelector('.msg-text').innerText, frage?.querySelector('.msg-text').textContent || '', knopf)
+})
 
 // ── „Nicht stören“: Meldungen nur in der Liste, ohne Ton und Ansage, bis zur gewählten Uhrzeit ──
 function nichtStoerenZeigen() {
@@ -532,6 +561,7 @@ let vorlesenErzwungen = false
 async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false } = {}) {
   if (!text || beschaeftigt || !verbunden) return false
   letzteEingabeGesprochen = gesprochen
+  letzteFrage = anzeige
   vorlesenErzwungen = Boolean(vorlesen)
   vorleser.stoppen()
   nachrichtAnzeigen('felix', anzeige)
@@ -668,7 +698,10 @@ api.hermes.beiEreignis((ev) => {
     case 'message.complete': {
       const text = typeof p.text === 'string' && p.text ? p.text : aktuelleAntwort?.roh || ''
       untertitelZeigen(text, { fertig: true })
-      if (aktuelleAntwort) aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
+      if (aktuelleAntwort) {
+        aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
+        aktuelleAntwort.el.roh = text
+      }
       else if (text) nachrichtAnzeigen('luzzy', text)
       if (p.status === 'error' || p.error) systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
       aktuelleAntwort = null

@@ -99,7 +99,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    anderer Ton bei Problemen.
 4. ✅ **„Wiederhol das“** (Optimierung, gebaut 26.09.2026) – Knopf und Sprachbefehl: Luzzy liest ihre letzte Antwort nochmal vor,
    sofort und ohne Hermes zu fragen.
-6. 🆕 **Antwort merken** (Optimierung) – Kleiner 📌-Knopf an jeder Antwort von Luzzy: speichert sie als Notiz im Vault,
+6. ✅ **Antwort merken** (Optimierung, gebaut 27.09.2026) – Kleiner 📌-Knopf an jeder Antwort von Luzzy: speichert sie als Notiz im Vault,
    damit gute Antworten nicht im Verlauf untergehen.
 7. ✅ **Rechte Spalte selbst einstellen** (Optimierung, gebaut 27.09.2026) – In den Einstellungen per Haken wählen, welche Karten sichtbar
    sind und in welcher Reihenfolge.

@@ -68,6 +68,9 @@ contextBridge.exposeInMainWorld('jarves', {
     laden: () => ipcRenderer.invoke('einstellungen:laden'),
     speichern: (neu) => ipcRenderer.invoke('einstellungen:speichern', neu)
   },
+  vault: {
+    antwortMerken: (antwort, frage) => ipcRenderer.invoke('vault:antwortMerken', antwort, frage)
+  },
   fenster: {
     aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit')
   },
