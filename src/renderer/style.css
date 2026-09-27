@@ -976,3 +976,30 @@ input[type='time'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='htt
 .seiten-kopf { flex-wrap: wrap; }
 .seiten-knoepfe, .plugin-knoepfe { flex-wrap: wrap; align-items: center; }
 .seiten-knoepfe > *, .plugin-knoepfe > * { white-space: nowrap; }
+
+/* ── Dateiansicht: gefundene Datei über Jarves-OS, ohne eigenen Tab ── */
+.dialog.dateiansicht { width: min(1100px, 88vw); height: min(820px, 86vh); max-width: none; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }
+.dialog.dateiansicht:not([open]) { display: none; }
+.da-kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: none; }
+.da-titel { min-width: 0; }
+.da-titel h2 { margin: 0; font-family: inherit; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.da-titel small { display: block; margin-top: 3px; font-size: 11px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.da-knoepfe { display: flex; gap: 6px; flex: none; }
+.da-knoepfe button { white-space: nowrap; }
+.da-inhalt { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--rahmen); border-radius: var(--radius-karte); background: var(--eingabe); }
+.da-inhalt.zentriert { display: flex; align-items: center; justify-content: center; }
+.da-inhalt img, .da-inhalt video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.da-inhalt iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.da-inhalt audio { width: min(520px, 90%); }
+.da-md { padding: 18px 22px; font-size: 14px; line-height: 1.6; user-select: text; }
+.da-text { margin: 0; padding: 14px 16px; font-family: var(--mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; user-select: text; }
+.da-tabelle { border-collapse: collapse; font-size: 12px; user-select: text; }
+.da-tabelle td, .da-tabelle th { border: 1px solid var(--rahmen); padding: 4px 8px; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.da-tabelle th { position: sticky; top: 0; background: var(--flaeche); color: var(--gold-hell); text-align: left; }
+.da-hinweis { padding: 30px; text-align: center; color: var(--text-leise); font-size: 13px; line-height: 1.6; }
+.da-liste { display: flex; flex-direction: column; padding: 6px; gap: 2px; }
+.da-treffer { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; cursor: pointer; }
+.da-treffer:hover, .da-treffer:focus-visible { background: var(--gold-flaeche); outline: none; }
+.da-treffer b { font-weight: 500; color: var(--text); }
+.da-treffer small { color: var(--text-leise); font-size: 11px; margin-left: auto; white-space: nowrap; }
+.da-treffer .da-nr { font-family: var(--mono); font-size: 11px; color: var(--gold); width: 18px; flex: none; }

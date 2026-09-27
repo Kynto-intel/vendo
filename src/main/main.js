@@ -1,6 +1,6 @@
 // Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
 
-const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard, protocol } = require('electron')
 
 // Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
 if (process.env.JARVES_TEST_MIKROFON) {
@@ -9,11 +9,14 @@ if (process.env.JARVES_TEST_MIKROFON) {
   app.commandLine.appendSwitch('use-file-for-fake-audio-capture', `${process.env.JARVES_TEST_MIKROFON}%noloop`)
 }
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+// Gefundene Dateien in Jarves-OS anzeigen (Bilder, PDF, Video …): nur über jarves-datei://<kennung>, siehe dateisuche.js
+protocol.registerSchemesAsPrivileged([{ scheme: 'jarves-datei', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }])
 const os = require('node:os')
 const path = require('node:path')
 const { Hermes, PROFIL } = require('./hermes')
 const stimme = require('./stimme')
 const einstellungen = require('./einstellungen')
+const dateisuche = require('./dateisuche')
 
 const hermes = new Hermes()
 // Die Zentrale-Unterhaltung über ihre feste ID wiederfinden (Titel kann Hermes ändern)
@@ -64,7 +67,8 @@ function fensterErstellen() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      backgroundThrottling: false // Mikrofon und Stille-Erkennung laufen auch im Hintergrund
+      backgroundThrottling: false, // Mikrofon und Stille-Erkennung laufen auch im Hintergrund
+      plugins: true // PDF-Anzeige in der Dateiansicht
     }
   })
   fenster.once('ready-to-show', () => {
@@ -210,6 +214,14 @@ ipcMain.handle('datei:oeffnen', async (_e, rel) => {
   if (fehler) throw new Error(fehler)
 })
 ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher(rel)))
+// Dateisuche („such die Datei … und öffne sie“): nur lesen; geöffnet/gezeigt werden nur Treffer einer Suche
+ipcMain.handle('datei:suchen', (_e, anfrage) => dateisuche.suchen(String(anfrage || '').slice(0, 200)))
+ipcMain.handle('datei:inhalt', (_e, id) => dateisuche.inhalt(id))
+ipcMain.handle('datei:mitProgramm', async (_e, id) => {
+  const fehler = await shell.openPath(dateisuche.pfadVon(id))
+  if (fehler) throw new Error(fehler)
+})
+ipcMain.handle('datei:imOrdner', (_e, id) => shell.showItemInFolder(dateisuche.pfadVon(id)))
 
 ipcMain.handle('stimme:liste', () => stimme.STIMMEN)
 ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
@@ -450,6 +462,14 @@ app.whenReady().then(() => {
   // Mikrofon nur für Jarves-OS selbst erlauben
   session.defaultSession.setPermissionRequestHandler((_wc, recht, antwort) => antwort(recht === 'media'))
   session.defaultSession.setPermissionCheckHandler((_wc, recht) => recht === 'media')
+  protocol.handle('jarves-datei', (anfrage) => {
+    try {
+      return dateisuche.antwortFuer(anfrage.url)
+    } catch (e) {
+      return new Response(e.message, { status: 404 })
+    }
+  })
+  dateisuche.vorbereiten()
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))

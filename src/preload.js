@@ -47,7 +47,11 @@ contextBridge.exposeInMainWorld('jarves', {
   },
   datei: {
     oeffnen: (rel) => ipcRenderer.invoke('datei:oeffnen', rel),
-    zeigen: (rel) => ipcRenderer.invoke('datei:zeigen', rel)
+    zeigen: (rel) => ipcRenderer.invoke('datei:zeigen', rel),
+    suchen: (anfrage) => ipcRenderer.invoke('datei:suchen', anfrage),
+    inhalt: (id) => ipcRenderer.invoke('datei:inhalt', id),
+    mitProgramm: (id) => ipcRenderer.invoke('datei:mitProgramm', id),
+    imOrdner: (id) => ipcRenderer.invoke('datei:imOrdner', id)
   },
   sprache: {
     transkribieren: (bytes, mime) => ipcRenderer.invoke('sprache:transkribieren', bytes, mime),

@@ -14,6 +14,7 @@ import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
+import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten } from './dateiansicht.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
@@ -637,6 +638,8 @@ const SPRACHBEFEHLE = [
   ['Alle Timer stoppen', '', 'timer löschen aus'],
   ['Nicht stören für … Minuten', 'oder „bis 15 Uhr keine Meldungen“', 'ruhe still'],
   ['Meldungen wieder an', 'beendet Nicht stören', 'ruhe vorbei'],
+  ['Such die Datei … und öffne sie', 'zeigt sie direkt in Jarves (Notiz, Bild, PDF, Video …)', 'datei suchen öffnen finden dokument bild pdf'],
+  ['Öffne die Datei …', 'auch „Zeig mir das Bild …“, „Öffne das PDF …“; mehrere Treffer: „die zweite“', 'datei öffnen zeigen bild foto pdf video tabelle'],
   ['Merk dir: …', 'Gedankenspeicher', 'notiz idee notieren'],
   ['Neue Idee: …', 'Luzzy schreibt sie sauber als Notiz in den Vault (Jarves-OS, Ideen)', 'idee notiz vault diktat schlagworte'],
   ['Diktat', 'frei reden, auch länger: Luzzy macht eine fertige Mail oder Nachricht daraus (Zwischenablage)', 'diktieren diktiermodus mail text', () => sprechenStarten({ diktat: true })],
@@ -784,8 +787,22 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   if (timerAntwort) return lokalAntworten(timerAntwort, { gesprochen }), true
   const diktat = diktatErkennen(text)
   if (diktat) return diktatVerarbeiten(diktat, { gesprochen }), true
+  // Datei suchen und in Jarves-OS zeigen; bei mehreren Treffern: „die zweite“
+  const nummer = trefferNummer(text)
+  if (nummer) return dateiAntworten(trefferOeffnen(nummer), { gesprochen }), true
+  const datei = dateiBefehlErkennen(text)
+  if (datei) return dateiAntworten(dateiSuchenUndZeigen(datei), { gesprochen }), true
   return false
 }
+async function dateiAntworten(arbeit, { gesprochen }) {
+  try {
+    const satz = await arbeit
+    if (satz) lokalAntworten(satz, { gesprochen })
+  } catch (e) {
+    lokalAntworten(`Das hat nicht geklappt: ${e.message}`, { gesprochen })
+  }
+}
+dateiansichtEinrichten({ beiFehler: (e) => systemNachricht(`Datei: ${e.message}`) })
 
 // Diktiermodus (siehe diktat.js): „Diktat“ allein startet eine lange Aufnahme, sonst macht Luzzy den Text fertig
 async function diktatVerarbeiten(diktat, { gesprochen = false } = {}) {
