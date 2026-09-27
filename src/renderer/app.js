@@ -189,13 +189,15 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
     }
     if (diktat) {
       losgelegt = true
-      await diktatVerarbeiten({ art: '', inhalt: text }, { gesprochen: true })
+      diktatVerarbeiten({ art: '', inhalt: text }, { gesprochen: true }) // nicht warten, siehe unten
       return
     }
     const feld = document.querySelector('.befehl .eingabe-text')
     feld.value = text
     feldHoehe(feld)
-    if (einstellungen.sprache?.automatischSenden) await abschicken(feld, { gesprochen: true })
+    // Nicht warten: Hermes meldet das Absenden erst, wenn die ganze Antwort fertig ist. Bis dahin wäre das
+    // Mikrofon gesperrt und Felix könnte Luzzy nicht unterbrechen.
+    if (einstellungen.sprache?.automatischSenden) abschicken(feld, { gesprochen: true })
     else feld.focus()
   } finally {
     hoert = false
