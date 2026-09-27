@@ -154,8 +154,6 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     „Wechsel zum Gespräch Privat“, „Welche Gespräche gibt es?“. Jedes Thema ist eine eigene Hermes-Unterhaltung.
     ➕ Dazu (Felix' Wunsch): **Datei suchen und in Jarves öffnen** – „Luzzy, such die Datei … und öffne sie“: Notizen,
     Texte, Tabellen, Bilder, PDF, Videos und Musik erscheinen in einem Fenster über Jarves-OS, ohne eigenen Tab.
-28. 🆕 **Hermes-Update-Wächter** (Killer) – Meldet, wenn es eine neue Hermes-Version gibt, und erklärt in einfachen
-    Worten, was neu ist. Sichert vorher Profile und Einstellungen und prüft nach dem Update, ob Jarves-OS noch alles kann.
 29. **Finanzen & Kosten** (Plugin) – Einnahmen vs. Ausgaben im Monat (Shopify-Umsatz, Gebühren, KI-Kosten aus
     Hermes, Abos). Nur Überblick, keine Überweisungen.
 30. ✅ **PC-Steuerung per Stimme** (Killer, gebaut 27.09.2026) – „Öffne Photoshop“, „Mach lauter“, „Zeig mir den Donnerwolf-Ordner.“
