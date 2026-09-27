@@ -72,6 +72,14 @@ function fensterErstellen() {
     fenster.show()
   })
   fenster.on('close', fensterMerken)
+  // Angedockt (Windows+Pfeil oder an den Rand gezogen), aber ein paar Pixel zu breit? Auf die exakte Hälfte setzen.
+  let andockUhr = null
+  const andockenPruefen = () => {
+    clearTimeout(andockUhr)
+    andockUhr = setTimeout(haelfteKorrigieren, 350)
+  }
+  fenster.on('resize', andockenPruefen)
+  fenster.on('move', andockenPruefen)
   fenster.on('focus', () => fenster.flashFrame(false))
   fenster.webContents.on('before-input-event', (ereignis, eingabe) => {
     if (eingabe.type === 'keyDown' && eingabe.key === 'F12') {
@@ -236,6 +244,35 @@ ipcMain.handle('start:autostart', (_e, an) => {
   app.setLoginItemSettings({ openAtLogin: Boolean(an), ...autostartOptionen() })
   return app.getLoginItemSettings(autostartOptionen()).openAtLogin
 })
+
+// ── Andocken an die Bildschirmhälfte ──
+// Exakte Hälfte der Arbeitsfläche (ohne Taskleiste) des Bildschirms, auf dem Jarves-OS gerade ist
+function haelfteBerechnen(seite) {
+  const wa = screen.getDisplayMatching(fenster.getBounds()).workArea
+  const links = Math.floor(wa.width / 2)
+  return seite === 'links'
+    ? { x: wa.x, y: wa.y, width: links, height: wa.height }
+    : { x: wa.x + links, y: wa.y, width: wa.width - links, height: wa.height }
+}
+function andocken(seite) {
+  if (!fenster || fenster.isDestroyed()) return
+  if (seite === 'voll') return fenster.isMaximized() ? fenster.unmaximize() : fenster.maximize()
+  if (fenster.isMaximized()) fenster.unmaximize()
+  fenster.setBounds(haelfteBerechnen(seite))
+}
+// Nach Windows-Andocken: steht das Fenster fast genau auf einer Hälfte (±24 px), wird es exakt ausgerichtet
+function haelfteKorrigieren() {
+  if (!fenster || fenster.isDestroyed() || fenster.isMaximized() || fenster.isFullScreen() || fenster.isMinimized()) return
+  const b = fenster.getBounds()
+  const wa = screen.getDisplayMatching(b).workArea
+  const nah = (a, z, t = 24) => Math.abs(a - z) <= t
+  if (!nah(b.height, wa.height) || !nah(b.y, wa.y, 16) || !nah(b.width, wa.width / 2)) return
+  const seite = nah(b.x, wa.x, 16) ? 'links' : nah(b.x + b.width, wa.x + wa.width, 16) ? 'rechts' : null
+  if (!seite) return
+  const ziel = haelfteBerechnen(seite)
+  if (['x', 'y', 'width', 'height'].some((k) => Math.abs(b[k] - ziel[k]) > 1)) fenster.setBounds(ziel)
+}
+ipcMain.handle('fenster:andocken', (_e, seite) => andocken(['links', 'rechts', 'voll'].includes(seite) ? seite : 'links'))
 
 // Farben nach Tageszeit: Fensterknöpfe oben rechts in der Farbe der rechten Spalte
 ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {

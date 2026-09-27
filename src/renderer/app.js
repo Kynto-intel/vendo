@@ -474,6 +474,14 @@ function leisteUmschalten(seite) {
 }
 $('links-umschalten').addEventListener('click', () => leisteUmschalten('links'))
 $('rechts-umschalten').addEventListener('click', () => leisteUmschalten('rechts'))
+// Strg+Alt+← / → : exakt an die linke/rechte Bildschirmhälfte, Strg+Alt+↑ : ganzer Bildschirm
+window.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey || !e.altKey || e.shiftKey) return
+  const seite = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'voll' }[e.key]
+  if (!seite) return
+  e.preventDefault()
+  api.fenster.andocken(seite)
+})
 window.addEventListener('keydown', (e) => {
   if (!e.ctrlKey || e.shiftKey || e.altKey) return
   const taste = e.key.toLowerCase()
@@ -528,6 +536,9 @@ function paletteBefehle() {
     },
     { name: `Linke Leiste ${einstellungen?.leisten?.links === false ? 'aufklappen' : 'einklappen'}`, gruppe: 'Ansicht', stichwoerter: 'seitenleiste menü strg+b', ausfuehren: () => leisteUmschalten('links') },
     { name: `Rechte Spalte ${einstellungen?.leisten?.rechts === false ? 'aufklappen' : 'einklappen'}`, gruppe: 'Ansicht', stichwoerter: 'seitenleiste karten strg+j', ausfuehren: () => leisteUmschalten('rechts') },
+    { name: 'Fenster: linke Bildschirmhälfte', gruppe: 'Fenster', stichwoerter: 'andocken halb links strg+alt', ausfuehren: () => api.fenster.andocken('links') },
+    { name: 'Fenster: rechte Bildschirmhälfte', gruppe: 'Fenster', stichwoerter: 'andocken halb rechts strg+alt', ausfuehren: () => api.fenster.andocken('rechts') },
+    { name: 'Fenster: ganzer Bildschirm', gruppe: 'Fenster', stichwoerter: 'maximieren vollbild groß', ausfuehren: () => api.fenster.andocken('voll') },
     { name: 'Einstellungen öffnen', gruppe: 'Einstellung', stichwoerter: 'optionen stimme animationen', ausfuehren: () => $('einstellungen-oeffnen').click() }
   )
   return liste

@@ -877,17 +877,6 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
 body.links-zu { --links-breite: 60px; }
 body.rechts-zu { --rechts-breite: 0px; }
 body.rechts-zu .live { visibility: hidden; padding: 0; border: 0; overflow: hidden; }
-/* Links eingeklappt: nur Symbole, Namen als Tooltip */
-body.links-zu .leiste { padding-left: 8px; padding-right: 8px; }
-body.links-zu .marke-name, body.links-zu .bereich span, body.links-zu .leiste-fuss span { display: none; }
-body.links-zu .leiste .marke { padding: 0; justify-content: center; margin-left: -8px; margin-right: -8px; }
-body.links-zu .bereich { justify-content: center; padding: 9px 0; }
-body.links-zu .bereich svg { width: 18px; height: 18px; }
-body.links-zu .bereich-gruppe { font-size: 0; padding: 8px 0 6px; }
-body.links-zu .bereich-gruppe::after { content: ''; display: block; height: 1px; margin: 0 8px; background: var(--rahmen); }
-body.links-zu .bereich-gruppe:first-child { display: none; }
-body.links-zu .bereich.gewaehlt::before { left: -8px; }
-body.links-zu .leiste-fuss .knopf-flach { justify-content: center; padding: 9px 0; }
 .leiste-fuss .knopf-flach span { white-space: nowrap; overflow: hidden; }
 /* Rechts eingeklappt: oben rechts liegen die Windows-Fensterknöpfe über der Mitte bzw. dem Gespräch */
 body.rechts-zu .app:has(.gespraech-panel[hidden]) .mitte-kopf { padding-right: 150px; }
@@ -898,7 +887,6 @@ body.rechts-zu .gespraech-panel .panel-kopf { padding-right: 140px; }
 .marke-knopf:hover .marke-zeichen { box-shadow: 0 0 18px rgba(201, 161, 74, 0.6); transform: scale(1.06); }
 .marke-knopf:focus-visible { outline: none; }
 .marke-knopf:focus-visible .marke-zeichen { box-shadow: 0 0 0 2px var(--gold-leise); }
-body.links-zu .marke-knopf { justify-content: center; }
 /* Rechts: schlichtes Symbol ohne Rahmen neben der Uhr */
 .leisten-knopf { flex: none; width: 30px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--radius); background: transparent; color: var(--text-leise); cursor: pointer; transition: color 150ms, background-color 150ms; }
 .leisten-knopf svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: transform 220ms ease; }
@@ -911,3 +899,15 @@ body.rechts-zu .leisten-knopf svg { transform: scaleX(-1); }
   .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 3px 7px; }
 }
 @container mitte (max-width: 640px) { .uhr-datum-kurz { display: none; } }
+
+/* Links eingeklappt: nur Symbole (Namen als Tooltip). Beim Ein-/Ausklappen bewegt sich nichts:
+   die Symbole bleiben genau an ihrem Platz, nur die Breite gleitet und die Texte blenden weich aus. */
+.leiste { overflow: hidden; }
+.marke-name, .bereich span, .leiste-fuss .knopf-flach span { white-space: nowrap; transition: opacity 160ms ease; }
+.bereich-gruppe { position: relative; white-space: nowrap; transition: color 160ms ease; }
+.bereich-gruppe::after { content: ''; position: absolute; left: 10px; right: 10px; top: 50%; height: 1px; background: var(--rahmen); opacity: 0; transition: opacity 160ms ease; }
+body.links-zu .marke-name, body.links-zu .bereich span, body.links-zu .leiste-fuss .knopf-flach span { opacity: 0; }
+body.links-zu .bereich-gruppe { color: transparent; }
+body.links-zu .bereich-gruppe:not(:first-child)::after { opacity: 1; }
+.leiste-fuss .knopf-flach { overflow: hidden; }
+.marke-zeichen, .leiste-fuss svg { flex: none; } /* Logo und Symbole nie zusammendrücken, auch wenn der Text nicht mehr passt */
