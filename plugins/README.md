@@ -61,6 +61,7 @@ export async function starten(ctx) {
 | `ctx.befehl(fn)` | Befehl selbst beantworten, sofort und ohne Hermes: `fn(text, { gesprochen })` gibt die Antwort (Luzzy sagt sie), `true` (erledigt, nichts sagen) oder `null` (kein Befehl) zurück |
 | `ctx.knoepfe([{ name, titel, fn }])` | Knöpfe über der Eingabe in der Zentrale setzen |
 | `ctx.bereit()` | Ist Luzzy gerade frei (verbunden, antwortet nicht)? |
+| `ctx.nichtStoeren(bis)` | „Nicht stören“ bis zum Zeitpunkt `bis` (ms) setzen, `0` beendet es (Meldungen nur in der Liste) |
 | `ctx.oeffnen()` | öffnet den Bereich des Plugins |
 | `ctx.aufrufen(name, ...)` | ruft eine Funktion aus haupt.js auf |
 | `ctx.maskieren(text)` | Text sicher in HTML einsetzen |
@@ -95,6 +96,7 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 | `routinen` | Standardaufgaben mit Auslösewort und eigenem Prompt (Termine werden automatisch angehängt, wenn der Prompt sie erwähnt), Ergebnis (vorlesen, speichern), Zeitplan und Knopf über der Eingabe |
 | `gedanken` | Gedankenspeicher: „Merk dir: …“ per Sprache oder Tippen, Liste mit erledigt/löschen, jede Notiz auch im Vault (`Jarves-OS\Gedankenspeicher.md`), Luzzy kennt die offenen Notizen |
 | `aufgaben` | To-do-Liste mit Fälligkeit („Neue Aufgabe: … bis Freitag“, „Erledigt: …“), Erinnerung über Luzzy-Meldung, Begrüßung, Kontext für Luzzy, Karte „Aufgaben“ (anfangs aus, Einstellungen → Rechte Spalte) |
+| `fokus` | Pomodoro-Timer (Fokus, Pause, lange Pause) mit Hintergrundklang (Rauschen, Regen), in der Fokuszeit „Nicht stören“; „Fokus 50 Minuten“, „Fokus beenden“ |
 
 ## Stichwörter: Daten automatisch an Luzzy
 

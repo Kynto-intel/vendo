@@ -1,0 +1,7 @@
+{
+  "id": "fokus",
+  "name": "Fokus",
+  "version": "1.0.0",
+  "beschreibung": "Fokus-Timer (Pomodoro) mit Hintergrundklang. In der Fokuszeit stört Luzzy nicht, Meldungen sammeln sich in der Liste. „Luzzy, Fokus 25 Minuten“, „Fokus beenden“.",
+  "bereich": { "name": "Fokus" }
+}

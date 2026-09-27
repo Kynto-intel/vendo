@@ -82,6 +82,7 @@ export function timerErkennen(text, jetzt = new Date()) {
   const s = saeubern(text)
     .replace(/(\S+?)-(timer|wecker)\b/g, '$1 $2') // „nudel-timer“ → „nudel timer“
     .replace(/\b(\S{3,}?)(timer)\b/g, (t, vorn) => (/^(count|eier)$/.test(vorn) ? t : `${vorn} timer`)) // „nudeltimer“
+  if (/\b(fokus|pomodoro)\b/.test(s)) return null // „Fokus-Timer“ gehört dem Fokus-Plugin
   const hatTimerWort = /\b(timer|wecker|erinnerung(en)?|countdown|eieruhr)\b/.test(s)
   const frage = /^(wie|was|warum|wann|wo|kann|könntest|soll|gibt|hast|ist|läuft) /.test(s)
 

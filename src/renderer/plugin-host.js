@@ -14,7 +14,7 @@ const befehle = [] // { id, fn } beantworten eine Eingabe selbst (z. B. „Merk 
 const knoepfe = new Map() // id → [{ name, titel, fn }] Knöpfe über der Eingabe
 let knopfLeiste = null
 
-export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, melden, vorlesen, luzzy, ansichtZeigen, bereit }) {
+export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, melden, vorlesen, luzzy, ansichtZeigen, bereit, nichtStoeren }) {
   knopfLeiste = schnellbefehle || null
   knopfLeiste?.addEventListener('click', (e) => {
     const knopf = e.target.closest('[data-plugin-knopf]')
@@ -103,6 +103,8 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
         knoepfe.set(m.id, Array.isArray(liste) ? liste : [])
         knoepfeZeigen()
       },
+      // „Nicht stören“ bis zu einem Zeitpunkt (ms) setzen, 0 = beenden (z. B. während der Fokuszeit)
+      nichtStoeren: (bis) => nichtStoeren?.(bis),
       // Ist Luzzy frei (verbunden, antwortet gerade nicht)?
       bereit: () => (bereit ? bereit() : true),
       maskieren,

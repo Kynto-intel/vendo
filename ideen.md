@@ -130,7 +130,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     oder Sprache. Landet im Vault in einem festen Ordner, Luzzy kennt die Notizen.
 18. ✅ **Aufgaben / To-do** (Plugin, gebaut 27.09.2026) – Einfache Aufgabenliste mit Fälligkeit, Erinnerung über die Meldungen,
     „Was muss ich heute noch?“ bekommt Luzzy automatisch mit (wie Wetter und Termine).
-19. **Musik / Fokus** (Plugin) – Kleine Leiste für Hintergrundmusik oder Fokus-Timer (Pomodoro),
+19. ✅ **Musik / Fokus** (Plugin, gebaut 27.09.2026) – Kleine Leiste für Hintergrundmusik oder Fokus-Timer (Pomodoro),
     Luzzy stört in der Fokuszeit nicht.
 20. ✅ **Wochen-Review mit Stimme** (Killer, gebaut 27.09.2026) – Sonntagabend ein kurzes Gespräch: Luzzy fasst die Woche zusammen,
     fragt nach Zielen für die nächste Woche und legt sie als Aufgaben an (braucht Nr. 18).

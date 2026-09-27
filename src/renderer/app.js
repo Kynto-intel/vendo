@@ -1168,7 +1168,8 @@ async function start() {
       return anLuzzy(text, optionen)
     },
     ansichtZeigen,
-    bereit: () => verbunden && !beschaeftigt && !hoert && !versteht
+    bereit: () => verbunden && !beschaeftigt && !hoert && !versteht,
+    nichtStoeren: (bis) => nichtStoerenSetzen(Number(bis) || 0, { bestaetigen: false })
   })
   const vorSystem = BEREICHE.findIndex((b) => b.id === 'system')
   BEREICHE.splice(vorSystem, 0, ...pluginBereiche.map((b) => ({ id: b.id, name: b.name, aktiv: true })))
