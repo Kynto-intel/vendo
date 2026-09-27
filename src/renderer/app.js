@@ -541,9 +541,11 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   return false
 }
 
+let losgelegt = false // Felix hat schon etwas gesagt oder getippt (dann keine Begrüßung mehr dazwischen)
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
   if (!text) return
+  losgelegt = true
   if (lokalerBefehl(text, { gesprochen })) {
     feld.value = ''
     feldHoehe(feld)
@@ -1182,7 +1184,7 @@ async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
     pluginSaetze: await pluginBegruessung()
   })
   window.__begruessung = text // für den Testmodus
-  if (beschaeftigt || hoert || versteht) return // Felix hat schon losgelegt
+  if (beschaeftigt || hoert || versteht || losgelegt) return // Felix hat schon losgelegt
   untertitelZeigen(text, { fertig: true })
   letzteAntwortMerken(text)
   if (!stumm) vorleser.sprechen(text, stimmOptionen())
