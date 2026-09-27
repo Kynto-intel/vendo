@@ -170,6 +170,20 @@ ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
 ipcMain.handle('hermes:botOeffnen', (_e, kanal) => hermes.botOeffnen(String(kanal || '')))
+// Bild eines Bots: hermes\profiles\<profil>\assets\avatar.(png|jpg|jpeg|webp) als data:-Adresse (nur lesen)
+ipcMain.handle('crew:bild', (_e, profil) => {
+  const name = String(profil || '')
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(name)) return null
+  const fs = require('node:fs')
+  const ordner = path.join(process.env.LOCALAPPDATA || '', 'hermes', 'profiles', name, 'assets')
+  for (const [endung, typ] of [['png', 'image/png'], ['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['webp', 'image/webp']]) {
+    const datei = path.join(ordner, `avatar.${endung}`)
+    const info = fs.statSync(datei, { throwIfNoEntry: false })
+    if (!info?.isFile() || info.size > 8_000_000) continue
+    return { bild: `data:${typ};base64,${fs.readFileSync(datei).toString('base64')}`, stand: info.mtimeMs }
+  }
+  return null
+})
 // Anhänge: nur echte Dateien, die Felix ausgesucht oder ins Fenster gezogen hat
 ipcMain.handle('hermes:anhang', (_e, pfad) => {
   const p = String(pfad || '')

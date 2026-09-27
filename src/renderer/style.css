@@ -1081,3 +1081,19 @@ body.datei-drueber .datei-ablage { display: grid; }
 .crew-listen > .gespraech { flex: 1; min-height: 0; }
 .crew-listen > .gespraech[hidden] { display: none; }
 #crew-karten article.bot { cursor: pointer; }
+
+/* ── Bot-Karten schlank: Bild, Name, Rolle, zuletzt (Details im Tooltip) ── */
+.crew-raster .bot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 8px 10px; }
+.crew-raster .bot > .modell-wahl { grid-column: 1 / -1; }
+.bot-bild { position: relative; width: 42px; height: 42px; flex: none; }
+.bot-bild img, .bot-bild > span:first-child { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; display: grid; place-items: center; background: var(--eingabe); border: 1px solid var(--rahmen); font-family: var(--mono); font-size: 16px; color: var(--gold-hell); }
+.bot.chef .bot-bild img { border-color: var(--gold); box-shadow: 0 0 12px rgba(194, 154, 64, 0.35); }
+.bot-bild .bot-punkt { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border: 2px solid var(--tief); }
+.bot-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bot-info h3 { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bot-unter { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 10.5px; color: var(--text-leise); white-space: nowrap; } /* Zeit rutscht bei schmalen Karten in eine eigene Zeile */
+.bot-unter .abzeichen { font-size: 8px; padding: 1px 5px; }
+.bot-modell { width: 26px; height: 26px; display: grid; place-items: center; background: none; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+.bot-modell svg { width: 15px; height: 15px; fill: var(--text-leise); }
+.bot-modell:hover { border-color: var(--rahmen); }
+.bot-modell:hover svg { fill: var(--gold-hell); }

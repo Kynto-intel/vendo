@@ -98,7 +98,8 @@ export async function crewLaden() {
         const tag = [...(nutzung?.daily || [])].reverse().find((t) => (t.api_calls || 0) > 0 || (t.input_tokens || 0) > 0)
         if (tag) zuletzt = `${tag.day}T12:00:00`
       }
-      return { p, summe, zuletzt, letzterTitel: letzte?.title || '' }
+      const bild = await window.jarves.hermes.botBild(name).catch(() => null)
+      return { p, summe, zuletzt, letzterTitel: letzte?.title || '', bild: bild?.bild || '' }
     })
   )
   crewKurzZeigen(karten.filter(Boolean))
@@ -106,25 +107,20 @@ export async function crewLaden() {
   if (!karten.some(Boolean)) return fehlerKarte(el, 'Keine Bots gefunden. In Hermes gibt es außer „default“ noch kein Profil.')
   el.innerHTML = karten
     .filter(Boolean)
-    .map(({ p, summe, zuletzt, letzterTitel }) => {
+    .map(({ p, summe, zuletzt, letzterTitel, bild }) => {
       const chef = p.name === LUZZY
       const { name, rolle } = botName(p)
       const aktiv = zuletzt && Date.now() - zeitpunkt(zuletzt).getTime() < 3 * 60 * 1000
+      // Schlanke Karte: Bild, Name, Rolle, zuletzt. Die Details stehen im Tooltip.
+      const details = [p.description, `Modell: ${p.model || '–'} (${p.provider || '–'})`, `30 Tage: ${tokens(summe.tokens)} Tokens, ${zahl(summe.aufrufe)} Aufrufe, ${euro(summe.kosten)}`, letzterTitel ? `Zuletzt: ${letzterTitel}` : ''].filter(Boolean).join('\n')
       return `
-      <article class="bot hud${chef ? ' chef' : ''}" data-profil="${maskieren(p.name)}">
-        <header>
-          <span class="bot-punkt${aktiv ? ' aktiv' : ''}" title="${aktiv ? 'gerade aktiv' : 'ruhig'}"></span>
-          <h3 title="Hermes-Profil: ${maskieren(p.name)}">${maskieren(name)}</h3>
-          ${rolle ? `<span class="abzeichen">${maskieren(rolle)}</span>` : ''}
-        </header>
-        <p class="bot-rolle">${maskieren(p.description || 'Keine Beschreibung.')}</p>
-        <dl class="werte">
-          <dt>Modell</dt><dd title="${maskieren(p.provider)} · ${maskieren(p.model)}">${maskieren(p.model || '–')}</dd>
-          <dt>Zuletzt</dt><dd title="${maskieren(letzterTitel)}">${vorWann(zuletzt)}</dd>
-          <dt>30 Tage</dt><dd title="${zahl(summe.tokens)} Tokens, ${zahl(summe.aufrufe)} Aufrufe">${tokens(summe.tokens)} Tok. · ${zahl(summe.aufrufe)}×</dd>
-          <dt>Kosten</dt><dd>${euro(summe.kosten)}</dd>
-        </dl>
-        <button class="knopf-flach modell-aendern" type="button" data-profil="${maskieren(p.name)}" data-anbieter="${maskieren(p.provider)}" data-modell="${maskieren(p.model)}">Modell ändern</button>
+      <article class="bot hud${chef ? ' chef' : ''}" data-profil="${maskieren(p.name)}" title="${maskieren(details)}">
+        <div class="bot-bild">${bild ? `<img src="${bild}" alt="" />` : `<span>${maskieren(name.charAt(0))}</span>`}<span class="bot-punkt${aktiv ? ' aktiv' : ''}" title="${aktiv ? 'gerade aktiv' : 'ruhig'}"></span></div>
+        <div class="bot-info">
+          <h3>${maskieren(name)}</h3>
+          <div class="bot-unter">${rolle ? `<span class="abzeichen">${maskieren(rolle)}</span>` : ''}<span>${vorWann(zuletzt)}</span></div>
+        </div>
+        <button class="bot-modell modell-aendern" type="button" title="Modell ändern (jetzt: ${maskieren(p.model || '–')})" data-profil="${maskieren(p.name)}" data-anbieter="${maskieren(p.provider)}" data-modell="${maskieren(p.model)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.8 1.7 1l.4 2.5h4l.4-2.5c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
         <div class="modell-wahl" hidden></div>
       </article>`
     })
