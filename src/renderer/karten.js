@@ -24,13 +24,21 @@ export function kartenEinrichten(rechts) {
   }
 }
 
-// Reihenfolge und Sichtbarkeit aus den Einstellungen (neue Karten, z. B. von neuen Plugins, hängen hinten an)
+// Reihenfolge und Sichtbarkeit aus den Einstellungen. Neue Karten (z. B. Timer oder von neuen Plugins) kommen an
+// ihre Standard-Stelle: hinter die Karte, die im Standard direkt davor steht.
 function stand(einstellung) {
   const da = new Set(standard.reihenfolge)
-  const gespeichert = (einstellung?.reihenfolge || []).filter((id) => da.has(id))
-  const neu = standard.reihenfolge.filter((id) => !gespeichert.includes(id))
+  const reihenfolge = (einstellung?.reihenfolge || []).filter((id) => da.has(id))
+  const neu = standard.reihenfolge.filter((id) => !reihenfolge.includes(id))
+  if (reihenfolge.length) {
+    for (const id of neu) {
+      const i = standard.reihenfolge.indexOf(id)
+      const vorgaenger = standard.reihenfolge.slice(0, i).reverse().find((v) => reihenfolge.includes(v))
+      reihenfolge.splice(vorgaenger ? reihenfolge.indexOf(vorgaenger) + 1 : 0, 0, id)
+    }
+  }
   const aus = einstellung ? (einstellung.aus || []).concat(neu.filter((id) => standard.aus.includes(id))) : standard.aus
-  return { reihenfolge: gespeichert.length ? [...gespeichert, ...neu] : standard.reihenfolge, aus: new Set(aus) }
+  return { reihenfolge: reihenfolge.length ? reihenfolge : standard.reihenfolge, aus: new Set(aus) }
 }
 
 export function kartenAnwenden(einstellung) {

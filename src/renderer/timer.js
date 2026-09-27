@@ -153,7 +153,7 @@ export function timerBefehl(text) {
 
   if (b.art === 'stellen') {
     if (liste.length >= MAX) return `Es laufen schon ${MAX} Timer. Stopp erst einen.`
-    const eintrag = { id: `${jetzt}-${Math.random().toString(36).slice(2, 6)}`, typ: b.typ, ende: b.ende, dauer: b.dauer, name: b.name, phrase: b.phrase, satz: b.satz }
+    const eintrag = { id: `${jetzt}-${Math.random().toString(36).slice(2, 6)}`, typ: b.typ, start: jetzt, ende: b.ende, dauer: b.dauer, name: b.name, phrase: b.phrase, satz: b.satz }
     liste.push(eintrag)
     aenderung()
     if (b.typ === 'timer') return b.phrase ? `Alles klar, ${dauerText(b.dauer)} für ${b.phrase}.` : `Alles klar, Timer auf ${dauerText(b.dauer)}.`
@@ -210,11 +210,45 @@ function pruefen() {
   zeigen()
 }
 
+// Karte „Timer“ in der rechten Spalte: nur sichtbar, solange etwas läuft
+// (ein-/ausschalten und verschieben unter Einstellungen → Rechte Spalte)
+function karteZeigen(jetzt) {
+  const karte = $('timer-karte')
+  if (!karte) return
+  karte.classList.toggle('karte-leer', !liste.length)
+  if (!liste.length) return
+  $('timer-karte-inhalt').innerHTML = [...liste]
+    .sort((a, b) => a.ende - b.ende)
+    .map((e) => {
+      const rest = e.ende - jetzt
+      const lang = e.typ !== 'timer' && rest > 3600000
+      const gesamt = e.dauer || (e.start ? e.ende - e.start : 0)
+      const anteil = gesamt ? Math.min(100, Math.max(0, 100 - (rest / gesamt) * 100)) : 0
+      const titel = e.name || (e.typ === 'wecker' ? 'Wecker' : e.typ === 'erinnerung' ? 'Erinnerung' : `Timer ${dauerText(e.dauer)}`)
+      return `<div class="tk-eintrag${rest < 60000 ? ' timer-bald' : ''}">
+        <div class="tk-zeile">
+          <span class="tk-name">${symbolFuer(e)} ${maskieren(titel)}</span>
+          <b class="tk-zeit">${lang ? uhr(e.ende) : countdown(rest)}</b>
+        </div>
+        ${gesamt ? `<div class="tk-balken"><div style="width:${anteil}%"></div></div>` : ''}
+        <div class="tk-knoepfe">
+          <span class="leise">${e.typ === 'timer' ? `fertig um ${uhr(e.ende)}` : lang ? `${e.typ === 'wecker' ? 'klingelt' : 'meldet sich'}${tagText(e.ende) || ' heute'}` : `um ${uhr(e.ende)} Uhr`}</span>
+          ${e.typ !== 'wecker' ? `<button class="knopf-mini" type="button" data-timer-plus="${e.id}" title="5 Minuten mehr">+5</button>` : ''}
+          <button class="knopf-mini" type="button" data-timer-id="${e.id}" title="Stoppen">✕</button>
+        </div>
+      </div>`
+    })
+    .join('')
+}
+
 function zeigen() {
   const el = $('timer-leiste')
   if (!el) return
   const jetzt = Date.now()
-  el.hidden = !liste.length
+  karteZeigen(jetzt)
+  // Oben nur, wenn die Timer-Karte rechts ausgeschaltet ist (Einstellungen → Rechte Spalte)
+  const karteAn = $('timer-karte') && !$('timer-karte').hidden
+  el.hidden = !liste.length || karteAn
   el.innerHTML = [...liste]
     .sort((a, b) => a.ende - b.ende)
     .map((e) => {
@@ -242,12 +276,24 @@ export function timerEinrichten({ gespeichert = [], speichern, alarm }) {
   for (const e of verpasst) h.alarm({ text: alarmText(e, { verpasst: true }), titel: `${symbolFuer(e)} ${e.name || 'Timer'} (verpasst)`, eintrag: e })
   setInterval(pruefen, 500)
   zeigen()
-  $('timer-leiste').addEventListener('click', (ev) => {
-    const chip = ev.target.closest('[data-timer-id]')
-    if (!chip) return
-    liste = liste.filter((e) => e.id !== chip.dataset.timerId)
-    aenderung()
-  })
+  // Klick auf einen Timer oben oder ✕ in der Karte: stoppen; +5 in der Karte: 5 Minuten mehr
+  for (const el of [$('timer-leiste'), $('timer-karte')].filter(Boolean)) {
+    el.addEventListener('click', (ev) => {
+      const plus = ev.target.closest('[data-timer-plus]')
+      if (plus) {
+        const e = liste.find((x) => x.id === plus.dataset.timerPlus)
+        if (e) {
+          e.ende += 300000
+          if (e.dauer) e.dauer += 300000
+        }
+        return aenderung()
+      }
+      const stopp = ev.target.closest('[data-timer-id]')
+      if (!stopp) return
+      liste = liste.filter((e) => e.id !== stopp.dataset.timerId)
+      aenderung()
+    })
+  }
 }
 
 export const timerListe = () => liste
