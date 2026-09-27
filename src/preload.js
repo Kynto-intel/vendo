@@ -79,7 +79,10 @@ contextBridge.exposeInMainWorld('jarves', {
   fenster: {
     aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit'),
     titelfarbe: (farbe) => ipcRenderer.invoke('fenster:titelfarbe', farbe),
-    andocken: (seite) => ipcRenderer.invoke('fenster:andocken', seite)
+    andocken: (seite) => ipcRenderer.invoke('fenster:andocken', seite),
+    mini: (an) => ipcRenderer.invoke('mini:setzen', an),
+    beiMini: abonnieren('mini:geaendert'),
+    miniZustand: (daten) => ipcRenderer.send('mini:zustand', daten)
   },
   start: {
     stand: () => ipcRenderer.invoke('start:stand'),

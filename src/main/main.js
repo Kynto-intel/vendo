@@ -81,6 +81,10 @@ function fensterErstellen() {
   fenster.on('resize', andockenPruefen)
   fenster.on('move', andockenPruefen)
   fenster.on('focus', () => fenster.flashFrame(false))
+  // Mini-Modus: Klick aufs Taskleisten-Symbol holt das große Fenster zurück, die Leiste verschwindet
+  fenster.on('restore', () => miniSetzen(false))
+  fenster.on('show', () => miniSetzen(false))
+  fenster.on('closed', () => miniSetzen(false, { schliessen: true }))
   fenster.webContents.on('before-input-event', (ereignis, eingabe) => {
     if (eingabe.type === 'keyDown' && eingabe.key === 'F12') {
       fenster.webContents.openDevTools({ mode: 'detach' })
@@ -380,6 +384,67 @@ ipcMain.handle('system:werte', () => {
   }
 })
 
+// ── Mini-Modus: schmale Leiste fest oben mittig, immer im Vordergrund; das große Fenster geht in die Taskleiste ──
+// Mikrofon, „Hey Luzzy“ und Stimme laufen weiter im großen Fenster (backgroundThrottling: false),
+// es schickt der Leiste nur, was Luzzy gerade tut.
+const MINI = { breite: 340, hoehe: 36, abstand: 8 }
+let mini = null
+function miniSetzen(an, { schliessen = false } = {}) {
+  if (!fenster || fenster.isDestroyed()) an = false
+  if (!an) {
+    if (!mini) return
+    const alt = mini
+    mini = null
+    if (!alt.isDestroyed()) alt.close()
+    if (!schliessen && fenster && !fenster.isDestroyed()) {
+      if (fenster.isMinimized()) fenster.restore()
+      fenster.show()
+      fenster.focus()
+    }
+    senden('mini:geaendert', false)
+    return
+  }
+  if (!mini) {
+    // Auf dem Bildschirm, auf dem Jarves-OS gerade ist: oben in der Mitte
+    const { workArea } = screen.getDisplayMatching(fenster.getBounds())
+    mini = new BrowserWindow({
+      width: MINI.breite,
+      height: MINI.hoehe,
+      x: Math.round(workArea.x + (workArea.width - MINI.breite) / 2),
+      y: workArea.y + MINI.abstand,
+      frame: false,
+      transparent: true,
+      resizable: false,
+      movable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      skipTaskbar: true,
+      focusable: false, // nimmt Photoshop & Co. nicht den Fokus weg
+      hasShadow: false,
+      alwaysOnTop: true,
+      show: false,
+      title: 'Luzzy',
+      webPreferences: { preload: path.join(__dirname, '..', 'mini-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+    })
+    mini.setAlwaysOnTop(true, 'screen-saver')
+    mini.loadFile(path.join(__dirname, '..', 'renderer', 'mini.html'))
+    mini.once('ready-to-show', () => mini?.showInactive())
+    const dieses = mini
+    mini.on('closed', () => {
+      if (mini === dieses) miniSetzen(false)
+    })
+  }
+  senden('mini:geaendert', true)
+  if (!fenster.isMinimized()) fenster.minimize()
+}
+ipcMain.handle('mini:setzen', (_e, an) => miniSetzen(Boolean(an)))
+ipcMain.on('mini:zustand', (_e, daten) => {
+  if (mini && !mini.isDestroyed()) mini.webContents.send('mini:zustand', daten)
+})
+ipcMain.on('mini:sprechen', () => senden('mikrofon:umschalten'))
+ipcMain.on('mini:gross', () => miniSetzen(false))
+
 // ── Start ──
 app.whenReady().then(() => {
   // Mikrofon nur für Jarves-OS selbst erlauben
@@ -397,6 +462,11 @@ app.whenReady().then(() => {
     senden('zwischenablage:neu', clipboard.readText().slice(0, 15000))
   })
   if (!ok) console.warn('Strg+Umschalt+L ist schon von einem anderen Programm belegt.')
+  // Strg+Umschalt+M oder AltGr+L: Mini-Modus an/aus, aus jedem Programm. Windows meldet AltGr als Strg+Alt,
+  // deshalb „Control+Alt+L“ (die Schreibweise „AltGr“ ist bei globalen Tastenkürzeln unter Windows nicht verlässlich).
+  const miniUmschalten = () => miniSetzen(!mini)
+  if (!globalShortcut.register('Control+Shift+M', miniUmschalten)) console.warn('Strg+Umschalt+M ist schon von einem anderen Programm belegt.')
+  if (!globalShortcut.register('Control+Alt+L', miniUmschalten)) console.warn('AltGr+L ist schon von einem anderen Programm belegt.')
   hermes.neuVerbinden()
   bildschirmfotoFuerTest()
   skriptFuerTest()
