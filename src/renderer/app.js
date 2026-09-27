@@ -526,11 +526,88 @@ window.addEventListener('keydown', (e) => {
 })
 
 // ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
+// An Luzzy schicken wie getippt (Jarves-OS-Befehle, Routinen und Plugins greifen wie gewohnt)
+function paletteSenden(text) {
+  ansichtZeigen('zentrale')
+  const feld = document.querySelector('.befehl .eingabe-text')
+  feld.value = text
+  abschicken(feld)
+}
+// Beispiel in die Eingabe legen, „…“ markiert zum Überschreiben
+function paletteEinfuegen(text) {
+  ansichtZeigen('zentrale')
+  const feld = document.querySelector('.befehl .eingabe-text')
+  feld.value = text
+  feldHoehe(feld)
+  feld.focus()
+  const i = text.indexOf('…')
+  if (i >= 0) feld.setSelectionRange(i, i + 1)
+  else feld.setSelectionRange(text.length, text.length)
+}
+// Sprachbefehle (gehen gesprochen nach „Hey Luzzy“ oder getippt). Mit „…“: Beispiel zum Anpassen in die Eingabe.
+const SPRACHBEFEHLE = [
+  ['Hey Luzzy', 'Luzzy hört zu (oder Strg+Leertaste)', 'aktivierungswort zuhören', () => sprechenStarten()],
+  ['Wiederhol das', 'letzte Antwort nochmal', 'wie bitte nochmal vorlesen'],
+  ['Was hast du gerade gesagt?', '', 'wiederholen'],
+  ['Timer 15 Minuten für …', 'z. B. die Nudeln', 'eieruhr countdown kochen'],
+  ['Weck mich um … Uhr', '', 'wecker aufwachen morgen'],
+  ['Erinner mich um … Uhr an …', 'oder „in 20 Minuten“', 'erinnerung termin'],
+  ['Wie lange noch?', 'Timer abfragen', 'timer rest'],
+  ['Timer um 5 Minuten verlängern', '', 'länger mehr zeit'],
+  ['Alle Timer stoppen', '', 'timer löschen aus'],
+  ['Nicht stören für … Minuten', 'oder „bis 15 Uhr keine Meldungen“', 'ruhe still'],
+  ['Meldungen wieder an', 'beendet Nicht stören', 'ruhe vorbei'],
+  ['Merk dir: …', 'Gedankenspeicher', 'notiz idee notieren'],
+  ['Was wollte ich mir merken?', '', 'gedanken notizen'],
+  ['Neue Aufgabe: … bis Freitag', 'oder „morgen um 14 Uhr“', 'todo to-do liste'],
+  ['Erledigt: …', 'Aufgabe abhaken', 'fertig abhaken aufgabe'],
+  ['Was steht auf meiner Liste?', 'offene Aufgaben', 'aufgaben todo'],
+  ['Was muss ich heute noch machen?', 'Luzzy mit Aufgaben und Terminen', 'aufgaben termine heute'],
+  ['Wochen-Review', 'Woche zusammenfassen, Ziele eintragen', 'wochenrückblick ziele'],
+  ['Fokus', '25 Minuten, Luzzy stört nicht', 'pomodoro konzentrieren'],
+  ['Fokus … Minuten', '', 'pomodoro'],
+  ['Fokus beenden', 'auch „Fokus pausieren“, „Weiter mit Fokus“', 'pomodoro stop'],
+  ['Wie wird das Wetter morgen?', 'Luzzy bekommt die Wetterdaten', 'wetter regen'],
+  ['Was steht an?', 'Termine und Jobs', 'termine kalender'],
+  ['Wie viele Bestellungen haben wir insgesamt?', 'Meilensteine', 'meilenstein shop'],
+  ['Mach einen Selbsttest', 'prüft alles', 'systemcheck check']
+]
+// Tastenkürzel (zum Nachschlagen, Anklicken führt aus, wo es geht)
+const TASTENKUERZEL = [
+  ['Befehlspalette', 'Strg+P', () => {}],
+  ['Sprechen (auch im Hintergrund)', 'Strg+Leertaste', () => sprechenStarten()],
+  ['Zwischenablage an Luzzy (aus jedem Programm)', 'Strg+Umschalt+L', () => ablageOeffnen()],
+  ['Gespräch öffnen/schließen', 'Strg+K', () => panelSetzen(panelGeschlossen())],
+  ['Linke Leiste ein/aus (oder Klick aufs Logo)', 'Strg+B', () => leisteUmschalten('links')],
+  ['Rechte Spalte ein/aus', 'Strg+J', () => leisteUmschalten('rechts')],
+  ['Fenster: linke Bildschirmhälfte', 'Strg+Alt+←', () => api.fenster.andocken('links')],
+  ['Fenster: rechte Bildschirmhälfte', 'Strg+Alt+→', () => api.fenster.andocken('rechts')],
+  ['Fenster: ganzer Bildschirm', 'Strg+Alt+↑', () => api.fenster.andocken('voll')],
+  ['Nachricht abschicken', 'Enter', () => {}],
+  ['Neue Zeile in der Eingabe', 'Umschalt+Enter', () => {}],
+  ['Fenster, Palette, Dialog schließen', 'Esc', () => {}],
+  ['Zwischenablage-Fenster: Zusammenfassen, Verbessern, Übersetzen, Beantworten', '1 – 4', () => {}],
+  ['Entwickler-Werkzeuge (Fehlersuche)', 'F12', () => {}]
+]
+let paletteRoutinen = [] // aus dem Routinen-Plugin, beim Öffnen der Palette frisch geladen
 function paletteBefehle() {
   const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
-  for (const knopf of document.querySelectorAll('#schnellbefehle [data-plugin-knopf]')) {
-    liste.push({ name: knopf.textContent.trim(), gruppe: 'Schnellbefehl', stichwoerter: `routine ${knopf.title}`, ausfuehren: () => knopf.click() })
+  // Routinen mit ihren Auslösewörtern (auch die ohne Knopf); ohne Routinen-Daten: die Schnellbefehl-Knöpfe
+  if (paletteRoutinen.length) {
+    for (const r of paletteRoutinen) {
+      const wort = (r.ausloeser || [])[0]
+      if (!wort) continue
+      liste.push({ name: r.name, gruppe: 'Routine', hinweis: `sag „${r.ausloeser.join('“ oder „')}“`, stichwoerter: `routine ${r.ausloeser.join(' ')}`, sagen: true, ausfuehren: () => paletteSenden(wort) })
+    }
+  } else {
+    for (const knopf of document.querySelectorAll('#schnellbefehle [data-plugin-knopf]')) {
+      liste.push({ name: knopf.textContent.trim(), gruppe: 'Schnellbefehl', stichwoerter: `routine ${knopf.title}`, ausfuehren: () => knopf.click() })
+    }
   }
+  for (const [satz, hinweis, stichwoerter, eigen] of SPRACHBEFEHLE) {
+    liste.push({ name: `„${satz}“`, gruppe: 'Sprachbefehl', hinweis, stichwoerter, sagen: true, ausfuehren: eigen || (() => (satz.includes('…') ? paletteEinfuegen(satz) : paletteSenden(satz))) })
+  }
+  for (const [name, taste, aktion] of TASTENKUERZEL) liste.push({ name, gruppe: 'Tastenkürzel', taste, stichwoerter: 'taste tastatur kürzel shortcut', ausfuehren: aktion })
   const ruhe = einstellungen?.nichtStoerenBis > Date.now()
   const bescheid = (text) => {
     untertitelZeigen(text, { fertig: true })
@@ -587,6 +664,10 @@ ablageEinrichten({
 
 paletteEinrichten({
   befehle: paletteBefehle,
+  vorbereiten: async () => {
+    const d = await api.plugins.datenLaden('routinen').catch(() => null)
+    paletteRoutinen = Array.isArray(d?.routinen) ? d.routinen : []
+  },
   luzzy: (text) => {
     ansichtZeigen('zentrale')
     const feld = document.querySelector('.befehl .eingabe-text')

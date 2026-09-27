@@ -911,3 +911,23 @@ body.rechts-zu .gespraech-panel .panel-kopf { padding-right: 186px; }
 .mitte-kopf.k3 [data-kurz]::after { content: none; }
 .mitte-kopf.k3 [data-kurz] { padding: 0; width: 22px; height: 22px; justify-content: center; }
 .mitte-kopf.k4 .uhr-datum, .mitte-kopf.k4 .uhr-datum-kurz { display: none; }
+
+/* Alle Eingabefelder in dunkler Darstellung: Zahlen-Pfeile, Uhrzeit- und Datumsauswahl nicht mehr weiß */
+:root { color-scheme: dark; }
+input[type='number']::-webkit-inner-spin-button { opacity: 0.55; cursor: pointer; }
+input[type='number']:hover::-webkit-inner-spin-button, input[type='number']:focus::-webkit-inner-spin-button { opacity: 0.9; }
+input[type='time']::-webkit-calendar-picker-indicator, input[type='date']::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+
+/* Befehlspalette: Gruppen-Überschriften und Tasten */
+.palette { width: 620px; }
+.palette-liste { max-height: 60vh; }
+.palette-liste li.palette-gruppe { cursor: default; padding: 12px 10px 4px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gedimmt); background: none; border: 0; }
+.palette-liste li.palette-gruppe:first-child { padding-top: 2px; }
+.palette-liste li kbd { font-family: var(--mono); font-size: 10.5px; color: var(--text); background: var(--flaeche-hoch); border: 1px solid var(--rahmen); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; flex: none; white-space: nowrap; }
+.palette-liste li .palette-sag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); flex: none; }
+.palette-liste li .palette-name { min-width: 0; }
+.palette-liste li .palette-name i { font-style: normal; color: var(--text-leise); font-size: 12px; margin-left: 6px; }
+.palette-filter { display: flex; gap: 6px; margin-top: 10px; }
+.palette-filter button { border: 1px solid var(--rahmen); background: var(--flaeche); color: var(--text-leise); border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: color 150ms, border-color 150ms, background-color 150ms; }
+.palette-filter button:hover { color: var(--text); border-color: var(--gold-dunkel); }
+.palette-filter button.an { color: var(--auf-gold); background: var(--gold); border-color: var(--gold); }
