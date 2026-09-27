@@ -17,6 +17,7 @@ const { Hermes, PROFIL } = require('./hermes')
 const stimme = require('./stimme')
 const einstellungen = require('./einstellungen')
 const dateisuche = require('./dateisuche')
+const pc = require('./pc')
 
 const hermes = new Hermes()
 // Die Zentrale-Unterhaltung über ihre feste ID wiederfinden (Titel kann Hermes ändern)
@@ -264,6 +265,9 @@ ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher
 ipcMain.handle('datei:suchen', (_e, anfrage) => dateisuche.suchen(String(anfrage || '').slice(0, 200)))
 ipcMain.handle('datei:inhalt', (_e, id) => dateisuche.inhalt(id))
 ipcMain.handle('datei:stand', () => dateisuche.stand())
+// PC-Steuerung per Stimme: nur einfache, geprüfte Aktionen (Programm aus dem Startmenü, Webseite, Taste, Ordner, Sperren)
+ipcMain.handle('pc:aktion', (_e, aktion) => pc.aktion(aktion && typeof aktion === 'object' ? aktion : {}))
+ipcMain.handle('pc:programm', async (_e, name) => (await pc.programmFinden(String(name || '').slice(0, 80)))?.name || null)
 // Bearbeiten: speichern nur auf Felix' Klick (die Oberfläche ruft das nur vom Speichern-Knopf aus), immer mit Sicherung
 ipcMain.handle('datei:speichern', (_e, id, text, geaendert) => dateisuche.speichern(id, text, Number(geaendert) || 0))
 ipcMain.handle('datei:rueckgaengig', (_e, id) => dateisuche.rueckgaengig(id))
@@ -524,6 +528,7 @@ app.whenReady().then(() => {
     }
   })
   dateisuche.vorbereiten()
+  pc.vorbereiten()
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))
