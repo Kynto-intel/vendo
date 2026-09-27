@@ -164,11 +164,12 @@ ipcMain.handle('hermes:verlaufHolen', (_e, kanal = 'zentrale') => letzterVerlauf
 
 // ── Oberfläche → Hauptprozess ──
 const KANAELE = new Set(['zentrale', 'crew'])
-const kanalPruefen = (k) => (KANAELE.has(k) ? k : 'zentrale')
+const kanalPruefen = (k) => (KANAELE.has(k) || /^(normal|botchat):[a-z0-9][a-z0-9_-]{0,63}$/.test(String(k)) ? k : 'zentrale')
 ipcMain.handle('hermes:status', () => ({ zustand: hermes.zustand, text: hermes.statusText, profil: PROFIL }))
 ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(kanal), String(text || '').slice(0, 20000)))
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
+ipcMain.handle('hermes:botOeffnen', (_e, kanal) => hermes.botOeffnen(String(kanal || '')))
 // Anhänge: nur echte Dateien, die Felix ausgesucht oder ins Fenster gezogen hat
 ipcMain.handle('hermes:anhang', (_e, pfad) => {
   const p = String(pfad || '')

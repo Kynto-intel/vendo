@@ -4,7 +4,7 @@ import { reaktorErstellen, welleErstellen } from './reaktor.js'
 import { markdownZuHtml } from './markdown.js'
 import { vorleserErstellen, satzStueck } from './vorlesen.js'
 import { mikrofonErstellen } from './mikrofon.js'
-import { unterhaltungErstellen } from './unterhaltung.js'
+
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { freigabenEinrichten, freigabeAusText, freigabeOffen, freigabeZurueckgezogen, freigabenLeeren, jaKnoepfeAnhaengen, jaKnoepfeEntfernen } from './freigaben.js'
@@ -23,6 +23,7 @@ import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
+import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
@@ -899,6 +900,13 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feldHoehe(feld)
     return
   }
+  // „Kira, …“: direkt an den Bot (Offene Entscheidung 3)
+  const anrede = botAnrede(text)
+  if (anrede) {
+    feld.value = ''
+    feldHoehe(feld)
+    return botAnsprechen(anrede, { gesprochen })
+  }
   // Plugin-Befehle, die das Plugin selbst beantwortet (z. B. „Merk dir: …“)
   const pluginAntwort = await pluginBefehl(text, { gesprochen })
   if (pluginAntwort) {
@@ -1122,7 +1130,7 @@ $('griff').addEventListener('pointerdown', (e) => {
 // ── Hermes-Ereignisse ──
 api.hermes.beiEreignis((ev) => {
   if (ev.type === 'request.cancel') return freigabeZurueckgezogen(ev.payload?.id) // Hermes hat eine Rückfrage zurückgezogen
-  if (ev.kanal === 'crew') return crewGespraech.ereignis(ev)
+  if (ev.kanal && ev.kanal !== 'zentrale') return crewEreignis(ev) // Crew-Tab: Luzzys Bot Chat und die Bot-Gespräche
   const p = ev.payload || {}
   switch (ev.type) {
     case 'message.start':
@@ -1226,7 +1234,7 @@ api.hermes.beiEreignis((ev) => {
   }
 })
 
-api.hermes.beiVerlauf((v) => (v?.kanal === 'crew' ? crewGespraech.verlauf(v.verlauf) : verlaufZeigen(v?.verlauf)))
+api.hermes.beiVerlauf((v) => (v?.kanal && v.kanal !== 'zentrale' ? crewVerlauf(v) : verlaufZeigen(v?.verlauf)))
 
 // Derselbe Verlauf kommt u. U. zweimal (Ereignis + Abfrage beim Start). Nur neu zeichnen, wenn
 // er sich geändert hat und gerade kein Gespräch läuft, sonst würde eine frische Antwort überschrieben.
@@ -1355,7 +1363,7 @@ function ansichtZeigen(id) {
   }
   if (id === 'crew' && !crewGeoeffnet && verbunden) {
     crewGeoeffnet = true
-    api.hermes.crewOeffnen().then(() => {
+    crewBotsLaden().then(() => crewWechseln()).then(() => {
       // nur Testmodus: ?crewtest=<Nachricht> schickt sie einmal in den Crew-Chat
       const test = new URLSearchParams(location.search).get('crewtest')
       if (!test) return
@@ -1478,22 +1486,51 @@ for (const [quelle, [id, name]] of Object.entries(QUELLEN)) {
 // Crew-Übersicht rechts aktuell halten, auch wenn der Crew-Bereich zu ist
 setInterval(() => verbunden && aktuelleAnsicht !== 'crew' && crewLaden(), 30000)
 
-// Gespräch im Crew-Bereich: Luzzys Bot Chat
-const crewGespraech = unterhaltungErstellen({
-  kanal: 'crew',
-  liste: $('crew-gespraech'),
-  form: $('crew-form'),
-  leerText: 'Noch keine Crew-Aufträge. Sag Luzzy, was die Bots erledigen sollen.',
-  beiAktivitaet: (text, laeuft) => {
+// Gespräche im Crew-Bereich: Normaler Chat mit den Bots und Bot Mode (siehe crewchat.js)
+crewChatEinrichten({
+  api,
+  crewSichtbar: () => aktuelleAnsicht === 'crew',
+  aktivitaet: (text, laeuft) => {
     if (laeuft) return aktivitaetMelden(text, true)
     laufendeBeenden()
     aktivitaetMelden(text)
-    // Crew fertig, während Felix woanders ist: melden
-    if (text === 'Crew-Antwort da' && aktuelleAnsicht !== 'crew') {
-      meldungNeu({ art: 'crew', titel: 'Die Crew ist fertig', text: 'Felix, die Crew hat ein Ergebnis für dich. Schau mal in den Crew-Bereich.', anzeige: 'Antwort im Crew-Bereich', zeit: Date.now() })
-    }
+  },
+  // Ein Bot hat geantwortet, während Felix woanders ist: melden
+  fertigWoanders: (bot, text) => {
+    if (!text) return
+    const luzzyCrew = bot.profil === 'donnerwolf'
+    meldungNeu({
+      art: 'crew',
+      titel: luzzyCrew ? 'Die Crew ist fertig' : `${bot.name} hat geantwortet`,
+      text: luzzyCrew ? 'Felix, die Crew hat ein Ergebnis für dich. Schau mal in den Crew-Bereich.' : `Felix, ${bot.name} hat dir geantwortet. Steht im Crew-Bereich.`,
+      anzeige: 'Antwort im Crew-Bereich',
+      zeit: Date.now()
+    })
   }
 })
+
+// „Kira, …“ in der Zentrale: direkt an den Bot (normaler Chat), Antwort kommt hier als Untertitel und im Crew-Tab
+async function botAnsprechen({ bot, text }, { gesprochen = false } = {}) {
+  if (!verbunden) return systemNachricht(`${bot.name} ist nur erreichbar, wenn Hermes verbunden ist.`)
+  untertitelZeigen(`An ${bot.name} geschickt. Die Antwort kommt gleich, sie steht auch im Crew-Tab.`, { fertig: true })
+  aktivitaetMelden(`${bot.name} arbeitet`, true)
+  try {
+    const ok = await anBotSenden(bot, text, (antwort) => {
+      laufendeBeenden()
+      if (!antwort) return untertitelZeigen(`${bot.name} hat nicht geantwortet. Schau im Crew-Tab nach.`, { fertig: true })
+      untertitelZeigen(`${bot.name}: ${antwort}`, { fertig: true })
+      letzteAntwortMerken(antwort)
+      if (gesprochen || einstellungen?.vorlesen) {
+        letzteEingabeGesprochen = gesprochen
+        vorleser.sprechen(antwort, stimmOptionen()).then(() => weiterZuhoeren())
+      }
+    })
+    if (!ok) untertitelZeigen(`${bot.name} arbeitet noch an der letzten Aufgabe. Versuch es gleich nochmal.`, { fertig: true })
+  } catch (e) {
+    laufendeBeenden()
+    systemNachricht(`${bot.name}: ${e.message}`)
+  }
+}
 
 // ── Einstellungen ──
 const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, hoehe: einstellungen.hoehe })
@@ -1790,6 +1827,7 @@ async function start() {
   animationenAnwenden()
   zustandZeigen()
   const s = await api.hermes.status()
+  if (s.zustand === 'bereit') crewBotsLaden().catch(() => {}) // Namen der Bots für „Kira, …“
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)

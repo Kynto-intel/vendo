@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('jarves', {
     senden: (kanal, text) => ipcRenderer.invoke('hermes:senden', kanal, text),
     abbrechen: (kanal) => ipcRenderer.invoke('hermes:abbrechen', kanal),
     crewOeffnen: () => ipcRenderer.invoke('hermes:crewOeffnen'),
+    botOeffnen: (kanal) => ipcRenderer.invoke('hermes:botOeffnen', kanal),
     lesen: (pfad) => ipcRenderer.invoke('hermes:lesen', pfad),
     aktion: (art, daten) => ipcRenderer.invoke('hermes:aktion', art, daten),
     beiStatus: abonnieren('hermes:status'),

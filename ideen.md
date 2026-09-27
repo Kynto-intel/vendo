@@ -14,14 +14,18 @@ Luzzys Regeln in der `SOUL.md` bleiben (nichts veröffentlichen, nichts im Shop 
   (Vorher hat Hermes solche Befehle in Jarves-OS einfach abgebrochen, weil Jarves-OS keine Rückfragen annahm.)
 - **Luzzys Ja-Fragen:** Endet ihre Antwort mit einer Frage wie „Soll ich das so anlegen?“, stehen darunter „Ja, mach“ und „Nein“.
 
-### 3. Bots direkt ansprechen
-Zusätzlich zu Luzzy als Chefin einzelne Bots direkt anschreiben, z. B. im Crew-Tab (Recherche-, Schreib-, Code-Bot).
+### 3. ✅ Bots direkt ansprechen (gebaut 28.09.2026)
+Crew-Tab mit zwei Reitern, darunter die Bots zur Auswahl (neue Hermes-Profile erscheinen von selbst):
+- **💬 Normaler Chat:** direkt mit Kira, Lira, Milla, je ein eigenes Gespräch im Profil des Bots, **ohne** Bot Mode.
+- **🤖 Bot Mode:** der „Bot Chat“ eines Bots, dort arbeiten die Bots zusammen. Bei Luzzy: Aufträge, die sie an die Crew verteilt.
+- Klick auf eine Bot-Karte öffnet den Chat mit ihm. In der Zentrale geht „Kira, …“ direkt an Kira (Antwort als Untertitel, auf Wunsch vorgelesen).
+- Hintergrund: Den Bot Chat nur für die Zusammenarbeit der Bots nutzen, sonst wird er lang, teuer und unübersichtlich.
 
 ### 4. ✅ Rollen der Bots (erledigt von Felix, 27.09.2026)
 Felix hat die Crew neu aufgestellt, als Design-Kette: **Kira** (Trend-Scout) → **Lira** (Design-Konzept) → **Milla** (Listing-Texte für Shopify).
 Der Crew-Tab erkennt die Profile automatisch.
 
-### 5. Morgenbericht automatisch
+### 5. ✅ Morgenbericht automatisch
 **Erledigt über Idee 8:** Routine „Morgenbericht“ hat einen Zeitplan (Uhrzeit + Wochentage), einfach im Tab „Routinen“ einschalten. Läuft, solange Jarves-OS offen ist.
 
 Ein Hermes-Job erstellt jeden Morgen den Bericht (im Vault unter `04_Analytics\Morgenberichte`).

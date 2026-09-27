@@ -43,6 +43,8 @@ class Hermes extends EventEmitter {
     this.sessionId = null // Laufzeit-ID der Zentrale (normaler Chat "Jarves-OS")
     this.gespeicherteId = null // dauerhafte ID der Zentrale
     this.crew = { sessionId: null, gespeicherteId: null, gewuenscht: false } // Luzzys Bot Chat
+    // Direkte Gespräche mit den Bots: Kanal „normal:<profil>“ (normales Gespräch) oder „botchat:<profil>“ (Bot Mode)
+    this.bots = new Map() // kanal → { profil, modus, sessionId, letzterVerlauf }
     this.zustand = 'getrennt'
     this.beendet = false
   }
@@ -168,16 +170,55 @@ class Hermes extends EventEmitter {
     if (daten.method === 'event' && daten.params) {
       const ereignis = daten.params
       // Nur Ereignisse aus unseren Unterhaltungen weitergeben, markiert mit dem Kanal
-      const kanal = !ereignis.session_id || ereignis.session_id === this.sessionId ? 'zentrale'
-        : ereignis.session_id === this.crew.sessionId ? 'crew' : null
+      const kanal = !ereignis.session_id ? 'zentrale' : this.kanalVon(ereignis.session_id)
       if (kanal) this.emit('ereignis', { ...ereignis, kanal })
     }
+  }
+
+  // Zu welchem Kanal gehört eine Hermes-Unterhaltung? (zentrale, crew, normal:<profil>, botchat:<profil>)
+  kanalVon(sessionId) {
+    if (sessionId === this.sessionId) return 'zentrale'
+    if (sessionId === this.crew.sessionId) return 'crew'
+    for (const [kanal, b] of this.bots) if (b.sessionId === sessionId) return kanal
+    return null
+  }
+
+  sessionIdVon(kanal) {
+    if (kanal === 'zentrale') return this.sessionId
+    if (kanal === 'crew') return this.crew.sessionId
+    return this.bots.get(kanal)?.sessionId || null
+  }
+
+  // Gespräch mit einem Bot öffnen (oder das gemerkte fortsetzen). normal = eigenes Gespräch „Jarves-OS“ im Profil
+  // des Bots, ohne Bot Mode. botchat = sein „Bot Chat“ (dort arbeiten die Bots zusammen, Bot Mode).
+  async botOeffnen(kanal) {
+    const t = /^(normal|botchat):([a-z0-9][a-z0-9_-]{0,63})$/.exec(String(kanal))
+    if (!t) throw new Error('Unbekannter Bot-Kanal.')
+    const [, modus, profil] = t
+    if (modus === 'botchat' && profil === PROFIL) return this.crewOeffnen() // Luzzys Bot Chat = Kanal „crew“
+    if (modus === 'normal' && profil === PROFIL) throw new Error('Mit Luzzy sprichst du in der Zentrale.')
+    const b = this.bots.get(kanal) || { profil, modus, sessionId: null, letzterVerlauf: [] }
+    this.bots.set(kanal, b)
+    if (b.sessionId) return this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf || [] })
+    const titel = modus === 'botchat' ? BOT_CHAT : ZENTRALE_TITEL
+    const liste = await this.rpc('session.list', { title: titel, profile: profil })
+    const vorhanden = liste?.sessions?.[0]
+    let antwort
+    if (vorhanden) {
+      antwort = await this.rpc('session.resume', { session_id: vorhanden.resolved_id || vorhanden.id, profile: profil })
+    } else {
+      antwort = await this.rpc('session.create', { profile: profil, cwd: ARBEITSORDNER })
+      await this.rpc('session.title', { session_id: antwort.session_id, title: titel }).catch(() => {})
+    }
+    b.sessionId = antwort.session_id
+    b.letzterVerlauf = verlaufAus(antwort.messages)
+    this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf })
   }
 
   // Rückfrage von Hermes. Freigaben zeigt Jarves-OS an; alles andere (Passwörter, Auswahlfragen …)
   // lehnt es höflich ab, dann macht Hermes weiter wie ohne Jarves-OS.
   serverAnfrage({ id, method, params = {} }) {
-    const kanal = params.session_id === this.sessionId ? 'zentrale' : params.session_id && params.session_id === this.crew.sessionId ? 'crew' : null
+    const kanal = params.session_id ? this.kanalVon(params.session_id) : null
     if (method === 'approval' && kanal) {
       this.freigaben.set(id, { sessionId: params.session_id, requestId: params.request_id })
       this.rpc('approval.received', { session_id: params.session_id, request_id: params.request_id }).catch(() => {})
@@ -217,6 +258,7 @@ class Hermes extends EventEmitter {
     this.ws = null
     this.sessionId = null
     this.crew.sessionId = null
+    for (const b of this.bots.values()) b.sessionId = null
     if (this.beendet) return
     this.status('fehler', 'Verbindung zu Hermes verloren. Verbinde neu …')
     setTimeout(() => this.neuVerbinden(), 3000)
@@ -348,9 +390,13 @@ class Hermes extends EventEmitter {
   async senden(kanal, text) {
     for (let versuch = 0; versuch < 2; versuch++) {
       try {
-        if (kanal === 'crew') {
+        if (kanal === 'crew' || kanal === `botchat:${PROFIL}`) {
           if (!this.crew.sessionId) await this.crewOeffnen()
           return await this.rpc('prompt.submit', { session_id: this.crew.sessionId, text })
+        }
+        if (kanal !== 'zentrale') {
+          if (!this.bots.get(kanal)?.sessionId) await this.botOeffnen(kanal)
+          return await this.rpc('prompt.submit', { session_id: this.bots.get(kanal).sessionId, text })
         }
         if (!this.sessionId) await this.luzzyOeffnen()
         return await this.rpc('prompt.submit', { session_id: this.sessionId, text })
@@ -358,6 +404,7 @@ class Hermes extends EventEmitter {
         if (versuch === 1 || this.zustand !== 'bereit') throw e
         // Session weg: einmal neu öffnen
         if (kanal === 'crew') this.crew.sessionId = null
+        else if (this.bots.has(kanal)) this.bots.get(kanal).sessionId = null
         else this.sessionId = null
       }
     }
@@ -433,7 +480,7 @@ class Hermes extends EventEmitter {
   }
 
   async abbrechen(kanal = 'zentrale') {
-    const id = kanal === 'crew' ? this.crew.sessionId : this.sessionId
+    const id = this.sessionIdVon(kanal)
     if (id) await this.rpc('session.interrupt', { session_id: id }).catch(() => {})
   }
 

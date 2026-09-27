@@ -1,11 +1,12 @@
-// Wiederverwendbares Gespräch (Liste + Eingabe) für einen Hermes-Kanal, z. B. die Crew.
+// Wiederverwendbares Gespräch (Liste + Eingabe) für einen Hermes-Kanal, z. B. die Crew oder ein Bot.
 // Zeigt Verlauf, streamt Antworten live mit und schickt über window.jarves.hermes.senden(kanal, text).
+// Teilen sich mehrere Gespräche eine Eingabe (Crew-Tab), reagiert nur das aktive (istAktiv).
 
 import { markdownZuHtml } from './markdown.js'
 
 const maskieren = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
-export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FELIX', luzzy: 'LUZZY' }, leerText, beiAktivitaet = () => {} }) {
+export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FELIX', luzzy: 'LUZZY' }, wer = 'Luzzy', leerText, beiAktivitaet = () => {}, beiFertig = () => {}, istAktiv = () => true }) {
   const api = window.jarves.hermes
   let beschaeftigt = false
   let antwort = null // { textEl, roh }
@@ -40,6 +41,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
   }
 
   function knopfZeigen() {
+    if (!istAktiv()) return
     knopf.textContent = beschaeftigt ? 'Stopp' : 'Senden'
     knopf.classList.toggle('stopp', beschaeftigt)
     knopf.type = beschaeftigt ? 'button' : 'submit'
@@ -53,10 +55,15 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
   }
 
   async function abschicken() {
+    if (!istAktiv()) return
     const text = feld.value.trim()
     if (!text || beschaeftigt) return
     feld.value = ''
     feld.style.height = 'auto'
+    await senden(text)
+  }
+
+  async function senden(text) {
     anzeigen('felix', text)
     beschaeftigt = true
     knopfZeigen()
@@ -74,13 +81,13 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
     abschicken()
   })
   knopf.addEventListener('click', (e) => {
-    if (beschaeftigt) {
+    if (beschaeftigt && istAktiv()) {
       e.preventDefault()
       api.abbrechen(kanal)
     }
   })
   feld.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && istAktiv()) {
       e.preventDefault()
       abschicken()
     }
@@ -93,6 +100,11 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
   leer()
 
   return {
+    // Dieses Gespräch ist jetzt sichtbar: Knopf (Senden/Stopp) passend setzen
+    aktivieren: () => knopfZeigen(),
+    beschaeftigt: () => beschaeftigt,
+    // Von außen schicken (z. B. „Kira, …“ in der Zentrale)
+    senden: (text) => (beschaeftigt ? Promise.resolve(false) : senden(text).then(() => true)),
     verlauf(eintraege) {
       if (beschaeftigt || antwort) return
       liste.replaceChildren()
@@ -105,7 +117,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
         case 'message.start':
           beschaeftigt = true
           antwort ??= { textEl: anzeigen('luzzy', '', { laeuft: true }), roh: '' }
-          beiAktivitaet('Luzzy arbeitet an einem Crew-Auftrag', true)
+          beiAktivitaet(`${wer} arbeitet`, true)
           break
         case 'message.delta':
           if (typeof p.text !== 'string') break
@@ -115,7 +127,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
           break
         case 'tool.start':
           werkzeug = p.name || 'Werkzeug'
-          beiAktivitaet(`Crew: ${werkzeug}`, true)
+          beiAktivitaet(`${wer}: ${werkzeug}`, true)
           antwortZeichnen()
           break
         case 'tool.complete':
@@ -130,7 +142,8 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
           antwort = null
           werkzeug = ''
           beschaeftigt = false
-          beiAktivitaet('Crew-Antwort da')
+          beiAktivitaet(`${wer} hat geantwortet`)
+          beiFertig(p.status === 'error' || p.error ? '' : text)
           break
         }
         case 'error':

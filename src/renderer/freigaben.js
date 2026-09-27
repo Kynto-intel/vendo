@@ -43,7 +43,8 @@ export function freigabenEinrichten(helfer) {
 function neu(f) {
   offen.push(f)
   zeichnen()
-  const wer = f.kanal === 'crew' ? 'Die Crew möchte' : 'Ich möchte'
+  const botName = f.kanal.includes(':') ? f.kanal.split(':')[1].split('-')[0].replace(/^./, (c) => c.toUpperCase()) : ''
+  const wer = f.kanal === 'crew' ? 'Die Crew möchte' : botName ? `${botName} möchte` : 'Ich möchte'
   const was = f.beschreibung ? kuerzen(f.beschreibung, 160) : 'einen Befehl auf deinem PC ausführen'
   h.melden({ art: 'hinweis', titel: 'Luzzy braucht deine Freigabe', anzeige: was, zeit: Date.now() })
   h.vorlesen(`Felix, ich brauche deine Freigabe. ${wer} ${f.beschreibung ? `Folgendes tun: ${was}.` : `${was}.`} Soll ich?`).then(() => {
@@ -62,7 +63,7 @@ function zeichnen() {
   el.innerHTML = offen
     .map((f) => `
       <div class="freigabe-karte hud" data-freigabe="${maskieren(f.id)}">
-        <div class="freigabe-kopf">⚠ ${f.kanal === 'crew' ? 'Die Crew' : 'Luzzy'} braucht deine Freigabe</div>
+        <div class="freigabe-kopf">⚠ ${f.kanal === 'crew' ? 'Die Crew' : f.kanal.includes(':') ? maskieren(f.kanal.split(':')[1].split('-')[0].replace(/^./, (c) => c.toUpperCase())) : 'Luzzy'} braucht deine Freigabe</div>
         ${f.beschreibung ? `<div class="freigabe-text">${maskieren(kuerzen(f.beschreibung, 400))}</div>` : ''}
         ${f.befehl ? `<pre class="freigabe-befehl">${maskieren(kuerzen(f.befehl, 600))}</pre>` : ''}
         <div class="freigabe-knoepfe">

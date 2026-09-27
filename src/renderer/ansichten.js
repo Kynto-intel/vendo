@@ -5,12 +5,12 @@ const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp
 const $ = (id) => document.getElementById(id)
 
 // Crew: alle Hermes-Profile außer „default“, Luzzy (donnerwolf) zuerst. Neue Profile erscheinen von selbst.
-const LUZZY = 'donnerwolf'
-const crewProfile = (profile) =>
+export const LUZZY = 'donnerwolf'
+export const crewProfile = (profile) =>
   profile.filter((p) => p?.name && p.name !== 'default').sort((a, b) => (b.name === LUZZY) - (a.name === LUZZY) || a.name.localeCompare(b.name))
 const gross = (w) => w.charAt(0).toUpperCase() + w.slice(1)
 // „kira-trend-scout-bot“ → Name „Kira“, Rolle „Trend-Scout“; „recherche-bot“ → „Recherche-Bot“
-function botName(p) {
+export function botName(p) {
   if (p.name === LUZZY) return { name: 'Luzzy', rolle: 'Chefin' }
   const teile = p.name.split(/[-_]+/).filter(Boolean)
   const ohneBot = teile.at(-1)?.toLowerCase() === 'bot' ? teile.slice(0, -1) : teile

@@ -1064,3 +1064,20 @@ body.datei-drueber .datei-ablage { display: grid; }
 /* ── Notbetrieb (notfall.js) ── */
 .notfall-marke { margin-left: 8px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); border: 1px solid var(--gold-dunkel); border-radius: 999px; padding: 1px 7px; }
 .msg.luzzy.notfall .msg-text { border-left: 2px dashed var(--gold-dunkel); padding-left: 10px; }
+
+/* ── Crew-Tab: Normaler Chat / Bot Mode (crewchat.js) ── */
+.crew-chat-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.crew-modus { display: inline-flex; border: 1px solid var(--rahmen); border-radius: var(--radius); overflow: hidden; }
+.crew-modus button { background: transparent; border: 0; padding: 6px 12px; font-size: 12px; color: var(--text-leise); cursor: pointer; }
+.crew-modus button + button { border-left: 1px solid var(--rahmen); }
+.crew-modus button.an { background: var(--gold-flaeche); color: var(--gold-hell); }
+.crew-bots { display: flex; flex-wrap: wrap; gap: 6px; }
+.crew-bot { display: inline-flex; align-items: baseline; gap: 6px; background: var(--flaeche); border: 1px solid var(--rahmen); border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--text); cursor: pointer; }
+.crew-bot small { font-size: 10px; color: var(--text-leise); }
+.crew-bot:hover { border-color: var(--gold-dunkel); }
+.crew-bot.an { border-color: var(--gold); background: var(--gold-flaeche); color: var(--gold-hell); }
+.crew-chat-hinweis { margin: 2px 0 4px; }
+.crew-listen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.crew-listen > .gespraech { flex: 1; min-height: 0; }
+.crew-listen > .gespraech[hidden] { display: none; }
+#crew-karten article.bot { cursor: pointer; }
