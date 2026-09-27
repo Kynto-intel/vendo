@@ -895,7 +895,13 @@ body.rechts-zu .leisten-knopf svg { transform: scaleX(-1); }
   .mitte-kopf { gap: 6px; }
   .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 3px 7px; }
 }
-@container mitte (max-width: 640px) { .uhr-datum-kurz { display: none; } }
+/* Ganz schmal: das Datum bleibt, dafür zeigen die Zustände oben nur noch ihren farbigen Punkt
+   (Maus drüber: Tooltip mit dem Zustand) */
+@container mitte (max-width: 700px) {
+  .mitte-kopf [data-kurz]::after { content: none; }
+  .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 0; width: 22px; height: 22px; justify-content: center; }
+  .mitte-kopf .verbindung .punkt { width: 7px; height: 7px; }
+}
 
 /* Links eingeklappt: nur Symbole (Namen als Tooltip). Beim Ein-/Ausklappen bewegt sich nichts:
    die Symbole bleiben genau an ihrem Platz, nur die Breite gleitet und die Texte blenden weich aus. */

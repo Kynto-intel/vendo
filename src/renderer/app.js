@@ -100,6 +100,7 @@ function mikrofonStatusZeigen(z, text) {
     verweigert: 'Mikrofon verweigert'
   }
   el.querySelector('.verbindung-text').textContent = texte[anzeige] || text || z
+  el.title = texte[anzeige] || text || z // Tooltip, wenn oben nur der Punkt zu sehen ist
   $('mikrofon').classList.toggle('fehlt', z === 'kein-mikrofon' || z === 'verweigert')
   $('mikrofon').title = z === 'kein-mikrofon' ? 'Kein Mikrofon gefunden. Einstecken, dann klicken.' : 'Sprechen (Strg+Leertaste)'
   const e = $('e-mikrofon-status')
@@ -829,6 +830,7 @@ function statusZeigen({ zustand: z, text }) {
   v.dataset.zustand = z
   v.querySelector('.verbindung-text').textContent =
     z === 'bereit' ? 'Mit Hermes verbunden' : text || (z === 'verbinde' ? 'Verbinde …' : 'Getrennt')
+  v.title = v.querySelector('.verbindung-text').textContent // Tooltip, wenn oben nur der Punkt zu sehen ist
   if (!verbunden) {
     beschaeftigt = false
     aktuelleAntwort = null
