@@ -9,27 +9,51 @@ const api = window.jarves
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
-const ARTWORT = { bild: 'bild', foto: 'bild', pdf: 'pdf', video: 'video', tabelle: 'tabelle', notiz: 'markdown' }
-const WAS = '(datei|dokument|bild|foto|pdf|video|tabelle|notiz)'
-const SUCHEN = new RegExp(`^(?:such|suche|find|finde)(?: mal| mir| bitte| doch)*(?: nach)?(?: der| die| dem| das| den| meine[mnrs]?| mein| eine[mnr]?)? ${WAS}(?: namens| mit dem namen| die| das)?\\s+(.+?)(?:\\s+und\\s+(?:öffne|oeffne|zeig|zeige|mach)\\b.*)?$`, 'i')
-const OEFFNEN = new RegExp(`^(?:öffne|oeffne|zeig|zeige|mach)(?: mir)?(?: mal| bitte| doch)*(?: die| das| den| meine[mnrs]?| mein)? ${WAS}(?: namens| mit dem namen)?\\s+(.+?)(?:\\s+auf)?$`, 'i')
-const ZAHLEN = ['erste', 'zweite', 'dritte', 'vierte', 'fünfte', 'sechste', 'siebte', 'achte']
+// Was gesucht wird: Schlüsselwort → Art (für die Anzeige) oder Endungen (Excel, Word …)
+const ART_WORT = { bild: 'bild', foto: 'bild', pdf: 'pdf', video: 'video', tabelle: 'tabelle', notiz: 'markdown' }
+const ENDUNG_WORT = { excel: ['.xlsx', '.xls', '.csv'], word: ['.docx', '.doc'], präsentation: ['.pptx', '.ppt'], powerpoint: ['.pptx', '.ppt'] }
+// Ganze Wörter; \b taugt nicht, weil JavaScript „ö“ nicht als Buchstaben zählt („öffne“ am Satzanfang)
+const wort = (liste) => new RegExp(`(?<![\\p{L}\\p{N}])(${liste})(?![\\p{L}\\p{N}])`, 'iu')
+const SCHLUESSEL = wort('datei|dokument|bild|foto|pdf|video|tabelle|notiz|excel|word|präsentation|powerpoint')
+const OEFFNEN_ABSICHT = wort('öffne|oeffne|öffnen|oeffnen|aufmachen|mach\\p{L}* (?:\\p{L}+ )*?auf|zeig|zeige|zeigen')
+const NUR_OEFFNEN = wort('öffne|oeffne|öffnen|oeffnen|aufmachen|mach\\p{L}* (?:\\p{L}+ )*?auf')
+const SUCH_ABSICHT = wort('such|suche|suchen|find|finde|finden|wo ist|wo liegt|wo sind')
+const PFAD = /[A-Za-z]:\\[^\n"<>|*?]+/
+// Füllwörter, die nicht zum Dateinamen gehören
+const WEG = new Set(('such suche suchen find finde finden öffne oeffne öffnen oeffnen zeig zeige zeigen mach mache mal auf aufmachen und sie es ' +
+  'die das den dem der mir bitte doch nach meine meinen meiner meines mein eine einen ein kannst könntest du würdest wo ist liegt sind namens ' +
+  'mit namen heißt heisst datei dokument bild foto pdf video tabelle notiz excel word präsentation powerpoint vom von über zum zur zu hey hallo ok luzzy ' +
+  'jetzt schnell gerade kurz noch').split(' '))
 
 const ohneLuzzy = (text) => String(text || '').trim().replace(/^\s*(hey|hi|hallo|ok)?\s*luzzy[,!.:\s]*/i, '')
 const normal = (s) => String(s || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[_\-.+()[\]]+/g, ' ').replace(/\s+/g, ' ').trim()
 
-// { suche, art } oder null
+// { suche, art, endungen, sicher } | { pfad } | null
+// sicher: klar eine Datei gemeint (Schlüsselwort, Endung oder Suche). Sonst („öffne mir die Preisliste“) nur öffnen,
+// wenn es eine passende Datei gibt, und sonst an Luzzy weitergeben.
 export function dateiBefehlErkennen(text) {
-  const satz = ohneLuzzy(text).replace(/[.!?]+$/, '')
-  const t = SUCHEN.exec(satz) || OEFFNEN.exec(satz)
-  if (!t) return null
-  const suche = t[2]
-    .replace(/[„“"'»«]/g, '')
-    .replace(/\s+punkt\s+(\w{2,4})$/i, '.$1') // „Preisliste Punkt PDF“
-    .replace(/^(?:vom|von der|von dem|von|über|mit|zum|zur|zu)\s+/i, '') // „das Foto vom Wolf“
-    .trim()
-  return suche ? { suche, art: ARTWORT[t[1].toLowerCase()] || null } : null
+  const satz = ohneLuzzy(text).replace(/[?!]+\s*$/, '').trim()
+  const pfad = PFAD.exec(satz)
+  if (pfad && (OEFFNEN_ABSICHT.test(satz) || SUCH_ABSICHT.test(satz))) return { pfad: pfad[0].replace(/[\s.,;:]+$/, '') }
+  const oeffnen = OEFFNEN_ABSICHT.test(satz)
+  const suchen = SUCH_ABSICHT.test(satz)
+  if (!oeffnen && !suchen) return null
+  const schluessel = (SCHLUESSEL.exec(satz)?.[1] || '').toLowerCase()
+  const worte = satz
+    .replace(/[„“"'»«]/g, ' ')
+    .replace(/\s+punkt\s+(\w{2,4})\b/gi, '.$1') // „Preisliste Punkt PDF“
+    .split(/\s+/)
+    .map((w) => w.replace(/^[,;:.]+|[,;:.]+$/g, ''))
+    .filter((w) => w && !WEG.has(w.toLowerCase()))
+  const suche = worte.join(' ').trim()
+  if (!suche) return null
+  const endung = /\.\w{2,5}$/.test(suche)
+  // Ohne Schlüsselwort und Endung ist „zeig mir …“ meist keine Datei (Bestellungen, Wetter …): das bleibt bei Luzzy
+  if (!schluessel && !endung && !(suchen && oeffnen) && !NUR_OEFFNEN.test(satz)) return null
+  return { suche, art: ART_WORT[schluessel] || null, endungen: ENDUNG_WORT[schluessel] || null, sicher: Boolean(schluessel || endung || (suchen && oeffnen)) }
 }
+
+const ZAHLEN = ['erste', 'zweite', 'dritte', 'vierte', 'fünfte', 'sechste', 'siebte', 'achte']
 
 // „die zweite“, „Nummer 3“, „die 2“ – nur solange die Trefferliste offen ist
 export function trefferNummer(text) {
@@ -51,23 +75,58 @@ const sprechName = (name) => name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ')
 const ortText = (t) => [t.ort, t.ordner].filter(Boolean).join(' › ')
 
 // Suchen und zeigen. Gibt den Satz zurück, den Luzzy dazu sagt.
-export async function dateiSuchenUndZeigen({ suche, art }) {
+// nurWennPassend: bei unsicheren Befehlen („öffne die Preisliste“) null, wenn keine Datei wirklich passt (dann Luzzy)
+export async function dateiSuchenUndZeigen({ suche, art, endungen, pfad }, { nurWennPassend = false } = {}) {
+  if (pfad) return pfadOeffnen(pfad)
   let treffer = await api.datei.suchen(suche)
-  if (art) {
-    const passend = treffer.filter((t) => t.art === art)
+  const worte = normal(suche).split(' ')
+  if (nurWennPassend) treffer = treffer.filter((t) => t.imNamen && worte.every((w) => normal(t.name).includes(w)))
+  if (art || endungen) {
+    const passend = treffer.filter((t) => (art && t.art === art) || (endungen && endungen.some((e) => t.name.toLowerCase().endsWith(e))))
     if (passend.length) treffer = passend
   }
-  if (!treffer.length) return `Ich finde keine Datei mit dem Namen ${suche}.`
+  if (!treffer.length) return nurWennPassend ? null : `Ich finde keine Datei mit dem Namen ${suche}.`
   letzteTreffer = treffer
   // Eindeutig (nur einer, oder der Name passt genau): gleich öffnen
   const genau = treffer.filter((t) => normal(t.name.replace(/\.[^.]+$/, '')) === normal(suche) || normal(t.name) === normal(suche))
   if (treffer.length === 1 || genau.length === 1) {
     const t = genau[0] || treffer[0]
     await dateiZeigen(t)
-    return `Hier ist ${sprechName(t.name)}.`
+    return `Hier ist ${sprechName(t.name)}.${t.ungefaehr ? ' Den Namen hab ich nur ungefähr gefunden.' : ''}`
   }
   listeZeigen(suche, treffer)
   return `Ich hab ${treffer.length} Dateien gefunden. Welche meinst du? Sag zum Beispiel: die erste.`
+}
+
+// Pfade in Luzzys Antwort (z. B. „C:\\Users\\Felix\\Desktop\\Preisliste.pdf“), wenn Felix ums Öffnen gebeten hat:
+// die erste Datei, die es gibt, gleich anzeigen. Gibt true zurück, wenn eine angezeigt wird.
+export function istOeffnenWunsch(text) {
+  return OEFFNEN_ABSICHT.test(String(text || '')) || SUCH_ABSICHT.test(String(text || ''))
+}
+export async function pfadAusAntwortOeffnen(antwort) {
+  // Erst die längste Lesart („Logo.v2.svg“), dann die kürzeste („Preisliste.pdf und ist offen“)
+  const text = String(antwort || '')
+  const lang = [...text.matchAll(/[A-Za-z]:\\[^\n"<>|*?`]+\.[A-Za-z0-9]{1,5}(?![A-Za-z0-9])/g)].map((t) => t[0].trim())
+  const kurz = [...text.matchAll(/[A-Za-z]:\\[^\n"<>|*?`]+?\.[A-Za-z0-9]{1,5}(?![A-Za-z0-9])/g)].map((t) => t[0].trim())
+  const pfade = [...lang, ...kurz]
+  for (const pfad of [...new Set(pfade)].slice(0, 5)) {
+    if (await pfadOeffnen(pfad, { still: true })) return true
+  }
+  return false
+}
+
+// Datei über ihren vollen Pfad öffnen (Felix nennt ihn, oder er steht in Luzzys Antwort)
+export async function pfadOeffnen(pfad, { still = false } = {}) {
+  let t
+  try {
+    t = await api.datei.pfad(pfad)
+  } catch (e) {
+    if (still) return null
+    return `Die Datei kann ich nicht öffnen: ${e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`
+  }
+  letzteTreffer = [t]
+  await dateiZeigen(t)
+  return `Hier ist ${sprechName(t.name)}.`
 }
 
 export async function trefferOeffnen(n) {

@@ -12,7 +12,7 @@ const { pathToFileURL } = require('node:url')
 const { WURZEL } = require('./wissen')
 
 const UEBERSPRINGEN = new Set(['node_modules', '.git', '.obsidian', '__pycache__', '.venv', 'venv', 'AppData', '$RECYCLE.BIN', 'System Volume Information', 'firecrawl-selfhost', 'Kynto backups', '.cache', '.trash'])
-const MAX_DATEIEN = 80_000
+const MAX_PRO_ORT = 60_000 // je Ordner, damit ein großer Ordner die anderen nicht verdrängt
 const MAX_TIEFE = 9
 const INDEX_ALTER = 10 * 60 * 1000 // alle 10 Minuten neu einlesen (beim nächsten Suchen)
 const MAX_TEXT = 2_000_000
@@ -70,8 +70,9 @@ let indexLaeuft = null
 async function einlesen() {
   const neu = []
   for (const ort of orte()) {
+    const grenze = neu.length + MAX_PRO_ORT
     const lauf = async (ordner, tiefe) => {
-      if (neu.length >= MAX_DATEIEN) return
+      if (neu.length >= grenze) return
       let eintraege
       try {
         eintraege = await fs.readdir(ordner, { withFileTypes: true })
@@ -79,7 +80,7 @@ async function einlesen() {
         return
       }
       for (const e of eintraege) {
-        if (neu.length >= MAX_DATEIEN) return
+        if (neu.length >= grenze) return
         if (e.name.startsWith('.') || e.name.startsWith('~$') || UEBERSPRINGEN.has(e.name)) continue
         const voll = path.join(ordner, e.name)
         if (e.isDirectory()) {
@@ -117,20 +118,50 @@ function pfadVon(id) {
   return voll
 }
 
+// Kleine Tippfehler/Hörfehler erlauben („thor hudi“ → „thor hoodie“): Abstand höchstens 1 (ab 7 Zeichen: 2)
+function aehnlich(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return false
+  const grenze = a.length >= 7 ? 2 : 1
+  let vorher = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const jetzt = [i]
+    let kleinste = i
+    for (let j = 1; j <= b.length; j++) {
+      jetzt[j] = Math.min(vorher[j] + 1, jetzt[j - 1] + 1, vorher[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+      kleinste = Math.min(kleinste, jetzt[j])
+    }
+    if (kleinste > grenze) return false
+    vorher = jetzt
+  }
+  return vorher[b.length] <= grenze
+}
+
 // Suchen: alle Wörter müssen im Dateinamen (oder im Ordnernamen) vorkommen. Beste zuerst.
+// Findet das nichts: dieselbe Suche mit kleinen Hör- und Tippfehlern (Treffer dann „ungefähr“).
 async function suchen(anfrage, { max = 8 } = {}) {
   const worte = normal(anfrage).split(' ').filter(Boolean)
   if (!worte.length) return []
   const liste = await indexHolen()
   const ganz = normal(anfrage)
+  let treffer = durchsuchen(liste, worte, ganz, false)
+  const ungefaehr = !treffer.length
+  if (ungefaehr) treffer = durchsuchen(liste, worte, ganz, true)
+  return ergebnis(treffer, max, ungefaehr)
+}
+
+function durchsuchen(liste, worte, ganz, unscharf) {
   const treffer = []
   for (const d of liste) {
     let punkte = 0
     let alle = true
+    let imNamen = true
     for (const w of worte) {
       if (d.suche.includes(w)) punkte += d.suche.split(' ').includes(w) ? 3 : 2
-      else if (d.ordnerSuche.includes(w)) punkte += 1
-      else {
+      else if (unscharf && w.length >= 4 && d.suche.split(' ').some((t) => aehnlich(w, t))) punkte += 1
+      else if (d.ordnerSuche.includes(w)) {
+        punkte += 1
+        imNamen = false
+      } else {
         alle = false
         break
       }
@@ -139,8 +170,12 @@ async function suchen(anfrage, { max = 8 } = {}) {
     const ohneEndung = normal(path.parse(d.name).name)
     if (ohneEndung === ganz || d.suche === ganz) punkte += 10
     else if (d.suche.startsWith(ganz)) punkte += 4
-    treffer.push({ d, punkte })
+    treffer.push({ d, punkte, imNamen })
   }
+  return treffer
+}
+
+async function ergebnis(treffer, max, ungefaehr) {
   treffer.sort((a, b) => b.punkte - a.punkte || a.d.name.length - b.d.name.length)
   const beste = treffer.slice(0, max * 3)
   // Änderungsdatum nur für die Kandidaten holen (schnell), bei Gleichstand gewinnt die neuere Datei
@@ -159,8 +194,10 @@ async function suchen(anfrage, { max = 8 } = {}) {
     .filter((t) => !t.weg)
     .sort((a, b) => b.punkte - a.punkte || b.geaendert - a.geaendert)
     .slice(0, max)
-    .map(({ d, geaendert, groesse }) => ({
+    .map(({ d, geaendert, groesse, imNamen }) => ({
       id: freigeben(d.voll),
+      imNamen,
+      ungefaehr,
       name: d.name,
       ort: d.ort,
       ordner: path.relative(d.wurzel, path.dirname(d.voll)) || '',
@@ -169,6 +206,35 @@ async function suchen(anfrage, { max = 8 } = {}) {
       groesse
     }))
 }
+
+// Felix nennt einen vollen Pfad (oder er steht in Luzzys Antwort): nur echte Dateien in seinen Ordnern
+// (Benutzerordner oder Donnerwolf), nur zum Anzeigen
+async function pfadTreffer(pfad) {
+  const voll = path.resolve(String(pfad || '').trim().replace(/^["']|["']$/g, ''))
+  const erlaubt = [os.homedir(), WURZEL, ...orte().map((o) => o.ordner)].some((w) => voll === w || voll.toLowerCase().startsWith(w.toLowerCase() + path.sep))
+  if (!erlaubt) throw new Error('Die Datei liegt außerhalb deiner Ordner.')
+  let info
+  try {
+    info = await fs.stat(voll)
+  } catch {
+    throw new Error('Die Datei gibt es nicht (mehr).')
+  }
+  if (!info.isFile()) throw new Error('Das ist ein Ordner, keine Datei.')
+  const ort = orte().find((o) => voll.toLowerCase().startsWith(o.ordner.toLowerCase() + path.sep))
+  return {
+    id: freigeben(voll),
+    name: path.basename(voll),
+    ort: ort?.name || '',
+    ordner: ort ? path.relative(ort.ordner, path.dirname(voll)) : path.dirname(voll),
+    art: artVon(voll),
+    geaendert: info.mtimeMs,
+    groesse: info.size,
+    imNamen: true
+  }
+}
+
+const PROGRAMME = new Set(['.exe', '.bat', '.cmd', '.com', '.msi', '.ps1', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.scr', '.lnk', '.jar', '.reg', '.hta', '.cpl', '.pif', '.url'])
+const istProgramm = (voll) => PROGRAMME.has(path.extname(voll).toLowerCase())
 
 // Inhalt für die Anzeige: Text direkt, alles andere über jarves-datei://<id>
 async function inhalt(id) {
@@ -196,4 +262,4 @@ function vorbereiten() {
   setTimeout(() => indexHolen().catch(() => {}), 15000)
 }
 
-module.exports = { suchen, inhalt, pfadVon, antwortFuer, vorbereiten, normal }
+module.exports = { suchen, inhalt, pfadVon, pfadTreffer, istProgramm, antwortFuer, vorbereiten, normal }

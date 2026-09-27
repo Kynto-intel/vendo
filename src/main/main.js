@@ -258,8 +258,12 @@ ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher
 // Dateisuche („such die Datei … und öffne sie“): nur lesen; geöffnet/gezeigt werden nur Treffer einer Suche
 ipcMain.handle('datei:suchen', (_e, anfrage) => dateisuche.suchen(String(anfrage || '').slice(0, 200)))
 ipcMain.handle('datei:inhalt', (_e, id) => dateisuche.inhalt(id))
+ipcMain.handle('datei:pfad', (_e, pfad) => dateisuche.pfadTreffer(String(pfad || '').slice(0, 500)))
 ipcMain.handle('datei:mitProgramm', async (_e, id) => {
-  const fehler = await shell.openPath(dateisuche.pfadVon(id))
+  const voll = dateisuche.pfadVon(id)
+  // Programme und Skripte startet Jarves-OS nie von selbst, auch nicht auf Knopfdruck
+  if (dateisuche.istProgramm(voll)) throw new Error('Programme und Skripte startet Jarves-OS nicht. Nimm „Im Ordner zeigen“.')
+  const fehler = await shell.openPath(voll)
   if (fehler) throw new Error(fehler)
 })
 ipcMain.handle('datei:imOrdner', (_e, id) => shell.showItemInFolder(dateisuche.pfadVon(id)))

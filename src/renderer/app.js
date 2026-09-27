@@ -15,7 +15,7 @@ import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
 import { gespraecheEinrichten, gespraecheLaden, gespraechBefehl } from './gespraeche.js'
-import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten } from './dateiansicht.js'
+import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, istOeffnenWunsch, pfadAusAntwortOeffnen } from './dateiansicht.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
@@ -798,7 +798,7 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   const nummer = trefferNummer(text)
   if (nummer) return dateiAntworten(trefferOeffnen(nummer), { gesprochen }), true
   const datei = dateiBefehlErkennen(text)
-  if (datei) return dateiAntworten(dateiSuchenUndZeigen(datei), { gesprochen }), true
+  if (datei && (datei.sicher || datei.pfad)) return dateiAntworten(dateiSuchenUndZeigen(datei), { gesprochen }), true
   return false
 }
 async function dateiAntworten(arbeit, { gesprochen }) {
@@ -858,6 +858,16 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feldHoehe(feld)
     if (pluginAntwort.antwort) lokalAntworten(pluginAntwort.antwort, { gesprochen })
     return
+  }
+  // „Öffne die Preisliste“: gibt es eine passende Datei, zeigt Jarves-OS sie; sonst geht der Satz an Luzzy
+  const vielleichtDatei = dateiBefehlErkennen(text)
+  if (vielleichtDatei && !vielleichtDatei.sicher && !vielleichtDatei.pfad) {
+    const satz = await dateiSuchenUndZeigen(vielleichtDatei, { nurWennPassend: true }).catch(() => null)
+    if (satz) {
+      feld.value = ''
+      feldHoehe(feld)
+      return lokalAntworten(satz, { gesprochen })
+    }
   }
   if (beschaeftigt) return
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
@@ -1099,6 +1109,8 @@ api.hermes.beiEreignis((ev) => {
         .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
       zustandZeigen()
       const gelungen = text && p.status !== 'error' && !p.error
+      // Felix wollte eine Datei sehen und Luzzy nennt den Pfad: in Jarves-OS anzeigen (Hermes selbst kann das nicht)
+      if (gelungen && istOeffnenWunsch(letzteFrage)) pfadAusAntwortOeffnen(text).catch(() => {})
       const nachher = luzzyNachher
       luzzyNachher = null
       if (nachher) {
