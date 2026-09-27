@@ -150,6 +150,9 @@ hermes.on('status', (s) => {
   if (s.zustand === 'bereit') waechter.starten()
 })
 hermes.on('ereignis', (e) => senden('hermes:ereignis', e))
+hermes.on('freigabe', (f) => senden('hermes:freigabe', f))
+// Testmodus: JARVES_TEST_FREIGABE=1 spielt nach 9 s eine Freigabe-Anfrage vor (Hermes führt dabei nichts aus)
+if (process.env.JARVES_TEST_FREIGABE) setTimeout(() => hermes.emit('freigabe', { id: 'test-freigabe', kanal: 'zentrale', befehl: 'Remove-Item C:/Temp/alt -Recurse', beschreibung: 'Den Ordner C:/Temp/alt mit allen Dateien löschen', werkzeug: 'terminal', auswahl: ['once', 'session', 'always', 'deny'] }), 9000)
 const letzterVerlauf = {} // pro Kanal (zentrale, crew)
 hermes.on('verlauf', (v) => {
   letzterVerlauf[v.kanal] = v
@@ -164,6 +167,7 @@ ipcMain.handle('hermes:status', () => ({ zustand: hermes.zustand, text: hermes.s
 ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(kanal), String(text || '').slice(0, 20000)))
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
+ipcMain.handle('hermes:freigabe', (_e, id, wahl) => hermes.freigabeBeantworten(String(id), String(wahl)))
 ipcMain.handle('gespraeche:liste', () => gespraecheFuerOberflaeche())
 // Wechseln oder (gibt es den Namen noch nicht) neu anlegen
 ipcMain.handle('gespraeche:wechseln', async (_e, name) => {
@@ -238,6 +242,7 @@ const plugins = require('./plugins')
 ipcMain.handle('plugins:liste', () => plugins.alleLaden())
 ipcMain.handle('plugins:datenLaden', (_e, id) => plugins.datenLaden(String(id)))
 ipcMain.handle('plugins:datenSpeichern', (_e, id, daten) => plugins.datenSpeichern(String(id), daten))
+ipcMain.handle('plugins:beobachten', (_e, id) => plugins.beobachten(String(id), (pid) => fenster?.webContents.send('plugins:geaendert', pid)))
 ipcMain.handle('plugins:aufrufen', (_e, id, name, argumente) => plugins.aufrufen(String(id), String(name), Array.isArray(argumente) ? argumente : []))
 
 // Wissen (nur lesen, nur im Donnerwolf-Ordner)

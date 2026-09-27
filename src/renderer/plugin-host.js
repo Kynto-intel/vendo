@@ -9,6 +9,16 @@ const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp
 const kontextAnbieter = [] // { id, fn } liefern Text für Luzzy (z. B. Termine)
 const stichwoerter = [] // { id, muster } bei diesen Wörtern bekommt Luzzy den Kontext des Plugins mit
 const begruessungen = [] // { id, fn } kurzer Satz für Luzzys Begrüßung beim Start
+const aenderungsHoerer = new Map() // id → [fn] Daten-Datei wurde von außen geändert
+api.plugins.beiAenderung?.((id) => {
+  for (const fn of aenderungsHoerer.get(id) || []) {
+    try {
+      fn()
+    } catch (e) {
+      console.warn(`Plugin ${id}:`, e.message)
+    }
+  }
+})
 const eingabeFilter = [] // { id, fn } dürfen eine Eingabe abfangen (z. B. Auslösewort einer Routine)
 const befehle = [] // { id, fn } beantworten eine Eingabe selbst (z. B. „Merk dir: …“), ohne Hermes
 const knoepfe = new Map() // id → [{ name, titel, fn }] Knöpfe über der Eingabe
@@ -67,7 +77,13 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       kopfKnoepfe: abschnitt.querySelector('.plugin-knoepfe'),
       daten: {
         laden: () => api.plugins.datenLaden(m.id),
-        speichern: (d) => api.plugins.datenSpeichern(m.id, d)
+        speichern: (d) => api.plugins.datenSpeichern(m.id, d),
+        // fn() wird aufgerufen, wenn die Daten-Datei von außen geändert wurde (z. B. von Luzzy)
+        beiAenderung: (fn) => {
+          if (!aenderungsHoerer.has(m.id)) aenderungsHoerer.set(m.id, [])
+          aenderungsHoerer.get(m.id).push(fn)
+          api.plugins.beobachten(m.id).catch(() => {})
+        }
       },
       aufrufen: (name, ...argumente) => api.plugins.aufrufen(m.id, name, ...argumente),
       // Karte in der rechten Spalte (z. B. "Heute")

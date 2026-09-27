@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('jarves', {
     aktion: (art, daten) => ipcRenderer.invoke('hermes:aktion', art, daten),
     beiStatus: abonnieren('hermes:status'),
     beiEreignis: abonnieren('hermes:ereignis'),
+    beiFreigabe: abonnieren('hermes:freigabe'),
+    freigabe: (id, wahl) => ipcRenderer.invoke('hermes:freigabe', id, wahl),
     beiVerlauf: abonnieren('hermes:verlauf'),
     verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal)
   },
@@ -31,6 +33,8 @@ contextBridge.exposeInMainWorld('jarves', {
     liste: () => ipcRenderer.invoke('plugins:liste'),
     datenLaden: (id) => ipcRenderer.invoke('plugins:datenLaden', id),
     datenSpeichern: (id, daten) => ipcRenderer.invoke('plugins:datenSpeichern', id, daten),
+    beobachten: (id) => ipcRenderer.invoke('plugins:beobachten', id),
+    beiAenderung: (fn) => ipcRenderer.on('plugins:geaendert', (_e, id) => fn(id)),
     aufrufen: (id, name, ...argumente) => ipcRenderer.invoke('plugins:aufrufen', id, name, argumente)
   },
   waechter: {

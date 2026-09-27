@@ -1,2 +1,5 @@
 node_modules/
 daten/
+
+# Daten der Plugins (Termine, Routinen, Einstellungen): gehören Felix, nicht ins Projekt
+plugins/*/daten.json

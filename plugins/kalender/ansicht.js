@@ -29,6 +29,15 @@ export async function starten(ctx) {
   let monat = new Date()
   monat.setDate(1)
   let bearbeitet = null // Termin-ID im Formular, null = neu
+  let tagGewaehlt = null // Tag, dessen Termine unten stehen (null = heute)
+  let suche = '' // Suche nach Namen, leer = Termine des Tages
+  const listenTag = () => tagGewaehlt || heute()
+  let eingeklappt = false // Monatsblatt eingeklappt (merkt sich Jarves-OS pro PC)
+  try {
+    eingeklappt = localStorage.getItem('kalender-eingeklappt') === '1'
+  } catch {
+    // ohne Speicher: ausgeklappt
+  }
   const erinnert = new Set() // in dieser Sitzung schon erinnert (zusätzlich zu daten.erinnert)
 
   async function laden() {
@@ -36,7 +45,13 @@ export async function starten(ctx) {
     daten = { termine: Array.isArray(d.termine) ? d.termine : [], erinnert: d.erinnert || {} }
     zeichnen()
   }
-  async function speichern() {
+  // Ändern immer auf dem neuesten Stand der Datei: Luzzy kann inzwischen Termine eingetragen haben,
+  // die dürfen beim Speichern nicht verloren gehen.
+  async function aendern(fn) {
+    const d = await ctx.daten.laden().catch(() => null)
+    const frisch = Array.isArray(d?.termine) ? { ...d, termine: d.termine, erinnert: d.erinnert || {} } : daten // Datei gerade nicht lesbar: nicht leer überschreiben
+    fn(frisch)
+    daten = frisch
     await ctx.daten.speichern(daten)
     zeichnen()
   }
@@ -46,7 +61,8 @@ export async function starten(ctx) {
     <button class="knopf-flach" data-k="zurueck" type="button">‹</button>
     <span class="kal-monat" data-monat></span>
     <button class="knopf-flach" data-k="vor" type="button">›</button>
-    <button class="knopf-flach" data-k="heute" type="button">Heute</button>`
+    <button class="knopf-flach" data-k="heute" type="button">Heute</button>
+    <button class="knopf-flach" data-k="einklappen" type="button" data-einklappen></button>`
   ctx.element.innerHTML = `
     <div class="kal-raster">
       <div class="kal-monatsblatt hud">
@@ -72,7 +88,11 @@ export async function starten(ctx) {
           <div class="leise klein">Ohne Uhrzeit ist der Termin ganztägig.</div>
         </form>
         <section class="hud kal-kommend">
-          <h3>Nächste Termine</h3>
+          <h3 data-liste-titel>Termine heute</h3>
+          <div class="kal-suche">
+            <input type="date" data-suche-datum title="Tag wählen: zeigt die Termine dieses Tages" />
+            <input type="search" data-suche-text placeholder="Termin suchen …" maxlength="60" />
+          </div>
           <div data-kommend></div>
         </section>
       </aside>
@@ -98,7 +118,6 @@ export async function starten(ctx) {
   function formVerbergen() {
     bearbeitet = null
     form.hidden = true
-    for (const el of ctx.element.querySelectorAll('.kal-tag.gewaehlt')) el.classList.remove('gewaehlt')
   }
 
   function zeichnen() {
@@ -117,7 +136,7 @@ export async function starten(ctx) {
       const text = tagText(d)
       const termine = nachTag[text] || []
       zellen.push(`
-        <div class="kal-tag${d.getMonth() !== monat.getMonth() ? ' fremd' : ''}${text === heute() ? ' heute' : ''}" data-tag="${text}">
+        <div class="kal-tag${d.getMonth() !== monat.getMonth() ? ' fremd' : ''}${text === heute() ? ' heute' : ''}${tagGewaehlt === text ? ' gewaehlt' : ''}" data-tag="${text}">
           <div class="kal-nummer">${d.getDate()}</div>
           ${termine.slice(0, 3).map((t) => `<button class="kal-termin" data-termin="${m(t.id)}" type="button" title="${m(t.titel)}">${t.zeit ? `<b>${m(t.zeit)}</b> ` : ''}${m(t.titel)}</button>`).join('')}
           ${termine.length > 3 ? `<div class="kal-mehr">+${termine.length - 3} weitere</div>` : ''}
@@ -125,16 +144,39 @@ export async function starten(ctx) {
     }
     $('[data-tage]').innerHTML = zellen.join('')
 
-    // Nächste Termine (14 Tage)
+    // Einklappen
+    ctx.element.querySelector('.kal-raster').classList.toggle('eingeklappt', eingeklappt)
+    const klappKnopf = ctx.kopfKnoepfe.querySelector('[data-einklappen]')
+    klappKnopf.textContent = eingeklappt ? '▾ Monat zeigen' : '▴ Monat einklappen'
+    klappKnopf.title = eingeklappt ? 'Monatsblatt wieder zeigen' : 'Monatsblatt einklappen, nur die Liste zeigen'
+
+    // Liste unten: Termine des gewählten Tages (heute: nur, was noch ansteht) oder Suchergebnis
     const jetzt = new Date()
-    const grenze = new Date(Date.now() + 14 * 86400000)
-    const kommend = sortiert(daten.termine).filter((t) => {
-      const b = beginn(t)
-      return (t.zeit ? b.getTime() + (t.dauer || 60) * 60000 >= jetzt.getTime() : t.datum >= heute()) && b <= grenze
-    })
-    $('[data-kommend]').innerHTML = kommend.length
-      ? kommend.map((t) => `<button class="kal-eintrag" data-termin="${m(t.id)}" type="button"><span>${m(t.titel)}</span><small>${m(wannText(t))}</small></button>`).join('')
-      : '<div class="leise">Keine Termine in den nächsten 14 Tagen.</div>'
+    const vorbei = (t) => (t.zeit ? beginn(t).getTime() + (t.dauer || 60) * 60000 < jetzt.getTime() : t.datum < heute())
+    const kommend = sortiert(daten.termine).filter((t) => !vorbei(t))
+    const eintrag = (t, mitTag) => `<button class="kal-eintrag" data-termin="${m(t.id)}" type="button"><span>${m(t.titel)}</span><small>${m(mitTag ? wannText(t) : t.zeit ? `${t.zeit} Uhr${t.dauer ? ` · ${t.dauer >= 60 ? `${String(t.dauer / 60).replace('.', ',')} Std.` : `${t.dauer} Min.`}` : ''}` : 'ganztägig')}${t.notiz ? ` · ${m(t.notiz)}` : ''}</small></button>`
+    const titel = $('[data-liste-titel]')
+    const datumFeld = $('[data-suche-datum]')
+    if (document.activeElement !== datumFeld) datumFeld.value = listenTag()
+    let html
+    if (suche) {
+      const wort = suche.toLowerCase()
+      const treffer = sortiert(daten.termine).filter((t) => t.titel.toLowerCase().includes(wort) || (t.notiz || '').toLowerCase().includes(wort))
+      titel.textContent = `Suche: „${suche}“ (${treffer.length})`
+      html = treffer.length ? treffer.map((t) => eintrag(t, true)).join('') : '<div class="leise">Kein Termin gefunden.</div>'
+    } else {
+      const tag = listenTag()
+      const morgen = tagText(new Date(Date.now() + 86400000))
+      titel.textContent = tag === heute() ? 'Termine heute' : tag === morgen ? 'Termine morgen' : `Termine am ${datumLang(tag)}`
+      const amTag = sortiert(daten.termine).filter((t) => t.datum === tag)
+      const liste = tag === heute() ? amTag.filter((t) => !vorbei(t)) : amTag
+      const schonVorbei = amTag.length - liste.length
+      html = liste.length ? liste.map((t) => eintrag(t, false)).join('') : `<div class="leise">${schonVorbei ? 'Für heute steht nichts mehr an.' : 'Keine Termine.'}</div>`
+      if (schonVorbei) html += `<div class="leise klein">${schonVorbei === 1 ? 'Ein Termin' : `${schonVorbei} Termine`} heute schon vorbei.</div>`
+      const danach = kommend.find((t) => t.datum > tag)
+      if (!liste.length && danach) html += `<div class="kal-danach leise klein">Als Nächstes:</div>${eintrag(danach, true)}`
+    }
+    $('[data-kommend]').innerHTML = html
 
     // Karte rechts: heute
     const heutige = sortiert(daten.termine).filter((t) => t.datum === heute())
@@ -154,6 +196,17 @@ export async function starten(ctx) {
     if (k === 'heute') {
       monat = new Date()
       monat.setDate(1)
+      tagGewaehlt = null
+      suche = ''
+      $('[data-suche-text]').value = ''
+    }
+    if (k === 'einklappen') {
+      eingeklappt = !eingeklappt
+      try {
+        localStorage.setItem('kalender-eingeklappt', eingeklappt ? '1' : '0')
+      } catch {
+        // nicht merkbar: gilt bis zum Neustart
+      }
     }
     if (k) zeichnen()
   })
@@ -166,8 +219,11 @@ export async function starten(ctx) {
     const tag = e.target.closest('[data-tag]')
     if (tag) {
       if (tag.classList.contains('gewaehlt') && !form.hidden && !bearbeitet) return formVerbergen()
-      for (const el of ctx.element.querySelectorAll('.kal-tag.gewaehlt')) el.classList.remove('gewaehlt')
-      tag.classList.add('gewaehlt')
+      tagGewaehlt = tag.dataset.tag === heute() ? null : tag.dataset.tag
+      suche = ''
+      $('[data-suche-text]').value = ''
+      zeichnen()
+      if (tag.dataset.tag === heute()) $(`[data-tag="${tag.dataset.tag}"]`)?.classList.add('gewaehlt')
       formFuellen(null, tag.dataset.tag)
       form.titel.focus()
       return
@@ -177,11 +233,29 @@ export async function starten(ctx) {
     if (k === 'loeschen' && bearbeitet) {
       const t = daten.termine.find((x) => x.id === bearbeitet)
       if (t && confirm(`Termin „${t.titel}“ löschen?`)) {
-        daten.termine = daten.termine.filter((x) => x.id !== bearbeitet)
+        const weg = bearbeitet
         formVerbergen()
-        await speichern()
+        await aendern((d) => {
+          d.termine = d.termine.filter((x) => x.id !== weg)
+          delete d.erinnert[weg]
+        })
       }
     }
+  })
+  $('[data-suche-datum]').addEventListener('change', (e) => {
+    const wert = e.target.value
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(wert)) return
+    tagGewaehlt = wert === heute() ? null : wert
+    suche = ''
+    $('[data-suche-text]').value = ''
+    const [j, mo] = wert.split('-').map(Number)
+    monat = new Date(j, mo - 1, 1)
+    formVerbergen()
+    zeichnen()
+  })
+  $('[data-suche-text]').addEventListener('input', (e) => {
+    suche = e.target.value.trim()
+    zeichnen()
   })
   heuteKarte.addEventListener('click', () => ctx.oeffnen())
   document.addEventListener('keydown', (e) => {
@@ -199,18 +273,19 @@ export async function starten(ctx) {
       notiz: form.notiz.value.trim()
     }
     if (!eintrag.titel || !eintrag.datum) return
-    daten.termine = [...daten.termine.filter((t) => t.id !== eintrag.id), eintrag]
-    delete daten.erinnert[eintrag.id] // geänderter Termin: neu erinnern
     const [j, mo] = eintrag.datum.split('-').map(Number)
     monat = new Date(j, mo - 1, 1)
     formVerbergen()
-    await speichern()
+    await aendern((d) => {
+      d.termine = [...d.termine.filter((t) => t.id !== eintrag.id), eintrag]
+      delete d.erinnert[eintrag.id] // geänderter Termin: neu erinnern
+    })
   })
 
   // ── Erinnerungen: Luzzy meldet sich vor dem Termin ──
   setInterval(async () => {
     const jetzt = Date.now()
-    let geaendert = false
+    const neu = {}
     for (const t of daten.termine) {
       if (!t.erinnerung) continue
       const b = t.zeit ? beginn(t).getTime() : beginn(t).getTime() + 8 * 3600000 // ganztägig: um 8 Uhr
@@ -219,13 +294,13 @@ export async function starten(ctx) {
       if (jetzt >= faellig && jetzt < b + 5 * 60000 && !erinnert.has(schluessel) && daten.erinnert[t.id] !== schluessel) {
         erinnert.add(schluessel)
         daten.erinnert[t.id] = schluessel
-        geaendert = true
+        neu[t.id] = schluessel
         const minuten = Math.max(0, Math.round((b - jetzt) / 60000))
         const wann = !t.zeit ? 'heute' : minuten <= 1 ? 'jetzt' : minuten < 90 ? `in ${minuten} Minuten` : `um ${t.zeit} Uhr`
         ctx.melden({ art: 'termin', titel: `Termin: ${t.titel}`, text: `Felix, ${wann}: ${t.titel}.`, anzeige: wannText(t) })
       }
     }
-    if (geaendert) await ctx.daten.speichern(daten)
+    if (Object.keys(neu).length) await aendern((d) => Object.assign(d.erinnert, neu))
   }, 30000)
 
   // ── Für Luzzy: Termine der nächsten 7 Tage ──
@@ -245,6 +320,9 @@ export async function starten(ctx) {
     if (heutige.length === 1) return `Heute hast du einen Termin, ${wann}: ${naechster.titel}.`
     return `Heute hast du ${heutige.length} Termine, der nächste ${wann}: ${naechster.titel}.`
   })
+
+  // Luzzy (oder jemand anderes) hat die Datei geändert: neu einlesen
+  ctx.daten.beiAenderung?.(() => laden())
 
   // Tagwechsel: Heute-Markierung und Karte aktualisieren
   setInterval(zeichnen, 5 * 60000)

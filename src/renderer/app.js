@@ -7,6 +7,7 @@ import { mikrofonErstellen } from './mikrofon.js'
 import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
+import { freigabenEinrichten, freigabeAusText, freigabeOffen, freigabeZurueckgezogen, freigabenLeeren, jaKnoepfeAnhaengen, jaKnoepfeEntfernen } from './freigaben.js'
 import { tonSpielen } from './toene.js'
 import './auswahl.js' // eigene Auswahlfenster für Datum und Uhrzeit (statt der Windows-Fenster)
 import { ablageEinrichten, ablageErgebnis, ablageOeffnen } from './zwischenablage.js'
@@ -170,7 +171,7 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
   try {
     if (unterbrechung) vorleser.pausieren()
     else {
-      if (beschaeftigt) api.hermes.abbrechen('zentrale') // wer spricht, unterbricht Luzzy
+      if (beschaeftigt && !freigabeOffen()) api.hermes.abbrechen('zentrale') // wer spricht, unterbricht Luzzy (außer sie wartet auf eine Freigabe)
       vorleser.stoppen()
     }
     if (!(await mikrofon.starten())) {
@@ -211,7 +212,7 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
     if (unterbrechung) {
       // Felix hat wirklich etwas gesagt: Luzzy hört auf, eine laufende Antwort wird abgebrochen
       vorleser.stoppen()
-      if (beschaeftigt) {
+      if (beschaeftigt && !freigabeOffen()) {
         api.hermes.abbrechen('zentrale')
         for (let i = 0; i < 30 && beschaeftigt; i++) await new Promise((r) => setTimeout(r, 100)) // bis Hermes bestätigt
       }
@@ -783,6 +784,9 @@ function lokalAntworten(text, { gesprochen = false } = {}) {
 
 // Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
 function lokalerBefehl(text, { gesprochen = false } = {}) {
+  // Wartet eine Hermes-Freigabe: „Ja“ / „Nein“ / „Stopp“ beantworten sie
+  const freigabe = freigabeAusText(text)
+  if (freigabe) return lokalAntworten(freigabe, { gesprochen }), true
   if (STOPPWOERTER.has(text.toLowerCase().replace(/[.,!?]/g, '').replace(/^(hey )?luzzy /, '').replace(/\s+/g, ' ').trim())) return stoppen(), true
   // Ist gerade eine Datei offen: „Luzzy, ändere …“ ändert die Datei (live im Text, gespeichert wird nur per Klick)
   const aenderung = aenderungsBefehl(text)
@@ -1060,11 +1064,13 @@ $('griff').addEventListener('pointerdown', (e) => {
 
 // ── Hermes-Ereignisse ──
 api.hermes.beiEreignis((ev) => {
+  if (ev.type === 'request.cancel') return freigabeZurueckgezogen(ev.payload?.id) // Hermes hat eine Rückfrage zurückgezogen
   if (ev.kanal === 'crew') return crewGespraech.ereignis(ev)
   const p = ev.payload || {}
   switch (ev.type) {
     case 'message.start':
       beschaeftigt = true
+      jaKnoepfeEntfernen()
       vorleser.stoppen()
       vorleseStromStarten()
       if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
@@ -1105,6 +1111,8 @@ api.hermes.beiEreignis((ev) => {
       }
       else if (text) nachrichtAnzeigen('luzzy', text)
       if (p.status === 'error' || p.error) systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
+      // Bittet Luzzy um Felix' Ja: Knöpfe „Ja, mach“ / „Nein“ darunter
+      else if (text) jaKnoepfeAnhaengen(aktuelleAntwort?.el || [...document.querySelectorAll('#gespraech .msg.luzzy')].at(-1), text)
       aktuelleAntwort = null
       beschaeftigt = false
       werkzeug = ''
@@ -1189,6 +1197,7 @@ function statusZeigen({ zustand: z, text }) {
     z === 'bereit' ? 'Mit Hermes verbunden' : text || (z === 'verbinde' ? 'Verbinde …' : 'Getrennt')
   v.title = v.querySelector('.verbindung-text').textContent // Tooltip, wenn oben nur der Punkt zu sehen ist
   if (!verbunden) {
+    freigabenLeeren()
     beschaeftigt = false
     aktuelleAntwort = null
     $('luzzy-zustand').textContent = text || 'Nicht verbunden'
@@ -1337,6 +1346,21 @@ meldungenEinrichten({
   einstellungen: () => einstellungen
 })
 api.waechter.beiMeldung(meldungNeu)
+
+// Freigaben: Hermes fragt vor riskanten Befehlen, Luzzy vor Shop-Änderungen (siehe freigaben.js)
+freigabenEinrichten({
+  api,
+  vorlesen: (text) => vorleser.sprechen(text, stimmOptionen()),
+  zuhoeren: () => {
+    if (einstellungen?.sprache?.weiterZuhoeren && !spricht && !hoert) sprechenStarten({ ohneSpracheNach: 8000 })
+  },
+  melden: meldungNeu,
+  luzzy: (text) => {
+    const feld = document.querySelector('.befehl .eingabe-text')
+    feld.value = text
+    abschicken(feld)
+  }
+})
 api.waechter.beiProblem(problemNeu)
 
 // Verbindungsanzeige oben: Shopify und Postfach (grün = verbunden, rot = Problem, Klick = jetzt prüfen)

@@ -39,3 +39,29 @@
 .kal-form-kopf { display: flex; justify-content: space-between; align-items: center; }
 .kal-zu { background: none; border: 1px solid var(--rahmen); color: var(--text-leise); width: 24px; height: 24px; cursor: pointer; font-size: 12px; line-height: 1; }
 .kal-zu:hover { border-color: var(--gold); color: var(--gold-hell); }
+
+/* Einträge unter „Nächste Termine“ über die ganze Breite (sonst ist die Markierung beim Drüberfahren nur halb) */
+.kal-eintrag { width: 100%; }
+
+/* Schmales Fenster: „Nächste Termine“ und Formular rutschen unter das Monatsblatt, das Monatsblatt bekommt die volle Breite */
+.plugin-ansicht[data-ansicht='plugin-kalender'] .plugin-inhalt { container: kalender / inline-size; }
+@container kalender (max-width: 860px) {
+  .kal-raster { display: flex; flex-direction: column; overflow-y: auto; }
+  .kal-monatsblatt { flex: none; height: max(420px, 62vh); }
+  .kal-seite { overflow: visible; flex: none; }
+}
+/* Noch enger: Termin im Tag zweizeilig (Uhrzeit oben, Name darunter) statt abgeschnitten */
+@container kalender (max-width: 620px) {
+  .kal-tag { padding: 3px; }
+  .kal-termin { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; padding: 2px 3px; }
+  .kal-termin b { display: block; }
+}
+
+/* Liste unten: Tag wählen und suchen */
+.kal-suche { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 6px; margin: 2px 0 6px; }
+.kal-suche input { min-width: 0; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 6px 8px; font-size: 12px; color: var(--text); color-scheme: dark; outline: none; }
+.kal-suche input:focus { border-color: var(--gold); }
+.kal-danach { margin-top: 8px; }
+/* Monatsblatt eingeklappt: nur noch die Liste (breit) */
+.kal-raster.eingeklappt { grid-template-columns: minmax(0, 720px); }
+.kal-raster.eingeklappt .kal-monatsblatt { display: none; }

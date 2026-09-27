@@ -104,4 +104,16 @@ async function aufrufen(id, name, argumente = []) {
   return fn(...argumente)
 }
 
-module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen }
+// Daten-Datei beobachten: ändert jemand anderes sie (z. B. Luzzy trägt einen Termin ein), meldet Jarves-OS das dem Plugin
+const beobachtet = new Set()
+function beobachten(id, beiAenderung) {
+  if (!geladen.has(id)) throw new Error('Unbekanntes Plugin.')
+  if (beobachtet.has(id)) return true
+  beobachtet.add(id)
+  fs.watchFile(datenPfad(id), { interval: 1000 }, (jetzt, vorher) => {
+    if (jetzt.mtimeMs !== vorher.mtimeMs) beiAenderung(id)
+  })
+  return true
+}
+
+module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten }

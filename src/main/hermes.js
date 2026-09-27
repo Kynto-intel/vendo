@@ -39,6 +39,7 @@ class Hermes extends EventEmitter {
     this.ws = null
     this.naechsteId = 1
     this.offen = new Map()
+    this.freigaben = new Map() // Hermes fragt nach Felix' Freigabe: Anfrage-ID → { sessionId, requestId }
     this.sessionId = null // Laufzeit-ID der Zentrale (normaler Chat "Jarves-OS")
     this.gespeicherteId = null // dauerhafte ID der Zentrale
     this.crew = { sessionId: null, gespeicherteId: null, gewuenscht: false } // Luzzys Bot Chat
@@ -128,6 +129,9 @@ class Hermes extends EventEmitter {
     this.port = verbindung.port
     this.token = verbindung.token
     await this.wsOeffnen()
+    // Hermes sagen, dass Jarves-OS Rückfragen beantwortet (Freigaben für riskante Befehle).
+    // Ohne das bricht Hermes solche Befehle einfach ab, statt Felix zu fragen.
+    await this.rpc('client.capabilities', { server_requests: true }).catch(() => {})
     this.status('verbinde', 'Öffne Luzzys Unterhaltung …')
     await this.luzzyOeffnen()
     if (this.crew.gewuenscht) await this.crewOeffnen().catch(() => {})
@@ -159,6 +163,8 @@ class Hermes extends EventEmitter {
       fertig(daten)
       return
     }
+    // Hermes fragt etwas (Anfrage mit eigener ID, z. B. Freigabe für einen Befehl)
+    if (daten.method && daten.method !== 'event' && daten.id != null) return this.serverAnfrage(daten)
     if (daten.method === 'event' && daten.params) {
       const ereignis = daten.params
       // Nur Ereignisse aus unseren Unterhaltungen weitergeben, markiert mit dem Kanal
@@ -168,7 +174,41 @@ class Hermes extends EventEmitter {
     }
   }
 
+  // Rückfrage von Hermes. Freigaben zeigt Jarves-OS an; alles andere (Passwörter, Auswahlfragen …)
+  // lehnt es höflich ab, dann macht Hermes weiter wie ohne Jarves-OS.
+  serverAnfrage({ id, method, params = {} }) {
+    const kanal = params.session_id === this.sessionId ? 'zentrale' : params.session_id && params.session_id === this.crew.sessionId ? 'crew' : null
+    if (method === 'approval' && kanal) {
+      this.freigaben.set(id, { sessionId: params.session_id, requestId: params.request_id })
+      this.rpc('approval.received', { session_id: params.session_id, request_id: params.request_id }).catch(() => {})
+      this.emit('freigabe', {
+        id,
+        kanal,
+        befehl: String(params.command || ''),
+        beschreibung: String(params.description || ''),
+        werkzeug: String(params.tool_name || ''),
+        auswahl: Array.isArray(params.choices) ? params.choices : ['once', 'deny']
+      })
+      return
+    }
+    this.antwortSenden(id, null, { code: -32601, message: 'Jarves-OS kann diese Rückfrage nicht beantworten.' })
+  }
+
+  antwortSenden(id, ergebnis, fehler) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false
+    this.ws.send(JSON.stringify({ jsonrpc: '2.0', id, ...(fehler ? { error: fehler } : { result: ergebnis }) }))
+    return true
+  }
+
+  // Felix hat entschieden: once (einmal), session (für dieses Gespräch) oder deny (ablehnen)
+  freigabeBeantworten(id, wahl) {
+    if (!this.freigaben.has(id)) return false
+    this.freigaben.delete(id)
+    return this.antwortSenden(id, { choice: ['once', 'session', 'deny'].includes(wahl) ? wahl : 'deny' })
+  }
+
   getrennt() {
+    this.freigaben.clear()
     for (const { fertig, uhr } of this.offen.values()) {
       clearTimeout(uhr)
       fertig({ error: { message: 'Verbindung getrennt' } })
