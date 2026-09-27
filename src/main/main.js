@@ -72,6 +72,7 @@ function fensterErstellen() {
     fenster.show()
   })
   fenster.on('close', fensterMerken)
+  fenster.on('focus', () => fenster.flashFrame(false))
   fenster.webContents.on('before-input-event', (ereignis, eingabe) => {
     if (eingabe.type === 'keyDown' && eingabe.key === 'F12') {
       fenster.webContents.openDevTools({ mode: 'detach' })
@@ -204,6 +205,10 @@ ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
 })
 
 ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
+// Taskleiste blinken lassen, wenn Jarves-OS im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
+ipcMain.handle('fenster:aufmerksamkeit', () => {
+  if (fenster && !fenster.isDestroyed() && !fenster.isFocused()) fenster.flashFrame(true)
+})
 // Sicherung auf Knopfdruck (wie npm run backup)
 const sicherung = require('../../scripts/backup')
 ipcMain.handle('sicherung:liste', () => sicherung.sicherungen())

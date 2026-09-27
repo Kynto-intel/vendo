@@ -524,6 +524,12 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 .mitte-kopf .nicht-stoeren .verbindung-text { overflow: visible; }
 .nicht-stoeren-zeichen { font-size: 12px; line-height: 1; }
 .mitte-kopf .nicht-stoeren[hidden] { display: none; }
+.mitte-kopf .timer-leiste { display: flex; gap: 6px; flex-shrink: 0; }
+.mitte-kopf .timer-leiste[hidden] { display: none; }
+.timer-chip { border: 1px solid var(--gold-leise); background: rgba(194, 154, 64, 0.08); color: var(--text); padding: 2px 8px; font-family: var(--mono); font-size: 11px; cursor: pointer; white-space: nowrap; }
+.timer-chip b { color: var(--gold-hell); font-weight: 600; }
+.timer-chip:hover { border-color: var(--rot); }
+.timer-chip.timer-bald b { color: var(--rot); }
 .ton-probe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 6px 24px; font-size: 12px; color: var(--text-leise); }
 .ton-probe .schnell { padding: 3px 8px; font-size: 11px; }
 .schnell:hover { border-color: var(--gold); color: var(--gold-hell); }

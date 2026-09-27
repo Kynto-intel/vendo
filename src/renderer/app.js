@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
@@ -409,6 +410,21 @@ async function selbsttest({ gesprochen = false } = {}) {
 $('selbsttest-starten').addEventListener('click', () => selbsttest())
 $('selbsttest-nochmal').addEventListener('click', () => selbsttest())
 
+// ── Timer abgelaufen: Ton, dann sagt Luzzy es. Auch in der Ruhezeit und bei „Nicht stören“,
+// den Timer hat Felix ja selbst gestellt. Mehrere nacheinander, nie während Felix spricht.
+let alarmKette = Promise.resolve()
+function timerAlarm({ text, titel }) {
+  api.fenster.aufmerksamkeit()
+  meldungNeu({ art: 'timer', titel, anzeige: text, zeit: Date.now(), still: true })
+  alarmKette = alarmKette.then(async () => {
+    for (let i = 0; i < 120 && (hoert || versteht); i++) await new Promise((r) => setTimeout(r, 500))
+    await tonSpielen('wecker')
+    aktivitaetMelden(titel)
+    lokalAntworten(text)
+    await new Promise((r) => setTimeout(r, 1500))
+  })
+}
+
 // ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
 function paletteBefehle() {
   const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
@@ -427,6 +443,7 @@ function paletteBefehle() {
     ruhe
       ? { name: 'Nicht stören beenden', gruppe: 'Meldungen', stichwoerter: 'ruhe meldungen wieder an', ausfuehren: () => nichtStoerenSetzen(0) }
       : { name: 'Nicht stören (1 Stunde)', gruppe: 'Meldungen', stichwoerter: 'ruhe still keine meldungen', ausfuehren: () => nichtStoerenSetzen(Date.now() + 3600000) },
+    ...(timerListe().length ? [{ name: 'Alle Timer stoppen', gruppe: 'Timer', stichwoerter: 'wecker erinnerung löschen', ausfuehren: () => lokalAntworten(timerBefehl('alle timer stoppen')) }] : []),
     { name: 'Meldungen leeren', gruppe: 'Meldungen', stichwoerter: 'liste löschen', ausfuehren: () => $('meldungen-leeren').click() },
     { name: 'Selbsttest', gruppe: 'System', stichwoerter: 'prüfen check test fehler', ausfuehren: () => selbsttest() },
     {
@@ -466,25 +483,34 @@ paletteEinrichten({
 $('palette-oeffnen').addEventListener('click', paletteOeffnen)
 
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
+// Luzzy antwortet selbst, ohne Hermes (Timer, Nicht stören …)
+function lokalAntworten(text, { gesprochen = false } = {}) {
+  letzteEingabeGesprochen = gesprochen // Gesprächsmodus: danach wie gewohnt weiter zuhören
+  untertitelZeigen(text, { fertig: true })
+  letzteAntwortMerken(text)
+  vorleser.sprechen(text, stimmOptionen())
+}
+
+// Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
+function lokalerBefehl(text, { gesprochen = false } = {}) {
+  if (istWiederholen(text)) return wiederholen({ gesprochen }), true
+  if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) return selbsttest({ gesprochen }), true
+  const stoeren = nichtStoerenErkennen(text)
+  if (stoeren) return nichtStoerenSetzen(stoeren.an || 0, { gesprochen }), true
+  const timerAntwort = timerBefehl(text)
+  if (timerAntwort) return lokalAntworten(timerAntwort, { gesprochen }), true
+  return false
+}
+
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
-  if (!text || beschaeftigt) return
-  if (istWiederholen(text)) {
+  if (!text) return
+  if (lokalerBefehl(text, { gesprochen })) {
     feld.value = ''
     feldHoehe(feld)
-    return wiederholen({ gesprochen })
+    return
   }
-  if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) {
-    feld.value = ''
-    feldHoehe(feld)
-    return selbsttest({ gesprochen })
-  }
-  const stoeren = nichtStoerenErkennen(text)
-  if (stoeren) {
-    feld.value = ''
-    feldHoehe(feld)
-    return nichtStoerenSetzen(stoeren.an || 0, { gesprochen })
-  }
+  if (beschaeftigt) return
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
   feld.value = ''
   feldHoehe(feld)
@@ -1083,6 +1109,7 @@ async function start() {
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)
+  timerEinrichten({ gespeichert: einstellungen.timer, speichern: (liste) => api.einstellungen.speichern({ timer: liste }), alarm: timerAlarm })
   nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
   if (testAnsicht) setTimeout(() => LADEN[testAnsicht] && ansichtZeigen(testAnsicht), 5000)

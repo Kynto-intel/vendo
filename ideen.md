@@ -107,7 +107,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    (statt `npm run backup`), und automatische Sicherung vor jedem Update.
 9. ✅ **Nicht stören per Stimme** (Optimierung, gebaut 27.09.2026) – „Luzzy, bis 15 Uhr keine Meldungen.“ Oben erscheint ein kleines
    Symbol, danach ist alles wieder normal. Meldungen landen trotzdem in der Liste.
-10. 🆕 **Timer & Wecker per Sprache** (Plugin, Felix' Wunsch) – Luzzy stellt Timer mit Namen:
+10. ✅ **Timer & Wecker per Sprache** (Plugin, Felix' Wunsch, gebaut 27.09.2026) – Luzzy stellt Timer mit Namen:
     „Hey Luzzy, stell Timer auf 15 Minuten für Nudeln.“ → „Alles klar, 15 Minuten für die Nudeln.“
     - Oben neben der Uhr läuft der Countdown mit Namen („🍝 Nudeln 14:32“), mehrere Timer gleichzeitig möglich.
     - Wenn er abläuft: Ton + Luzzy sagt laut „Felix, deine Nudeln sind fertig!“, auch in der Ruhezeit

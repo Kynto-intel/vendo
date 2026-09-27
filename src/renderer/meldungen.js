@@ -7,7 +7,7 @@ import { tonSpielen, wichtigsterTon } from './toene.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinweis: 'ⓘ', termin: '◷' }
+const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinweis: 'ⓘ', termin: '◷', timer: '⏱' }
 
 let h = { vorlesen: () => {}, istBeschaeftigt: () => false, einstellungen: () => ({}) }
 const liste = []
@@ -66,6 +66,7 @@ export function meldungNeu(m) {
   liste.unshift(m)
   liste.length = Math.min(liste.length, 40)
   zeigen()
+  if (m.still) return // nur in die Liste (z. B. abgelaufener Timer, den Luzzy schon selbst ansagt)
   if (gesammelt) return gesammelt.push(m)
   if (inRuhezeit(e) || h.einstellungen()?.nichtStoerenBis > Date.now()) return // Ruhezeit oder „Nicht stören“
   const text = m.art !== 'hinweis' && e.vorlesen !== false ? m.text : ''
