@@ -4,8 +4,19 @@ const api = window.jarves
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const $ = (id) => document.getElementById(id)
 
-const CREW = ['donnerwolf', 'recherche-bot', 'schreib-bot', 'code-bot']
-const CREW_NAMEN = { donnerwolf: 'Luzzy', 'recherche-bot': 'Recherche-Bot', 'schreib-bot': 'Schreib-Bot', 'code-bot': 'Code-Bot' }
+// Crew: alle Hermes-Profile außer „default“, Luzzy (donnerwolf) zuerst. Neue Profile erscheinen von selbst.
+const LUZZY = 'donnerwolf'
+const crewProfile = (profile) =>
+  profile.filter((p) => p?.name && p.name !== 'default').sort((a, b) => (b.name === LUZZY) - (a.name === LUZZY) || a.name.localeCompare(b.name))
+const gross = (w) => w.charAt(0).toUpperCase() + w.slice(1)
+// „kira-trend-scout-bot“ → Name „Kira“, Rolle „Trend-Scout“; „recherche-bot“ → „Recherche-Bot“
+function botName(p) {
+  if (p.name === LUZZY) return { name: 'Luzzy', rolle: 'Chefin' }
+  const teile = p.name.split(/[-_]+/).filter(Boolean)
+  const ohneBot = teile.at(-1)?.toLowerCase() === 'bot' ? teile.slice(0, -1) : teile
+  if (ohneBot.length < 2) return { name: p.bot_title || teile.map(gross).join('-'), rolle: '' }
+  return { name: p.bot_title || gross(ohneBot[0]), rolle: ohneBot.slice(1).map(gross).join('-') }
+}
 
 // ── Helfer ──
 function zeitpunkt(wert) {
@@ -59,9 +70,8 @@ export async function crewLaden() {
   const profile = (await lesen('/api/profiles'))?.profiles
   if (!profile) return fehlerKarte(el, 'Hermes antwortet gerade nicht.')
   const karten = await Promise.all(
-    CREW.map(async (name) => {
-      const p = profile.find((x) => x.name === name)
-      if (!p) return null
+    crewProfile(profile).map(async (p) => {
+      const name = p.name
       const [nutzung, sitzungen] = await Promise.all([
         lesen(`/api/analytics/usage?days=30&profile=${encodeURIComponent(name)}`),
         lesen(`/api/sessions?profile=${encodeURIComponent(name)}&limit=1`)
@@ -81,17 +91,20 @@ export async function crewLaden() {
     })
   )
   crewKurzZeigen(karten.filter(Boolean))
+  el.style.setProperty('--crew-anzahl', String(Math.max(1, karten.filter(Boolean).length)))
+  if (!karten.some(Boolean)) return fehlerKarte(el, 'Keine Bots gefunden. In Hermes gibt es außer „default“ noch kein Profil.')
   el.innerHTML = karten
     .filter(Boolean)
     .map(({ p, summe, zuletzt, letzterTitel }) => {
-      const chef = p.name === 'donnerwolf'
+      const chef = p.name === LUZZY
+      const { name, rolle } = botName(p)
       const aktiv = zuletzt && Date.now() - zeitpunkt(zuletzt).getTime() < 3 * 60 * 1000
       return `
       <article class="bot hud${chef ? ' chef' : ''}" data-profil="${maskieren(p.name)}">
         <header>
           <span class="bot-punkt${aktiv ? ' aktiv' : ''}" title="${aktiv ? 'gerade aktiv' : 'ruhig'}"></span>
-          <h3>${maskieren(CREW_NAMEN[p.name] || p.bot_title || p.name)}</h3>
-          ${chef ? '<span class="abzeichen">Chefin</span>' : ''}
+          <h3 title="Hermes-Profil: ${maskieren(p.name)}">${maskieren(name)}</h3>
+          ${rolle ? `<span class="abzeichen">${maskieren(rolle)}</span>` : ''}
         </header>
         <p class="bot-rolle">${maskieren(p.description || 'Keine Beschreibung.')}</p>
         <dl class="werte">
@@ -114,7 +127,7 @@ function crewKurzZeigen(karten) {
   el.innerHTML = karten
     .map(({ p, zuletzt }) => {
       const aktiv = zuletzt && Date.now() - zeitpunkt(zuletzt).getTime() < 3 * 60 * 1000
-      return `<div class="crew-zeile"><span class="bot-punkt${aktiv ? ' aktiv' : ''}"></span><span>${maskieren(CREW_NAMEN[p.name] || p.name)}</span><time>${vorWann(zuletzt)}</time></div>`
+      return `<div class="crew-zeile"><span class="bot-punkt${aktiv ? ' aktiv' : ''}"></span><span>${maskieren(botName(p).name)}</span><time>${vorWann(zuletzt)}</time></div>`
     })
     .join('')
 }

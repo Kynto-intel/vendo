@@ -254,7 +254,7 @@ class Hermes extends EventEmitter {
     this.emit('verlauf', { kanal: 'zentrale', verlauf: verlaufAus(antwort.messages) })
   }
 
-  // Crew: Luzzys fester "Bot Chat". Nur dort hat sie message_agent für code-, recherche- und schreib-bot.
+  // Crew: Luzzys fester "Bot Chat". Dort spricht sie ihre Bots an (die anderen Hermes-Profile außer „default“).
   async crewOeffnen() {
     this.crew.gewuenscht = true
     if (this.crew.sessionId) return this.emit('verlauf', { kanal: 'crew', verlauf: this.crew.letzterVerlauf || [] })
