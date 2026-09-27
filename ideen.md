@@ -141,8 +141,8 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     mit Datum und Schlagworten in den richtigen Ordner.
 22. 🆕 **Diktiermodus für Mails und Texte** (Killer) – Einfach frei drauflos reden, auch länger. Luzzy macht daraus
     eine saubere Mail oder einen Text, legt ihn in die Zwischenablage oder als Entwurf ab. Abschicken tut Felix.
-23. **„Der Laden redet mit dir“** (Killer) – Bei jeder Bestellung sagt Luzzy nicht nur „neue Bestellung“, sondern
-    „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“.
+23. ✅ **„Der Laden redet mit dir“** (Killer, gebaut 27.09.2026) – Bei jeder Bestellung sagt Luzzy nicht nur „neue Bestellung“, sondern
+    „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“. Ohne Namen und Adresse, nichts wird gespeichert.
 24. **Mini-Modus** (Optimierung) – Kleines, immer sichtbares Fenster in der Ecke: Reaktor, Uhr, Wetter,
     letzte Meldung.
 25. 🆕 **Datei oder Bild an Luzzy** (Optimierung) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
