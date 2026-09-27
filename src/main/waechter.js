@@ -162,7 +162,8 @@ class Waechter extends EventEmitter {
         })
       }
       if (hoechste > this.stand.letzteBestellung) this.stand.letzteBestellung = hoechste
-      if (neue.length) await this.meilensteinPruefen(zugangFuer(kandidaten, this.shopifyToken), neue.at(-1))
+      // Bei neuen Bestellungen zählen; außerdem einmal, falls noch nie gezählt (Wächter lief schon vor den Meilensteinen)
+      if (neue.length || this.stand.bestellAnzahl == null) await this.meilensteinPruefen(zugangFuer(kandidaten, this.shopifyToken), neue.at(-1))
     } catch (e) {
       this.problem('shopify', e)
     }
@@ -180,6 +181,7 @@ class Waechter extends EventEmitter {
       const anzahl = Number((await antwort.json()).count) || 0
       const vorher = this.stand.bestellAnzahl
       this.stand.bestellAnzahl = anzahl
+      this.stand.bestellAnzahlZeit = Date.now()
       if (vorher == null || anzahl <= vorher) return // erster Durchlauf: nur merken, Vergangenes nicht nachfeiern
       const erreicht = []
       for (let n = vorher + 1; n <= anzahl; n++) if (istMeilenstein(n)) erreicht.push(n)
@@ -257,4 +259,4 @@ class Waechter extends EventEmitter {
   }
 }
 
-module.exports = { Waechter, shopifyZugang }
+module.exports = { istMeilenstein, STAND_DATEI, Waechter, shopifyZugang }

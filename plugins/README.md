@@ -97,6 +97,7 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 | `gedanken` | Gedankenspeicher: „Merk dir: …“ per Sprache oder Tippen, Liste mit erledigt/löschen, jede Notiz auch im Vault (`Jarves-OS\Gedankenspeicher.md`), Luzzy kennt die offenen Notizen |
 | `aufgaben` | To-do-Liste mit Fälligkeit („Neue Aufgabe: … bis Freitag“, „Erledigt: …“), Erinnerung über Luzzy-Meldung, Begrüßung, Kontext für Luzzy, Karte „Aufgaben“ (anfangs aus, Einstellungen → Rechte Spalte) |
 | `fokus` | Pomodoro-Timer (Fokus, Pause, lange Pause) mit Hintergrundklang (Rauschen, Regen), in der Fokuszeit „Nicht stören“; „Fokus 50 Minuten“, „Fokus beenden“ |
+| `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Jarves-OS\Meilensteine.md`) |
 
 ## Stichwörter: Daten automatisch an Luzzy
 
