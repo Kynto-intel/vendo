@@ -23,8 +23,6 @@
     </div>
     <!-- Keine eigene Titelleiste: die Spalten reichen bis oben. Der obere Rand jeder Spalte
          verschiebt das Fenster (.zug), rechts oben zeichnet Windows die Fensterknöpfe. -->
-    <!-- Rechte Spalte ein/aus: fester Platz oben rechts, links neben den Windows-Fensterknöpfen -->
-    <button class="leisten-knopf" id="rechts-umschalten" type="button" title="Rechte Spalte einklappen (Strg+J)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M9 10l2 2-2 2"/></svg></button>
     <div class="app" id="app">
       <!-- Links: Bereiche -->
       <aside class="leiste">
@@ -402,6 +400,11 @@
         </div>
       </form>
     </dialog>
+
+    <!-- Rechte Spalte ein/aus: fester Platz oben rechts, links neben den Windows-Fensterknöpfen.
+         Muss ganz am Ende stehen: Windows wertet die Zieh-Flächen (Fenster verschieben) der Reihe nach aus,
+         nur so bleibt der Knopf über den Kopfzeilen klickbar. -->
+    <button class="leisten-knopf" id="rechts-umschalten" type="button" title="Rechte Spalte einklappen (Strg+J)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M9 10l2 2-2 2"/></svg></button>
 
     <script type="module" src="app.js"></script>
   </body>
