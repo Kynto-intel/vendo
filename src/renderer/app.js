@@ -53,6 +53,7 @@ let hoert = false // Mikrofon nimmt gerade auf
 let versteht = false // Hermes schreibt das Gesprochene gerade mit
 let letzteEingabeGesprochen = false
 let wakeAktiv = false
+let wakeGrund = '' // warum „Hey Luzzy“ nicht zuhört (siehe wakeEinrichten)
 
 const reaktor = reaktorErstellen($('reaktor-rahmen'))
 const welle = welleErstellen($('welle'))
@@ -99,12 +100,14 @@ function mikrofonStatusZeigen(z, text) {
     'kein-mikrofon': 'Kein Mikrofon',
     verweigert: 'Mikrofon verweigert'
   }
-  el.querySelector('.verbindung-text').textContent = texte[anzeige] || text || z
-  el.title = texte[anzeige] || text || z // Tooltip, wenn oben nur der Punkt zu sehen ist
+  // „Hey Luzzy“ gewünscht, aber Hermes hört nicht: kleiner Hinweis statt stiller Konsolen-Warnung
+  const wakeFehlt = z === 'bereit' && !wakeAktiv && wakeGrund && einstellungen?.sprache?.aktivierungswort
+  el.querySelector('.verbindung-text').textContent = wakeFehlt ? 'Mikrofon bereit · „Hey Luzzy“ aus' : texte[anzeige] || text || z
+  el.title = wakeFehlt ? wakeHinweis() : texte[anzeige] || text || z // Tooltip, auch wenn oben nur der Punkt zu sehen ist
   $('mikrofon').classList.toggle('fehlt', z === 'kein-mikrofon' || z === 'verweigert')
   $('mikrofon').title = z === 'kein-mikrofon' ? 'Kein Mikrofon gefunden. Einstecken, dann klicken.' : 'Sprechen (Strg+Leertaste)'
   const e = $('e-mikrofon-status')
-  if (e) e.textContent = `Mikrofon: ${texte[anzeige] || text || z}`
+  if (e) e.textContent = `Mikrofon: ${texte[anzeige] || text || z}${wakeFehlt ? `. ${wakeHinweis()}` : ''}`
 }
 
 // Kurzer Signalton, wenn Luzzy zuhört
@@ -189,7 +192,12 @@ function weiterZuhoeren() {
   }, 350)
 }
 
-// Aktivierungswort bei Hermes scharf schalten (oder aus)
+// Aktivierungswort bei Hermes scharf schalten (oder aus). Klappt es nicht, steht der Grund in wakeGrund
+// (angezeigt beim Mikrofon oben, in den Einstellungen → Sprechen und im Selbsttest).
+const wakeHinweis = () =>
+  wakeGrund === 'disabled'
+    ? '„Hey Luzzy“ ist in Hermes aus. Meist, weil die Hermes-App offen war und Jarves-OS an ihr Hermes angedockt hat (anderes Profil). Hermes-App schließen und Jarves-OS neu starten.'
+    : `„Hey Luzzy“ hört gerade nicht zu (${wakeGrund}).`
 async function wakeEinrichten() {
   const soll = Boolean(einstellungen?.sprache?.aktivierungswort) && verbunden
   if (!soll) {
@@ -203,10 +211,10 @@ async function wakeEinrichten() {
   try {
     const antwort = await api.wake.starten()
     wakeAktiv = Boolean(antwort?.started)
-    if (!wakeAktiv && antwort?.reason) console.warn('Aktivierungswort nicht aktiv:', antwort.reason)
+    wakeGrund = wakeAktiv ? '' : antwort?.reason || 'unbekannt'
   } catch (e) {
     wakeAktiv = false
-    console.warn('Aktivierungswort:', e.message)
+    wakeGrund = e.message
   }
   mikrofon.wakeSetzen(wakeAktiv && !spricht)
   mikrofonStatusZeigen(mikrofon.zustand())
@@ -430,6 +438,7 @@ async function selbsttest({ gesprochen = false } = {}) {
     mikrofonZustand: () => mikrofon.zustand(),
     wakeGewuenscht: () => Boolean(einstellungen?.sprache?.aktivierungswort),
     wakeAktiv: () => wakeAktiv,
+    wakeHinweis: () => (wakeGrund ? wakeHinweis() : ''),
     stimmOptionen,
     pluginAnzahl: () => geladenePlugins
   })
