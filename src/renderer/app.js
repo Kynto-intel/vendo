@@ -8,6 +8,10 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { paletteEinrichten, paletteOeffnen } from './palette.js'
+import { selbsttestStarten } from './selbsttest.js'
+import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
+import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -364,6 +368,103 @@ function wiederholen({ gesprochen = false } = {}) {
 }
 $('nochmal').addEventListener('click', () => !beschaeftigt && wiederholen())
 
+// ── „Nicht stören“: Meldungen nur in der Liste, ohne Ton und Ansage, bis zur gewählten Uhrzeit ──
+function nichtStoerenZeigen() {
+  const bis = einstellungen?.nichtStoerenBis || 0
+  const aktiv = bis > Date.now()
+  $('nicht-stoeren').hidden = !aktiv
+  if (aktiv) $('nicht-stoeren').querySelector('.verbindung-text').textContent = `Ruhe bis ${uhrzeitText(bis)}`
+  return aktiv
+}
+async function nichtStoerenSetzen(bis, { gesprochen = false, bestaetigen = true } = {}) {
+  einstellungen = await api.einstellungen.speichern({ nichtStoerenBis: bis })
+  nichtStoerenZeigen()
+  if (!bestaetigen) return
+  letzteEingabeGesprochen = gesprochen
+  const text = bis ? `Alles klar, bis ${uhrzeitText(bis)} Uhr keine Meldungen. Ich sammle sie für dich.` : 'Meldungen sind wieder an.'
+  untertitelZeigen(text, { fertig: true })
+  vorleser.sprechen(text, stimmOptionen())
+}
+$('nicht-stoeren').addEventListener('click', () => nichtStoerenSetzen(0))
+setInterval(nichtStoerenZeigen, 30000) // Symbol verschwindet von selbst, wenn die Zeit um ist
+
+// ── Selbsttest: prüft alles und Luzzy sagt, was nicht geht ──
+let geladenePlugins = null
+const SELBSTTEST = /^(?:(?:hey )?luzzy )?(?:mach |starte? )?(?:(?:einen|den|mal einen) )?(?:selbsttest|systemcheck|systemtest|system check)(?: machen| starten)?$/
+async function selbsttest({ gesprochen = false } = {}) {
+  const zusammenfassung = await selbsttestStarten({
+    verbunden: () => verbunden,
+    hermesText: () => $('verbindung').querySelector('.verbindung-text').textContent,
+    mikrofonZustand: () => mikrofon.zustand(),
+    wakeGewuenscht: () => Boolean(einstellungen?.sprache?.aktivierungswort),
+    wakeAktiv: () => wakeAktiv,
+    stimmOptionen,
+    pluginAnzahl: () => geladenePlugins
+  })
+  if (!zusammenfassung) return
+  letzteEingabeGesprochen = gesprochen
+  untertitelZeigen(zusammenfassung, { fertig: true })
+  vorleser.sprechen(zusammenfassung, stimmOptionen())
+}
+$('selbsttest-starten').addEventListener('click', () => selbsttest())
+$('selbsttest-nochmal').addEventListener('click', () => selbsttest())
+
+// ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
+function paletteBefehle() {
+  const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
+  for (const knopf of document.querySelectorAll('#schnellbefehle [data-plugin-knopf]')) {
+    liste.push({ name: knopf.textContent.trim(), gruppe: 'Schnellbefehl', stichwoerter: `routine ${knopf.title}`, ausfuehren: () => knopf.click() })
+  }
+  const ruhe = einstellungen?.nichtStoerenBis > Date.now()
+  const bescheid = (text) => {
+    untertitelZeigen(text, { fertig: true })
+    aktivitaetMelden(text)
+  }
+  liste.push(
+    { name: 'Sprechen', gruppe: 'Luzzy', stichwoerter: 'mikrofon zuhören reden', ausfuehren: () => sprechenStarten() },
+    { name: 'Letzte Antwort nochmal hören', gruppe: 'Luzzy', stichwoerter: 'wiederhol vorlesen', ausfuehren: () => wiederholen() },
+    { name: panelGeschlossen() ? 'Gespräch öffnen' : 'Gespräch schließen', gruppe: 'Ansicht', stichwoerter: 'chat verlauf strg+k', ausfuehren: () => panelSetzen(panelGeschlossen()) },
+    ruhe
+      ? { name: 'Nicht stören beenden', gruppe: 'Meldungen', stichwoerter: 'ruhe meldungen wieder an', ausfuehren: () => nichtStoerenSetzen(0) }
+      : { name: 'Nicht stören (1 Stunde)', gruppe: 'Meldungen', stichwoerter: 'ruhe still keine meldungen', ausfuehren: () => nichtStoerenSetzen(Date.now() + 3600000) },
+    { name: 'Meldungen leeren', gruppe: 'Meldungen', stichwoerter: 'liste löschen', ausfuehren: () => $('meldungen-leeren').click() },
+    { name: 'Selbsttest', gruppe: 'System', stichwoerter: 'prüfen check test fehler', ausfuehren: () => selbsttest() },
+    {
+      name: 'Jarves-OS sichern', gruppe: 'System', stichwoerter: 'backup sicherung',
+      ausfuehren: async () => {
+        bescheid('Sichere Jarves-OS …')
+        try {
+          await api.sicherung.anlegen()
+          bescheid('Jarves-OS ist gesichert.')
+        } catch (e) {
+          bescheid(`Sicherung fehlgeschlagen: ${e.message}`)
+        }
+      }
+    },
+    { name: 'Sicherungsordner öffnen', gruppe: 'System', stichwoerter: 'backup explorer', ausfuehren: () => api.sicherung.ordner() },
+    {
+      name: `Vorlesen ${einstellungen?.vorlesen ? 'ausschalten' : 'einschalten'}`, gruppe: 'Einstellung', stichwoerter: 'stimme stumm leise laut',
+      ausfuehren: async () => {
+        einstellungen = await api.einstellungen.speichern({ vorlesen: !einstellungen.vorlesen })
+        if (!einstellungen.vorlesen) vorleser.stoppen()
+        bescheid(einstellungen.vorlesen ? 'Vorlesen ist an.' : 'Vorlesen ist aus.')
+      }
+    },
+    { name: 'Einstellungen öffnen', gruppe: 'Einstellung', stichwoerter: 'optionen stimme animationen', ausfuehren: () => $('einstellungen-oeffnen').click() }
+  )
+  return liste
+}
+paletteEinrichten({
+  befehle: paletteBefehle,
+  luzzy: (text) => {
+    ansichtZeigen('zentrale')
+    const feld = document.querySelector('.befehl .eingabe-text')
+    feld.value = text
+    abschicken(feld)
+  }
+})
+$('palette-oeffnen').addEventListener('click', paletteOeffnen)
+
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
@@ -372,6 +473,17 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feld.value = ''
     feldHoehe(feld)
     return wiederholen({ gesprochen })
+  }
+  if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) {
+    feld.value = ''
+    feldHoehe(feld)
+    return selbsttest({ gesprochen })
+  }
+  const stoeren = nichtStoerenErkennen(text)
+  if (stoeren) {
+    feld.value = ''
+    feldHoehe(feld)
+    return nichtStoerenSetzen(stoeren.an || 0, { gesprochen })
   }
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
   feld.value = ''
@@ -776,6 +888,7 @@ function formularFuellen() {
   const m = einstellungen.meldungen
   $('e-m-vorlesen').checked = m.vorlesen
   $('e-m-ton').checked = m.ton !== false
+  kartenFormularFuellen(einstellungen.karten)
   for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
   $('e-m-ruhe-von').value = m.ruheVon || ''
   $('e-m-ruhe-bis').value = m.ruheBis || ''
@@ -825,7 +938,8 @@ function formularLesen() {
     start: {
       intro: $('e-start-intro').checked,
       begruessung: $('e-start-gruss').checked
-    }
+    },
+    karten: kartenFormularLesen() ?? einstellungen.karten
   }
 }
 
@@ -875,6 +989,7 @@ $('einstellungen').addEventListener('close', async () => {
   if ($('einstellungen').returnValue !== 'speichern') return
   einstellungen = await api.einstellungen.speichern(formularLesen())
   animationenAnwenden()
+  kartenAnwenden(einstellungen.karten)
   wakeEinrichten()
 })
 
@@ -968,6 +1083,7 @@ async function start() {
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)
+  nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
   if (testAnsicht) setTimeout(() => LADEN[testAnsicht] && ansichtZeigen(testAnsicht), 5000)
   // Plugins (jarves-os\plugins): eigener Bereich links, Karte rechts
@@ -994,6 +1110,10 @@ async function start() {
   }
   bereicheZeigen()
   pluginsBereit(pluginBereiche.length)
+  geladenePlugins = pluginBereiche.length
+  // Rechte Spalte: eigene Auswahl und Reihenfolge (Einstellungen → Rechte Spalte)
+  kartenEinrichten(document.querySelector('.live'))
+  kartenAnwenden(einstellungen.karten)
   // Zuletzt offenen Bereich wieder öffnen (nur wenn es ihn noch gibt, z. B. Plugin gelöscht)
   const letzte = einstellungen.letzteAnsicht
   if (!testAnsicht && letzte && letzte !== 'zentrale' && BEREICHE.some((b) => b.id === letzte && b.aktiv)) ansichtZeigen(letzte)

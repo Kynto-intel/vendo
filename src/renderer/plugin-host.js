@@ -74,6 +74,8 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
         const karte = document.createElement('section')
         karte.className = 'karte hud plugin-karte'
         karte.dataset.plugin = m.id
+        karte.dataset.karte = `plugin-${m.id}` // für Einstellungen → Rechte Spalte
+        karte.dataset.name = titel
         karte.innerHTML = `<h3>${maskieren(titel)}</h3><div class="plugin-karte-inhalt"></div>`
         rechts.insertBefore(karte, vorKarte)
         return karte.querySelector('.plugin-karte-inhalt')

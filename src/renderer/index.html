@@ -32,6 +32,7 @@
         </div>
         <nav class="bereiche" id="bereiche"></nav>
         <div class="leiste-fuss">
+          <button class="knopf-flach" id="palette-oeffnen" type="button" title="Befehlspalette: Bereich öffnen, Routine starten, Einstellung ändern …">Befehle · Strg+P</button>
           <button class="knopf-flach" id="einstellungen-oeffnen" type="button">Einstellungen</button>
         </div>
       </aside>
@@ -50,6 +51,9 @@
           </button>
           <button class="verbindung verbindung-knopf" id="mail-status" data-zustand="verbinde" data-kurz="Postfach" type="button" title="Wird geprüft … (Klick: jetzt prüfen)">
             <span class="punkt"></span><span class="verbindung-text">Postfach …</span>
+          </button>
+          <button class="verbindung verbindung-knopf nicht-stoeren" id="nicht-stoeren" type="button" title="Nicht stören: Meldungen nur in der Liste, ohne Ton und Ansage. Klick: beenden" hidden>
+            <span class="nicht-stoeren-zeichen">◐</span><span class="verbindung-text"></span>
           </button>
           <div class="uhr" id="uhr"><span class="uhr-datum" id="uhr-datum"></span><span class="uhr-datum-kurz" id="uhr-datum-kurz"></span><span class="uhr-zeit" id="uhr-zeit"></span></div>
         </div>
@@ -176,7 +180,10 @@
         <section class="ansicht ansicht-seite" data-ansicht="system" hidden>
           <header class="seiten-kopf">
             <div><h2>System</h2><p class="leise">Hermes, dein PC und die lokalen Modelle.</p></div>
-            <button class="knopf-flach" data-neu-laden="system" type="button">Aktualisieren</button>
+            <div class="seiten-knoepfe">
+              <button class="knopf-flach" id="selbsttest-starten" type="button" title="Prüft Hermes, Mikrofon, Stimme, Shopify, Postfach, Wetter">Selbsttest</button>
+              <button class="knopf-flach" data-neu-laden="system" type="button">Aktualisieren</button>
+            </div>
           </header>
           <div class="system-raster">
             <section class="karte hud"><h3>Hermes</h3><div id="system-hermes"><div class="leise">Lade …</div></div></section>
@@ -209,23 +216,23 @@
       <aside class="live">
         <div class="zug live-kopf"></div>
         <!-- Vorschau aufs Gespräch; Klick dockt das ganze Gespräch hier an -->
-        <button class="karte hud vorschau" id="vorschau" type="button" title="Gespräch öffnen (Strg+K)">
+        <button class="karte hud vorschau" id="vorschau" data-karte="gespraech" data-name="Gespräch" type="button" title="Gespräch öffnen (Strg+K)">
           <h3><span>Gespräch</span><span class="vorschau-aktion" id="vorschau-aktion">Öffnen ›</span></h3>
           <div class="vorschau-liste" id="vorschau-liste"><div class="leise">Noch nichts gesagt.</div></div>
         </button>
-        <section class="karte hud">
+        <section class="karte hud" data-karte="meldungen" data-name="Meldungen">
           <h3><span>Meldungen</span> <button class="knopf-mini" id="meldungen-leeren" type="button" hidden>Leeren</button></h3>
           <div class="meldungen-liste" id="meldungen-liste"></div>
         </section>
-        <section class="karte hud" hidden>
+        <section class="karte hud" data-karte="morgenbericht" data-name="Morgenbericht" hidden>
           <h3>Morgenbericht</h3>
           <div id="morgenbericht"><div class="leise">Lade …</div></div>
         </section>
-        <section class="karte hud" id="karte-gerade" hidden>
+        <section class="karte hud" id="karte-gerade" data-karte="gerade" data-name="Gerade (was Luzzy tut)" hidden>
           <h3>Gerade</h3>
           <div class="aktivitaet" id="aktivitaet"><div class="leise">Nichts los.</div></div>
         </section>
-        <section class="karte hud" hidden>
+        <section class="karte hud" data-karte="luzzy" data-name="Luzzy (Profil, Modell)" hidden>
           <h3>Luzzy</h3>
           <dl class="werte">
             <dt>Profil</dt><dd id="info-profil">donnerwolf</dd>
@@ -233,12 +240,32 @@
             <dt>Hermes</dt><dd id="info-version">…</dd>
           </dl>
         </section>
-        <button class="karte hud vorschau" data-bereich-oeffnen="crew" type="button" title="Crew öffnen">
+        <button class="karte hud vorschau" data-bereich-oeffnen="crew" data-karte="crew" data-name="Crew" type="button" title="Crew öffnen">
           <h3><span>Crew</span><span class="vorschau-aktion">Öffnen ›</span></h3>
           <div class="crew-kurz" id="crew-kurz"><div class="leise">Lade …</div></div>
         </button>
       </aside>
     </div>
+
+    <!-- Befehlspalette (src/renderer/palette.js) -->
+    <dialog class="dialog hud palette" id="palette">
+      <input class="palette-eingabe" id="palette-eingabe" type="text" placeholder="Befehl suchen oder Luzzy fragen …" autocomplete="off" spellcheck="false" />
+      <ul class="palette-liste" id="palette-liste"></ul>
+      <div class="palette-hilfe leise">↑ ↓ wählen · Enter ausführen · Esc schließen</div>
+    </dialog>
+
+    <!-- Selbsttest (src/renderer/selbsttest.js) -->
+    <dialog class="dialog hud" id="selbsttest">
+      <form method="dialog">
+        <h2>Selbsttest</h2>
+        <div class="selbsttest-ergebnis" id="selbsttest-ergebnis"></div>
+        <ul class="selbsttest-liste" id="selbsttest-liste"></ul>
+        <div class="dialog-knoepfe">
+          <button class="knopf-flach" id="selbsttest-nochmal" type="button">Nochmal testen</button>
+          <button class="knopf-gold" value="schliessen" type="submit">Schließen</button>
+        </div>
+      </form>
+    </dialog>
 
     <!-- Einstellungen -->
     <dialog class="dialog hud" id="einstellungen">
@@ -284,6 +311,11 @@
           <label class="haken"><input id="e-anim-hintergrund" type="checkbox" /> Hintergrund-Raster</label>
           <label class="haken"><input id="e-start-intro" type="checkbox" /> Startsequenz beim Öffnen</label>
           <label class="haken"><input id="e-start-gruss" type="checkbox" /> Luzzy begrüßt mich beim Start</label>
+        </fieldset>
+        <fieldset>
+          <legend>Rechte Spalte</legend>
+          <ol class="karten-liste" id="e-karten"></ol>
+          <button class="knopf-mini" id="e-karten-standard" type="button">Standard wiederherstellen</button>
         </fieldset>
         <fieldset>
           <legend>Sicherung</legend>

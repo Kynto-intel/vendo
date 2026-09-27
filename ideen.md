@@ -101,11 +101,11 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    sofort und ohne Hermes zu fragen.
 6. 🆕 **Antwort merken** (Optimierung) – Kleiner 📌-Knopf an jeder Antwort von Luzzy: speichert sie als Notiz im Vault,
    damit gute Antworten nicht im Verlauf untergehen.
-7. **Rechte Spalte selbst einstellen** (Optimierung) – In den Einstellungen per Haken wählen, welche Karten sichtbar
+7. ✅ **Rechte Spalte selbst einstellen** (Optimierung, gebaut 27.09.2026) – In den Einstellungen per Haken wählen, welche Karten sichtbar
    sind und in welcher Reihenfolge.
 8. ✅ **Sicherung auf Knopfdruck** (Extra, Knopf gebaut 26.09.2026; automatische Sicherung vor Updates noch offen) – In den Einstellungen ein Knopf „Jarves-OS sichern“
    (statt `npm run backup`), und automatische Sicherung vor jedem Update.
-9. 🆕 **Nicht stören per Stimme** (Optimierung) – „Luzzy, bis 15 Uhr keine Meldungen.“ Oben erscheint ein kleines
+9. ✅ **Nicht stören per Stimme** (Optimierung, gebaut 27.09.2026) – „Luzzy, bis 15 Uhr keine Meldungen.“ Oben erscheint ein kleines
    Symbol, danach ist alles wieder normal. Meldungen landen trotzdem in der Liste.
 10. 🆕 **Timer & Wecker per Sprache** (Plugin, Felix' Wunsch) – Luzzy stellt Timer mit Namen:
     „Hey Luzzy, stell Timer auf 15 Minuten für Nudeln.“ → „Alles klar, 15 Minuten für die Nudeln.“
@@ -120,11 +120,11 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 12. ✅ **Donnerwolf-Startsequenz** (Extra, gebaut 26.09.2026) – Beim Start ein kurzes Intro: Reaktor fährt hoch,
     Luzzy begrüßt dich passend zur Tageszeit.
 13. **Erfolge / Meilensteine** (Extra) – „1.500. Bestellung!“ – Luzzy feiert mit, eine Liste der Meilensteine im Vault.
-14. **Selbsttest-Knopf** (Optimierung) – Ein Klick prüft Hermes, Mikrofon, Shopify, Postfach, Wetter, Stimme
+14. ✅ **Selbsttest-Knopf** (Optimierung, gebaut 27.09.2026) – Ein Klick prüft Hermes, Mikrofon, Shopify, Postfach, Wetter, Stimme
     und sagt klar, was nicht geht und was zu tun ist.
 15. 🆕 **Zwischenablage an Luzzy** (Killer) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
     Luzzy fasst zusammen, verbessert, übersetzt oder beantwortet ihn. Funktioniert auch, wenn Jarves-OS im Hintergrund ist.
-16. 🆕 **Befehlspalette (Strg+P)** (Optimierung) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
+16. ✅ **Befehlspalette (Strg+P)** (Optimierung, gebaut 27.09.2026) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
     Plugin aufrufen. Tippen statt klicken.
 17. **Gedankenspeicher** (Plugin) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
     oder Sprache. Landet im Vault in einem festen Ordner, Luzzy kennt die Notizen.
