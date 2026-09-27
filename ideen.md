@@ -28,10 +28,6 @@ Ein Hermes-Job erstellt jeden Morgen den Bericht (im Vault unter `04_Analytics\M
 Offen: Uhrzeit, und ob Luzzy ihn beim Start von Jarves-OS automatisch vorliest.
 Hängt eng mit Idee 8 (Routinen) zusammen.
 
-### 6. Bibliothek-Regel
-Die Agenten legen lange Texte (Recherchen, Berichte, Strategien) automatisch als Datei in `Donnerwolf\Bibliothek` ab statt in den Chat.
-Die Anzeige in Jarves-OS ist schon vorbereitet. Braucht eine Regel für Luzzy und die Bots (SOUL.md oder Hermes-Skill), erst nach Felix' Ja.
-
 ### 7. ✅ Termine per Sprache (gebaut 28.09.2026)
 Luzzy trägt Termine selbst in den Jarves-Kalender ein, ändert und löscht sie: „Luzzy, trag mir morgen um 10 Zahnarzt ein.“
 - Hermes-Skill `jarves-kalender` im Profil donnerwolf (update-fest): `profiles\donnerwolf\skills\productivity\jarves-kalender\`
@@ -102,8 +98,8 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    damit gute Antworten nicht im Verlauf untergehen.
 7. ✅ **Rechte Spalte selbst einstellen** (Optimierung, gebaut 27.09.2026) – In den Einstellungen per Haken wählen, welche Karten sichtbar
    sind und in welcher Reihenfolge.
-8. ✅ **Sicherung auf Knopfdruck** (Extra, Knopf gebaut 26.09.2026; automatische Sicherung vor Updates noch offen) – In den Einstellungen ein Knopf „Jarves-OS sichern“
-   (statt `npm run backup`), und automatische Sicherung vor jedem Update.
+8. ✅ **Sicherung auf Knopfdruck** (Extra, gebaut 26.09.2026) – In den Einstellungen ein Knopf „Jarves-OS sichern“
+   (statt `npm run backup`). Automatische Sicherung vor Updates gestrichen (Felix, 28.09.2026), Sicherheit gibt jetzt Git.
 9. ✅ **Nicht stören per Stimme** (Optimierung, gebaut 27.09.2026) – „Luzzy, bis 15 Uhr keine Meldungen.“ Oben erscheint ein kleines
    Symbol, danach ist alles wieder normal. Meldungen landen trotzdem in der Liste.
 10. ✅ **Timer & Wecker per Sprache** (Plugin, Felix' Wunsch, gebaut 27.09.2026) – Luzzy stellt Timer mit Namen:
@@ -148,14 +144,11 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 25. ✅ **Datei oder Bild an Luzzy** (Optimierung, gebaut 28.09.2026) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
     „Was steht da drin?“, „Fass das zusammen.“ Auch per 📎-Knopf neben dem Mikrofon oder Bild mit Strg+V.
     Anhänge stehen als Kärtchen über der Eingabe; Hermes bekommt Bilder als Bild, PDFs Seite für Seite, den Rest als Datei.
-26. **Suche über alles** (Optimierung) – Ein Suchfeld (Strg+F) für Vault, Gespräche, Termine, Bestellungen, Mails.
 27. ✅ **Mehrere Gespräche** (Optimierung, gebaut 27.09.2026) – Themen getrennt halten (z. B. Shop, Privat, ein Projekt): Liste im
     Gesprächs-Fenster, Wechsel mit einem Klick, Luzzy verliert nicht den Faden. Auch per Stimme: „Neues Gespräch Shop“,
     „Wechsel zum Gespräch Privat“, „Welche Gespräche gibt es?“. Jedes Thema ist eine eigene Hermes-Unterhaltung.
     ➕ Dazu (Felix' Wunsch): **Datei suchen und in Jarves öffnen** – „Luzzy, such die Datei … und öffne sie“: Notizen,
     Texte, Tabellen, Bilder, PDF, Videos und Musik erscheinen in einem Fenster über Jarves-OS, ohne eigenen Tab.
-29. **Finanzen & Kosten** (Plugin) – Einnahmen vs. Ausgaben im Monat (Shopify-Umsatz, Gebühren, KI-Kosten aus
-    Hermes, Abos). Nur Überblick, keine Überweisungen.
 30. ✅ **PC-Steuerung per Stimme** (Killer, gebaut 27.09.2026) – „Öffne Photoshop“, „Mach lauter“, „Zeig mir den Donnerwolf-Ordner.“
     Felix' Wunsch: alle Programme aus dem Startmenü (auch Store-Apps), Browser mit Seiten und Suche („Öffne den Browser,
     geh auf Netflix und such Terminator“, YouTube, Google, Amazon, Spotify …), Lautstärke, Musik, Ordner, PC sperren.
