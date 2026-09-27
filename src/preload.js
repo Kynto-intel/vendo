@@ -68,6 +68,23 @@ contextBridge.exposeInMainWorld('jarves', {
     laden: () => ipcRenderer.invoke('einstellungen:laden'),
     speichern: (neu) => ipcRenderer.invoke('einstellungen:speichern', neu)
   },
+  vault: {
+    antwortMerken: (antwort, frage) => ipcRenderer.invoke('vault:antwortMerken', antwort, frage)
+  },
+  zwischenablage: {
+    beiNeu: abonnieren('zwischenablage:neu'),
+    lesen: () => ipcRenderer.invoke('zwischenablage:lesen'),
+    schreiben: (text) => ipcRenderer.invoke('zwischenablage:schreiben', text)
+  },
+  fenster: {
+    aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit'),
+    titelfarbe: (farbe) => ipcRenderer.invoke('fenster:titelfarbe', farbe)
+  },
+  start: {
+    stand: () => ipcRenderer.invoke('start:stand'),
+    verknuepfung: () => ipcRenderer.invoke('start:verknuepfung'),
+    autostart: (an) => ipcRenderer.invoke('start:autostart', an)
+  },
   sicherung: {
     liste: () => ipcRenderer.invoke('sicherung:liste'),
     anlegen: () => ipcRenderer.invoke('sicherung:anlegen'),

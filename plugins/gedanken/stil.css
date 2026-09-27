@@ -1,0 +1,15 @@
+/* Gedankenspeicher-Plugin (Klassen mit gd-) */
+.gd-schalter { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-leise); cursor: pointer; }
+.gd-schalter input { accent-color: var(--gold); }
+.gd-neu { display: flex; gap: 8px; padding: 10px; margin-bottom: 12px; }
+.gd-neu input { flex: 1; background: var(--eingabe); border: 1px solid var(--rahmen); padding: 8px 10px; font-size: 14px; color: var(--text); outline: none; }
+.gd-neu input:focus { border-color: var(--gold); }
+.gd-liste { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; }
+.gd-notiz { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; background: var(--flaeche); border-left: 2px solid var(--gold-leise); }
+.gd-notiz:hover { border-left-color: var(--gold); }
+.gd-notiz.erledigt { opacity: 0.5; }
+.gd-notiz.erledigt .gd-text { text-decoration: line-through; }
+.gd-haken { flex: none; width: 18px; height: 18px; margin-top: 1px; border: 1px solid var(--gold-leise); background: transparent; color: var(--gold-hell); font-size: 11px; line-height: 1; cursor: pointer; padding: 0; }
+.gd-haken:hover { border-color: var(--gold); }
+.gd-text { flex: 1; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+.gd-text small { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-leise); margin-top: 2px; }

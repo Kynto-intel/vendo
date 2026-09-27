@@ -8,12 +8,14 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import { ablageEinrichten, ablageErgebnis, ablageOeffnen } from './zwischenablage.js'
+import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
-import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
+import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung } from './plugin-host.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
 const $ = (id) => document.getElementById(id)
@@ -273,6 +275,10 @@ function nachrichtAnzeigen(rolle, text, { laeuft = false } = {}) {
   const wer = document.createElement('div')
   wer.className = 'msg-wer'
   wer.textContent = rolle === 'luzzy' ? 'LUZZY' : 'FELIX'
+  if (rolle === 'luzzy') {
+    el.roh = text // Markdown für „Antwort merken“
+    wer.insertAdjacentHTML('beforeend', '<button class="msg-merken" type="button" title="Antwort im Vault merken (Jarves-OS\\Gemerkte Antworten)">📌</button>')
+  }
   const textEl = document.createElement('div')
   textEl.className = 'msg-text'
   if (rolle === 'felix') textEl.textContent = text
@@ -359,6 +365,8 @@ function istWiederholen(text) {
 function letzteAntwortMerken(text) {
   letzteAntwort = text || ''
   $('nochmal').hidden = !letzteAntwort
+  $('antwort-merken').hidden = !letzteAntwort
+  $('antwort-merken').textContent = '📌 Merken'
 }
 function wiederholen({ gesprochen = false } = {}) {
   letzteEingabeGesprochen = gesprochen // Gesprächsmodus: danach wie gewohnt weiter zuhören
@@ -367,6 +375,29 @@ function wiederholen({ gesprochen = false } = {}) {
   vorleser.sprechen(text, stimmOptionen())
 }
 $('nochmal').addEventListener('click', () => !beschaeftigt && wiederholen())
+
+// ── Antwort merken (📌): Luzzys Antwort als Notiz in den Vault (Jarves-OS\Gemerkte Antworten) ──
+let letzteFrage = ''
+async function antwortMerken(antwort, frage, knopf) {
+  try {
+    const pfad = await api.vault.antwortMerken(antwort, frage)
+    knopf.textContent = knopf.id === 'antwort-merken' ? '✓ Gemerkt' : '✓'
+    knopf.disabled = true
+    knopf.title = `Gemerkt: ${pfad}`
+    aktivitaetMelden('Antwort im Vault gemerkt')
+  } catch (e) {
+    systemNachricht(`Merken ging nicht: ${e.message}`)
+  }
+}
+$('antwort-merken').addEventListener('click', (e) => antwortMerken(letzteAntwort, letzteFrage, e.currentTarget))
+$('gespraech').addEventListener('click', (e) => {
+  const knopf = e.target.closest('.msg-merken')
+  if (!knopf) return
+  const msg = knopf.closest('.msg')
+  let frage = msg.previousElementSibling
+  while (frage && !frage.classList.contains('felix')) frage = frage.previousElementSibling
+  antwortMerken(msg.roh || msg.querySelector('.msg-text').innerText, frage?.querySelector('.msg-text').textContent || '', knopf)
+})
 
 // ── „Nicht stören“: Meldungen nur in der Liste, ohne Ton und Ansage, bis zur gewählten Uhrzeit ──
 function nichtStoerenZeigen() {
@@ -409,6 +440,21 @@ async function selbsttest({ gesprochen = false } = {}) {
 $('selbsttest-starten').addEventListener('click', () => selbsttest())
 $('selbsttest-nochmal').addEventListener('click', () => selbsttest())
 
+// ── Timer abgelaufen: Ton, dann sagt Luzzy es. Auch in der Ruhezeit und bei „Nicht stören“,
+// den Timer hat Felix ja selbst gestellt. Mehrere nacheinander, nie während Felix spricht.
+let alarmKette = Promise.resolve()
+function timerAlarm({ text, titel }) {
+  api.fenster.aufmerksamkeit()
+  meldungNeu({ art: 'timer', titel, anzeige: text, zeit: Date.now(), still: true })
+  alarmKette = alarmKette.then(async () => {
+    for (let i = 0; i < 120 && (hoert || versteht); i++) await new Promise((r) => setTimeout(r, 500))
+    await tonSpielen('wecker')
+    aktivitaetMelden(titel)
+    lokalAntworten(text)
+    await new Promise((r) => setTimeout(r, 1500))
+  })
+}
+
 // ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
 function paletteBefehle() {
   const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
@@ -427,7 +473,9 @@ function paletteBefehle() {
     ruhe
       ? { name: 'Nicht stören beenden', gruppe: 'Meldungen', stichwoerter: 'ruhe meldungen wieder an', ausfuehren: () => nichtStoerenSetzen(0) }
       : { name: 'Nicht stören (1 Stunde)', gruppe: 'Meldungen', stichwoerter: 'ruhe still keine meldungen', ausfuehren: () => nichtStoerenSetzen(Date.now() + 3600000) },
+    ...(timerListe().length ? [{ name: 'Alle Timer stoppen', gruppe: 'Timer', stichwoerter: 'wecker erinnerung löschen', ausfuehren: () => lokalAntworten(timerBefehl('alle timer stoppen')) }] : []),
     { name: 'Meldungen leeren', gruppe: 'Meldungen', stichwoerter: 'liste löschen', ausfuehren: () => $('meldungen-leeren').click() },
+    { name: 'Zwischenablage an Luzzy', gruppe: 'Luzzy', stichwoerter: 'kopiert strg+umschalt+l zusammenfassen übersetzen verbessern', ausfuehren: () => ablageOeffnen() },
     { name: 'Selbsttest', gruppe: 'System', stichwoerter: 'prüfen check test fehler', ausfuehren: () => selbsttest() },
     {
       name: 'Jarves-OS sichern', gruppe: 'System', stichwoerter: 'backup sicherung',
@@ -454,6 +502,14 @@ function paletteBefehle() {
   )
   return liste
 }
+ablageEinrichten({
+  verbunden: () => verbunden,
+  luzzy: (text, optionen) => {
+    ansichtZeigen('zentrale')
+    return anLuzzy(text, optionen)
+  }
+})
+
 paletteEinrichten({
   befehle: paletteBefehle,
   luzzy: (text) => {
@@ -466,25 +522,44 @@ paletteEinrichten({
 $('palette-oeffnen').addEventListener('click', paletteOeffnen)
 
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
+// Luzzy antwortet selbst, ohne Hermes (Timer, Nicht stören …)
+function lokalAntworten(text, { gesprochen = false } = {}) {
+  letzteEingabeGesprochen = gesprochen // Gesprächsmodus: danach wie gewohnt weiter zuhören
+  untertitelZeigen(text, { fertig: true })
+  letzteAntwortMerken(text)
+  vorleser.sprechen(text, stimmOptionen())
+}
+
+// Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
+function lokalerBefehl(text, { gesprochen = false } = {}) {
+  if (istWiederholen(text)) return wiederholen({ gesprochen }), true
+  if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) return selbsttest({ gesprochen }), true
+  const stoeren = nichtStoerenErkennen(text)
+  if (stoeren) return nichtStoerenSetzen(stoeren.an || 0, { gesprochen }), true
+  const timerAntwort = timerBefehl(text)
+  if (timerAntwort) return lokalAntworten(timerAntwort, { gesprochen }), true
+  return false
+}
+
+let losgelegt = false // Felix hat schon etwas gesagt oder getippt (dann keine Begrüßung mehr dazwischen)
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
-  if (!text || beschaeftigt) return
-  if (istWiederholen(text)) {
+  if (!text) return
+  losgelegt = true
+  if (lokalerBefehl(text, { gesprochen })) {
     feld.value = ''
     feldHoehe(feld)
-    return wiederholen({ gesprochen })
+    return
   }
-  if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) {
+  // Plugin-Befehle, die das Plugin selbst beantwortet (z. B. „Merk dir: …“)
+  const pluginAntwort = await pluginBefehl(text, { gesprochen })
+  if (pluginAntwort) {
     feld.value = ''
     feldHoehe(feld)
-    return selbsttest({ gesprochen })
+    if (pluginAntwort.antwort) lokalAntworten(pluginAntwort.antwort, { gesprochen })
+    return
   }
-  const stoeren = nichtStoerenErkennen(text)
-  if (stoeren) {
-    feld.value = ''
-    feldHoehe(feld)
-    return nichtStoerenSetzen(stoeren.an || 0, { gesprochen })
-  }
+  if (beschaeftigt) return
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
   feld.value = ''
   feldHoehe(feld)
@@ -506,6 +581,7 @@ let vorlesenErzwungen = false
 async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false } = {}) {
   if (!text || beschaeftigt || !verbunden) return false
   letzteEingabeGesprochen = gesprochen
+  letzteFrage = anzeige
   vorlesenErzwungen = Boolean(vorlesen)
   vorleser.stoppen()
   nachrichtAnzeigen('felix', anzeige)
@@ -642,7 +718,10 @@ api.hermes.beiEreignis((ev) => {
     case 'message.complete': {
       const text = typeof p.text === 'string' && p.text ? p.text : aktuelleAntwort?.roh || ''
       untertitelZeigen(text, { fertig: true })
-      if (aktuelleAntwort) aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
+      if (aktuelleAntwort) {
+        aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
+        aktuelleAntwort.el.roh = text
+      }
       else if (text) nachrichtAnzeigen('luzzy', text)
       if (p.status === 'error' || p.error) systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
       aktuelleAntwort = null
@@ -651,6 +730,14 @@ api.hermes.beiEreignis((ev) => {
       laufendeBeenden()
       aktivitaetMelden('Luzzy hat geantwortet')
       if (text && p.status !== 'error' && !p.error) letzteAntwortMerken(text)
+      // Zwischenablage an Luzzy: Ergebnis gleich wieder in die Zwischenablage
+      ablageErgebnis(p.status !== 'error' && !p.error ? text : '')
+        .then((hinweis) => {
+          if (!hinweis) return
+          aktivitaetMelden(hinweis)
+          $('untertitel').insertAdjacentHTML('beforeend', `<span class="leise-hinweis">📋 ${maskieren(hinweis)}</span>`)
+        })
+        .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
       zustandZeigen()
       if ((einstellungen?.vorlesen || vorlesenErzwungen) && text && p.status !== 'error') vorleser.sprechen(text, stimmOptionen())
       else weiterZuhoeren()
@@ -869,7 +956,23 @@ const crewGespraech = unterhaltungErstellen({
 const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, hoehe: einstellungen.hoehe })
 const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
 
+// Farben nach Tageszeit: morgens 6–10 heller, tagsüber normal, abends 18–22 wärmer, nachts dunkler
+function tageszeitAnwenden() {
+  const test = new URLSearchParams(location.search).get('tageszeit') // nur Testmodus
+  const h = new Date().getHours()
+  const zeit = test || (h >= 6 && h < 10 ? 'morgen' : h >= 10 && h < 18 ? 'tag' : h >= 18 && h < 22 ? 'abend' : 'nacht')
+  const aus = einstellungen?.tageszeitFarben === false && !test
+  if (aus) delete document.documentElement.dataset.tageszeit
+  else document.documentElement.dataset.tageszeit = zeit
+  // Fensterknöpfe in der Farbe der rechten Spalte (--leiste, siehe style.css)
+  const leiste = { morgen: '#30302e', tag: '#2b2b2b', abend: '#2b2824', nacht: '#211f1d' }[aus ? 'tag' : zeit]
+  if (leiste !== tageszeitLeiste) api.fenster.titelfarbe((tageszeitLeiste = leiste))
+}
+let tageszeitLeiste = '#2b2b2b'
+setInterval(tageszeitAnwenden, 60000)
+
 function animationenAnwenden() {
+  tageszeitAnwenden()
   const a = einstellungen.animationen
   document.body.classList.toggle('anim-reaktor', a.reaktor)
   document.body.classList.toggle('anim-welle', a.welle)
@@ -890,10 +993,12 @@ function formularFuellen() {
   $('e-m-ton').checked = m.ton !== false
   kartenFormularFuellen(einstellungen.karten)
   for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
+  $('e-m-meilenstein').checked = m.meilenstein !== false
   $('e-m-ruhe-von').value = m.ruheVon || ''
   $('e-m-ruhe-bis').value = m.ruheBis || ''
   mikrofonStatusZeigen(mikrofon.zustand())
   for (const k of ['reaktor', 'welle', 'scanlinie', 'hintergrund']) $(`e-anim-${k}`).checked = einstellungen.animationen[k]
+  $('e-tageszeit').checked = einstellungen.tageszeitFarben !== false
   $('e-start-intro').checked = einstellungen.start?.intro !== false
   $('e-start-gruss').checked = einstellungen.start?.begruessung !== false
   reglerAnzeigen()
@@ -921,6 +1026,7 @@ function formularLesen() {
       mail: $('e-m-mail').checked,
       job: $('e-m-job').checked,
       crew: $('e-m-crew').checked,
+      meilenstein: $('e-m-meilenstein').checked,
       ruheVon: $('e-m-ruhe-von').value,
       ruheBis: $('e-m-ruhe-bis').value
     },
@@ -939,13 +1045,15 @@ function formularLesen() {
       intro: $('e-start-intro').checked,
       begruessung: $('e-start-gruss').checked
     },
-    karten: kartenFormularLesen() ?? einstellungen.karten
+    karten: kartenFormularLesen() ?? einstellungen.karten,
+    tageszeitFarben: $('e-tageszeit').checked
   }
 }
 
 $('einstellungen-oeffnen').addEventListener('click', () => {
   formularFuellen()
   sicherungStandZeigen()
+  startStandZeigen()
   $('einstellungen').showModal()
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
@@ -954,6 +1062,38 @@ $('e-probe').addEventListener('click', () => {
   const f = formularLesen()
   vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
 })
+// Schneller starten: Desktop-Verknüpfung und Autostart (gilt sofort, nicht erst mit „Speichern“)
+async function startStandZeigen(vorweg = '') {
+  try {
+    const s = await api.start.stand()
+    $('e-verknuepfung').disabled = !s.windows
+    $('e-autostart').disabled = !s.windows
+    $('e-autostart').checked = s.autostart
+    $('e-verknuepfung').textContent = s.verknuepfung ? 'Verknüpfung neu anlegen' : 'Verknüpfung auf dem Desktop anlegen'
+    $('e-start-stand').textContent = s.windows
+      ? `${vorweg}${s.verknuepfung ? 'Verknüpfung liegt auf dem Desktop. ' : ''}Doppelklick auf „Jarves-OS“ startet ohne Terminal, npm start geht weiterhin.`
+      : 'Verknüpfung und Autostart gehen nur unter Windows.'
+  } catch (e) {
+    $('e-start-stand').textContent = e.message
+  }
+}
+$('e-verknuepfung').addEventListener('click', async () => {
+  try {
+    await api.start.verknuepfung()
+    await startStandZeigen('Angelegt. ')
+  } catch (e) {
+    $('e-start-stand').textContent = `Ging nicht: ${e.message}`
+  }
+})
+$('e-autostart').addEventListener('change', async (e) => {
+  try {
+    await api.start.autostart(e.target.checked)
+    await startStandZeigen(e.target.checked ? 'Startet ab jetzt mit Windows. ' : 'Kein Autostart mehr. ')
+  } catch (err) {
+    $('e-start-stand').textContent = `Ging nicht: ${err.message}`
+  }
+})
+
 // Sicherung auf Knopfdruck
 async function sicherungStandZeigen(vorweg = '') {
   const el = $('e-sicherung-stand')
@@ -1044,7 +1184,7 @@ async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
     pluginSaetze: await pluginBegruessung()
   })
   window.__begruessung = text // für den Testmodus
-  if (beschaeftigt || hoert || versteht) return // Felix hat schon losgelegt
+  if (beschaeftigt || hoert || versteht || losgelegt) return // Felix hat schon losgelegt
   untertitelZeigen(text, { fertig: true })
   letzteAntwortMerken(text)
   if (!stumm) vorleser.sprechen(text, stimmOptionen())
@@ -1083,6 +1223,7 @@ async function start() {
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)
+  timerEinrichten({ gespeichert: einstellungen.timer, speichern: (liste) => api.einstellungen.speichern({ timer: liste }), alarm: timerAlarm })
   nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
   if (testAnsicht) setTimeout(() => LADEN[testAnsicht] && ansichtZeigen(testAnsicht), 5000)
@@ -1100,7 +1241,8 @@ async function start() {
       return anLuzzy(text, optionen)
     },
     ansichtZeigen,
-    bereit: () => verbunden && !beschaeftigt && !hoert && !versteht
+    bereit: () => verbunden && !beschaeftigt && !hoert && !versteht,
+    nichtStoeren: (bis) => nichtStoerenSetzen(Number(bis) || 0, { bestaetigen: false })
   })
   const vorSystem = BEREICHE.findIndex((b) => b.id === 'system')
   BEREICHE.splice(vorSystem, 0, ...pluginBereiche.map((b) => ({ id: b.id, name: b.name, aktiv: true })))

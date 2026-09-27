@@ -198,4 +198,4 @@ async function dateien() {
   return { wurzel: WURZEL, ordner: oberste, neueste }
 }
 
-module.exports = { WURZEL, sicher, lesen, vault, suchen, notizFinden, morgenberichte, entscheidungen, bibliothek, dateien }
+module.exports = { WURZEL, VAULT, sicher, lesen, vault, suchen, notizFinden, morgenberichte, entscheidungen, bibliothek, dateien }

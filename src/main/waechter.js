@@ -2,6 +2,7 @@
 //   - neue Bestellungen (direkt bei Shopify, Zugang aus der Hermes-Einstellung wie beim IONOS-Mail-Plugin)
 //   - neue ungelesene Mails (über das IONOS-Mail-Plugin von Hermes)
 //   - fehlgeschlagene Hermes-Jobs
+//   - Meilensteine: 10., 25., 50., 100. … 1.000. Bestellung, danach alle 500 (Luzzy feiert, Liste im Vault)
 // Beim ersten Durchlauf wird nur der Stand gemerkt, gemeldet wird erst, was danach neu dazukommt.
 // Der Shopify-Zugang bleibt in diesem Prozess: nie an die Oberfläche, nie ins Log, nie gespeichert.
 
@@ -62,11 +63,16 @@ function shopifyKandidaten() {
   }
   return kandidaten
 }
+const zugangFuer = (kandidaten, token) => kandidaten.find((k) => k.token === token) || kandidaten[0]
 function shopifyZugang() {
   return shopifyKandidaten()[0] || null
 }
 
 const ungelesenAnzahl = (antwort) => (antwort?.messages || []).length
+
+// Meilensteine bei der Anzahl aller Bestellungen
+const istMeilenstein = (n) => [10, 25, 50, 100, 250, 500, 750].includes(n) || (n >= 1000 && n % 500 === 0)
+const tausender = (n) => n.toLocaleString('de-DE')
 
 class Waechter extends EventEmitter {
   constructor(hermes) {
@@ -145,6 +151,7 @@ class Waechter extends EventEmitter {
       const hoechste = Math.max(0, ...bestellungen.map((b) => Number(b.id) || 0))
       if (this.stand.letzteBestellung == null) {
         this.stand.letzteBestellung = hoechste // erster Durchlauf: nur merken
+        await this.meilensteinPruefen(zugangFuer(kandidaten, this.shopifyToken))
         return
       }
       const neue = bestellungen.filter((b) => Number(b.id) > this.stand.letzteBestellung).sort((a, b) => a.id - b.id)
@@ -155,8 +162,44 @@ class Waechter extends EventEmitter {
         })
       }
       if (hoechste > this.stand.letzteBestellung) this.stand.letzteBestellung = hoechste
+      // Bei neuen Bestellungen zählen; außerdem einmal, falls noch nie gezählt (Wächter lief schon vor den Meilensteinen)
+      if (neue.length || this.stand.bestellAnzahl == null) await this.meilensteinPruefen(zugangFuer(kandidaten, this.shopifyToken), neue.at(-1))
     } catch (e) {
       this.problem('shopify', e)
+    }
+  }
+
+  // Anzahl aller Bestellungen bei Shopify: Meilenstein erreicht? (Bestellnummern starten bei #1001, taugen also nicht)
+  async meilensteinPruefen(zugang, letzte = null) {
+    if (!zugang) return
+    try {
+      const antwort = await fetch(`https://${zugang.shop}/admin/api/${SHOPIFY_VERSION}/orders/count.json?status=any`, {
+        headers: { 'X-Shopify-Access-Token': zugang.token, Accept: 'application/json' },
+        signal: AbortSignal.timeout(20000)
+      })
+      if (!antwort.ok) return
+      const anzahl = Number((await antwort.json()).count) || 0
+      const vorher = this.stand.bestellAnzahl
+      this.stand.bestellAnzahl = anzahl
+      this.stand.bestellAnzahlZeit = Date.now()
+      if (vorher == null || anzahl <= vorher) return // erster Durchlauf: nur merken, Vergangenes nicht nachfeiern
+      const erreicht = []
+      for (let n = vorher + 1; n <= anzahl; n++) if (istMeilenstein(n)) erreicht.push(n)
+      if (!erreicht.length) return
+      const n = erreicht.at(-1)
+      this.melden('meilenstein', `Meilenstein: ${tausender(n)}. Bestellung`, `Felix! Das ist die ${tausender(n)}. Bestellung bei Donnerwolf. Skål, darauf kannst du stolz sein!`, {
+        anzeige: `${letzte?.name ? `${letzte.name} · ` : ''}${tausender(anzahl)} Bestellungen insgesamt`
+      })
+      const heute = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      for (const m of erreicht) {
+        await require('./vaultschreiben')
+          .anhaengen('Meilensteine.md', `- ${heute} · ${tausender(m)}. Bestellung${letzte?.name ? ` (um ${letzte.name})` : ''}`, {
+            kopf: '# Meilensteine\n\nVon Jarves-OS: jede besondere Bestellung bei Donnerwolf.'
+          })
+          .catch(() => {}) // Vault nicht da: Meldung kam trotzdem
+      }
+    } catch {
+      // nächstes Mal
     }
   }
 
@@ -216,4 +259,4 @@ class Waechter extends EventEmitter {
   }
 }
 
-module.exports = { Waechter, shopifyZugang }
+module.exports = { istMeilenstein, STAND_DATEI, Waechter, shopifyZugang }

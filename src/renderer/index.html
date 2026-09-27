@@ -55,6 +55,7 @@
           <button class="verbindung verbindung-knopf nicht-stoeren" id="nicht-stoeren" type="button" title="Nicht stören: Meldungen nur in der Liste, ohne Ton und Ansage. Klick: beenden" hidden>
             <span class="nicht-stoeren-zeichen">◐</span><span class="verbindung-text"></span>
           </button>
+          <div class="timer-leiste" id="timer-leiste" hidden></div>
           <div class="uhr" id="uhr"><span class="uhr-datum" id="uhr-datum"></span><span class="uhr-datum-kurz" id="uhr-datum-kurz"></span><span class="uhr-zeit" id="uhr-zeit"></span></div>
         </div>
         <!-- Zentrale: Luzzy -->
@@ -65,7 +66,10 @@
             <div class="luzzy-zustand" id="luzzy-zustand">Verbinde mit Hermes …</div>
             <div class="welle" id="welle"></div>
             <div class="untertitel" id="untertitel"></div>
-            <button class="nochmal" id="nochmal" type="button" title="Letzte Antwort nochmal vorlesen (oder sag „Wiederhol das“)" hidden>↻ Nochmal hören</button>
+            <div class="unter-knoepfe">
+              <button class="nochmal" id="nochmal" type="button" title="Letzte Antwort nochmal vorlesen (oder sag „Wiederhol das“)" hidden>↻ Nochmal hören</button>
+              <button class="nochmal" id="antwort-merken" type="button" title="Letzte Antwort im Vault merken (Jarves-OS\Gemerkte Antworten)" hidden>📌 Merken</button>
+            </div>
           </section>
 
           <div class="schnellbefehle" id="schnellbefehle" hidden></div>
@@ -220,6 +224,10 @@
           <h3><span>Gespräch</span><span class="vorschau-aktion" id="vorschau-aktion">Öffnen ›</span></h3>
           <div class="vorschau-liste" id="vorschau-liste"><div class="leise">Noch nichts gesagt.</div></div>
         </button>
+        <section class="karte hud timer-karte karte-leer" id="timer-karte" data-karte="timer" data-name="Timer (nur wenn einer läuft)">
+          <h3>Timer</h3>
+          <div id="timer-karte-inhalt"></div>
+        </section>
         <section class="karte hud" data-karte="meldungen" data-name="Meldungen">
           <h3><span>Meldungen</span> <button class="knopf-mini" id="meldungen-leeren" type="button" hidden>Leeren</button></h3>
           <div class="meldungen-liste" id="meldungen-liste"></div>
@@ -252,6 +260,24 @@
       <input class="palette-eingabe" id="palette-eingabe" type="text" placeholder="Befehl suchen oder Luzzy fragen …" autocomplete="off" spellcheck="false" />
       <ul class="palette-liste" id="palette-liste"></ul>
       <div class="palette-hilfe leise">↑ ↓ wählen · Enter ausführen · Esc schließen</div>
+    </dialog>
+
+    <!-- Zwischenablage an Luzzy (src/renderer/zwischenablage.js), Strg+Umschalt+L -->
+    <dialog class="dialog hud ablage" id="ablage">
+      <h2>Zwischenablage an Luzzy</h2>
+      <div class="ablage-vorschau" id="ablage-vorschau"></div>
+      <div class="leise ablage-laenge" id="ablage-laenge"></div>
+      <div class="ablage-knoepfe">
+        <button class="knopf-gold" data-ablage="zusammenfassen" type="button"><kbd>1</kbd> Zusammenfassen</button>
+        <button class="knopf-flach" data-ablage="verbessern" type="button"><kbd>2</kbd> Verbessern</button>
+        <button class="knopf-flach" data-ablage="uebersetzen" type="button"><kbd>3</kbd> Übersetzen</button>
+        <button class="knopf-flach" data-ablage="beantworten" type="button"><kbd>4</kbd> Beantworten</button>
+      </div>
+      <div class="ablage-eigen-zeile">
+        <input id="ablage-eigen" type="text" placeholder="Oder eigene Anweisung, z. B. „Mach daraus einen Instagram-Post“ (Enter)" autocomplete="off" />
+        <button class="knopf-flach" data-ablage="eigen" type="button">Los</button>
+      </div>
+      <div class="leise ablage-hilfe">Verbessern, Übersetzen, Beantworten und eigene Anweisungen: Das Ergebnis liegt danach in der Zwischenablage. <span id="ablage-hinweis" class="ablage-warnung"></span></div>
     </dialog>
 
     <!-- Selbsttest (src/renderer/selbsttest.js) -->
@@ -300,6 +326,7 @@
           <label class="haken"><input id="e-m-mail" type="checkbox" /> Neue Mails</label>
           <label class="haken"><input id="e-m-job" type="checkbox" /> Fehlgeschlagene Jobs</label>
           <label class="haken"><input id="e-m-crew" type="checkbox" /> Crew ist fertig</label>
+          <label class="haken"><input id="e-m-meilenstein" type="checkbox" /> Meilensteine (z. B. 1.000. Bestellung)</label>
           <label>Ruhezeit <span class="zeitspanne"><input id="e-m-ruhe-von" type="time" /> bis <input id="e-m-ruhe-bis" type="time" /></span></label>
           <div class="leise">In der Ruhezeit erscheinen Meldungen nur in der Liste, Luzzy bleibt still.</div>
         </fieldset>
@@ -309,6 +336,7 @@
           <label class="haken"><input id="e-anim-welle" type="checkbox" /> Sprach-Welle</label>
           <label class="haken"><input id="e-anim-scanlinie" type="checkbox" /> Scanlinie</label>
           <label class="haken"><input id="e-anim-hintergrund" type="checkbox" /> Hintergrund-Raster</label>
+          <label class="haken"><input id="e-tageszeit" type="checkbox" /> Farben nach Tageszeit (morgens heller, abends wärmer)</label>
           <label class="haken"><input id="e-start-intro" type="checkbox" /> Startsequenz beim Öffnen</label>
           <label class="haken"><input id="e-start-gruss" type="checkbox" /> Luzzy begrüßt mich beim Start</label>
         </fieldset>
@@ -316,6 +344,14 @@
           <legend>Rechte Spalte</legend>
           <ol class="karten-liste" id="e-karten"></ol>
           <button class="knopf-mini" id="e-karten-standard" type="button">Standard wiederherstellen</button>
+        </fieldset>
+        <fieldset>
+          <legend>Starten</legend>
+          <div class="sicherung-knoepfe">
+            <button class="knopf-flach" id="e-verknuepfung" type="button">Verknüpfung auf dem Desktop anlegen</button>
+          </div>
+          <label class="haken"><input id="e-autostart" type="checkbox" /> Mit Windows starten</label>
+          <div class="leise" id="e-start-stand">Doppelklick auf „Jarves-OS“ auf dem Desktop startet ohne Terminal. <code>npm start</code> geht weiterhin.</div>
         </fieldset>
         <fieldset>
           <legend>Sicherung</legend>

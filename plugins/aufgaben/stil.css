@@ -1,0 +1,21 @@
+/* Aufgaben-Plugin (Klassen mit af-; Haken und Schalter vom Gedankenspeicher: gd-) */
+.af-neu { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; padding: 10px; margin-bottom: 12px; }
+.af-neu input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 8px 10px; font-size: 14px; color: var(--text); outline: none; color-scheme: dark; }
+.af-neu input:focus { border-color: var(--gold); }
+.af-liste { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0; }
+.af-gruppe h3 { margin: 0 0 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
+.af-gruppe h3 span { color: var(--gold); margin-left: 4px; }
+.af-gruppe.ueber h3 { color: var(--rot); }
+.af-aufgabe { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; margin-bottom: 4px; background: var(--flaeche); border-left: 2px solid var(--gold-leise); }
+.af-aufgabe:hover { border-left-color: var(--gold); }
+.af-gruppe.ueber .af-aufgabe { border-left-color: var(--rot); }
+.af-aufgabe.erledigt { opacity: 0.5; }
+.af-aufgabe.erledigt .af-text { text-decoration: line-through; }
+.af-text { flex: 1; font-size: 14px; line-height: 1.5; }
+.af-text small { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-leise); margin-top: 2px; }
+.af-karte-zeile { font-size: 13px; line-height: 1.5; padding-left: 8px; border-left: 2px solid var(--gold-leise); margin-bottom: 3px; }
+.af-karte-zeile.ueber { border-left-color: var(--rot); }
+/* Haken und Schalter wie im Gedankenspeicher (falls der abgeschaltet ist) */
+.af-haken { flex: none; width: 18px; height: 18px; margin-top: 1px; border: 1px solid var(--gold-leise); background: transparent; color: var(--gold-hell); font-size: 11px; line-height: 1; cursor: pointer; padding: 0; }
+.af-schalter { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-leise); cursor: pointer; }
+.af-schalter input { accent-color: var(--gold); }

@@ -58,8 +58,10 @@ export async function starten(ctx) {
 | `ctx.begruessung(() => satz)` | Kurzer Satz für Luzzys Begrüßung beim Start (z. B. Termine heute, Wetter) |
 | `ctx.kontextFuer(text)` | Kontext aller Plugins, deren Stichwörter im Text vorkommen (siehe unten) |
 | `ctx.eingabeFilter(fn)` | Eingaben abfangen: `fn(text)` gibt `{ text, anzeige, vorlesen }` oder `null` zurück |
+| `ctx.befehl(fn)` | Befehl selbst beantworten, sofort und ohne Hermes: `fn(text, { gesprochen })` gibt die Antwort (Luzzy sagt sie), `true` (erledigt, nichts sagen) oder `null` (kein Befehl) zurück |
 | `ctx.knoepfe([{ name, titel, fn }])` | Knöpfe über der Eingabe in der Zentrale setzen |
 | `ctx.bereit()` | Ist Luzzy gerade frei (verbunden, antwortet nicht)? |
+| `ctx.nichtStoeren(bis)` | „Nicht stören“ bis zum Zeitpunkt `bis` (ms) setzen, `0` beendet es (Meldungen nur in der Liste) |
 | `ctx.oeffnen()` | öffnet den Bereich des Plugins |
 | `ctx.aufrufen(name, ...)` | ruft eine Funktion aus haupt.js auf |
 | `ctx.maskieren(text)` | Text sicher in HTML einsetzen |
@@ -71,6 +73,10 @@ export async function starten(ctx) {
 module.exports = (ctx) => {
   ctx.bereitstellen('hallo', async (name) => `Hallo ${name}`)
   // ctx.datenLaden(), ctx.datenSpeichern(obj) gibt es hier auch
+  // ctx.vault: in den Vault schreiben, nur in Donnerwolf-Shop\Jarves-OS\ und ohne zu überschreiben:
+  //   await ctx.vault.anhaengen('Gedankenspeicher.md', '- Text', { kopf: '# Überschrift' })
+  //   await ctx.vault.anlegen('Unterordner', 'Titel', 'Inhalt')   → neue Notiz
+  //   await ctx.vault.lesen('Gedankenspeicher.md')
 }
 ```
 
@@ -88,6 +94,10 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 |---|---|
 | `kalender` | Eigener Kalender: Monatsansicht, Termine, Erinnerungen über Luzzy, „Heute“-Karte, liefert Termine an andere Plugins |
 | `routinen` | Standardaufgaben mit Auslösewort und eigenem Prompt (Termine werden automatisch angehängt, wenn der Prompt sie erwähnt), Ergebnis (vorlesen, speichern), Zeitplan und Knopf über der Eingabe |
+| `gedanken` | Gedankenspeicher: „Merk dir: …“ per Sprache oder Tippen, Liste mit erledigt/löschen, jede Notiz auch im Vault (`Jarves-OS\Gedankenspeicher.md`), Luzzy kennt die offenen Notizen |
+| `aufgaben` | To-do-Liste mit Fälligkeit („Neue Aufgabe: … bis Freitag“, „Erledigt: …“), Erinnerung über Luzzy-Meldung, Begrüßung, Kontext für Luzzy, Karte „Aufgaben“ (anfangs aus, Einstellungen → Rechte Spalte) |
+| `fokus` | Pomodoro-Timer (Fokus, Pause, lange Pause) mit Hintergrundklang (Rauschen, Regen), in der Fokuszeit „Nicht stören“; „Fokus 50 Minuten“, „Fokus beenden“ |
+| `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Jarves-OS\Meilensteine.md`) |
 
 ## Stichwörter: Daten automatisch an Luzzy
 

@@ -1,6 +1,6 @@
 // Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
 
-const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard } = require('electron')
 
 // Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
 if (process.env.JARVES_TEST_MIKROFON) {
@@ -72,6 +72,7 @@ function fensterErstellen() {
     fenster.show()
   })
   fenster.on('close', fensterMerken)
+  fenster.on('focus', () => fenster.flashFrame(false))
   fenster.webContents.on('before-input-event', (ereignis, eingabe) => {
     if (eingabe.type === 'keyDown' && eingabe.key === 'F12') {
       fenster.webContents.openDevTools({ mode: 'detach' })
@@ -82,6 +83,7 @@ function fensterErstellen() {
   if (process.env.JARVES_TEST_PANEL) query.panel = process.env.JARVES_TEST_PANEL
   if (process.env.JARVES_TEST_STUMM) query.stumm = '1'
   if (process.env.JARVES_TEST_ANSICHT) query.ansicht = process.env.JARVES_TEST_ANSICHT
+  if (process.env.JARVES_TEST_TAGESZEIT) query.tageszeit = process.env.JARVES_TEST_TAGESZEIT
   if (process.env.JARVES_TEST_INTRO) query.intro = '1'
   if (process.env.JARVES_TEST_CREW) query.crewtest = process.env.JARVES_TEST_CREW
   if (process.env.JARVES_TEST_MELDUNG) query.meldungtest = '1'
@@ -204,6 +206,67 @@ ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
 })
 
 ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
+// Ergebnis zurück in die Zwischenablage (Zwischenablage an Luzzy)
+ipcMain.handle('zwischenablage:schreiben', (_e, text) => clipboard.writeText(String(text || '').slice(0, 100000)))
+ipcMain.handle('zwischenablage:lesen', () => clipboard.readText().slice(0, 15000))
+
+// Schneller starten: Desktop-Verknüpfung und Autostart mit Windows (der Start per Terminal bleibt)
+// Beides startet Electron direkt mit dem Projektordner, ohne Terminal-Fenster.
+const APP_ORDNER = path.join(__dirname, '..', '..')
+const VERKNUEPFUNG = () => path.join(app.getPath('desktop'), 'Jarves-OS.lnk')
+const autostartOptionen = () => ({ path: process.execPath, args: [APP_ORDNER] })
+ipcMain.handle('start:stand', () => ({
+  windows: process.platform === 'win32',
+  verknuepfung: require('node:fs').existsSync(VERKNUEPFUNG()),
+  autostart: process.platform === 'win32' ? app.getLoginItemSettings(autostartOptionen()).openAtLogin : false
+}))
+ipcMain.handle('start:verknuepfung', () => {
+  if (process.platform !== 'win32') throw new Error('Geht nur unter Windows.')
+  const ok = shell.writeShortcutLink(VERKNUEPFUNG(), 'create', {
+    target: process.execPath,
+    args: `"${APP_ORDNER}"`,
+    cwd: APP_ORDNER,
+    description: 'Jarves-OS: Luzzy und die Donnerwolf-Kommandozentrale'
+  })
+  if (!ok) throw new Error('Verknüpfung konnte nicht angelegt werden.')
+  return VERKNUEPFUNG()
+})
+ipcMain.handle('start:autostart', (_e, an) => {
+  if (process.platform !== 'win32') throw new Error('Geht nur unter Windows.')
+  app.setLoginItemSettings({ openAtLogin: Boolean(an), ...autostartOptionen() })
+  return app.getLoginItemSettings(autostartOptionen()).openAtLogin
+})
+
+// Farben nach Tageszeit: Fensterknöpfe oben rechts in der Farbe der rechten Spalte
+ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {
+  if (!/^#[0-9a-f]{6}$/i.test(String(farbe)) || !fenster || fenster.isDestroyed()) return
+  try {
+    fenster.setTitleBarOverlay({ color: farbe, symbolColor: '#C29A40', height: 38 })
+  } catch {
+    // nicht auf jedem System möglich
+  }
+})
+
+// Taskleiste blinken lassen, wenn Jarves-OS im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
+ipcMain.handle('fenster:aufmerksamkeit', () => {
+  if (fenster && !fenster.isDestroyed() && !fenster.isFocused()) fenster.flashFrame(true)
+})
+// Antwort merken (📌): als Notiz in Donnerwolf-Shop\Jarves-OS\Gemerkte Antworten
+const vaultSchreiben = require('./vaultschreiben')
+ipcMain.handle('vault:antwortMerken', async (_e, antwort, frage) => {
+  antwort = String(antwort || '').slice(0, 100000)
+  frage = String(frage || '').slice(0, 2000)
+  if (!antwort.trim()) throw new Error('Keine Antwort zum Merken.')
+  const jetzt = new Date()
+  const zwei = (n) => String(n).padStart(2, '0')
+  const datum = `${jetzt.getFullYear()}-${zwei(jetzt.getMonth() + 1)}-${zwei(jetzt.getDate())}`
+  // Titel: erster Satz der Antwort, ohne Markdown-Zeichen
+  const erster = antwort.replace(/[#*_`>\[\]]/g, '').split(/(?<=[.!?])\s|\n/).map((s) => s.trim()).find(Boolean) || 'Antwort'
+  const titel = `${datum} ${erster.slice(0, 60).replace(/[.!?:,;\s]+$/, '')}`
+  const inhalt = `---\ndatum: ${datum} ${zwei(jetzt.getHours())}:${zwei(jetzt.getMinutes())}\nquelle: Luzzy (Jarves-OS)\ntags: [gemerkt]\n---\n\n${frage ? `**Frage:** ${frage}\n\n---\n\n` : ''}${antwort}\n`
+  return vaultSchreiben.anlegen('Gemerkte Antworten', titel, inhalt)
+})
+
 // Sicherung auf Knopfdruck (wie npm run backup)
 const sicherung = require('../../scripts/backup')
 ipcMain.handle('sicherung:liste', () => sicherung.sicherungen())
@@ -287,6 +350,15 @@ app.whenReady().then(() => {
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))
+  // Strg+Umschalt+L: kopierten Text an Luzzy (auch aus jedem anderen Programm)
+  const ok = globalShortcut.register('Control+Shift+L', () => {
+    if (!fenster || fenster.isDestroyed()) return
+    if (fenster.isMinimized()) fenster.restore()
+    fenster.show()
+    fenster.focus()
+    senden('zwischenablage:neu', clipboard.readText().slice(0, 15000))
+  })
+  if (!ok) console.warn('Strg+Umschalt+L ist schon von einem anderen Programm belegt.')
   hermes.neuVerbinden()
   bildschirmfotoFuerTest()
   skriptFuerTest()

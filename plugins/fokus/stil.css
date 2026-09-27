@@ -1,0 +1,18 @@
+/* Fokus-Plugin (Klassen mit fk-) */
+.fk-raster { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; align-items: start; }
+.fk-uhr { padding: 34px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.fk-phase { font-family: var(--mono); font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-leise); }
+.fk-uhr[data-zustand='fokus'] .fk-phase { color: var(--gold-hell); }
+.fk-uhr[data-zustand='pause'] .fk-phase, .fk-uhr[data-zustand='lange'] .fk-phase { color: var(--gruen); }
+.fk-zeit { font-family: var(--mono); font-size: 76px; font-weight: 700; letter-spacing: 0.06em; color: var(--gold-hell); text-shadow: 0 0 22px rgba(217, 178, 95, 0.35); line-height: 1; }
+.fk-balken { width: min(420px, 90%); height: 3px; background: var(--rahmen); }
+.fk-balken div { height: 100%; width: 0; background: var(--gold); transition: width 500ms linear; }
+.fk-uhr[data-zustand='pause'] .fk-balken div, .fk-uhr[data-zustand='lange'] .fk-balken div { background: var(--gruen); }
+.fk-knoepfe { display: flex; gap: 8px; margin-top: 8px; }
+.fk-einstellungen { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.fk-einstellungen h3 { margin: 0 0 4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
+.fk-einstellungen label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.fk-einstellungen input[type='number'] { width: 54px; background: var(--eingabe); border: 1px solid var(--rahmen); padding: 4px 6px; color: var(--text); font-size: 13px; }
+.fk-einstellungen select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 4px 6px; color: var(--text); }
+.fk-einstellungen input[type='range'] { accent-color: var(--gold); width: 140px; }
+.fk-einstellungen p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; }

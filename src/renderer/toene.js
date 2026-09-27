@@ -1,11 +1,11 @@
 // Töne für Meldungen, direkt hier erzeugt (keine Tondateien nötig).
 // horn: neue Bestellung · warnung: Probleme · glocke: alles andere (Mail, Termin, Crew …)
 
-const DAUER = { horn: 1500, warnung: 650, glocke: 700 } // ms, danach darf Luzzy sprechen
+const DAUER = { horn: 1500, warnung: 650, glocke: 700, wecker: 1500 } // ms, danach darf Luzzy sprechen
 const WICHTIG = ['horn', 'warnung', 'glocke'] // bei mehreren Meldungen auf einmal spielt nur der wichtigste Ton
 
 export function tonFuer(art) {
-  if (art === 'bestellung') return 'horn'
+  if (art === 'bestellung' || art === 'meilenstein') return 'horn'
   if (art === 'job' || art === 'hinweis') return 'warnung'
   return 'glocke'
 }
@@ -26,6 +26,7 @@ export async function tonSpielen(name) {
     const t = kontext.currentTime + 0.02
     if (name === 'horn') horn(kontext, t)
     else if (name === 'warnung') warnung(kontext, t)
+    else if (name === 'wecker') wecker(kontext, t)
     else glocke(kontext, t)
   } catch {
     return // ohne Ton weiter
@@ -80,6 +81,23 @@ function warnung(ctx, t) {
     osz.connect(laut).connect(ctx.destination)
     osz.start(t + start)
     osz.stop(t + start + 0.3)
+  }
+}
+
+// Timer/Wecker: dreimal zwei kurze helle Töne (unverwechselbar mit Meldungen)
+function wecker(ctx, t) {
+  for (let i = 0; i < 6; i++) {
+    const start = Math.floor(i / 2) * 0.5 + (i % 2) * 0.14
+    const osz = ctx.createOscillator()
+    const laut = ctx.createGain()
+    osz.type = 'square'
+    osz.frequency.value = 1046
+    laut.gain.setValueAtTime(0.0001, t + start)
+    laut.gain.exponentialRampToValueAtTime(0.07, t + start + 0.01)
+    laut.gain.exponentialRampToValueAtTime(0.0001, t + start + 0.1)
+    osz.connect(laut).connect(ctx.destination)
+    osz.start(t + start)
+    osz.stop(t + start + 0.12)
   }
 }
 

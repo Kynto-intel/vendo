@@ -1,0 +1,17 @@
+/* Meilensteine-Plugin (Klassen mit ms-) */
+.ms-raster { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; align-items: start; }
+.ms-kopf { padding: 30px 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.ms-zahl { font-family: var(--mono); font-size: 72px; font-weight: 700; color: var(--gold-hell); text-shadow: 0 0 22px rgba(217, 178, 95, 0.35); line-height: 1; }
+.ms-unter { font-size: 13px; color: var(--text-leise); }
+.ms-naechster { margin-top: 18px; font-size: 14px; }
+.ms-naechster b { color: var(--gold-hell); }
+.ms-balken { width: min(420px, 90%); height: 4px; background: var(--rahmen); }
+.ms-balken div { height: 100%; background: var(--gold); }
+.ms-balken-text { width: min(420px, 90%); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; }
+.ms-liste { padding: 12px 14px; }
+.ms-liste h3 { margin: 0 0 8px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
+.ms-eintrag { display: grid; grid-template-columns: 18px 1fr auto; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--rahmen); font-size: 13px; opacity: 0.55; }
+.ms-eintrag.erreicht, .ms-eintrag.naechster { opacity: 1; }
+.ms-eintrag.naechster { color: var(--gold-hell); }
+.ms-stern { color: var(--gold); }
+.ms-eintrag .leise { font-family: var(--mono); font-size: 10px; }

@@ -86,7 +86,9 @@ function alleLaden() {
           id: manifest.id,
           datenLaden: () => datenLaden(manifest.id),
           datenSpeichern: (d) => datenSpeichern(manifest.id, d),
-          bereitstellen: (name, fn) => eintrag.funktionen.set(String(name), fn)
+          bereitstellen: (name, fn) => eintrag.funktionen.set(String(name), fn),
+          // Schreiben nur in Donnerwolf-Shop\Jarves-OS\ (nie überschreiben), siehe src/main/vaultschreiben.js
+          vault: require('./vaultschreiben')
         })
       } catch (fehler) {
         console.warn(`Plugin ${manifest.id}: haupt.js konnte nicht geladen werden: ${fehler.message}`)

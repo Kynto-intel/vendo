@@ -93,13 +93,13 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 ### ⚡ Klein: je ungefähr ein Abend (20 Ideen)
 
 1. ✅ **Fenster merken** (Optimierung, gebaut 26.09.2026) – Größe, Position und zuletzt offener Tab werden beim Neustart wiederhergestellt.
-2. **Schneller starten** (Optimierung) – Jarves-OS als Verknüpfung auf dem Desktop/in der Taskleiste statt Terminal,
+2. ✅ **Schneller starten** (Optimierung, gebaut 27.09.2026) – Jarves-OS als Verknüpfung auf dem Desktop/in der Taskleiste statt Terminal,
    optional Autostart mit Windows.
 3. ✅ **Ton für Meldungen** (Optimierung, gebaut 26.09.2026) – Dezenter Donnerwolf-Ton (z. B. Horn) bei neuer Bestellung,
    anderer Ton bei Problemen.
 4. ✅ **„Wiederhol das“** (Optimierung, gebaut 26.09.2026) – Knopf und Sprachbefehl: Luzzy liest ihre letzte Antwort nochmal vor,
    sofort und ohne Hermes zu fragen.
-6. 🆕 **Antwort merken** (Optimierung) – Kleiner 📌-Knopf an jeder Antwort von Luzzy: speichert sie als Notiz im Vault,
+6. ✅ **Antwort merken** (Optimierung, gebaut 27.09.2026) – Kleiner 📌-Knopf an jeder Antwort von Luzzy: speichert sie als Notiz im Vault,
    damit gute Antworten nicht im Verlauf untergehen.
 7. ✅ **Rechte Spalte selbst einstellen** (Optimierung, gebaut 27.09.2026) – In den Einstellungen per Haken wählen, welche Karten sichtbar
    sind und in welcher Reihenfolge.
@@ -107,7 +107,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
    (statt `npm run backup`), und automatische Sicherung vor jedem Update.
 9. ✅ **Nicht stören per Stimme** (Optimierung, gebaut 27.09.2026) – „Luzzy, bis 15 Uhr keine Meldungen.“ Oben erscheint ein kleines
    Symbol, danach ist alles wieder normal. Meldungen landen trotzdem in der Liste.
-10. 🆕 **Timer & Wecker per Sprache** (Plugin, Felix' Wunsch) – Luzzy stellt Timer mit Namen:
+10. ✅ **Timer & Wecker per Sprache** (Plugin, Felix' Wunsch, gebaut 27.09.2026) – Luzzy stellt Timer mit Namen:
     „Hey Luzzy, stell Timer auf 15 Minuten für Nudeln.“ → „Alles klar, 15 Minuten für die Nudeln.“
     - Oben neben der Uhr läuft der Countdown mit Namen („🍝 Nudeln 14:32“), mehrere Timer gleichzeitig möglich.
     - Wenn er abläuft: Ton + Luzzy sagt laut „Felix, deine Nudeln sind fertig!“, auch in der Ruhezeit
@@ -116,23 +116,23 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
       „Erinner mich um 14 Uhr an den Anruf.“
     - Läuft komplett in Jarves-OS (wie das Auslösewort der Routinen): sofort, ohne auf Hermes zu warten,
       kostet nichts, geht auch ohne Internet.
-11. **Themen nach Tageszeit** (Extra) – Abends wird die Oberfläche wärmer/dunkler, morgens heller.
+11. ✅ **Themen nach Tageszeit** (Extra, gebaut 27.09.2026) – Abends wird die Oberfläche wärmer/dunkler, morgens heller.
 12. ✅ **Donnerwolf-Startsequenz** (Extra, gebaut 26.09.2026) – Beim Start ein kurzes Intro: Reaktor fährt hoch,
     Luzzy begrüßt dich passend zur Tageszeit.
-13. **Erfolge / Meilensteine** (Extra) – „1.500. Bestellung!“ – Luzzy feiert mit, eine Liste der Meilensteine im Vault.
+13. ✅ **Erfolge / Meilensteine** (Extra, gebaut 27.09.2026) – „1.500. Bestellung!“ – Luzzy feiert mit, eine Liste der Meilensteine im Vault.
 14. ✅ **Selbsttest-Knopf** (Optimierung, gebaut 27.09.2026) – Ein Klick prüft Hermes, Mikrofon, Shopify, Postfach, Wetter, Stimme
     und sagt klar, was nicht geht und was zu tun ist.
-15. 🆕 **Zwischenablage an Luzzy** (Killer) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
+15. ✅ **Zwischenablage an Luzzy** (Killer, gebaut 27.09.2026) – In irgendeinem Programm Text kopieren, Strg+Umschalt+L drücken:
     Luzzy fasst zusammen, verbessert, übersetzt oder beantwortet ihn. Funktioniert auch, wenn Jarves-OS im Hintergrund ist.
 16. ✅ **Befehlspalette (Strg+P)** (Optimierung, gebaut 27.09.2026) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
     Plugin aufrufen. Tippen statt klicken.
-17. **Gedankenspeicher** (Plugin) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
+17. ✅ **Gedankenspeicher** (Plugin, gebaut 27.09.2026) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
     oder Sprache. Landet im Vault in einem festen Ordner, Luzzy kennt die Notizen.
-18. **Aufgaben / To-do** (Plugin) – Einfache Aufgabenliste mit Fälligkeit, Erinnerung über die Meldungen,
+18. ✅ **Aufgaben / To-do** (Plugin, gebaut 27.09.2026) – Einfache Aufgabenliste mit Fälligkeit, Erinnerung über die Meldungen,
     „Was muss ich heute noch?“ bekommt Luzzy automatisch mit (wie Wetter und Termine).
-19. **Musik / Fokus** (Plugin) – Kleine Leiste für Hintergrundmusik oder Fokus-Timer (Pomodoro),
+19. ✅ **Musik / Fokus** (Plugin, gebaut 27.09.2026) – Kleine Leiste für Hintergrundmusik oder Fokus-Timer (Pomodoro),
     Luzzy stört in der Fokuszeit nicht.
-20. **Wochen-Review mit Stimme** (Killer) – Sonntagabend ein kurzes Gespräch: Luzzy fasst die Woche zusammen,
+20. ✅ **Wochen-Review mit Stimme** (Killer, gebaut 27.09.2026) – Sonntagabend ein kurzes Gespräch: Luzzy fasst die Woche zusammen,
     fragt nach Zielen für die nächste Woche und legt sie als Aufgaben an (braucht Nr. 18).
 
 ### ⚡⚡ Mittel: je ungefähr 1–3 Abende (13 Ideen)
