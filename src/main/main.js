@@ -544,8 +544,10 @@ app.whenReady().then(() => {
   // Strg+Umschalt+M oder AltGr+L: Mini-Modus an/aus, aus jedem Programm. Windows meldet AltGr als Strg+Alt,
   // deshalb „Control+Alt+L“ (die Schreibweise „AltGr“ ist bei globalen Tastenkürzeln unter Windows nicht verlässlich).
   const miniUmschalten = () => miniSetzen(!mini)
-  if (!globalShortcut.register('Control+Shift+M', miniUmschalten)) console.warn('Strg+Umschalt+M ist schon von einem anderen Programm belegt.')
-  if (!globalShortcut.register('Control+Alt+L', miniUmschalten)) console.warn('AltGr+L ist schon von einem anderen Programm belegt.')
+  // Eine der beiden reicht: nur warnen, wenn keine frei ist (Strg+Umschalt+M belegt z. B. Microsoft Teams)
+  const miniTaste1 = globalShortcut.register('Control+Shift+M', miniUmschalten)
+  const miniTaste2 = globalShortcut.register('Control+Alt+L', miniUmschalten)
+  if (!miniTaste1 && !miniTaste2) console.warn('Mini-Modus: Strg+Umschalt+M und AltGr+L sind beide von anderen Programmen belegt. Der Mini-Knopf in Jarves-OS geht weiter.')
   hermes.neuVerbinden()
   bildschirmfotoFuerTest()
   skriptFuerTest()
