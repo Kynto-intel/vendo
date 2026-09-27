@@ -637,24 +637,9 @@ body[data-ansicht='zentrale'] .gespraech-panel .eingabe-form { display: none; }
 /* Kopfzeile bleibt einzeilig, auch wenn das Gespräch rechts offen ist:
    bei wenig Platz wird das Datum kurz (Sa., 26.09.2026), dann wird alles etwas enger (die Punkte zeigen den Zustand weiter) */
 .mitte { container-type: inline-size; container-name: mitte; }
-.mitte-kopf .verbindung { white-space: nowrap; min-width: 0; }
-.mitte-kopf .verbindung-text { overflow: hidden; text-overflow: ellipsis; }
 .mitte-kopf .uhr { flex: none; }
 /* langes oder kurzes Datum je nach Platz */
 .uhr-datum-kurz { display: none; }
-@container mitte (max-width: 1000px) {
-  .uhr-datum { display: none; }
-  .uhr-datum-kurz { display: inline; }
-}
-@container mitte (max-width: 760px) {
-  .mitte-kopf { gap: 12px; padding: 0 12px; }
-  .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { gap: 6px; padding: 0; }
-}
-/* Noch enger: statt „Mit Hermes verbunden“ nur „Hermes“, der Punkt davor zeigt den Zustand */
-@container mitte (max-width: 900px) {
-  .mitte-kopf [data-kurz] .verbindung-text { display: none; }
-  .mitte-kopf [data-kurz]::after { content: attr(data-kurz); }
-}
 
 /* ════════════════════════════════════════════════════════════════════════════
    Design 2 (27.09.2026): dunkler, ruhiger, moderner. Gleiche Donnerwolf-DNA
@@ -693,7 +678,6 @@ body.anim-hintergrund .mitte {
     linear-gradient(90deg, rgba(201, 161, 74, 0.022) 1px, transparent 1px) 0 0 / 36px 36px,
     var(--hintergrund);
 }
-.mitte-kopf { background: linear-gradient(180deg, var(--hintergrund) 55%, transparent); }
 
 /* Kopfzeile: Zustände als kleine Chips */
 .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 3px 9px; border: 1px solid var(--rahmen); border-radius: var(--radius); background: rgba(25, 25, 28, 0.7); }
@@ -800,9 +784,8 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
 .fk-knoepfe { flex-wrap: wrap; justify-content: center; }
 @container mitte (max-width: 860px) {
   .fk-raster, .ms-raster, .wt-raster { grid-template-columns: minmax(0, 1fr) !important; }
+  .wt-tage { grid-column: 1 / -1 !important; } /* sonst bleibt eine zweite Spalte und die Karten überlappen */
   .fk-einstellungen, .ms-liste { max-width: none; }
-  .crew-raster { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .ansicht-seite[data-ansicht='crew'] { overflow-y: auto; }
   .zweispaltig { grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); }
   .af-neu { grid-template-columns: 1fr 1fr auto !important; }
   .af-neu input[name='text'] { grid-column: 1 / -1; }
@@ -819,7 +802,112 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
   .seiten-kopf { flex-wrap: wrap; align-items: flex-start; }
 }
 @container mitte (max-width: 560px) {
-  .crew-raster { grid-template-columns: minmax(0, 1fr) !important; }
   .af-neu { grid-template-columns: 1fr 1fr !important; }
   .af-neu .knopf-gold { grid-column: 1 / -1; }
 }
+
+/* ── Design 2.1: runde Ecken mit weichem Schatten statt Goldklammern ── */
+:root { --radius: 6px; --radius-karte: 10px; }
+.hud {
+  border-radius: var(--radius-karte);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 50%);
+  background-size: 100% 100%;
+  background-position: 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 2px 6px rgba(0, 0, 0, 0.35), 0 14px 34px -14px rgba(0, 0, 0, 0.9);
+}
+.dialog { border-radius: 12px; overflow: hidden; }
+.kal-tag, .kal-termin, .spalte, .rt-karte, .ordner-chip, .af-aufgabe, .gd-notiz, .wt-treffer-knopf, .tk-balken, .ms-balken, .fk-balken, .balken { border-radius: var(--radius); }
+.einstellungen fieldset, .einstellungen .karten-liste li { border-radius: 8px; }
+.leer-hinweis { border-radius: var(--radius-karte); }
+.msg.felix .msg-text { border-radius: 10px 10px 2px 10px; }
+.bot.chef { background-color: var(--gold-flaeche); border-color: var(--gold-dunkel); }
+
+/* ── Crew: immer alle vier Bots nebeneinander, bei wenig Platz kompakter ── */
+.crew-raster { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+@container mitte (max-width: 900px) {
+  .crew-raster { gap: 8px; }
+  .bot { padding: 9px 10px; gap: 5px; }
+  .bot h3 { font-size: 12.5px; }
+  .bot-rolle { -webkit-line-clamp: 2; font-size: 10.5px; }
+  .bot .werte { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .bot .werte dt { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px; }
+  .bot .werte dd { font-size: 10.5px; }
+  .bot .modell-aendern { align-self: stretch; text-align: center; padding: 4px 4px; font-size: 8.5px; letter-spacing: 0.06em; }
+}
+@container mitte (max-width: 620px) {
+  .bot .abzeichen { display: none; }
+  .bot-rolle { display: none; }
+  .bot .werte dt:nth-of-type(3), .bot .werte dd:nth-of-type(3) { display: none; } /* 30 Tage: im Tooltip */
+}
+
+/* ── Routinen im schmalen Fenster: Liste und Editor untereinander, ganz sichtbar ── */
+@container mitte (max-width: 720px) {
+  .rt-raster { display: flex !important; flex-direction: column; flex: none; }
+  .rt-liste { max-height: none !important; overflow: visible; }
+  .rt-editor { overflow: visible; min-height: 0; }
+  .rt-editor:has(.rt-leer) { display: none; }
+}
+
+/* ── Dateien im schmalen Fenster: Größe weg, Knöpfe untereinander ── */
+@container mitte (max-width: 760px) {
+  .dateien-tabelle th:nth-child(4), .dateien-tabelle td:nth-child(4) { display: none; }
+  .dateien-tabelle td:nth-child(2) { font-size: 11px; word-break: break-word; }
+  .dateien-tabelle td.rechts { white-space: normal; width: 1%; }
+  .dateien-tabelle td.rechts .knopf-mini { display: block; width: 100%; margin: 2px 0; }
+}
+
+/* ── Seitenleisten einklappen (Strg+B links, Strg+J rechts) ── */
+.app { grid-template-columns: var(--links-breite, 200px) minmax(0, 1fr) auto var(--rechts-breite, 270px); transition: grid-template-columns 220ms ease; }
+body.links-zu { --links-breite: 60px; }
+body.rechts-zu { --rechts-breite: 0px; }
+.leiste-fuss .knopf-flach span { white-space: nowrap; overflow: hidden; }
+/* Rechts eingeklappt: oben rechts liegen die Windows-Fensterknöpfe über der Mitte bzw. dem Gespräch */
+/* Links: Klick aufs Logo klappt die Leiste ein und aus */
+.marke-knopf { display: flex; align-items: center; gap: 10px; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; color: inherit; text-align: left; -webkit-app-region: no-drag; }
+.marke-knopf .marke-zeichen { transition: box-shadow 200ms, transform 200ms; }
+.marke-knopf:hover .marke-zeichen { box-shadow: 0 0 18px rgba(201, 161, 74, 0.6); transform: scale(1.06); }
+.marke-knopf:focus-visible { outline: none; }
+.marke-knopf:focus-visible .marke-zeichen { box-shadow: 0 0 0 2px var(--gold-leise); }
+/* Rechts: schlichtes Symbol ohne Rahmen neben der Uhr */
+.leisten-knopf { flex: none; width: 30px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--radius); background: transparent; color: var(--text-leise); cursor: pointer; transition: color 150ms, background-color 150ms; }
+.leisten-knopf svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: transform 220ms ease; }
+.leisten-knopf:hover { color: var(--gold-hell); background: var(--flaeche-hoch); }
+.leisten-knopf:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--gold-leise); }
+body.rechts-zu .leisten-knopf svg { transform: scaleX(-1); }
+
+/* Links eingeklappt: nur Symbole (Namen als Tooltip). Beim Ein-/Ausklappen bewegt sich nichts:
+   die Symbole bleiben genau an ihrem Platz, nur die Breite gleitet und die Texte blenden weich aus. */
+.leiste { overflow: hidden; }
+.marke-name, .bereich span, .leiste-fuss .knopf-flach span { white-space: nowrap; transition: opacity 160ms ease; }
+.bereich-gruppe { position: relative; white-space: nowrap; transition: color 160ms ease; }
+.bereich-gruppe::after { content: ''; position: absolute; left: 10px; right: 10px; top: 50%; height: 1px; background: var(--rahmen); opacity: 0; transition: opacity 160ms ease; }
+body.links-zu .marke-name, body.links-zu .bereich span, body.links-zu .leiste-fuss .knopf-flach span { opacity: 0; }
+body.links-zu .bereich-gruppe { color: transparent; }
+body.links-zu .bereich-gruppe:not(:first-child)::after { opacity: 1; }
+.leiste-fuss .knopf-flach { overflow: hidden; }
+.marke-zeichen, .leiste-fuss svg { flex: none; } /* Logo und Symbole nie zusammendrücken, auch wenn der Text nicht mehr passt */
+
+/* Rechte Spalte: behält ihre Breite und gleitet als Ganzes nach rechts hinaus (kein Umbrechen, kein Springen) */
+.live { width: 270px; justify-self: start; transition: visibility 0s linear 0s; }
+body.rechts-zu .live { visibility: hidden; transition: visibility 0s linear 220ms; }
+/* Knopf dafür: immer am selben Platz oben rechts, links neben Minimieren/Maximieren/Schließen (138 px) */
+#rechts-umschalten { position: fixed; top: 5px; right: 146px; z-index: 50; -webkit-app-region: no-drag; }
+/* Platz für Knopf und Fensterknöpfe, wenn die Mitte bzw. das Gespräch bis an den rechten Rand reicht */
+.mitte-kopf, .gespraech-panel .panel-kopf { transition: padding-right 220ms ease; }
+body.rechts-zu .app:has(.gespraech-panel[hidden]) .mitte-kopf { padding-right: 190px; }
+body.rechts-zu .gespraech-panel .panel-kopf { padding-right: 186px; }
+
+/* ── Kopfzeile der Mitte: kein eigener Hintergrund (geht nahtlos in die Mitte über).
+   Was hineinpasst, misst app.js (kopfAnpassen) und kürzt nur so weit wie nötig:
+   k1 kurzes Datum · k2 kurze Namen · k3 nur Punkte (Tooltip) · k4 Datum weg ── */
+.mitte-kopf { background: none; overflow: hidden; gap: 10px; }
+.mitte-kopf > * { flex-shrink: 0; }
+.mitte-kopf .verbindung { white-space: nowrap; }
+.mitte-kopf .uhr { margin-left: auto; }
+.mitte-kopf.k1 .uhr-datum { display: none; }
+.mitte-kopf.k1 .uhr-datum-kurz { display: inline; }
+.mitte-kopf.k2 [data-kurz] .verbindung-text { display: none; }
+.mitte-kopf.k2 [data-kurz]::after { content: attr(data-kurz); }
+.mitte-kopf.k3 [data-kurz]::after { content: none; }
+.mitte-kopf.k3 [data-kurz] { padding: 0; width: 22px; height: 22px; justify-content: center; }
+.mitte-kopf.k4 .uhr-datum, .mitte-kopf.k4 .uhr-datum-kurz { display: none; }

@@ -100,6 +100,7 @@ function mikrofonStatusZeigen(z, text) {
     verweigert: 'Mikrofon verweigert'
   }
   el.querySelector('.verbindung-text').textContent = texte[anzeige] || text || z
+  el.title = texte[anzeige] || text || z // Tooltip, wenn oben nur der Punkt zu sehen ist
   $('mikrofon').classList.toggle('fehlt', z === 'kein-mikrofon' || z === 'verweigert')
   $('mikrofon').title = z === 'kein-mikrofon' ? 'Kein Mikrofon gefunden. Einstecken, dann klicken.' : 'Sprechen (Strg+Leertaste)'
   const e = $('e-mikrofon-status')
@@ -455,6 +456,66 @@ function timerAlarm({ text, titel }) {
   })
 }
 
+// ── Kopfzeile der Mitte: nur so weit kürzen, wie es der Platz verlangt ──
+// Stufen: k1 kurzes Datum, k2 kurze Namen („Hermes“), k3 nur Punkte (Tooltip), k4 Datum weg (Uhrzeit bleibt)
+const kopf = document.querySelector('.mitte-kopf')
+function kopfPasst() {
+  const r = kopf.getBoundingClientRect()
+  const rechts = r.right - parseFloat(getComputedStyle(kopf).paddingRight)
+  const kinder = [...kopf.children].filter((e) => !e.hidden && getComputedStyle(e).display !== 'none')
+  return kinder.every((e) => e.getBoundingClientRect().right <= rechts + 0.5)
+}
+let kopfGeplant = false
+function kopfAnpassen() {
+  if (kopfGeplant) return
+  kopfGeplant = true
+  requestAnimationFrame(() => {
+    kopfGeplant = false
+    for (let stufe = 0; stufe <= 4; stufe++) {
+      for (let k = 1; k <= 4; k++) kopf.classList.toggle(`k${k}`, k <= stufe)
+      if (kopfPasst()) break
+    }
+  })
+}
+new ResizeObserver(kopfAnpassen).observe(kopf)
+new MutationObserver(kopfAnpassen).observe(kopf, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] })
+
+// ── Seitenleisten einklappen: links bleibt eine schmale Leiste mit Symbolen, rechts verschwindet ganz ──
+function leistenAnwenden() {
+  const l = einstellungen?.leisten || { links: true, rechts: true }
+  document.body.classList.toggle('links-zu', l.links === false)
+  document.body.classList.toggle('rechts-zu', l.rechts === false)
+  $('links-umschalten').title = l.links === false ? 'Leiste aufklappen (Strg+B)' : 'Leiste einklappen (Strg+B)'
+  $('rechts-umschalten').title = l.rechts === false ? 'Rechte Spalte aufklappen (Strg+J)' : 'Rechte Spalte einklappen (Strg+J)'
+  titelfarbeSetzen()
+}
+function leisteUmschalten(seite) {
+  // Erst sofort übernehmen, dann speichern: zweimal schnell hintereinander darf sich nicht überschreiben
+  const l = { links: true, rechts: true, ...(einstellungen?.leisten || {}) }
+  l[seite] = l[seite] === false
+  einstellungen.leisten = l
+  leistenAnwenden()
+  api.einstellungen.speichern({ leisten: l })
+}
+$('links-umschalten').addEventListener('click', () => leisteUmschalten('links'))
+$('rechts-umschalten').addEventListener('click', () => leisteUmschalten('rechts'))
+// Strg+Alt+← / → : exakt an die linke/rechte Bildschirmhälfte, Strg+Alt+↑ : ganzer Bildschirm
+window.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey || !e.altKey || e.shiftKey) return
+  const seite = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'voll' }[e.key]
+  if (!seite) return
+  e.preventDefault()
+  api.fenster.andocken(seite)
+})
+window.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey || e.shiftKey || e.altKey) return
+  const taste = e.key.toLowerCase()
+  if (taste === 'b' || taste === 'j') {
+    e.preventDefault()
+    leisteUmschalten(taste === 'b' ? 'links' : 'rechts')
+  }
+})
+
 // ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
 function paletteBefehle() {
   const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
@@ -498,6 +559,11 @@ function paletteBefehle() {
         bescheid(einstellungen.vorlesen ? 'Vorlesen ist an.' : 'Vorlesen ist aus.')
       }
     },
+    { name: `Linke Leiste ${einstellungen?.leisten?.links === false ? 'aufklappen' : 'einklappen'}`, gruppe: 'Ansicht', stichwoerter: 'seitenleiste menü strg+b', ausfuehren: () => leisteUmschalten('links') },
+    { name: `Rechte Spalte ${einstellungen?.leisten?.rechts === false ? 'aufklappen' : 'einklappen'}`, gruppe: 'Ansicht', stichwoerter: 'seitenleiste karten strg+j', ausfuehren: () => leisteUmschalten('rechts') },
+    { name: 'Fenster: linke Bildschirmhälfte', gruppe: 'Fenster', stichwoerter: 'andocken halb links strg+alt', ausfuehren: () => api.fenster.andocken('links') },
+    { name: 'Fenster: rechte Bildschirmhälfte', gruppe: 'Fenster', stichwoerter: 'andocken halb rechts strg+alt', ausfuehren: () => api.fenster.andocken('rechts') },
+    { name: 'Fenster: ganzer Bildschirm', gruppe: 'Fenster', stichwoerter: 'maximieren vollbild groß', ausfuehren: () => api.fenster.andocken('voll') },
     { name: 'Einstellungen öffnen', gruppe: 'Einstellung', stichwoerter: 'optionen stimme animationen', ausfuehren: () => $('einstellungen-oeffnen').click() }
   )
   return liste
@@ -635,6 +701,7 @@ const panelGeschlossen = () => panel.hidden
 
 function panelSetzen(offen, { speichern = true } = {}) {
   panel.hidden = !offen
+  titelfarbeSetzen()
   $('vorschau').classList.toggle('an', offen)
   $('vorschau-aktion').textContent = offen ? 'Schließen ‹' : 'Öffnen ›'
   if (offen) {
@@ -787,6 +854,7 @@ function statusZeigen({ zustand: z, text }) {
   v.dataset.zustand = z
   v.querySelector('.verbindung-text').textContent =
     z === 'bereit' ? 'Mit Hermes verbunden' : text || (z === 'verbinde' ? 'Verbinde …' : 'Getrennt')
+  v.title = v.querySelector('.verbindung-text').textContent // Tooltip, wenn oben nur der Punkt zu sehen ist
   if (!verbunden) {
     beschaeftigt = false
     aktuelleAntwort = null
@@ -845,7 +913,7 @@ const GRUPPEN = [
 const symbol = (id) => `<svg viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[id] || SYMBOL_PLUGIN}</svg>`
 function bereicheZeigen() {
   const knopf = (b) =>
-    `<button class="bereich${b.id === aktuelleAnsicht ? ' gewaehlt' : ''}" data-bereich="${b.id}" type="button" ${b.aktiv ? '' : 'disabled'}>${symbol(b.id)}<span>${b.name}</span></button>`
+    `<button class="bereich${b.id === aktuelleAnsicht ? ' gewaehlt' : ''}" data-bereich="${b.id}" type="button" title="${b.name}" ${b.aktiv ? '' : 'disabled'}>${symbol(b.id)}<span>${b.name}</span></button>`
   const vergeben = new Set(GRUPPEN.flatMap(([, ids]) => ids))
   const gruppen = GRUPPEN.map(([name, ids]) => {
     let liste = ids.map((id) => BEREICHE.find((b) => b.id === id)).filter(Boolean)
@@ -995,11 +1063,20 @@ function tageszeitAnwenden() {
   const aus = einstellungen?.tageszeitFarben === false && !test
   if (aus) delete document.documentElement.dataset.tageszeit
   else document.documentElement.dataset.tageszeit = zeit
-  // Fensterknöpfe in der Farbe der rechten Spalte (--leiste, siehe style.css)
-  const leiste = { morgen: '#121214', tag: '#0e0e10', abend: '#0f0d0b', nacht: '#090807' }[aus ? 'tag' : zeit]
-  if (leiste !== tageszeitLeiste) api.fenster.titelfarbe((tageszeitLeiste = leiste))
+  farbZeit = aus ? 'tag' : zeit
+  titelfarbeSetzen()
 }
-let tageszeitLeiste = '#0e0e10'
+// Fensterknöpfe oben rechts (Windows zeichnet sie selbst) in der Farbe dessen, was darunter liegt:
+// rechte Spalte offen → ihre Farbe; zu → Gespräch (falls offen) oder die Mitte. Werte wie in style.css.
+let farbZeit = 'tag'
+let titelfarbe = '#0e0e10'
+function titelfarbeSetzen() {
+  const leiste = { morgen: '#121214', tag: '#0e0e10', abend: '#0f0d0b', nacht: '#090807' }[farbZeit]
+  const mitte = { morgen: '#17171a', tag: '#131315', abend: '#141210', nacht: '#0d0c0b' }[farbZeit]
+  const rechtsZu = document.body.classList.contains('rechts-zu')
+  const farbe = !rechtsZu || !$('gespraech-panel').hidden ? leiste : mitte
+  if (farbe !== titelfarbe) api.fenster.titelfarbe((titelfarbe = farbe))
+}
 setInterval(tageszeitAnwenden, 60000)
 
 function animationenAnwenden() {
@@ -1270,6 +1347,7 @@ async function start() {
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)
+  leistenAnwenden()
   timerEinrichten({ gespeichert: einstellungen.timer, speichern: (liste) => api.einstellungen.speichern({ timer: liste }), alarm: timerAlarm })
   nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
