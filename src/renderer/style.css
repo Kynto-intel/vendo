@@ -800,9 +800,8 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
 .fk-knoepfe { flex-wrap: wrap; justify-content: center; }
 @container mitte (max-width: 860px) {
   .fk-raster, .ms-raster, .wt-raster { grid-template-columns: minmax(0, 1fr) !important; }
+  .wt-tage { grid-column: 1 / -1 !important; } /* sonst bleibt eine zweite Spalte und die Karten überlappen */
   .fk-einstellungen, .ms-liste { max-width: none; }
-  .crew-raster { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .ansicht-seite[data-ansicht='crew'] { overflow-y: auto; }
   .zweispaltig { grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); }
   .af-neu { grid-template-columns: 1fr 1fr auto !important; }
   .af-neu input[name='text'] { grid-column: 1 / -1; }
@@ -819,7 +818,90 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
   .seiten-kopf { flex-wrap: wrap; align-items: flex-start; }
 }
 @container mitte (max-width: 560px) {
-  .crew-raster { grid-template-columns: minmax(0, 1fr) !important; }
   .af-neu { grid-template-columns: 1fr 1fr !important; }
   .af-neu .knopf-gold { grid-column: 1 / -1; }
 }
+
+/* ── Design 2.1: runde Ecken mit weichem Schatten statt Goldklammern ── */
+:root { --radius: 6px; --radius-karte: 10px; }
+.hud {
+  border-radius: var(--radius-karte);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 50%);
+  background-size: 100% 100%;
+  background-position: 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 2px 6px rgba(0, 0, 0, 0.35), 0 14px 34px -14px rgba(0, 0, 0, 0.9);
+}
+.dialog { border-radius: 12px; overflow: hidden; }
+.kal-tag, .kal-termin, .spalte, .rt-karte, .ordner-chip, .af-aufgabe, .gd-notiz, .wt-treffer-knopf, .tk-balken, .ms-balken, .fk-balken, .balken { border-radius: var(--radius); }
+.einstellungen fieldset, .einstellungen .karten-liste li { border-radius: 8px; }
+.leer-hinweis { border-radius: var(--radius-karte); }
+.msg.felix .msg-text { border-radius: 10px 10px 2px 10px; }
+.bot.chef { background-color: var(--gold-flaeche); border-color: var(--gold-dunkel); }
+
+/* ── Crew: immer alle vier Bots nebeneinander, bei wenig Platz kompakter ── */
+.crew-raster { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+@container mitte (max-width: 900px) {
+  .crew-raster { gap: 8px; }
+  .bot { padding: 9px 10px; gap: 5px; }
+  .bot h3 { font-size: 12.5px; }
+  .bot-rolle { -webkit-line-clamp: 2; font-size: 10.5px; }
+  .bot .werte { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .bot .werte dt { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px; }
+  .bot .werte dd { font-size: 10.5px; }
+  .bot .modell-aendern { align-self: stretch; text-align: center; padding: 4px 4px; font-size: 8.5px; letter-spacing: 0.06em; }
+}
+@container mitte (max-width: 620px) {
+  .bot .abzeichen { display: none; }
+  .bot-rolle { display: none; }
+  .bot .werte dt:nth-of-type(3), .bot .werte dd:nth-of-type(3) { display: none; } /* 30 Tage: im Tooltip */
+}
+
+/* ── Routinen im schmalen Fenster: Liste und Editor untereinander, ganz sichtbar ── */
+@container mitte (max-width: 720px) {
+  .rt-raster { display: flex !important; flex-direction: column; flex: none; }
+  .rt-liste { max-height: none !important; overflow: visible; }
+  .rt-editor { overflow: visible; min-height: 0; }
+  .rt-editor:has(.rt-leer) { display: none; }
+}
+
+/* ── Dateien im schmalen Fenster: Größe weg, Knöpfe untereinander ── */
+@container mitte (max-width: 760px) {
+  .dateien-tabelle th:nth-child(4), .dateien-tabelle td:nth-child(4) { display: none; }
+  .dateien-tabelle td:nth-child(2) { font-size: 11px; word-break: break-word; }
+  .dateien-tabelle td.rechts { white-space: normal; width: 1%; }
+  .dateien-tabelle td.rechts .knopf-mini { display: block; width: 100%; margin: 2px 0; }
+}
+
+/* ── Seitenleisten einklappen (Strg+B links, Strg+J rechts) ── */
+.app { grid-template-columns: var(--links-breite, 200px) minmax(0, 1fr) auto var(--rechts-breite, 270px); transition: grid-template-columns 220ms ease; }
+body.links-zu { --links-breite: 60px; }
+body.rechts-zu { --rechts-breite: 0px; }
+body.rechts-zu .live { visibility: hidden; padding: 0; border: 0; overflow: hidden; }
+/* Links eingeklappt: nur Symbole, Namen als Tooltip */
+body.links-zu .leiste { padding-left: 8px; padding-right: 8px; }
+body.links-zu .marke-name, body.links-zu .bereich span, body.links-zu .leiste-fuss span { display: none; }
+body.links-zu .leiste .marke { padding: 0; justify-content: center; margin-left: -8px; margin-right: -8px; }
+body.links-zu .bereich { justify-content: center; padding: 9px 0; }
+body.links-zu .bereich svg { width: 18px; height: 18px; }
+body.links-zu .bereich-gruppe { font-size: 0; padding: 8px 0 6px; }
+body.links-zu .bereich-gruppe::after { content: ''; display: block; height: 1px; margin: 0 8px; background: var(--rahmen); }
+body.links-zu .bereich-gruppe:first-child { display: none; }
+body.links-zu .bereich.gewaehlt::before { left: -8px; }
+body.links-zu .leiste-fuss .knopf-flach { justify-content: center; padding: 9px 0; }
+body.links-zu #links-umschalten svg { transform: scaleX(-1); }
+.leiste-fuss .knopf-flach span { white-space: nowrap; overflow: hidden; }
+/* Rechts eingeklappt: oben rechts liegen die Windows-Fensterknöpfe über der Mitte bzw. dem Gespräch */
+body.rechts-zu .app:has(.gespraech-panel[hidden]) .mitte-kopf { padding-right: 150px; }
+body.rechts-zu .gespraech-panel .panel-kopf { padding-right: 140px; }
+/* Knopf für die rechte Spalte, ganz rechts in der Kopfzeile */
+.leisten-knopf { flex: none; width: 28px; height: 26px; display: grid; place-items: center; border: 1px solid var(--rahmen); border-radius: var(--radius); background: rgba(25, 25, 28, 0.7); color: var(--text-leise); cursor: pointer; transition: color 150ms, border-color 150ms; }
+.leisten-knopf svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.leisten-knopf:hover { color: var(--gold-hell); border-color: var(--gold-dunkel); }
+.leisten-knopf.an { color: var(--gold); }
+body.rechts-zu .leisten-knopf svg { transform: scaleX(-1); }
+/* Kopfzeile schmal: Chips behalten ihren Innenabstand, das Datum weicht (Uhrzeit bleibt) */
+@container mitte (max-width: 760px) {
+  .mitte-kopf { gap: 6px; }
+  .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 3px 7px; }
+}
+@container mitte (max-width: 640px) { .uhr-datum-kurz { display: none; } }

@@ -455,6 +455,34 @@ function timerAlarm({ text, titel }) {
   })
 }
 
+// ── Seitenleisten einklappen: links bleibt eine schmale Leiste mit Symbolen, rechts verschwindet ganz ──
+function leistenAnwenden() {
+  const l = einstellungen?.leisten || { links: true, rechts: true }
+  document.body.classList.toggle('links-zu', l.links === false)
+  document.body.classList.toggle('rechts-zu', l.rechts === false)
+  $('links-umschalten').title = l.links === false ? 'Leiste aufklappen (Strg+B)' : 'Leiste einklappen (Strg+B)'
+  $('links-umschalten').querySelector('span').textContent = l.links === false ? 'Aufklappen' : 'Einklappen'
+  $('rechts-umschalten').classList.toggle('an', l.rechts !== false)
+}
+function leisteUmschalten(seite) {
+  // Erst sofort übernehmen, dann speichern: zweimal schnell hintereinander darf sich nicht überschreiben
+  const l = { links: true, rechts: true, ...(einstellungen?.leisten || {}) }
+  l[seite] = l[seite] === false
+  einstellungen.leisten = l
+  leistenAnwenden()
+  api.einstellungen.speichern({ leisten: l })
+}
+$('links-umschalten').addEventListener('click', () => leisteUmschalten('links'))
+$('rechts-umschalten').addEventListener('click', () => leisteUmschalten('rechts'))
+window.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey || e.shiftKey || e.altKey) return
+  const taste = e.key.toLowerCase()
+  if (taste === 'b' || taste === 'j') {
+    e.preventDefault()
+    leisteUmschalten(taste === 'b' ? 'links' : 'rechts')
+  }
+})
+
 // ── Befehlspalette (Strg+P): alles, was man sonst klickt, per Tippen ──
 function paletteBefehle() {
   const liste = BEREICHE.filter((b) => b.aktiv).map((b) => ({ name: `${b.name} öffnen`, gruppe: 'Bereich', stichwoerter: 'gehe zu tab zeige', ausfuehren: () => ansichtZeigen(b.id) }))
@@ -498,6 +526,8 @@ function paletteBefehle() {
         bescheid(einstellungen.vorlesen ? 'Vorlesen ist an.' : 'Vorlesen ist aus.')
       }
     },
+    { name: `Linke Leiste ${einstellungen?.leisten?.links === false ? 'aufklappen' : 'einklappen'}`, gruppe: 'Ansicht', stichwoerter: 'seitenleiste menü strg+b', ausfuehren: () => leisteUmschalten('links') },
+    { name: `Rechte Spalte ${einstellungen?.leisten?.rechts === false ? 'aufklappen' : 'einklappen'}`, gruppe: 'Ansicht', stichwoerter: 'seitenleiste karten strg+j', ausfuehren: () => leisteUmschalten('rechts') },
     { name: 'Einstellungen öffnen', gruppe: 'Einstellung', stichwoerter: 'optionen stimme animationen', ausfuehren: () => $('einstellungen-oeffnen').click() }
   )
   return liste
@@ -845,7 +875,7 @@ const GRUPPEN = [
 const symbol = (id) => `<svg viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[id] || SYMBOL_PLUGIN}</svg>`
 function bereicheZeigen() {
   const knopf = (b) =>
-    `<button class="bereich${b.id === aktuelleAnsicht ? ' gewaehlt' : ''}" data-bereich="${b.id}" type="button" ${b.aktiv ? '' : 'disabled'}>${symbol(b.id)}<span>${b.name}</span></button>`
+    `<button class="bereich${b.id === aktuelleAnsicht ? ' gewaehlt' : ''}" data-bereich="${b.id}" type="button" title="${b.name}" ${b.aktiv ? '' : 'disabled'}>${symbol(b.id)}<span>${b.name}</span></button>`
   const vergeben = new Set(GRUPPEN.flatMap(([, ids]) => ids))
   const gruppen = GRUPPEN.map(([name, ids]) => {
     let liste = ids.map((id) => BEREICHE.find((b) => b.id === id)).filter(Boolean)
@@ -1270,6 +1300,7 @@ async function start() {
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)
+  leistenAnwenden()
   timerEinrichten({ gespeichert: einstellungen.timer, speichern: (liste) => api.einstellungen.speichern({ timer: liste }), alarm: timerAlarm })
   nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus

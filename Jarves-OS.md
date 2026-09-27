@@ -283,8 +283,8 @@ Donnerwolf-Hauptordner, Projekte aus Hermes, zuletzt geänderte Dateien. Öffnen
   - Gold `#C9A14A`, helles Gold `#E3BE6C`
   - Text `#ECE6DA`, leiser Text `#8C877E`
   - Linke Leiste in Gruppen mit Linien-Symbolen, Einstellungen mit Tabs
-- **Formen:** kantig, wenig Rundungen, goldene Linien als Akzente.
-- **HUD-Elemente:** Reaktor mit drehenden Ringen, Sprach-Welle, feine goldene Eckklammern an Panels, dezente Scanlinie.
+- **Formen** (seit 27.09.2026 auf Felix' Wunsch): Karten mit runden Ecken und weichem Schatten statt goldener Eckklammern, Gold nur noch als Akzent. Seitenleisten einklappbar (Strg+B links, Strg+J rechts).
+- **HUD-Elemente:** Reaktor mit drehenden Ringen, Sprach-Welle, dezente Scanlinie.
 - **Animationen:** viel, aber in den Einstellungen abschaltbar: alles aus, oder einzeln (Reaktor-Ringe, Scanlinie, Welle, Hintergrund).
 - **Schrift:** klare Schrift für Text, Monospace (z. B. JetBrains Mono) für Status und Zahlen.
 - **[OFFEN]** Soll Luzzy statt Reaktor ein eigenes Gesicht bekommen (Avatar-Bild, das beim Sprechen pulsiert)? Oder Reaktor mit Wolf/Rune in der Mitte als Donnerwolf-Zeichen?
