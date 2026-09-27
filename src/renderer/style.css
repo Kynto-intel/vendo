@@ -1049,7 +1049,7 @@ input[type='time'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='htt
 @keyframes freigabe-rein { from { opacity: 0; transform: translateY(6px); } }
 
 /* ── Anhänge (anhaenge.js) ── */
-.anhaenge { width: min(720px, 100%); display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.anhaenge { width: min(720px, 100%); display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: -20px; } /* knapp über der Eingabe (die Mitte hat 26px Abstand zwischen den Bereichen) */
 .anhang-karte { display: flex; align-items: center; gap: 8px; max-width: 260px; padding: 5px 6px 5px 8px; background: var(--flaeche); border: 1px solid var(--gold-dunkel); border-radius: var(--radius); font-size: 12px; }
 .anhang-karte img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; }
 .anhang-symbol { font-size: 16px; }
