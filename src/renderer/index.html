@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: jarves-datei:; media-src 'self' blob: jarves-datei:; frame-src jarves-datei:; connect-src 'self'"
     />
     <title>Jarves-OS</title>
     <link rel="stylesheet" href="style.css" />
@@ -202,7 +202,11 @@
       <section class="gespraech-panel" id="gespraech-panel" hidden>
         <div class="griff" id="griff" title="Ziehen, um die Breite zu ändern"></div>
         <header class="zug panel-kopf">
-          <h3>Gespräch mit Luzzy</h3>
+          <div class="gespraech-wahl">
+            <h3>Gespräch</h3>
+            <button class="gespraech-thema-knopf" id="gespraech-thema-knopf" type="button" title="Gespräch wechseln oder ein neues anlegen (auch per Stimme: „Neues Gespräch Shop“)"><span id="gespraech-thema">Allgemein</span><span class="gt-pfeil">▾</span></button>
+            <div class="gespraech-menue hud" id="gespraech-menue" hidden></div>
+          </div>
           <button class="titel-knopf klein" id="gespraech-schliessen" type="button" title="Schließen (Strg+K)">✕</button>
         </header>
         <div class="gespraech" id="gespraech">
@@ -287,6 +291,19 @@
     </dialog>
 
     <!-- Selbsttest (src/renderer/selbsttest.js) -->
+    <!-- Dateiansicht: „Luzzy, such die Datei … und öffne sie“ (siehe dateiansicht.js) -->
+    <dialog class="dialog hud dateiansicht" id="dateiansicht">
+      <header class="da-kopf">
+        <div class="da-titel"><h2 id="da-name">Datei</h2><small id="da-ort"></small></div>
+        <div class="da-knoepfe">
+          <button class="knopf-flach" id="da-ordner" type="button" title="Im Explorer zeigen">Im Ordner zeigen</button>
+          <button class="knopf-flach" id="da-programm" type="button" title="Mit dem Standardprogramm von Windows öffnen">Mit Programm öffnen</button>
+          <button class="knopf-flach" id="da-zu" type="button" title="Schließen (Esc)">✕</button>
+        </div>
+      </header>
+      <div class="da-inhalt" id="da-inhalt"></div>
+    </dialog>
+
     <dialog class="dialog hud" id="selbsttest">
       <form method="dialog">
         <h2>Selbsttest</h2>

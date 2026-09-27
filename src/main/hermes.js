@@ -239,19 +239,51 @@ class Hermes extends EventEmitter {
       if (antwort) vorhanden = { id: gemerkt }
     }
     if (!antwort) {
-      const liste = await this.rpc('session.list', { title: ZENTRALE_TITEL, profile: PROFIL })
+      const liste = await this.rpc('session.list', { title: this.gemerkterTitel?.() || ZENTRALE_TITEL, profile: PROFIL })
       vorhanden = liste?.sessions?.[0] || null
       if (vorhanden) antwort = await this.rpc('session.resume', { session_id: vorhanden.resolved_id || vorhanden.id, profile: PROFIL })
     }
     if (!antwort) {
       // Noch keine (oder gelöscht/archiviert): neu anlegen und betiteln
       antwort = await this.rpc('session.create', { profile: PROFIL, cwd: ARBEITSORDNER })
-      await this.rpc('session.title', { session_id: antwort.session_id, title: ZENTRALE_TITEL }).catch(() => {})
+      await this.rpc('session.title', { session_id: antwort.session_id, title: this.gemerkterTitel?.() || ZENTRALE_TITEL }).catch(() => {})
     }
     this.sessionId = antwort.session_id
     this.gespeicherteId = antwort.stored_session_id || vorhanden?.resolved_id || vorhanden?.id || null
     if (this.gespeicherteId) this.sessionMerken?.(this.gespeicherteId)
     this.emit('verlauf', { kanal: 'zentrale', verlauf: verlaufAus(antwort.messages) })
+  }
+
+  // Mehrere Gespräche (Themen): eine eigene Hermes-Unterhaltung pro Thema, Luzzy behält pro Thema den Faden.
+  // gespeicherteId: fortsetzen; fehlt sie oder ist die Unterhaltung weg: über den Titel suchen, sonst neu anlegen.
+  async gespraechOeffnen(gespeicherteId, titel) {
+    let antwort = null
+    let id = null // dauerhafte ID der fortgesetzten Unterhaltung (bei einer neuen: aus stored_session_id)
+    const weg = (e) => {
+      if (/not found|nicht gefunden|unknown session/i.test(e.message)) return null
+      throw e
+    }
+    if (gespeicherteId) {
+      antwort = await this.rpc('session.resume', { session_id: gespeicherteId, profile: PROFIL }).catch(weg)
+      if (antwort) id = gespeicherteId
+    }
+    if (!antwort && titel) {
+      const liste = await this.rpc('session.list', { title: titel, profile: PROFIL })
+      const vorhanden = liste?.sessions?.[0] || null
+      if (vorhanden) {
+        antwort = await this.rpc('session.resume', { session_id: vorhanden.resolved_id || vorhanden.id, profile: PROFIL }).catch(weg)
+        if (antwort) id = vorhanden.resolved_id || vorhanden.id
+      }
+    }
+    if (!antwort) {
+      antwort = await this.rpc('session.create', { profile: PROFIL, cwd: ARBEITSORDNER })
+      if (titel) await this.rpc('session.title', { session_id: antwort.session_id, title: titel }).catch(() => {})
+    }
+    this.sessionId = antwort.session_id
+    this.gespeicherteId = antwort.stored_session_id || id || null
+    if (this.gespeicherteId) this.sessionMerken?.(this.gespeicherteId)
+    this.emit('verlauf', { kanal: 'zentrale', verlauf: verlaufAus(antwort.messages), gewechselt: true })
+    return this.gespeicherteId
   }
 
   // Crew: Luzzys fester "Bot Chat". Dort spricht sie ihre Bots an (die anderen Hermes-Profile außer „default“).
