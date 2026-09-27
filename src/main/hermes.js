@@ -196,11 +196,11 @@ class Hermes extends EventEmitter {
     if (!t) throw new Error('Unbekannter Bot-Kanal.')
     const [, modus, profil] = t
     if (modus === 'botchat' && profil === PROFIL) return this.crewOeffnen() // Luzzys Bot Chat = Kanal „crew“
-    if (modus === 'normal' && profil === PROFIL) throw new Error('Mit Luzzy sprichst du in der Zentrale.')
     const b = this.bots.get(kanal) || { profil, modus, sessionId: null, letzterVerlauf: [] }
     this.bots.set(kanal, b)
     if (b.sessionId) return this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf || [] })
-    const titel = modus === 'botchat' ? BOT_CHAT : ZENTRALE_TITEL
+    // Luzzys normales Gespräch im Crew-Tab heißt anders als die Zentrale, damit es ein eigenes bleibt
+    const titel = modus === 'botchat' ? BOT_CHAT : profil === PROFIL ? 'Crew-Tab' : ZENTRALE_TITEL
     const liste = await this.rpc('session.list', { title: titel, profile: profil })
     const vorhanden = liste?.sessions?.[0]
     let antwort

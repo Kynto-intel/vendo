@@ -101,12 +101,10 @@ export function crewChatEinrichten(helfer) {
   })
   // Klick auf eine Bot-Karte oben: Gespräch mit diesem Bot (Luzzy: ihr Bot Chat)
   $('crew-karten').addEventListener('click', (e) => {
-    if (e.target.closest('button, select, input, a, .modell-liste')) return
+    if (e.target.closest('button, select, input, a, .modell-wahl')) return
     const karte = e.target.closest('article.bot[data-profil]')
     if (!karte) return
-    const profil = karte.dataset.profil
-    modus = profil === LUZZY ? 'botchat' : 'normal'
-    gewaehlt[modus] = profil
+    gewaehlt[modus] = karte.dataset.profil // der gewählte Reiter (Normaler Chat / Bot Mode) bleibt
     wechseln()
     $('crew-form').querySelector('textarea').focus()
   })
@@ -117,8 +115,7 @@ export async function crewBotsLaden() {
   const d = await h.api.hermes.lesen('/api/profiles').catch(() => null)
   if (!d?.profiles) return bots
   bots = crewProfile(d.profiles).map((p) => ({ profil: p.name, ...botName(p) }))
-  const normale = bots.filter((b) => b.profil !== LUZZY)
-  if (!gewaehlt.normal || !normale.some((b) => b.profil === gewaehlt.normal)) gewaehlt.normal = normale[0]?.profil || null
+  if (!gewaehlt.normal || !bots.some((b) => b.profil === gewaehlt.normal)) gewaehlt.normal = bots[0]?.profil || null
   if (!bots.some((b) => b.profil === gewaehlt.botchat)) gewaehlt.botchat = LUZZY
   zeichnen()
   return bots
@@ -126,13 +123,13 @@ export async function crewBotsLaden() {
 
 function zeichnen() {
   for (const k of $('crew-modus').querySelectorAll('[data-modus]')) k.classList.toggle('an', k.dataset.modus === modus)
-  const liste = modus === 'normal' ? bots.filter((b) => b.profil !== LUZZY) : bots
+  const liste = bots
   $('crew-bots').innerHTML = liste.length
     ? liste.map((b) => `<button class="crew-bot${b.profil === gewaehlt[modus] ? ' an' : ''}" data-bot="${maskieren(b.profil)}" type="button" title="Hermes-Profil: ${maskieren(b.profil)}">${maskieren(b.name)}${b.rolle ? `<small>${maskieren(b.rolle)}</small>` : ''}</button>`).join('')
     : '<span class="leise klein">Noch keine Bots außer Luzzy.</span>'
   const bot = botVon(gewaehlt[modus])
   $('crew-chat-hinweis').textContent = modus === 'normal'
-    ? `Direktes Gespräch mit ${bot.name}, ohne Bot Mode. Mit Luzzy sprichst du in der Zentrale.`
+    ? bot.profil === LUZZY ? 'Normales Gespräch mit Luzzy, ohne Bot Mode (getrennt von der Zentrale).' : `Direktes Gespräch mit ${bot.name}, ohne Bot Mode.`
     : bot.profil === LUZZY
       ? 'Luzzys Bot Chat: sie verteilt Aufträge an die Crew und bekommt die Ergebnisse zurück.'
       : `${bot.name}s Bot Chat: hier arbeiten die Bots zusammen (Übergaben wie Kira → Lira → Milla).`

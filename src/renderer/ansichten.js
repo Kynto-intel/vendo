@@ -78,6 +78,7 @@ async function modelleLaden(profil, { neu = false } = {}) {
 
 export async function crewLaden() {
   const el = $('crew-karten')
+  if (el.querySelector('.modell-wahl:not([hidden])')) return // Modellauswahl offen: nicht dazwischenfunken
   const profile = (await lesen('/api/profiles'))?.profiles
   if (!profile) return fehlerKarte(el, 'Hermes antwortet gerade nicht.')
   const karten = await Promise.all(
@@ -141,13 +142,24 @@ function crewKurzZeigen(karten) {
 
 // Modell eines Agenten ändern (Hermes: PUT /api/profiles/{name}/model). Suchfeld + Liste statt Auswahlfeld,
 // weil es schnell ein paar hundert Modelle sind.
+const modellWahlZu = (ausser = null) => {
+  for (const w of document.querySelectorAll('.modell-wahl:not([hidden])')) if (w !== ausser) w.hidden = true
+}
 document.addEventListener('click', async (e) => {
   const knopf = e.target.closest('.modell-aendern')
-  if (!knopf) return
+  if (!knopf) {
+    // Klick daneben oder auf ✕ schließt die Auswahl
+    if (e.target.closest('[data-modell-zu]') || !e.target.closest('.modell-wahl')) modellWahlZu()
+    return
+  }
   const wahl = knopf.nextElementSibling
+  modellWahlZu(wahl)
   if (!wahl.hidden) return (wahl.hidden = true)
   wahl.hidden = false
   await modellWahlZeigen(wahl, knopf.dataset)
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') modellWahlZu()
 })
 
 async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell: jetztModell }, { neu = false } = {}) {
@@ -164,6 +176,7 @@ async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell:
     <input class="modell-suche" type="search" placeholder="Modell suchen …" autocomplete="off" />
     <div class="modell-liste" role="listbox"></div>
     <div class="modell-knoepfe">
+      <button class="knopf-flach" data-modell-zu type="button">✕ Schließen</button>
       <button class="knopf-flach" data-neu type="button" title="Anbieter neu abfragen (neue Modelle)">Neu laden</button>
       <button class="knopf-gold" data-los type="button" disabled>Übernehmen</button>
     </div>`
