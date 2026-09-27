@@ -11,6 +11,9 @@ cd C:\Users\Felix\Desktop\jarves-os\jarves-os
 npm start
 ```
 
+Oder ohne Terminal: Einstellungen → Starten → „Verknüpfung auf dem Desktop anlegen“, dann per Doppelklick.
+Dort lässt sich auch „Mit Windows starten“ einschalten.
+
 Hermes muss nicht vorher laufen: Jarves-OS dockt an ein laufendes Hermes an (z. B. wenn die
 Hermes-App offen ist) oder startet es selbst.
 
@@ -20,7 +23,7 @@ Hermes-App offen ist) oder startet es selbst.
 npm run backup
 ```
 
-legt eine Kopie (ohne `node_modules`) in `Desktop\jarves-os\backup\` an. Mit Notiz:
+legt eine Kopie (ohne `node_modules`) in `Desktop\jarves-os\backup\` an. Geht auch per Knopf: Einstellungen → Sicherung → „Jetzt sichern“. Mit Notiz:
 `npm run backup -- vor-phase-2`
 
 ## Aufbau

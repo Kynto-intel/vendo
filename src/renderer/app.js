@@ -1051,6 +1051,7 @@ function formularLesen() {
 $('einstellungen-oeffnen').addEventListener('click', () => {
   formularFuellen()
   sicherungStandZeigen()
+  startStandZeigen()
   $('einstellungen').showModal()
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
@@ -1059,6 +1060,38 @@ $('e-probe').addEventListener('click', () => {
   const f = formularLesen()
   vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
 })
+// Schneller starten: Desktop-Verknüpfung und Autostart (gilt sofort, nicht erst mit „Speichern“)
+async function startStandZeigen(vorweg = '') {
+  try {
+    const s = await api.start.stand()
+    $('e-verknuepfung').disabled = !s.windows
+    $('e-autostart').disabled = !s.windows
+    $('e-autostart').checked = s.autostart
+    $('e-verknuepfung').textContent = s.verknuepfung ? 'Verknüpfung neu anlegen' : 'Verknüpfung auf dem Desktop anlegen'
+    $('e-start-stand').textContent = s.windows
+      ? `${vorweg}${s.verknuepfung ? 'Verknüpfung liegt auf dem Desktop. ' : ''}Doppelklick auf „Jarves-OS“ startet ohne Terminal, npm start geht weiterhin.`
+      : 'Verknüpfung und Autostart gehen nur unter Windows.'
+  } catch (e) {
+    $('e-start-stand').textContent = e.message
+  }
+}
+$('e-verknuepfung').addEventListener('click', async () => {
+  try {
+    await api.start.verknuepfung()
+    await startStandZeigen('Angelegt. ')
+  } catch (e) {
+    $('e-start-stand').textContent = `Ging nicht: ${e.message}`
+  }
+})
+$('e-autostart').addEventListener('change', async (e) => {
+  try {
+    await api.start.autostart(e.target.checked)
+    await startStandZeigen(e.target.checked ? 'Startet ab jetzt mit Windows. ' : 'Kein Autostart mehr. ')
+  } catch (err) {
+    $('e-start-stand').textContent = `Ging nicht: ${err.message}`
+  }
+})
+
 // Sicherung auf Knopfdruck
 async function sicherungStandZeigen(vorweg = '') {
   const el = $('e-sicherung-stand')

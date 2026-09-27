@@ -210,6 +210,33 @@ ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
 ipcMain.handle('zwischenablage:schreiben', (_e, text) => clipboard.writeText(String(text || '').slice(0, 100000)))
 ipcMain.handle('zwischenablage:lesen', () => clipboard.readText().slice(0, 15000))
 
+// Schneller starten: Desktop-Verknüpfung und Autostart mit Windows (der Start per Terminal bleibt)
+// Beides startet Electron direkt mit dem Projektordner, ohne Terminal-Fenster.
+const APP_ORDNER = path.join(__dirname, '..', '..')
+const VERKNUEPFUNG = () => path.join(app.getPath('desktop'), 'Jarves-OS.lnk')
+const autostartOptionen = () => ({ path: process.execPath, args: [APP_ORDNER] })
+ipcMain.handle('start:stand', () => ({
+  windows: process.platform === 'win32',
+  verknuepfung: require('node:fs').existsSync(VERKNUEPFUNG()),
+  autostart: process.platform === 'win32' ? app.getLoginItemSettings(autostartOptionen()).openAtLogin : false
+}))
+ipcMain.handle('start:verknuepfung', () => {
+  if (process.platform !== 'win32') throw new Error('Geht nur unter Windows.')
+  const ok = shell.writeShortcutLink(VERKNUEPFUNG(), 'create', {
+    target: process.execPath,
+    args: `"${APP_ORDNER}"`,
+    cwd: APP_ORDNER,
+    description: 'Jarves-OS: Luzzy und die Donnerwolf-Kommandozentrale'
+  })
+  if (!ok) throw new Error('Verknüpfung konnte nicht angelegt werden.')
+  return VERKNUEPFUNG()
+})
+ipcMain.handle('start:autostart', (_e, an) => {
+  if (process.platform !== 'win32') throw new Error('Geht nur unter Windows.')
+  app.setLoginItemSettings({ openAtLogin: Boolean(an), ...autostartOptionen() })
+  return app.getLoginItemSettings(autostartOptionen()).openAtLogin
+})
+
 // Farben nach Tageszeit: Fensterknöpfe oben rechts in der Farbe der rechten Spalte
 ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {
   if (!/^#[0-9a-f]{6}$/i.test(String(farbe)) || !fenster || fenster.isDestroyed()) return
