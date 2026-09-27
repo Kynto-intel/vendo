@@ -255,9 +255,10 @@ ipcMain.handle('datei:oeffnen', async (_e, rel) => {
   if (fehler) throw new Error(fehler)
 })
 ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher(rel)))
-// Dateisuche („such die Datei … und öffne sie“): nur lesen; geöffnet/gezeigt werden nur Treffer einer Suche
+// Dateisuche auf dem ganzen PC („such die Datei … und öffne sie“): nur lesen; gezeigt werden nur Treffer einer Suche
 ipcMain.handle('datei:suchen', (_e, anfrage) => dateisuche.suchen(String(anfrage || '').slice(0, 200)))
 ipcMain.handle('datei:inhalt', (_e, id) => dateisuche.inhalt(id))
+ipcMain.handle('datei:stand', () => dateisuche.stand())
 ipcMain.handle('datei:pfad', (_e, pfad) => dateisuche.pfadTreffer(String(pfad || '').slice(0, 500)))
 ipcMain.handle('datei:mitProgramm', async (_e, id) => {
   const voll = dateisuche.pfadVon(id)

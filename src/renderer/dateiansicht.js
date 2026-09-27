@@ -23,7 +23,7 @@ const PFAD = /[A-Za-z]:\\[^\n"<>|*?]+/
 const WEG = new Set(('such suche suchen find finde finden öffne oeffne öffnen oeffnen zeig zeige zeigen mach mache mal auf aufmachen und sie es ' +
   'die das den dem der mir bitte doch nach meine meinen meiner meines mein eine einen ein kannst könntest du würdest wo ist liegt sind namens ' +
   'mit namen heißt heisst datei dokument bild foto pdf video tabelle notiz excel word präsentation powerpoint vom von über zum zur zu hey hallo ok luzzy ' +
-  'jetzt schnell gerade kurz noch').split(' '))
+  'jetzt schnell gerade kurz noch im in unter aus ordner am pc computer rechner meinem meiner').split(' '))
 
 const ohneLuzzy = (text) => String(text || '').trim().replace(/^\s*(hey|hi|hallo|ok)?\s*luzzy[,!.:\s]*/i, '')
 const normal = (s) => String(s || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[_\-.+()[\]]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -85,7 +85,12 @@ export async function dateiSuchenUndZeigen({ suche, art, endungen, pfad }, { nur
     const passend = treffer.filter((t) => (art && t.art === art) || (endungen && endungen.some((e) => t.name.toLowerCase().endsWith(e))))
     if (passend.length) treffer = passend
   }
-  if (!treffer.length) return nurWennPassend ? null : `Ich finde keine Datei mit dem Namen ${suche}.`
+  if (!treffer.length) {
+    if (nurWennPassend) return null
+    const st = await api.datei.stand().catch(() => null)
+    if (st && !st.fertig) return `Ich lese deinen PC gerade noch ein, bisher kenne ich ${st.dateien.toLocaleString('de-DE')} Dateien. Frag mich gleich nochmal.`
+    return `Ich finde auf deinem PC keine Datei mit dem Namen ${suche}.`
+  }
   letzteTreffer = treffer
   // Eindeutig (nur einer, oder der Name passt genau): gleich öffnen
   const genau = treffer.filter((t) => normal(t.name.replace(/\.[^.]+$/, '')) === normal(suche) || normal(t.name) === normal(suche))

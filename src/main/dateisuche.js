@@ -1,21 +1,32 @@
-// Dateisuche: „Luzzy, such die Datei Thor-Hoodie und öffne sie“. Sucht nach Dateinamen in Felix' üblichen Ordnern
-// (Donnerwolf, Desktop, Dokumente, Downloads, Bilder, Videos, Musik, OneDrive) und zeigt die Datei in Jarves-OS an.
+// Dateisuche: „Luzzy, such die Datei Thor-Hoodie und öffne sie“. Sucht nach Dateinamen auf dem ganzen PC (alle
+// Laufwerke) und zeigt die Datei in Jarves-OS an. Ausgelassen: Windows- und Programmordner, AppData (Programmdaten,
+// Zugangsdaten, auch von Hermes), Papierkorb, Entwickler-Ordner.
 // Nur lesen: hier wird nichts verändert. Die Oberfläche bekommt keine Pfade zum Öffnen, nur Kennungen aus
 // einer Suche; nur diese Dateien dürfen angezeigt werden (Protokoll jarves-datei://<kennung>).
+// Das Verzeichnis (nur Pfade) liegt in daten/dateiindex.txt, damit die Suche nach einem Neustart sofort geht;
+// im Hintergrund wird es alle 30 Minuten frisch eingelesen.
 
 const fs = require('node:fs/promises')
+const fsSync = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
 const { randomBytes } = require('node:crypto')
-const { app, net } = require('electron')
+const { net } = require('electron')
 const { pathToFileURL } = require('node:url')
 const { WURZEL } = require('./wissen')
 
-const UEBERSPRINGEN = new Set(['node_modules', '.git', '.obsidian', '__pycache__', '.venv', 'venv', 'AppData', '$RECYCLE.BIN', 'System Volume Information', 'firecrawl-selfhost', 'Kynto backups', '.cache', '.trash'])
-const MAX_PRO_ORT = 60_000 // je Ordner, damit ein großer Ordner die anderen nicht verdrängt
-const MAX_TIEFE = 9
-const INDEX_ALTER = 10 * 60 * 1000 // alle 10 Minuten neu einlesen (beim nächsten Suchen)
+// Ordnernamen, die nie durchsucht werden (klein geschrieben)
+const UEBERSPRINGEN = new Set([
+  'windows', 'windows.old', 'program files', 'program files (x86)', 'programdata', '$recycle.bin', 'system volume information',
+  'recovery', 'perflogs', '$windows.~bt', '$windows.~ws', '$winreagent', 'msocache', 'config.msi', 'appdata', 'application data',
+  'local settings', 'all users', 'default user', 'node_modules', '__pycache__', '.venv', 'venv', 'firecrawl-selfhost', 'kynto backups'
+])
+const MAX_DATEIEN = 600_000
+const MAX_TIEFE = 16
+const PARALLEL = 8
+const INDEX_ALTER = 30 * 60 * 1000
 const MAX_TEXT = 2_000_000
+const INDEX_DATEI = path.join(__dirname, '..', '..', 'daten', 'dateiindex.txt')
 
 const ARTEN = {
   markdown: ['.md', '.markdown'],
@@ -31,27 +42,29 @@ const artVon = (datei) => {
   return Object.keys(ARTEN).find((a) => ARTEN[a].includes(endung)) || 'andere'
 }
 
-function orte() {
-  if (process.env.JARVES_TEST_DATEIEN) return [{ name: 'Test', ordner: process.env.JARVES_TEST_DATEIEN }]
-  const pfad = (name) => {
+// Nie anzeigen: Systemordner, AppData und Dateien mit Zugangsdaten (auch nicht, wenn Luzzy den Pfad nennt)
+const GEHEIM = /(^|[\\/])(\.env(\..*)?|id_rsa.*|id_ed25519.*|.*\.pem|.*\.key|.*\.pfx|credentials.*|auth\.json)$/i
+function gesperrt(voll) {
+  const teile = voll.toLowerCase().split(/[\\/]+/)
+  if (teile.some((t) => UEBERSPRINGEN.has(t) && t !== 'node_modules' && t !== 'venv' && t !== '.venv' && t !== '__pycache__')) return true
+  return GEHEIM.test(voll)
+}
+
+// Wo gesucht wird: alle Laufwerke (Windows), sonst der Benutzerordner. Testmodus: JARVES_TEST_DATEIEN
+async function wurzeln() {
+  if (process.env.JARVES_TEST_DATEIEN) return [process.env.JARVES_TEST_DATEIEN]
+  if (process.platform !== 'win32') return [os.homedir()]
+  const liste = []
+  for (const buchstabe of 'CDEFGHIJKLMNOPQRSTUVWXYZ') {
+    const w = `${buchstabe}:\\`
     try {
-      return app.getPath(name)
+      await fs.access(w)
+      liste.push(w)
     } catch {
-      return null
+      // Laufwerk gibt es nicht (oder leeres Kartenlesegerät)
     }
   }
-  const liste = [
-    { name: 'Donnerwolf', ordner: WURZEL },
-    { name: 'Desktop', ordner: pfad('desktop') },
-    { name: 'Dokumente', ordner: pfad('documents') },
-    { name: 'Downloads', ordner: pfad('downloads') },
-    { name: 'Bilder', ordner: pfad('pictures') },
-    { name: 'Videos', ordner: pfad('videos') },
-    { name: 'Musik', ordner: pfad('music') },
-    { name: 'OneDrive', ordner: path.join(os.homedir(), 'OneDrive') }
-  ].filter((o) => o.ordner)
-  // Doppelte (Donnerwolf liegt in Dokumente) nur einmal durchsuchen: der äußere Ordner reicht
-  return liste.filter((o, i) => !liste.some((x, j) => j !== i && x.ordner !== o.ordner && o.ordner.startsWith(x.ordner + path.sep)))
+  return liste
 }
 
 // Umlaute & Co. vereinheitlichen, damit „Thor Hoodie“ auch „thor-hoodie_final.PNG“ findet
@@ -63,44 +76,120 @@ const normal = (s) =>
     .replace(/\s+/g, ' ')
     .trim()
 
-let index = null // [{ voll, name, suche, ort, geaendert, groesse }]
-let indexZeit = 0
-let indexLaeuft = null
+// Verzeichnis, platzsparend: Ordner einmal, Dateien verweisen auf ihren Ordner
+function leererIndex() {
+  return { ordner: [], ordnerNormal: [], namen: [], namenNormal: [], ordnerVon: [], fertig: false, zeit: 0 }
+}
+function ordnerDazu(ix, ordner) {
+  ix.ordner.push(ordner)
+  ix.ordnerNormal.push(normal(ordner))
+  return ix.ordner.length - 1
+}
+function dateiDazu(ix, ordnerNr, name) {
+  ix.namen.push(name)
+  ix.namenNormal.push(normal(name))
+  ix.ordnerVon.push(ordnerNr)
+}
+
+let index = null // fertiges (oder von der Festplatte geladenes) Verzeichnis
+let imAufbau = null // wird gerade eingelesen (Suche nutzt es, solange es noch kein fertiges gibt)
+let laeuft = null
 
 async function einlesen() {
-  const neu = []
-  for (const ort of orte()) {
-    const grenze = neu.length + MAX_PRO_ORT
-    const lauf = async (ordner, tiefe) => {
-      if (neu.length >= grenze) return
+  const ix = leererIndex()
+  imAufbau = ix
+  const gesehen = new Set() // echte Pfade verlinkter Ordner, gegen Schleifen
+  const schlange = (await wurzeln()).map((w) => ({ ordner: w, tiefe: 0 }))
+  const arbeiter = async () => {
+    while (schlange.length && ix.namen.length < MAX_DATEIEN) {
+      const { ordner, tiefe } = schlange.shift()
       let eintraege
       try {
         eintraege = await fs.readdir(ordner, { withFileTypes: true })
       } catch {
-        return
+        continue // kein Zugriff
       }
+      const nr = ordnerDazu(ix, ordner)
       for (const e of eintraege) {
-        if (neu.length >= grenze) return
-        if (e.name.startsWith('.') || e.name.startsWith('~$') || UEBERSPRINGEN.has(e.name)) continue
-        const voll = path.join(ordner, e.name)
-        if (e.isDirectory()) {
-          if (tiefe < MAX_TIEFE) await lauf(voll, tiefe + 1)
-        } else if (e.isFile()) {
-          neu.push({ voll, name: e.name, suche: normal(e.name), ordnerSuche: normal(path.relative(ort.ordner, ordner)), ort: ort.name, wurzel: ort.ordner })
+        const name = e.name
+        if (name.startsWith('.') || name.startsWith('~$') || UEBERSPRINGEN.has(name.toLowerCase())) continue
+        const voll = path.join(ordner, name)
+        let istOrdner = e.isDirectory()
+        let istDatei = e.isFile()
+        // OneDrive-Dateien und Verknüpfungen meldet Windows als Link: nachsehen, was dahinter ist
+        if (e.isSymbolicLink()) {
+          try {
+            const info = await fs.stat(voll)
+            istOrdner = info.isDirectory()
+            istDatei = info.isFile()
+            if (istOrdner) {
+              const echt = await fs.realpath(voll)
+              if (gesehen.has(echt)) continue
+              gesehen.add(echt)
+            }
+          } catch {
+            continue
+          }
+        }
+        if (istOrdner) {
+          if (tiefe < MAX_TIEFE) schlange.push({ ordner: voll, tiefe: tiefe + 1 })
+        } else if (istDatei && !GEHEIM.test(name)) {
+          dateiDazu(ix, nr, name)
         }
       }
     }
-    await lauf(ort.ordner, 0)
   }
-  index = neu
-  indexZeit = Date.now()
-  return index
+  await Promise.all(Array.from({ length: PARALLEL }, arbeiter))
+  ix.fertig = true
+  ix.zeit = Date.now()
+  index = ix
+  imAufbau = null
+  speichern(ix).catch(() => {})
+  return ix
 }
-async function indexHolen() {
-  if (index && Date.now() - indexZeit < INDEX_ALTER) return index
-  if (!indexLaeuft) indexLaeuft = einlesen().finally(() => (indexLaeuft = null))
-  // Gibt es schon einen (älteren) Index, sofort damit suchen; der neue kommt im Hintergrund
-  return index || indexLaeuft
+
+// Verzeichnis auf der Festplatte: Zeile 1 Zeit, dann „O<Tab>Pfad“ für Ordner und „D<Tab>Ordnernummer<Tab>Name“
+async function speichern(ix) {
+  const zeilen = [String(ix.zeit)]
+  ix.ordner.forEach((o) => zeilen.push(`O\t${o}`))
+  for (let i = 0; i < ix.namen.length; i++) zeilen.push(`D\t${ix.ordnerVon[i]}\t${ix.namen[i]}`)
+  await fs.mkdir(path.dirname(INDEX_DATEI), { recursive: true })
+  await fs.writeFile(INDEX_DATEI, zeilen.join('\n'), 'utf8')
+}
+function laden() {
+  if (process.env.JARVES_TEST_DATEIEN) return null
+  try {
+    const zeilen = fsSync.readFileSync(INDEX_DATEI, 'utf8').split('\n')
+    const ix = leererIndex()
+    ix.zeit = Number(zeilen[0]) || 0
+    for (let i = 1; i < zeilen.length; i++) {
+      const z = zeilen[i]
+      if (z.startsWith('O\t')) ordnerDazu(ix, z.slice(2))
+      else if (z.startsWith('D\t')) {
+        const tab = z.indexOf('\t', 2)
+        dateiDazu(ix, Number(z.slice(2, tab)), z.slice(tab + 1))
+      }
+    }
+    ix.fertig = true
+    return ix.namen.length ? ix : null
+  } catch {
+    return null
+  }
+}
+
+function aktualisieren() {
+  if (!laeuft) laeuft = einlesen().catch(() => null).finally(() => (laeuft = null))
+  return laeuft
+}
+// Zum Suchen: das fertige Verzeichnis (bei Bedarf im Hintergrund frisch einlesen), sonst das, was schon da ist
+function verzeichnis() {
+  if (!index) index = laden()
+  if (!index || Date.now() - index.zeit > INDEX_ALTER) aktualisieren()
+  return index || imAufbau || leererIndex()
+}
+function stand() {
+  const ix = index || imAufbau
+  return { dateien: ix ? ix.namen.length : 0, fertig: Boolean(index), laeuft: Boolean(laeuft) }
 }
 
 // Freigegebene Treffer: Kennung → voller Pfad (nur diese darf die Oberfläche anzeigen/öffnen)
@@ -136,53 +225,91 @@ function aehnlich(a, b) {
   return vorher[b.length] <= grenze
 }
 
-// Suchen: alle Wörter müssen im Dateinamen (oder im Ordnernamen) vorkommen. Beste zuerst.
-// Findet das nichts: dieselbe Suche mit kleinen Hör- und Tippfehlern (Treffer dann „ungefähr“).
-async function suchen(anfrage, { max = 8 } = {}) {
-  const worte = normal(anfrage).split(' ').filter(Boolean)
-  if (!worte.length) return []
-  const liste = await indexHolen()
-  const ganz = normal(anfrage)
-  let treffer = durchsuchen(liste, worte, ganz, false)
-  const ungefaehr = !treffer.length
-  if (ungefaehr) treffer = durchsuchen(liste, worte, ganz, true)
-  return ergebnis(treffer, max, ungefaehr)
+// Ortsangaben in der Suche („Preisliste Desktop“, „Rechnung Downloads“, „Laufwerk D“): nur dort suchen
+const ORTE = {
+  desktop: ['\\desktop\\'], downloads: ['\\downloads\\'], download: ['\\downloads\\'], dokumente: ['\\documents\\', '\\dokumente\\'],
+  documents: ['\\documents\\'], bilder: ['\\pictures\\', '\\bilder\\'], fotos: ['\\pictures\\', '\\bilder\\'], videos: ['\\videos\\'],
+  musik: ['\\music\\', '\\musik\\'], onedrive: ['\\onedrive'], donnerwolf: ['\\donnerwolf\\']
+}
+function ortAus(worte) {
+  const filter = []
+  const rest = []
+  for (let i = 0; i < worte.length; i++) {
+    const w = worte[i]
+    if ((w === 'laufwerk' || w === 'platte') && /^[a-z]$/.test(worte[i + 1] || '')) {
+      filter.push({ laufwerk: `${worte[i + 1]}:` })
+      i++
+    } else if (ORTE[w] && worte.length > 1) filter.push({ teile: ORTE[w] })
+    else rest.push(w)
+  }
+  return { worte: rest, filter }
+}
+const passtZuOrt = (ordner, filter) => {
+  const o = `${ordner.toLowerCase().replaceAll('\\', '/')}/` // Schrägstriche vereinheitlichen
+  return filter.every((f) => (f.laufwerk ? o.startsWith(f.laufwerk) : f.teile.some((t) => o.includes(t.replaceAll('\\', '/')))))
 }
 
-function durchsuchen(liste, worte, ganz, unscharf) {
+// Suchen: alle Wörter müssen im Dateinamen (oder im Ordnerpfad) vorkommen. Beste zuerst.
+// Findet das nichts: mit kleinen Hör- und Tippfehlern, danach reicht die Mehrheit der Wörter (Treffer „ungefähr“).
+async function suchen(anfrage, { max = 8 } = {}) {
+  const alle = normal(anfrage).split(' ').filter(Boolean)
+  const { worte, filter } = ortAus(alle)
+  if (!worte.length) return []
+  const ix = verzeichnis()
+  const ganz = worte.join(' ')
+  let treffer = durchsuchen(ix, worte, ganz, filter, 'genau')
+  let ungefaehr = false
+  if (!treffer.length) {
+    ungefaehr = true
+    treffer = durchsuchen(ix, worte, ganz, filter, 'hoerfehler')
+    if (!treffer.length && worte.length > 1) treffer = durchsuchen(ix, worte, ganz, filter, 'mehrheit')
+  }
+  return ergebnis(ix, treffer, max, ungefaehr)
+}
+
+function durchsuchen(ix, worte, ganz, filter, art) {
   const treffer = []
-  for (const d of liste) {
+  const noetig = art === 'mehrheit' ? Math.ceil(worte.length / 2) : worte.length
+  for (let i = 0; i < ix.namen.length; i++) {
+    const name = ix.namenNormal[i]
     let punkte = 0
-    let alle = true
+    let gefunden = 0
     let imNamen = true
+    let lang = false
     for (const w of worte) {
-      if (d.suche.includes(w)) punkte += d.suche.split(' ').includes(w) ? 3 : 2
-      else if (unscharf && w.length >= 4 && d.suche.split(' ').some((t) => aehnlich(w, t))) punkte += 1
-      else if (d.ordnerSuche.includes(w)) {
+      if (name.includes(w)) {
+        punkte += name.split(' ').includes(w) ? 3 : 2
+        gefunden++
+        if (w.length >= 4) lang = true
+      } else if (art === 'hoerfehler' && w.length >= 4 && name.split(' ').some((t) => aehnlich(w, t))) {
         punkte += 1
+        gefunden++
+        lang = true
+      } else if (art !== 'mehrheit' && ix.ordnerNormal[ix.ordnerVon[i]].includes(w)) {
+        punkte += 1
+        gefunden++
         imNamen = false
-      } else {
-        alle = false
-        break
-      }
+      } else if (art !== 'mehrheit') break
     }
-    if (!alle) continue
-    const ohneEndung = normal(path.parse(d.name).name)
-    if (ohneEndung === ganz || d.suche === ganz) punkte += 10
-    else if (d.suche.startsWith(ganz)) punkte += 4
-    treffer.push({ d, punkte, imNamen })
+    if (gefunden < noetig || (art === 'mehrheit' && !lang)) continue
+    if (filter.length && !passtZuOrt(ix.ordner[ix.ordnerVon[i]], filter)) continue
+    const ohneEndung = normal(path.parse(ix.namen[i]).name)
+    if (ohneEndung === ganz || name === ganz) punkte += 10
+    else if (name.startsWith(ganz)) punkte += 4
+    treffer.push({ i, punkte, imNamen })
   }
   return treffer
 }
 
-async function ergebnis(treffer, max, ungefaehr) {
-  treffer.sort((a, b) => b.punkte - a.punkte || a.d.name.length - b.d.name.length)
+async function ergebnis(ix, treffer, max, ungefaehr) {
+  treffer.sort((a, b) => b.punkte - a.punkte || ix.namen[a.i].length - ix.namen[b.i].length)
   const beste = treffer.slice(0, max * 3)
   // Änderungsdatum nur für die Kandidaten holen (schnell), bei Gleichstand gewinnt die neuere Datei
   await Promise.all(
     beste.map(async (t) => {
+      t.voll = path.join(ix.ordner[ix.ordnerVon[t.i]], ix.namen[t.i])
       try {
-        const info = await fs.stat(t.d.voll)
+        const info = await fs.stat(t.voll)
         t.geaendert = info.mtimeMs
         t.groesse = info.size
       } catch {
@@ -191,28 +318,26 @@ async function ergebnis(treffer, max, ungefaehr) {
     })
   )
   return beste
-    .filter((t) => !t.weg)
+    .filter((t) => !t.weg && !gesperrt(t.voll))
     .sort((a, b) => b.punkte - a.punkte || b.geaendert - a.geaendert)
     .slice(0, max)
-    .map(({ d, geaendert, groesse, imNamen }) => ({
-      id: freigeben(d.voll),
-      imNamen,
-      ungefaehr,
-      name: d.name,
-      ort: d.ort,
-      ordner: path.relative(d.wurzel, path.dirname(d.voll)) || '',
-      art: artVon(d.name),
-      geaendert,
-      groesse
-    }))
+    .map((t) => beschreiben(t.voll, { geaendert: t.geaendert, groesse: t.groesse, imNamen: t.imNamen, ungefaehr }))
 }
 
-// Felix nennt einen vollen Pfad (oder er steht in Luzzys Antwort): nur echte Dateien in seinen Ordnern
-// (Benutzerordner oder Donnerwolf), nur zum Anzeigen
+// Für die Anzeige: „Desktop › Shop“ statt des ganzen Pfads, wo es geht
+function beschreiben(voll, rest) {
+  const ordner = path.dirname(voll)
+  const heim = os.homedir()
+  const kurz = ordner.toLowerCase().startsWith(heim.toLowerCase()) ? path.relative(heim, ordner) : ordner
+  const [ort, ...unter] = kurz.split(/[\\/]+/)
+  return { id: freigeben(voll), name: path.basename(voll), ort: ort || kurz, ordner: unter.join(' › '), art: artVon(voll), ...rest }
+}
+
+// Felix nennt einen vollen Pfad (oder er steht in Luzzys Antwort): jede Datei auf dem PC, nur zum Anzeigen,
+// außer Systemordnern, AppData und Dateien mit Zugangsdaten
 async function pfadTreffer(pfad) {
   const voll = path.resolve(String(pfad || '').trim().replace(/^["']|["']$/g, ''))
-  const erlaubt = [os.homedir(), WURZEL, ...orte().map((o) => o.ordner)].some((w) => voll === w || voll.toLowerCase().startsWith(w.toLowerCase() + path.sep))
-  if (!erlaubt) throw new Error('Die Datei liegt außerhalb deiner Ordner.')
+  if (gesperrt(voll)) throw new Error('Diese Datei zeigt Jarves-OS nicht an (Systemordner oder Zugangsdaten).')
   let info
   try {
     info = await fs.stat(voll)
@@ -220,17 +345,7 @@ async function pfadTreffer(pfad) {
     throw new Error('Die Datei gibt es nicht (mehr).')
   }
   if (!info.isFile()) throw new Error('Das ist ein Ordner, keine Datei.')
-  const ort = orte().find((o) => voll.toLowerCase().startsWith(o.ordner.toLowerCase() + path.sep))
-  return {
-    id: freigeben(voll),
-    name: path.basename(voll),
-    ort: ort?.name || '',
-    ordner: ort ? path.relative(ort.ordner, path.dirname(voll)) : path.dirname(voll),
-    art: artVon(voll),
-    geaendert: info.mtimeMs,
-    groesse: info.size,
-    imNamen: true
-  }
+  return beschreiben(voll, { geaendert: info.mtimeMs, groesse: info.size, imNamen: true })
 }
 
 const PROGRAMME = new Set(['.exe', '.bat', '.cmd', '.com', '.msi', '.ps1', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.scr', '.lnk', '.jar', '.reg', '.hta', '.cpl', '.pif', '.url'])
@@ -257,9 +372,15 @@ function antwortFuer(url) {
   return net.fetch(pathToFileURL(pfadVon(id)).toString())
 }
 
-// Beim Start im Hintergrund schon mal einlesen, damit die erste Suche schnell ist
+// Beim Start: gespeichertes Verzeichnis laden (sofort suchbar) und im Hintergrund frisch einlesen
 function vorbereiten() {
-  setTimeout(() => indexHolen().catch(() => {}), 15000)
+  setTimeout(() => {
+    try {
+      verzeichnis()
+    } catch {
+      // nächstes Mal
+    }
+  }, 5000)
 }
 
-module.exports = { suchen, inhalt, pfadVon, pfadTreffer, istProgramm, antwortFuer, vorbereiten, normal }
+module.exports = { suchen, stand, inhalt, pfadVon, pfadTreffer, istProgramm, antwortFuer, vorbereiten, normal }
