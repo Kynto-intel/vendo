@@ -132,7 +132,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     „Was muss ich heute noch?“ bekommt Luzzy automatisch mit (wie Wetter und Termine).
 19. **Musik / Fokus** (Plugin) – Kleine Leiste für Hintergrundmusik oder Fokus-Timer (Pomodoro),
     Luzzy stört in der Fokuszeit nicht.
-20. **Wochen-Review mit Stimme** (Killer) – Sonntagabend ein kurzes Gespräch: Luzzy fasst die Woche zusammen,
+20. ✅ **Wochen-Review mit Stimme** (Killer, gebaut 27.09.2026) – Sonntagabend ein kurzes Gespräch: Luzzy fasst die Woche zusammen,
     fragt nach Zielen für die nächste Woche und legt sie als Aufgaben an (braucht Nr. 18).
 
 ### ⚡⚡ Mittel: je ungefähr 1–3 Abende (13 Ideen)

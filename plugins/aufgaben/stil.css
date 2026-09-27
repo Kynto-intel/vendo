@@ -18,3 +18,4 @@
 /* Haken und Schalter wie im Gedankenspeicher (falls der abgeschaltet ist) */
 .af-haken { flex: none; width: 18px; height: 18px; margin-top: 1px; border: 1px solid var(--gold-leise); background: transparent; color: var(--gold-hell); font-size: 11px; line-height: 1; cursor: pointer; padding: 0; }
 .af-schalter { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-leise); cursor: pointer; }
+.af-schalter input { accent-color: var(--gold); }

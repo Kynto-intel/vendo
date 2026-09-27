@@ -4,6 +4,8 @@
 // Per Sprache oder Tippen (Jarves-OS antwortet selbst, ohne Hermes):
 //   „Neue Aufgabe: Etiketten bestellen bis Freitag“ · „Aufgabe: Max anrufen morgen um 14 Uhr“
 //   „Setz Stoffproben auf meine Liste“ · „Erledigt: Etiketten“ · „Hak Stoffproben ab“ · „Was steht auf meiner Liste?“
+// Wochen-Review: „Wochen-Review“ (oder Knopf, Erinnerung sonntags 19 Uhr). Luzzy fasst die Woche zusammen und fragt
+// nach den Zielen für nächste Woche; Felix' Antwort trägt Jarves-OS als Aufgaben (fällig Freitag) ein.
 
 import { uhrzeitFinden, zahl, ZAHLEN } from '../../src/renderer/zeitsprache.js'
 
@@ -33,7 +35,7 @@ function datumLesbar(datum) {
   const abstand = Math.round((tag - new Date().setHours(0, 0, 0, 0)) / 86400000)
   return abstand > 0 && abstand < 7 ? tag.toLocaleDateString('de-DE', { weekday: 'long' }) : tag.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' })
 }
-const satz = (text) => `${text.replace(/\.+$/, '')}.` // „15.10.“ am Satzende nicht doppelt
+const mitPunkt = (text) => `${text.replace(/\.+$/, '')}.` // „15.10.“ am Satzende nicht doppelt
 const wannText = (a) => [datumLesbar(a.datum), a.zeit ? `${a.zeit} Uhr` : ''].filter(Boolean).join(', ')
 
 // Datum im Satz finden: „bis Freitag“, „morgen“, „am 3.10.“, „in 3 Tagen“, „nächste Woche“, „Ende der Woche“
@@ -77,17 +79,38 @@ const NEU = [
 ]
 // „Erledigt: …“, „Abgehakt: …“, „Hak … ab“, „Streich …“, „… ist erledigt“
 const ERLEDIGT = [/^(?:erledigt|abgehakt|fertig|geschafft)[:,]?\s+(.+)$/i, /^(?:hak|streich)(?:e)?\s+(.+?)\s+(?:ab|durch|von der liste)$/i, /^(.+?)\s+(?:ist|sind|hab ich|habe ich)\s+(?:erledigt|fertig|gemacht|abgehakt)$/i]
+// „Wochen-Review“, „Wochenrückblick starten“, „Lass uns die Woche durchgehen“
+const REVIEW = /^(?:(?:starte?|mach(?:en)?|lass uns)(?:\s+(?:den|einen|unseren|mal|jetzt))*\s+)?(?:wochen-?review|wochen-?rückblick)(?:\s+(?:machen|starten))?$|^lass uns (?:die|meine) woche durchgehen$/i
+// Antwort auf „Was sind deine Ziele?“: keine
+const KEINE_ZIELE = /^(?:keine|nichts|nö|nein|passt so|alles gut|erstmal nichts|keine neuen)\b/i
+const REVIEW_WARTET_MS = 10 * 60000 // so lange gilt die nächste Antwort als Ziele
+
+// Ziele aus einer frei gesprochenen Antwort: „Newsletter rausschicken, Etiketten bestellen und dann den Shop-Banner machen“
+export function zieleAus(text) {
+  const s = ohneLuzzy(text)
+    .replace(/^(?:also|ok|okay|gut)[,\s]+/i, '')
+    .replace(/^(?:meine |die )?ziele(?:\s+für\s+(?:die\s+)?nächste\s+woche)?(?:\s+sind)?[:,]?\s*/i, '')
+    .replace(/^(?:nächste woche\s+)?(?:will|möchte|muss)\s+ich\s+/i, '')
+  return s
+    .split(/\s*(?:[;\n]|,\s*(?:und\s+)?(?:dann\s+)?|\.\s+|\bund dann\b|(?:\bund\s+)?\baußerdem\b|(?:\bund\s+)?\bdanach\b|\b(?:erstens|zweitens|drittens|viertens)\b)\s*/i)
+    .map((t) => t.replace(/^(?:und|dann|noch|auch|ich\s+(?:will|möchte|muss))\s+/i, '').replace(/[.!]+$/, '').trim())
+    .filter((t) => t.length >= 3)
+}
+// Freitag der kommenden Woche (Ziele für nächste Woche)
+const freitagNaechsteWoche = (jetzt = new Date()) => tagText(plusTage((((1 - jetzt.getDay() + 7) % 7) || 7) + 4, jetzt))
+
 // „Was steht auf meiner Liste?“, „Welche Aufgaben habe ich?“, „Lies meine Aufgaben vor“
 const LISTE = /^(?:was steht auf meiner (?:to-?do-?)?liste|welche aufgaben hab(?:e)? ich(?: noch)?|(?:lies|zeig|nenn)(?: mir)? meine (?:aufgaben|to-?dos)(?: vor)?|meine (?:aufgaben|to-?dos))$/i
 
 export async function starten(ctx) {
   const m = ctx.maskieren
-  let daten = { aufgaben: [], erinnert: {} }
+  let daten = { aufgaben: [], erinnert: {}, review: { erinnern: true, tag: 0, zeit: '19:00', zuletzt: '' } }
   let erledigteZeigen = false
+  let review = null // { seit } solange Jarves-OS auf Felix' Ziele wartet
 
   async function laden() {
     const d = await ctx.daten.laden()
-    daten = { aufgaben: Array.isArray(d.aufgaben) ? d.aufgaben : [], erinnert: d.erinnert || {} }
+    daten = { aufgaben: Array.isArray(d.aufgaben) ? d.aufgaben : [], erinnert: d.erinnert || {}, review: { erinnern: true, tag: 0, zeit: '19:00', zuletzt: '', ...(d.review || {}) } }
     zeichnen()
   }
   async function speichern() {
@@ -130,15 +153,80 @@ export async function starten(ctx) {
     return bewertet.filter((x) => x.p === best).map((x) => x.a)
   }
 
+  // ── Wochen-Review ──
+  async function reviewStarten({ gesprochen = false } = {}) {
+    const seit = Date.now() - 7 * 86400000
+    const erledigt = daten.aufgaben.filter((a) => a.erledigt && a.erledigtAm >= seit)
+    const o = sortiert(offen())
+    const ueber = o.filter((a) => a.datum && a.datum < heute())
+    daten.review.zuletzt = heute()
+    await ctx.daten.speichern(daten)
+    review = { seit: Date.now() }
+    if (!ctx.bereit()) {
+      // Luzzy ist nicht erreichbar oder beschäftigt: kurzer Rückblick aus den eigenen Daten
+      return `Wochen-Review: Diese Woche hast du ${erledigt.length === 1 ? 'eine Aufgabe' : `${erledigt.length} Aufgaben`} erledigt, ${o.length} ${o.length === 1 ? 'ist' : 'sind'} noch offen${ueber.length ? `, ${ueber.length} davon überfällig` : ''}. Was sind deine Ziele für nächste Woche?`
+    }
+    const liste = (l) => (l.length ? l.map((a) => `- ${a.text}${a.datum ? ` (${wannText(a)})` : ''}`).join('\n') : '- keine')
+    const termine = await ctx.kontextVon('kalender').catch(() => '')
+    const auftrag = [
+      'Wochen-Review (unser Sonntagsgespräch). Fasse meine Woche kurz zusammen, gesprochen natürlich, höchstens sechs Sätze, das Wichtigste zuerst:',
+      '- Shop: Bestellungen und Umsatz dieser Woche (Montag bis heute) live aus Shopify, wenn möglich mit Vergleich zur Vorwoche.',
+      `- Diese Woche erledigte Aufgaben:\n${liste(erledigt)}`,
+      `- Noch offene Aufgaben:\n${liste(o)}`,
+      termine ? `- ${termine}` : '',
+      'Frag mich am Ende genau eine Frage: Was sind meine Ziele für nächste Woche? Meine Antwort trägt Jarves-OS selbst als Aufgaben ein, du musst dafür nichts tun.'
+    ].filter(Boolean).join('\n')
+    ctx.luzzy(auftrag, { anzeige: '▶ Wochen-Review', vorlesen: true, gesprochen })
+    return true
+  }
+
+  // Felix' Antwort auf die Ziel-Frage: als Aufgaben für nächste Woche eintragen
+  async function zieleEintragen(text) {
+    review = null
+    if (KEINE_ZIELE.test(ohneLuzzy(text))) return 'Alles klar, keine neuen Ziele. Genieß den Sonntag.'
+    const ziele = zieleAus(text)
+    if (!ziele.length) return null
+    const freitag = freitagNaechsteWoche()
+    const angelegt = []
+    for (const ziel of ziele.slice(0, 10)) {
+      const a = await anlegen(ziel)
+      if (!a) continue
+      if (!a.datum) a.datum = freitag
+      angelegt.push(a)
+    }
+    await speichern()
+    const texte = angelegt.map((a) => a.text)
+    return mitPunkt(`Eingetragen, ${texte.length === 1 ? 'ein Ziel' : `${texte.length} Ziele`} für nächste Woche: ${texte.length > 1 ? `${texte.slice(0, -1).join(', ')} und ${texte.at(-1)}` : texte[0]}. Fällig ist alles bis Freitag, außer du hast was anderes gesagt`)
+  }
+
+  // Erinnerung an den Review (Standard: sonntags 19 Uhr, über Luzzy-Meldung)
+  setInterval(() => {
+    const r = daten.review
+    const jetzt = new Date()
+    if (!r?.erinnern || jetzt.getDay() !== Number(r.tag) || r.zuletzt === heute()) return
+    if (`${zwei(jetzt.getHours())}:${zwei(jetzt.getMinutes())}` < r.zeit) return
+    r.zuletzt = heute()
+    ctx.daten.speichern(daten)
+    ctx.melden({ art: 'aufgabe', titel: 'Zeit für den Wochen-Review', text: 'Felix, Zeit für unseren Wochen-Review. Sag einfach: Wochen-Review.', anzeige: 'Sag „Wochen-Review“ oder klick im Bereich Aufgaben' })
+  }, 60000)
+
   // ── Sprache/Text: selbst beantworten ──
-  ctx.befehl(async (eingabe) => {
+  ctx.befehl(async (eingabe, { gesprochen } = {}) => {
     const satz = ohneLuzzy(eingabe).replace(/[?!]+$/, '').trim()
+    if (REVIEW.test(satz.replace(/\.$/, ''))) return reviewStarten({ gesprochen })
+    // Wartet der Review auf die Ziele? Fragen gehen normal an Luzzy, alles andere sind die Ziele.
+    // (einzelne Wörter wie „Morgenbericht“ sind eher Befehle als Ziele, außer „keine“)
+    const alsZiele = satz.split(/\s+/).length >= 2 || KEINE_ZIELE.test(satz)
+    if (review && Date.now() - review.seit < REVIEW_WARTET_MS && alsZiele && !/^(?:wie|was|warum|wann|wo|wer|welche|kannst|könntest|hast|ist|sind|gibt|zeig|lies)\b/i.test(satz)) {
+      const antwort = await zieleEintragen(eingabe)
+      if (antwort) return antwort
+    }
     for (const re of NEU) {
       const t = re.exec(satz)
       if (!t) continue
       const a = await anlegen(t[1])
       if (!a) return null
-      return satz(`Steht auf der Liste: ${a.text}${a.datum ? `, ${wannText(a)}` : ''}`)
+      return mitPunkt(`Steht auf der Liste: ${a.text}${a.datum ? `, ${wannText(a)}` : ''}`)
     }
     for (const re of ERLEDIGT) {
       const t = re.exec(satz.replace(/\.$/, ''))
@@ -156,7 +244,7 @@ export async function starten(ctx) {
       const liste = sortiert(offen())
       if (!liste.length) return 'Deine Liste ist leer.'
       const texte = liste.slice(0, 5).map((a) => `${a.text}${a.datum ? ` (${wannText(a)})` : ''}`)
-      return `${satz(`${liste.length === 1 ? 'Eine Aufgabe' : `${liste.length} Aufgaben`}: ${texte.length > 1 ? `${texte.slice(0, -1).join(', ')} und ${texte.at(-1)}` : texte[0]}`)}${liste.length > 5 ? ' Das waren die ersten fünf.' : ''}`
+      return `${mitPunkt(`${liste.length === 1 ? 'Eine Aufgabe' : `${liste.length} Aufgaben`}: ${texte.length > 1 ? `${texte.slice(0, -1).join(', ')} und ${texte.at(-1)}` : texte[0]}`)}${liste.length > 5 ? ' Das waren die ersten fünf.' : ''}`
     }
     return null
   })
@@ -193,7 +281,7 @@ export async function starten(ctx) {
       if (minute >= um && daten.erinnert[a.id] !== schluessel) {
         daten.erinnert[a.id] = schluessel
         geaendert = true
-        ctx.melden({ art: 'aufgabe', titel: `Aufgabe: ${a.text}`, text: satz(`Felix, ${a.zeit ? 'jetzt' : 'heute'} fällig: ${a.text}`), anzeige: wannText(a) })
+        ctx.melden({ art: 'aufgabe', titel: `Aufgabe: ${a.text}`, text: mitPunkt(`Felix, ${a.zeit ? 'jetzt' : 'heute'} fällig: ${a.text}`), anzeige: wannText(a) })
       }
     }
     if (geaendert) await ctx.daten.speichern(daten)
@@ -211,7 +299,10 @@ export async function starten(ctx) {
   }
 
   // ── Bereich ──
-  ctx.kopfKnoepfe.innerHTML = `<label class="gd-schalter af-schalter"><input type="checkbox" data-erledigte /> Erledigte zeigen</label>`
+  ctx.kopfKnoepfe.innerHTML = `
+    <label class="af-schalter" title="Sonntags um 19 Uhr erinnert dich Luzzy an den Wochen-Review"><input type="checkbox" data-review-erinnern /> So. 19 Uhr erinnern</label>
+    <button class="knopf-flach" data-review type="button" title="Luzzy fasst die Woche zusammen und fragt nach deinen Zielen">Wochen-Review</button>
+    <label class="af-schalter"><input type="checkbox" data-erledigte /> Erledigte zeigen</label>`
   ctx.element.innerHTML = `
     <form class="af-neu hud" data-neu>
       <input name="text" maxlength="500" required placeholder="Neue Aufgabe, z. B. „Etiketten bestellen bis Freitag“" autocomplete="off" />
@@ -242,6 +333,7 @@ export async function starten(ctx) {
       gruppe('Demnächst', o.filter((a) => a.datum > h)) +
       gruppe('Ohne Datum', o.filter((a) => !a.datum)) +
       (erledigteZeigen ? gruppe('Erledigt', daten.aufgaben.filter((a) => a.erledigt).sort((a, b) => (b.erledigtAm || 0) - (a.erledigtAm || 0))) : '')
+    ctx.kopfKnoepfe.querySelector('[data-review-erinnern]').checked = daten.review.erinnern !== false
     $('[data-liste]').innerHTML = html || '<div class="leer-hinweis">Nichts zu tun. Sag „Luzzy, neue Aufgabe: …“ oder tipp oben eine ein.</div>'
     karteZeichnen()
   }
@@ -272,6 +364,14 @@ export async function starten(ctx) {
       daten.aufgaben = daten.aufgaben.filter((x) => x.id !== id)
     }
     await speichern()
+  })
+  ctx.kopfKnoepfe.querySelector('[data-review]').addEventListener('click', async () => {
+    const antwort = await reviewStarten()
+    if (typeof antwort === 'string') ctx.vorlesen(antwort)
+  })
+  ctx.kopfKnoepfe.querySelector('[data-review-erinnern]').addEventListener('change', async (e) => {
+    daten.review.erinnern = e.target.checked
+    await ctx.daten.speichern(daten)
   })
   ctx.kopfKnoepfe.querySelector('[data-erledigte]').addEventListener('change', (e) => {
     erledigteZeigen = e.target.checked

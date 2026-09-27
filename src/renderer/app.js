@@ -540,11 +540,12 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     return
   }
   // Plugin-Befehle, die das Plugin selbst beantwortet (z. B. „Merk dir: …“)
-  const pluginAntwort = await pluginBefehl(text)
+  const pluginAntwort = await pluginBefehl(text, { gesprochen })
   if (pluginAntwort) {
     feld.value = ''
     feldHoehe(feld)
-    return lokalAntworten(pluginAntwort, { gesprochen })
+    if (pluginAntwort.antwort) lokalAntworten(pluginAntwort.antwort, { gesprochen })
+    return
   }
   if (beschaeftigt) return
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')

@@ -95,8 +95,8 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       kontextFuer,
       // Eingaben abfangen: fn(text) → { text, anzeige?, vorlesen? } oder null
       eingabeFilter: (fn) => eingabeFilter.push({ id: m.id, fn }),
-      // Befehle, die das Plugin selbst beantwortet: fn(text) → Antwort (Text, Luzzy sagt ihn) oder null.
-      // Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
+      // Befehle, die das Plugin selbst beantwortet: fn(text, { gesprochen }) → Antwort (Text, Luzzy sagt ihn),
+      // true (erledigt, nichts zu sagen) oder null. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
       befehl: (fn) => befehle.push({ id: m.id, fn }),
       // Knöpfe über der Eingabe setzen (ersetzt die bisherigen Knöpfe dieses Plugins)
       knoepfe: (liste) => {
@@ -172,12 +172,13 @@ export async function pluginKontext() {
   return teile.join('\n\n')
 }
 
-// Befehle der Plugins, die sie selbst beantworten (erster Treffer gewinnt) → Antwort oder null
-export async function pluginBefehl(text) {
+// Befehle der Plugins, die sie selbst beantworten (erster Treffer gewinnt) → { antwort } oder null
+export async function pluginBefehl(text, info = {}) {
   for (const { id, fn } of befehle) {
     try {
-      const antwort = await fn(text)
-      if (antwort) return String(antwort)
+      const antwort = await fn(text, info)
+      if (antwort === true) return { antwort: '' }
+      if (antwort) return { antwort: String(antwort) }
     } catch (e) {
       console.warn(`Befehl ${id}:`, e.message)
     }

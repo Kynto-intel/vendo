@@ -58,7 +58,7 @@ export async function starten(ctx) {
 | `ctx.begruessung(() => satz)` | Kurzer Satz für Luzzys Begrüßung beim Start (z. B. Termine heute, Wetter) |
 | `ctx.kontextFuer(text)` | Kontext aller Plugins, deren Stichwörter im Text vorkommen (siehe unten) |
 | `ctx.eingabeFilter(fn)` | Eingaben abfangen: `fn(text)` gibt `{ text, anzeige, vorlesen }` oder `null` zurück |
-| `ctx.befehl(fn)` | Befehl selbst beantworten, sofort und ohne Hermes: `fn(text)` gibt die Antwort (Luzzy sagt sie) oder `null` zurück |
+| `ctx.befehl(fn)` | Befehl selbst beantworten, sofort und ohne Hermes: `fn(text, { gesprochen })` gibt die Antwort (Luzzy sagt sie), `true` (erledigt, nichts sagen) oder `null` (kein Befehl) zurück |
 | `ctx.knoepfe([{ name, titel, fn }])` | Knöpfe über der Eingabe in der Zentrale setzen |
 | `ctx.bereit()` | Ist Luzzy gerade frei (verbunden, antwortet nicht)? |
 | `ctx.oeffnen()` | öffnet den Bereich des Plugins |
