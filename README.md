@@ -47,3 +47,5 @@ Eigene Erweiterungen liegen in `plugins\<id>\` (z. B. der Kalender). Wie man ein
 
 - Hermes selbst wird nie verändert. Nur update-feste Einstellungen (Profile, config) und nur mit Sicherung.
 - Nichts nachbauen, was Hermes schon kann.
+- Dateien ändern: nur wenn Felix selbst auf „Speichern“ klickt (auch bei Luzzys Änderungen), immer mit Sicherung
+  der alten Fassung (`daten\datei-sicherungen\`, „Rückgängig“). System- und Geheim-Dateien bleiben gesperrt.

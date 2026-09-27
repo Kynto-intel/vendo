@@ -149,7 +149,14 @@ function oeffnenFalls() {
 }
 
 function listeZeigen(suche, treffer) {
+  if (ungespeichert()) throw new Error('Du hast noch ungespeicherte Änderungen. Erst speichern oder verwerfen.')
   offeneId = null
+  offen = null
+  bearbeiten = false
+  luzzyLauf = null
+  $('da-aenderungen').innerHTML = ''
+  statusSetzen('')
+  for (const k of ['da-bearbeiten', 'da-speichern', 'da-verwerfen', 'da-rueck', 'da-luzzy']) $(k).hidden = true
   const dialog = $('dateiansicht')
   dialog.dataset.modus = 'liste'
   $('da-name').textContent = `Gefunden: ${suche}`
@@ -165,13 +172,32 @@ function listeZeigen(suche, treffer) {
 }
 
 async function dateiZeigen(treffer) {
+  if (ungespeichert()) throw new Error('Du hast noch ungespeicherte Änderungen. Erst speichern oder verwerfen.')
   const d = await api.datei.inhalt(treffer.id)
   offeneId = d.id
+  const text = typeof d.text === 'string' ? d.text.replace(/\r\n/g, '\n') : null
+  offen = { ...d, text, crlf: typeof d.text === 'string' && d.text.includes('\r\n'), treffer }
+  bearbeiten = false
+  luzzyLauf = null
+  warnungGezeigt = false
   const dialog = $('dateiansicht')
   dialog.dataset.modus = 'datei'
   $('da-name').textContent = d.name
-  $('da-ort').textContent = `${ortText(treffer)} · ${groesse(d.groesse)} · geändert ${datum(d.geaendert)}`
+  ortZeigen()
   $('da-ordner').hidden = $('da-programm').hidden = false
+  statusSetzen('')
+  $('da-aenderungen').innerHTML = ''
+  inhaltZeichnen()
+  knoepfeZeigen()
+  oeffnenFalls()
+}
+
+function ortZeigen() {
+  $('da-ort').textContent = `${ortText(offen.treffer)} · ${groesse(offen.groesse)} · geändert ${datum(offen.geaendert)}`
+}
+
+function inhaltZeichnen() {
+  const d = offen
   const inhalt = $('da-inhalt')
   inhalt.className = `da-inhalt${['bild', 'video', 'audio'].includes(d.art) || d.art === 'andere' ? ' zentriert' : ''}`
   if (d.art === 'markdown') inhalt.innerHTML = `<div class="da-md">${markdownZuHtml(d.text.replace(/^---\n[\s\S]*?\n---\n/, ''))}</div>`
@@ -183,7 +209,223 @@ async function dateiZeigen(treffer) {
   else if (d.art === 'audio') inhalt.innerHTML = `<audio src="${maskieren(d.url)}" controls autoplay></audio>`
   else
     inhalt.innerHTML = `<div class="da-hinweis">${maskieren(d.hinweis || 'Diese Art Datei kann Jarves-OS nicht selbst anzeigen.')}<br />Mit „Mit Programm öffnen“ geht sie im passenden Programm auf.</div>`
-  oeffnenFalls()
+}
+
+// ── Bearbeiten: Felix selbst oder Luzzy (live, Stelle für Stelle). Gespeichert wird NUR mit Felix' Klick. ──
+let offen = null // { id, name, art, text (zuletzt gespeichert, Zeilenende \n), crlf, geaendert, bearbeitbar, rueckgaengig, treffer }
+let bearbeiten = false
+let warnungGezeigt = false
+let luzzyLauf = null // { vorher, angewendet, aenderungen: [{ alt, neu, pos, fehlt }] }
+let h = { luzzy: async () => false, beiFehler: () => {} }
+const editor = () => $('da-inhalt').querySelector('.da-editor')
+export const ungespeichert = () => Boolean(offen && bearbeiten && editor() && editor().value !== offen.text)
+
+function statusSetzen(text, warnung = false) {
+  $('da-status').textContent = text
+  $('da-status').classList.toggle('warnung', warnung)
+}
+function knoepfeZeigen() {
+  const kann = Boolean(offen?.bearbeitbar)
+  const geaendert = ungespeichert()
+  $('da-bearbeiten').hidden = !kann
+  $('da-bearbeiten').textContent = bearbeiten ? 'Fertig' : 'Bearbeiten'
+  $('da-speichern').hidden = !bearbeiten
+  $('da-speichern').disabled = !geaendert
+  $('da-verwerfen').hidden = !geaendert
+  $('da-rueck').hidden = !(kann && offen.rueckgaengig && !geaendert)
+  $('da-luzzy').hidden = !bearbeiten
+  if (geaendert) statusSetzen('● Nicht gespeichert. Speichern musst du selbst (Strg+S).', true)
+  else if ($('da-status').classList.contains('warnung')) statusSetzen('')
+}
+
+function bearbeitenAn() {
+  if (!offen?.bearbeitbar) return false
+  bearbeiten = true
+  const inhalt = $('da-inhalt')
+  inhalt.className = 'da-inhalt'
+  inhalt.innerHTML = '<textarea class="da-editor" spellcheck="false"></textarea>'
+  editor().value = offen.text
+  editor().addEventListener('input', () => {
+    warnungGezeigt = false
+    knoepfeZeigen()
+  })
+  aenderungenZeigen()
+  knoepfeZeigen()
+  return true
+}
+function bearbeitenAus() {
+  if (ungespeichert()) return statusSetzen('Erst speichern oder verwerfen.', true)
+  bearbeiten = false
+  luzzyLauf = null
+  aenderungenZeigen()
+  inhaltZeichnen()
+  knoepfeZeigen()
+}
+
+async function speichernKlick() {
+  if (!ungespeichert()) return
+  const wert = editor().value
+  try {
+    const r = await api.datei.speichern(offen.id, offen.crlf ? wert.replace(/\n/g, '\r\n') : wert, offen.geaendert)
+    offen.text = wert
+    offen.geaendert = r.geaendert
+    offen.groesse = r.groesse
+    offen.rueckgaengig = true
+    luzzyLauf = null
+    aenderungenZeigen()
+    ortZeigen()
+    knoepfeZeigen()
+    statusSetzen('✓ Gespeichert. Die alte Fassung ist gesichert (Rückgängig).')
+  } catch (e) {
+    statusSetzen(fehlerText(e), true)
+  }
+}
+function verwerfenKlick() {
+  if (!editor()) return
+  editor().value = offen.text
+  luzzyLauf = null
+  aenderungenZeigen()
+  knoepfeZeigen()
+  statusSetzen('Änderungen verworfen.')
+}
+async function rueckgaengigKlick() {
+  try {
+    const r = await api.datei.rueckgaengig(offen.id)
+    offen.text = r.text.replace(/\r\n/g, '\n')
+    offen.crlf = r.text.includes('\r\n')
+    offen.geaendert = r.geaendert
+    offen.groesse = r.groesse
+    offen.rueckgaengig = false
+    if (editor()) editor().value = offen.text
+    else inhaltZeichnen()
+    ortZeigen()
+    knoepfeZeigen()
+    statusSetzen('↶ Die Fassung vor dem letzten Speichern ist zurück.')
+  } catch (e) {
+    statusSetzen(fehlerText(e), true)
+  }
+}
+const fehlerText = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+
+// Luzzy ändert: sie schickt Änderungsblöcke, Jarves-OS trägt jeden sofort im Text ein, sobald er vollständig ist
+const BLOCK = /<<<ALT\r?\n([\s\S]*?)\r?\n===\r?\n([\s\S]*?)\r?\n?>>>/g
+const AENDERN = /^(?:bitte\s+)?(?:kannst du\s+)?(ändere|änder|ändern|ersetze|ersetz|schreib|schreibe|füge|füg|lösch|lösche|entferne|entfern|korrigier|korrigiere|verbessere|verbesser|übersetze|übersetz|formulier|formuliere|kürze|kürz|ergänze|ergänz|tausch|tausche|streich|streiche|setz|setze|mach|mache|pass|passe|nimm|benenn|benenne)(?![\p{L}])/iu
+
+// Solange eine bearbeitbare Datei offen ist: „Luzzy, ändere den Preis …“ geht an die Datei (Satz-Promise oder null)
+export function aenderungsBefehl(text) {
+  if (!offen?.bearbeitbar || !$('dateiansicht').open) return null
+  const satz = ohneLuzzy(text).replace(/^[,\s]+/, '').trim()
+  if (!AENDERN.test(satz)) return null
+  return luzzyAendern(satz)
+}
+
+async function luzzyAendern(anweisung, { gesprochen = true } = {}) {
+  if (!bearbeiten && !bearbeitenAn()) return 'Diese Datei kann ich nicht bearbeiten.'
+  const text = editor().value
+  if (text.length > 60000) return 'Die Datei ist zu groß, um sie mit mir zu bearbeiten. Du kannst sie aber selbst ändern.'
+  luzzyLauf = { vorher: text, angewendet: 0, aenderungen: [] }
+  aenderungenZeigen()
+  statusSetzen('Luzzy ändert …')
+  const auftrag = [
+    `Felix hat die Datei „${offen.name}“ offen und möchte sie ändern: „${anweisung}“.`,
+    'Ändere nur die Stellen, die dafür nötig sind. Antworte ausschließlich mit Änderungsblöcken in genau diesem Format (beliebig viele):',
+    '<<<ALT',
+    'der bisherige Text, Zeichen für Zeichen genau wie in der Datei, gerade so lang, dass er eindeutig ist',
+    '===',
+    'der neue Text',
+    '>>>',
+    'Etwas einfügen: nimm als ALT die Zeile davor und schreib sie im neuen Text mit dem Zusatz. Etwas löschen: neuer Text leer.',
+    'Keine Einleitung, keine Erklärung, keine Werkzeuge benutzen, nichts speichern. Gespeichert wird nur, wenn Felix selbst auf Speichern klickt.',
+    '',
+    `Die Datei „${offen.name}“:`,
+    '"""',
+    text,
+    '"""'
+  ].join('\n')
+  const ok = await h.luzzy(auftrag, {
+    anzeige: `✏️ ${offen.name}: ${anweisung}`,
+    gesprochen,
+    beiText: (roh) => bloeckeAnwenden(roh),
+    nachher: (antwort) => {
+      bloeckeAnwenden(antwort)
+      return zusammenfassung()
+    }
+  })
+  if (ok === false) {
+    luzzyLauf = null
+    statusSetzen('')
+    return 'Ich antworte gerade noch. Sag es gleich nochmal.'
+  }
+  return ''
+}
+
+function bloeckeAnwenden(roh) {
+  if (!luzzyLauf || !editor()) return
+  const bloecke = [...String(roh || '').matchAll(BLOCK)]
+  for (let i = luzzyLauf.angewendet; i < bloecke.length; i++) einsetzen(bloecke[i][1], bloecke[i][2])
+  luzzyLauf.angewendet = Math.max(luzzyLauf.angewendet, bloecke.length)
+}
+
+function einsetzen(alt, neu) {
+  const feld = editor()
+  let wert = feld.value
+  let pos = wert.indexOf(alt)
+  let laenge = alt.length
+  if (pos < 0 && alt.trim()) {
+    // Leerzeichen/Zeilenumbrüche weichen oft leicht ab: flexibel suchen
+    const muster = alt.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')
+    const t = new RegExp(muster).exec(wert)
+    if (t) {
+      pos = t.index
+      laenge = t[0].length
+    }
+  }
+  if (pos < 0 || !alt) {
+    luzzyLauf.aenderungen.push({ alt, neu, fehlt: true })
+    return aenderungenZeigen()
+  }
+  wert = wert.slice(0, pos) + neu + wert.slice(pos + laenge)
+  feld.value = wert
+  luzzyLauf.aenderungen.push({ alt, neu, pos })
+  zeigenBei(pos, neu.length, { fokus: false })
+  aenderungenZeigen()
+  knoepfeZeigen()
+}
+
+// Zur Stelle scrollen (und markieren, wenn das Feld den Fokus bekommen darf)
+function zeigenBei(pos, laenge, { fokus = true } = {}) {
+  const feld = editor()
+  if (!feld) return
+  const zeile = feld.value.slice(0, pos).split('\n').length
+  const hoehe = parseFloat(getComputedStyle(feld).lineHeight) || 20
+  feld.scrollTop = Math.max(0, (zeile - 4) * hoehe)
+  if (fokus) {
+    feld.focus()
+    feld.setSelectionRange(pos, pos + laenge)
+  }
+}
+
+function aenderungenZeigen() {
+  const el = $('da-aenderungen')
+  if (!luzzyLauf?.aenderungen.length) return (el.innerHTML = '')
+  const kurz = (t) => maskieren(t.replace(/\s+/g, ' ').trim().slice(0, 60) || '(leer)')
+  el.innerHTML = `${luzzyLauf.aenderungen
+    .map((a, i) =>
+      a.fehlt
+        ? `<span class="da-aenderung fehlt" title="${maskieren(a.alt)}"><span>✗ nicht gefunden: „${kurz(a.alt)}“</span></span>`
+        : `<button type="button" class="da-aenderung" data-nr="${i}" title="Zur Stelle springen"><span>✎ „${kurz(a.alt)}“ → „${kurz(a.neu)}“</span></button>`
+    )
+    .join('')}<button type="button" class="da-aenderung alle-weg" data-alle-weg><span>Luzzys Änderungen verwerfen</span></button>`
+}
+
+function zusammenfassung() {
+  if (!luzzyLauf) return ''
+  const gut = luzzyLauf.aenderungen.filter((a) => !a.fehlt).length
+  const fehlt = luzzyLauf.aenderungen.length - gut
+  knoepfeZeigen()
+  if (!ungespeichert()) statusSetzen('')
+  if (!luzzyLauf.aenderungen.length) return 'Ich habe keine Änderung eingetragen. Sag mir genauer, was ich ändern soll.'
+  return `${gut === 1 ? 'Eine Stelle' : `${gut} Stellen`} geändert.${fehlt ? ` ${fehlt === 1 ? 'Eine Stelle' : `${fehlt} Stellen`} habe ich nicht gefunden.` : ''} Schau es dir an. Gespeichert ist noch nichts, das machst du mit Speichern.`
 }
 
 // CSV/TSV als Tabelle (Trennzeichen raten: Semikolon, Tab oder Komma), höchstens 1.000 Zeilen
@@ -210,9 +452,57 @@ function tabelle(text) {
     .join('')}</tbody></table>${zeilen.length > 1001 ? `<div class="da-hinweis">Nur die ersten 1.000 Zeilen.</div>` : ''}`
 }
 
-export function dateiansichtEinrichten({ beiFehler = () => {} } = {}) {
+export function dateiansichtEinrichten({ beiFehler = () => {}, luzzy } = {}) {
+  h = { ...h, beiFehler, ...(luzzy ? { luzzy } : {}) }
   const dialog = $('dateiansicht')
-  $('da-zu').addEventListener('click', () => dialog.close())
+  // Nicht gespeichert? Erst warnen; wer nochmal schließt, verwirft die Änderungen
+  const schliessen = () => {
+    if (ungespeichert() && !warnungGezeigt) {
+      warnungGezeigt = true
+      return statusSetzen('● Nicht gespeichert! Nochmal schließen verwirft die Änderungen.', true)
+    }
+    dialog.close()
+  }
+  $('da-zu').addEventListener('click', schliessen)
+  dialog.addEventListener('cancel', (e) => {
+    e.preventDefault()
+    schliessen()
+  })
+  dialog.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && bearbeiten) {
+      e.preventDefault()
+      speichernKlick()
+    }
+  })
+  $('da-bearbeiten').addEventListener('click', () => (bearbeiten ? bearbeitenAus() : bearbeitenAn() && editor().focus()))
+  $('da-speichern').addEventListener('click', speichernKlick)
+  $('da-verwerfen').addEventListener('click', verwerfenKlick)
+  $('da-rueck').addEventListener('click', rueckgaengigKlick)
+  $('da-luzzy-form').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const feld = e.target.querySelector('input')
+    const anweisung = feld.value.trim()
+    if (!anweisung) return
+    feld.value = ''
+    const satz = await luzzyAendern(anweisung, { gesprochen: false })
+    if (satz) statusSetzen(satz, true)
+  })
+  $('da-aenderungen').addEventListener('click', (e) => {
+    if (e.target.closest('[data-alle-weg]')) {
+      if (luzzyLauf && editor()) editor().value = luzzyLauf.vorher
+      luzzyLauf = null
+      aenderungenZeigen()
+      knoepfeZeigen()
+      return statusSetzen('Luzzys Änderungen verworfen.')
+    }
+    const knopf = e.target.closest('.da-aenderung[data-nr]')
+    const a = knopf && luzzyLauf?.aenderungen[Number(knopf.dataset.nr)]
+    if (!a || !editor()) return
+    const wert = editor().value
+    let pos = wert.indexOf(a.neu, Math.max(0, a.pos - 200))
+    if (pos < 0) pos = wert.indexOf(a.neu)
+    if (pos >= 0) zeigenBei(pos, a.neu.length)
+  })
   $('da-ordner').addEventListener('click', () => offeneId && api.datei.imOrdner(offeneId).catch((e) => beiFehler(e)))
   $('da-programm').addEventListener('click', () => offeneId && api.datei.mitProgramm(offeneId).catch((e) => beiFehler(e)))
   const waehlen = (el) => el && dateiZeigen(letzteTreffer[Number(el.dataset.nr) - 1]).catch((e) => beiFehler(e))
@@ -223,5 +513,11 @@ export function dateiansichtEinrichten({ beiFehler = () => {} } = {}) {
     if (dialog.open) return // gleich wieder geöffnet (nächste Datei): nichts leeren
     $('da-inhalt').innerHTML = ''
     offeneId = null
+    offen = null
+    bearbeiten = false
+    luzzyLauf = null
+    $('da-luzzy').hidden = true
+    $('da-aenderungen').innerHTML = ''
+    statusSetzen('')
   })
 }
