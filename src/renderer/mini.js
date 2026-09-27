@@ -1,6 +1,6 @@
 // Mini-Modus: zeigt, was Luzzy gerade tut (vom großen Fenster geschickt). Klick: sprechen, Doppelklick: groß.
 
-const ANZAHL = 20
+const ANZAHL = 40
 const pille = document.getElementById('pille')
 const balken = []
 for (let i = 0; i < ANZAHL; i++) {
@@ -13,12 +13,13 @@ for (let i = 0; i < ANZAHL; i++) {
 
 window.mini.beiZustand(({ zustand, pegel, titel } = {}) => {
   if (zustand && pille.dataset.zustand !== zustand) pille.dataset.zustand = zustand
-  if (titel) pille.title = `${titel} · Klick: sprechen · Doppelklick: großes Fenster (Strg+Umschalt+M)`
+  if (titel) pille.title = `${titel} · Klick: sprechen · Doppelklick: großes Fenster (AltGr+L)`
   const denkt = ['denkt', 'versteht', 'antwortet'].includes(zustand)
   if (pegel === undefined && (zustand === 'spricht' || zustand === 'hoert')) return // Balken bleiben, bis der nächste Pegel kommt
   for (let i = 0; i < ANZAHL; i++) {
-    // Pegel (24 Werte) auf die Balken verteilen; ohne Pegel: Punkte (3 px)
-    const wert = pegel ? pegel[Math.floor((i * pegel.length) / ANZAHL)] || 0 : 0
+    // Pegel (24 Werte, tief → hoch) auf die Balken verteilen. Die Stimme steckt vor allem in den tiefen Werten,
+    // deshalb bekommen die mehr Balken (sonst bewegt sich nur der Anfang). Ohne Pegel: Punkte (3 px)
+    const wert = pegel ? pegel[Math.min(pegel.length - 1, Math.floor((i / ANZAHL) ** 1.7 * pegel.length))] || 0 : 0
     balken[i].style.height = denkt ? '' : `${Math.round(3 + Math.min(1, wert) * 19)}px`
   }
 })

@@ -387,7 +387,7 @@ ipcMain.handle('system:werte', () => {
 // ── Mini-Modus: schmale Leiste fest oben mittig, immer im Vordergrund; das große Fenster geht in die Taskleiste ──
 // Mikrofon, „Hey Luzzy“ und Stimme laufen weiter im großen Fenster (backgroundThrottling: false),
 // es schickt der Leiste nur, was Luzzy gerade tut.
-const MINI = { breite: 200, hoehe: 36, abstand: 8 }
+const MINI = { breite: 340, hoehe: 36, abstand: 8 }
 let mini = null
 function miniSetzen(an, { schliessen = false } = {}) {
   if (!fenster || fenster.isDestroyed()) an = false
@@ -462,8 +462,11 @@ app.whenReady().then(() => {
     senden('zwischenablage:neu', clipboard.readText().slice(0, 15000))
   })
   if (!ok) console.warn('Strg+Umschalt+L ist schon von einem anderen Programm belegt.')
-  // Strg+Umschalt+M: Mini-Modus an/aus, aus jedem Programm
-  if (!globalShortcut.register('Control+Shift+M', () => miniSetzen(!mini))) console.warn('Strg+Umschalt+M ist schon von einem anderen Programm belegt.')
+  // Strg+Umschalt+M oder AltGr+L: Mini-Modus an/aus, aus jedem Programm. Windows meldet AltGr als Strg+Alt,
+  // deshalb „Control+Alt+L“ (die Schreibweise „AltGr“ ist bei globalen Tastenkürzeln unter Windows nicht verlässlich).
+  const miniUmschalten = () => miniSetzen(!mini)
+  if (!globalShortcut.register('Control+Shift+M', miniUmschalten)) console.warn('Strg+Umschalt+M ist schon von einem anderen Programm belegt.')
+  if (!globalShortcut.register('Control+Alt+L', miniUmschalten)) console.warn('AltGr+L ist schon von einem anderen Programm belegt.')
   hermes.neuVerbinden()
   bildschirmfotoFuerTest()
   skriptFuerTest()
