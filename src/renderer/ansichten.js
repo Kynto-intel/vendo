@@ -187,7 +187,7 @@ async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell:
           .map((m) => {
             const aktiv = a.slug === gewaehlt.provider && m === gewaehlt.model
             const jetzt = a.slug === jetztAnbieter && m === jetztModell
-            return `<button type="button" class="modell-eintrag${aktiv ? ' gewaehlt' : ''}" data-anbieter="${maskieren(a.slug)}" data-modell="${maskieren(m)}" title="${maskieren(m)}">${maskieren(m)}${jetzt ? ' <small>aktuell</small>' : ''}</button>`
+            return `<div role="option" tabindex="0" class="modell-eintrag${aktiv ? ' gewaehlt' : ''}" data-anbieter="${maskieren(a.slug)}" data-modell="${maskieren(m)}" title="${maskieren(m)}">${maskieren(m)}${jetzt ? ' <small>aktuell</small>' : ''}</div>`
           })
           .join('')}`
       })
@@ -197,6 +197,7 @@ async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell:
   zeichnen()
   suche.focus()
   suche.addEventListener('input', zeichnen)
+  liste.addEventListener('keydown', (ev) => ev.key === 'Enter' && ev.target.closest('.modell-eintrag')?.click())
   liste.addEventListener('click', (ev) => {
     const eintrag = ev.target.closest('.modell-eintrag')
     if (!eintrag) return
