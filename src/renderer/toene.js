@@ -5,7 +5,7 @@ const DAUER = { horn: 1500, warnung: 650, glocke: 700, wecker: 1500 } // ms, dan
 const WICHTIG = ['horn', 'warnung', 'glocke'] // bei mehreren Meldungen auf einmal spielt nur der wichtigste Ton
 
 export function tonFuer(art) {
-  if (art === 'bestellung') return 'horn'
+  if (art === 'bestellung' || art === 'meilenstein') return 'horn'
   if (art === 'job' || art === 'hinweis') return 'warnung'
   return 'glocke'
 }

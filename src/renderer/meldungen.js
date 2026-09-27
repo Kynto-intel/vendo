@@ -7,7 +7,7 @@ import { tonSpielen, wichtigsterTon } from './toene.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinweis: 'ⓘ', termin: '◷', timer: '⏱', aufgabe: '☐' }
+const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinweis: 'ⓘ', termin: '◷', timer: '⏱', aufgabe: '☐', meilenstein: '★' }
 
 let h = { vorlesen: () => {}, istBeschaeftigt: () => false, einstellungen: () => ({}) }
 const liste = []

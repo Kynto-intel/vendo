@@ -991,6 +991,7 @@ function formularFuellen() {
   $('e-m-ton').checked = m.ton !== false
   kartenFormularFuellen(einstellungen.karten)
   for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
+  $('e-m-meilenstein').checked = m.meilenstein !== false
   $('e-m-ruhe-von').value = m.ruheVon || ''
   $('e-m-ruhe-bis').value = m.ruheBis || ''
   mikrofonStatusZeigen(mikrofon.zustand())
@@ -1023,6 +1024,7 @@ function formularLesen() {
       mail: $('e-m-mail').checked,
       job: $('e-m-job').checked,
       crew: $('e-m-crew').checked,
+      meilenstein: $('e-m-meilenstein').checked,
       ruheVon: $('e-m-ruhe-von').value,
       ruheBis: $('e-m-ruhe-bis').value
     },
