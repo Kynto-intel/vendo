@@ -158,8 +158,10 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Worten, was neu ist. Sichert vorher Profile und Einstellungen und prüft nach dem Update, ob Jarves-OS noch alles kann.
 29. **Finanzen & Kosten** (Plugin) – Einnahmen vs. Ausgaben im Monat (Shopify-Umsatz, Gebühren, KI-Kosten aus
     Hermes, Abos). Nur Überblick, keine Überweisungen.
-30. 🆕 **PC-Steuerung per Stimme** (Killer) – „Öffne Photoshop“, „Mach lauter“, „Zeig mir den Donnerwolf-Ordner.“
-    Nur Befehle aus einer Liste, die Felix selbst festlegt, nichts anderes.
+30. ✅ **PC-Steuerung per Stimme** (Killer, gebaut 27.09.2026) – „Öffne Photoshop“, „Mach lauter“, „Zeig mir den Donnerwolf-Ordner.“
+    Felix' Wunsch: alle Programme aus dem Startmenü (auch Store-Apps), Browser mit Seiten und Suche („Öffne den Browser,
+    geh auf Netflix und such Terminator“, YouTube, Google, Amazon, Spotify …), Lautstärke, Musik, Ordner, PC sperren.
+    Nie: beliebige Befehle, Herunterfahren, Programme schließen.
 31. ✅ **Antwort schon beim Schreiben vorlesen** (Optimierung, gebaut 27.09.2026) – Luzzy fängt an zu sprechen, sobald der erste Satz
     fertig ist, nicht erst am Ende. Fühlt sich viel schneller an.
 32. ✅ **Unterbrechen per Stimme** (Optimierung, gebaut 27.09.2026) – „Stopp“ oder „Hey Luzzy“ während sie spricht bricht ab und hört zu.

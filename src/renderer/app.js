@@ -14,6 +14,7 @@ import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
+import { pcBefehlErkennen, pcAusfuehren } from './pcsteuerung.js'
 import { gespraecheEinrichten, gespraecheLaden, gespraechBefehl } from './gespraeche.js'
 import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, istOeffnenWunsch, pfadAusAntwortOeffnen, aenderungsBefehl } from './dateiansicht.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
@@ -642,6 +643,14 @@ const SPRACHBEFEHLE = [
   ['Neues Gespräch …', 'eigenes Thema, z. B. „Neues Gespräch Shop“; Luzzy behält pro Thema den Faden', 'thema chat gespräch neu'],
   ['Wechsel zum Gespräch …', 'auch oben im Gesprächsfenster auswählen', 'thema chat gespräch wechseln'],
   ['Welche Gespräche gibt es?', '', 'themen gespräche liste'],
+  ['Öffne … (Programm)', 'alles aus dem Startmenü, z. B. „Öffne Photoshop“, „Starte Spotify“', 'programm app starten öffnen pc'],
+  ['Öffne den Browser und geh auf Netflix und such …', 'auch YouTube, Google, Amazon, Spotify, eBay, Etsy, Wikipedia, Twitch, Maps …', 'browser internet webseite netflix youtube suchen'],
+  ['Such auf YouTube nach …', 'oder „Spiel … auf YouTube“', 'youtube video musik suchen'],
+  ['Öffne Chrome und geh auf … .de', 'bestimmter Browser, bestimmte Seite', 'chrome firefox edge adresse'],
+  ['Lauter / Leiser', 'auch „viel lauter“, „Lautstärke auf 30 Prozent“, „Ton aus“', 'lautstärke ton stumm'],
+  ['Nächstes Lied / Musik Pause', 'auch „vorheriges Lied“, „Musik weiter“', 'musik lied song pause'],
+  ['Öffne Downloads', 'auch Desktop, Dokumente, Bilder, Musik, Videos, Donnerwolf', 'ordner explorer'],
+  ['Sperr den PC', '', 'sperren bildschirm'],
   ['Such die Datei … und öffne sie', 'zeigt sie direkt in Jarves (Notiz, Bild, PDF, Video …)', 'datei suchen öffnen finden dokument bild pdf'],
   ['Ändere … (bei offener Datei)', 'Luzzy ändert die Stellen live im Text, speichern tust du selbst (Strg+S)', 'datei bearbeiten ändern ersetzen korrigieren'],
   ['Öffne die Datei …', 'auch „Zeig mir das Bild …“, „Öffne das PDF …“; mehrere Treffer: „die zweite“', 'datei öffnen zeigen bild foto pdf video tabelle'],
@@ -787,6 +796,10 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   // Ist gerade eine Datei offen: „Luzzy, ändere …“ ändert die Datei (live im Text, gespeichert wird nur per Klick)
   const aenderung = aenderungsBefehl(text)
   if (aenderung) return dateiAntworten(aenderung, { gesprochen }), true
+  // PC-Steuerung, die sicher erkannt ist (Webseiten, Suchen, Lautstärke, Ordner, Sperren); Programme weiter unten,
+  // weil erst nachgesehen werden muss, ob es sie gibt
+  const pcSicher = pcBefehlErkennen(text)
+  if (pcSicher && pcSicher.art !== 'programm') return dateiAntworten(pcAusfuehren(pcSicher, { bereichOeffnen }), { gesprochen }), true
   if (istWiederholen(text)) return wiederholen({ gesprochen }), true
   if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) return selbsttest({ gesprochen }), true
   const stoeren = nichtStoerenErkennen(text)
@@ -827,6 +840,15 @@ gespraecheEinrichten({
   beiFehler: (e) => systemNachricht(`Gespräch: ${e.message}`)
 })
 
+// „Öffne Kalender“, „Starte Fokus“: Bereiche von Jarves-OS gehen vor gleichnamigen Programmen
+function bereichOeffnen(name) {
+  const gesucht = String(name || '').toLowerCase().trim()
+  const b = BEREICHE.find((x) => x.aktiv && (x.name.toLowerCase() === gesucht || x.id === gesucht))
+  if (!b) return false
+  ansichtZeigen(b.id)
+  return true
+}
+
 // Diktiermodus (siehe diktat.js): „Diktat“ allein startet eine lange Aufnahme, sonst macht Luzzy den Text fertig
 async function diktatVerarbeiten(diktat, { gesprochen = false } = {}) {
   if (diktat.start) {
@@ -862,6 +884,16 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feldHoehe(feld)
     if (pluginAntwort.antwort) lokalAntworten(pluginAntwort.antwort, { gesprochen })
     return
+  }
+  // PC-Steuerung: Programme, Browser/Seiten/Suche, Lautstärke, Ordner (#30). Findet sich nichts, weiter unten.
+  const pcPlan = pcBefehlErkennen(text)
+  if (pcPlan?.art === 'programm') {
+    const satz = await pcAusfuehren(pcPlan, { bereichOeffnen }).catch((e) => `Das hat nicht geklappt: ${String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+    if (satz) {
+      feld.value = ''
+      feldHoehe(feld)
+      return lokalAntworten(satz, { gesprochen })
+    }
   }
   // „Öffne die Preisliste“: gibt es eine passende Datei, zeigt Jarves-OS sie; sonst geht der Satz an Luzzy
   const vielleichtDatei = dateiBefehlErkennen(text)

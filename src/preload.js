@@ -22,6 +22,10 @@ contextBridge.exposeInMainWorld('jarves', {
     beiVerlauf: abonnieren('hermes:verlauf'),
     verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal)
   },
+  pc: {
+    aktion: (aktion) => ipcRenderer.invoke('pc:aktion', aktion),
+    programm: (name) => ipcRenderer.invoke('pc:programm', name)
+  },
   gespraeche: {
     liste: () => ipcRenderer.invoke('gespraeche:liste'),
     wechseln: (name) => ipcRenderer.invoke('gespraeche:wechseln', name),
