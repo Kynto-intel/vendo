@@ -137,12 +137,13 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 
 ### ⚡⚡ Mittel: je ungefähr 1–3 Abende (13 Ideen)
 
-21. **Sprach-Diktat ins Vault** (Killer) – „Hey Luzzy, neue Idee: …“ – Luzzy schreibt es sauber als Notiz
-    mit Datum und Schlagworten in den richtigen Ordner.
-22. 🆕 **Diktiermodus für Mails und Texte** (Killer) – Einfach frei drauflos reden, auch länger. Luzzy macht daraus
+21. ✅ **Sprach-Diktat ins Vault** (Killer, gebaut 27.09.2026) – „Hey Luzzy, neue Idee: …“ – Luzzy schreibt es sauber als Notiz
+    mit Datum und Schlagworten in den richtigen Ordner (Jarves-OS\Ideen, das Original-Diktat steht mit drin).
+22. ✅ **Diktiermodus für Mails und Texte** (Killer, gebaut 27.09.2026) – Einfach frei drauflos reden, auch länger. Luzzy macht daraus
     eine saubere Mail oder einen Text, legt ihn in die Zwischenablage oder als Entwurf ab. Abschicken tut Felix.
-23. **„Der Laden redet mit dir“** (Killer) – Bei jeder Bestellung sagt Luzzy nicht nur „neue Bestellung“, sondern
-    „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“.
+    „Diktat“ (lange Aufnahme, Pausen bis 3,5 Sekunden), „Diktat: …“ oder „Schreib eine Mail an …, dass …“.
+23. ✅ **„Der Laden redet mit dir“** (Killer, gebaut 27.09.2026) – Bei jeder Bestellung sagt Luzzy nicht nur „neue Bestellung“, sondern
+    „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“. Ohne Namen und Adresse, nichts wird gespeichert.
 24. **Mini-Modus** (Optimierung) – Kleines, immer sichtbares Fenster in der Ecke: Reaktor, Uhr, Wetter,
     letzte Meldung.
 25. 🆕 **Datei oder Bild an Luzzy** (Optimierung) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
@@ -156,9 +157,10 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Hermes, Abos). Nur Überblick, keine Überweisungen.
 30. 🆕 **PC-Steuerung per Stimme** (Killer) – „Öffne Photoshop“, „Mach lauter“, „Zeig mir den Donnerwolf-Ordner.“
     Nur Befehle aus einer Liste, die Felix selbst festlegt, nichts anderes.
-31. **Antwort schon beim Schreiben vorlesen** (Optimierung) – Luzzy fängt an zu sprechen, sobald der erste Satz
+31. ✅ **Antwort schon beim Schreiben vorlesen** (Optimierung, gebaut 27.09.2026) – Luzzy fängt an zu sprechen, sobald der erste Satz
     fertig ist, nicht erst am Ende. Fühlt sich viel schneller an.
-32. **Unterbrechen per Stimme** (Optimierung) – „Stopp“ oder „Hey Luzzy“ während sie spricht bricht ab und hört zu.
+32. ✅ **Unterbrechen per Stimme** (Optimierung, gebaut 27.09.2026) – „Stopp“ oder „Hey Luzzy“ während sie spricht bricht ab und hört zu.
+    Auch Esc. Abschaltbar in Einstellungen → Sprechen.
 33. 🆕 **Notfall-Luzzy ohne Internet** (Extra) – Fällt Internet oder das Cloud-Modell aus, übernimmt ein lokales
     Modell (Ollama ist schon da) die einfachen Sachen: Timer, Notizen, Kalender, Uhrzeit. Luzzy sagt dazu, dass sie im Notbetrieb ist.
 

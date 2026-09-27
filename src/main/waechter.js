@@ -1,5 +1,6 @@
 // Wächter: prüft regelmäßig, ob etwas Wichtiges passiert ist, und meldet es an die Oberfläche.
-//   - neue Bestellungen (direkt bei Shopify, Zugang aus der Hermes-Einstellung wie beim IONOS-Mail-Plugin)
+//   - neue Bestellungen (direkt bei Shopify, Zugang aus der Hermes-Einstellung wie beim IONOS-Mail-Plugin),
+//     angesagt mit Artikel, Größe, Stadt und der wievielten Bestellung dieser Person („Der Laden redet mit dir“)
 //   - neue ungelesene Mails (über das IONOS-Mail-Plugin von Hermes)
 //   - fehlgeschlagene Hermes-Jobs
 //   - Meilensteine: 10., 25., 50., 100. … 1.000. Bestellung, danach alle 500 (Luzzy feiert, Liste im Vault)
@@ -88,6 +89,52 @@ const istMeilenstein = (n, e = meilensteinEinstellungen()) =>
   [10, 25, 50, 100, 250, 500, 750].includes(n) || (n >= 1000 && n % e.schritt === 0) || e.eigene.some((x) => x.anzahl === n)
 const tausender = (n) => n.toLocaleString('de-DE')
 
+// ── „Der Laden redet mit dir“: eine Bestellung in einem Satz ──
+// Nur Artikel, Größe, Stadt und Anzahl der Bestellungen; kein Name, keine Adresse, nichts wird gespeichert.
+const ORDNUNG = ['', 'erste', 'zweite', 'dritte', 'vierte', 'fünfte', 'sechste', 'siebte', 'achte', 'neunte', 'zehnte', 'elfte', 'zwölfte']
+const ZAHLWORT = ['', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn']
+function landName(code) {
+  try {
+    return new Intl.DisplayNames(['de'], { type: 'region' }).of(code) || code
+  } catch {
+    return code
+  }
+}
+function artikelText(posten, { gesprochen = true } = {}) {
+  const teile = (posten || []).filter((p) => p?.title).map((p) => {
+    const variante = p.variant_title && p.variant_title !== 'Default Title' ? p.variant_title.replace(/\s*\/\s*/g, gesprochen ? ' ' : ', ') : ''
+    const menge = Number(p.quantity) > 1 ? (gesprochen ? `${ZAHLWORT[p.quantity] ? `${ZAHLWORT[p.quantity]}mal` : `${p.quantity} mal`} ` : `${p.quantity}× `) : ''
+    return gesprochen ? `${menge}${p.title}${variante ? ` in ${variante}` : ''}` : `${menge}${p.title}${variante ? ` (${variante})` : ''}`
+  })
+  if (!teile.length) return ''
+  if (teile.length <= 2) return teile.join(' und ')
+  return `${teile[0]} und ${teile.length - 1} weitere Artikel`
+}
+function zielText(adresse) {
+  if (!adresse?.city) return ''
+  const land = adresse.country_code && adresse.country_code !== 'DE' ? `, ${landName(adresse.country_code)}` : ''
+  return `${adresse.city}${land}`
+}
+function bestellSatz(b, betrag, wievielte) {
+  const artikel = artikelText(b.line_items)
+  const ziel = zielText(b.shipping_address)
+  let satz = `Felix, neue Bestellung${artikel ? `: ${artikel}` : ` ${b.name}`}${ziel ? ` nach ${ziel}` : ''}, ${betrag}.`
+  if (wievielte === 1) satz += ' Die Person bestellt zum ersten Mal bei dir.'
+  else if (wievielte > 1) satz += ` Das ist schon die ${ORDNUNG[wievielte] || `${wievielte}.`} Bestellung von dieser Person.`
+  if (b.financial_status === 'pending') satz += ' Die Zahlung ist noch offen.'
+  return satz
+}
+function bestellAnzeige(b, betrag, wievielte) {
+  const ziel = zielText(b.shipping_address)
+  return [
+    betrag, // die Nummer steht schon im Titel
+    artikelText(b.line_items, { gesprochen: false }),
+    ziel,
+    wievielte === 1 ? 'Neukunde' : wievielte > 1 ? `${wievielte}. Bestellung` : '',
+    b.financial_status === 'pending' ? 'Zahlung offen' : ''
+  ].filter(Boolean).join(' · ')
+}
+
 class Waechter extends EventEmitter {
   constructor(hermes) {
     super()
@@ -147,7 +194,7 @@ class Waechter extends EventEmitter {
       kandidaten.sort((a, b) => (b.token === this.shopifyToken) - (a.token === this.shopifyToken))
       let antwort = null
       for (const zugang of kandidaten) {
-        const url = `https://${zugang.shop}/admin/api/${SHOPIFY_VERSION}/orders.json?status=any&limit=10&fields=id,name,created_at,total_price,currency,financial_status`
+        const url = `https://${zugang.shop}/admin/api/${SHOPIFY_VERSION}/orders.json?status=any&limit=10&fields=id,name,created_at,total_price,currency,financial_status,line_items,shipping_address,customer`
         antwort = await fetch(url, {
           headers: { 'X-Shopify-Access-Token': zugang.token, Accept: 'application/json' },
           signal: AbortSignal.timeout(20000)
@@ -169,11 +216,11 @@ class Waechter extends EventEmitter {
         return
       }
       const neue = bestellungen.filter((b) => Number(b.id) > this.stand.letzteBestellung).sort((a, b) => a.id - b.id)
+      const zugang = zugangFuer(kandidaten, this.shopifyToken)
       for (const b of neue) {
         const betrag = `${Number(b.total_price).toFixed(2).replace('.', ',')} ${b.currency === 'EUR' ? 'Euro' : b.currency}`
-        this.melden('bestellung', `Neue Bestellung ${b.name}`, `Felix, neue Bestellung reingekommen: ${b.name} über ${betrag}.`, {
-          anzeige: `${b.name} · ${betrag}${b.financial_status === 'pending' ? ' · Zahlung offen' : ''}`
-        })
+        const wievielte = await this.bestellungenVon(zugang, b)
+        this.melden('bestellung', `Neue Bestellung ${b.name}`, bestellSatz(b, betrag, wievielte), { anzeige: bestellAnzeige(b, betrag, wievielte) })
       }
       if (hoechste > this.stand.letzteBestellung) this.stand.letzteBestellung = hoechste
       // Bei neuen Bestellungen zählen; außerdem einmal, falls noch nie gezählt (Wächter lief schon vor den Meilensteinen)
@@ -181,6 +228,25 @@ class Waechter extends EventEmitter {
     } catch (e) {
       this.problem('shopify', e)
     }
+  }
+
+  // Wie viele Bestellungen hat diese Person insgesamt? (0 = unbekannt, z. B. Gastbestellung oder keine Berechtigung)
+  async bestellungenVon(zugang, bestellung) {
+    const kunde = bestellung.customer
+    if (!kunde?.id || !zugang) return 0
+    try {
+      const antwort = await fetch(`https://${zugang.shop}/admin/api/${SHOPIFY_VERSION}/customers/${Number(kunde.id)}/orders.json?status=any&limit=250&fields=id`, {
+        headers: { 'X-Shopify-Access-Token': zugang.token, Accept: 'application/json' },
+        signal: AbortSignal.timeout(15000)
+      })
+      if (antwort.ok) {
+        const anzahl = ((await antwort.json()).orders || []).length
+        if (anzahl) return anzahl
+      }
+    } catch {
+      // unten: Wert aus der Bestellung
+    }
+    return Number(kunde.orders_count) || 0
   }
 
   // Anzahl aller Bestellungen bei Shopify: Meilenstein erreicht? (Bestellnummern starten bei #1001, taugen also nicht)
@@ -280,4 +346,4 @@ class Waechter extends EventEmitter {
   }
 }
 
-module.exports = { istMeilenstein, meilensteinEinstellungen, STAND_DATEI, Waechter, shopifyZugang }
+module.exports = { bestellSatz, bestellAnzeige, istMeilenstein, meilensteinEinstellungen, STAND_DATEI, Waechter, shopifyZugang }

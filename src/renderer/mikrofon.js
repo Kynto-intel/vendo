@@ -7,6 +7,8 @@
 const STILLE_NACH_SPRACHE = 1300 // ms
 const MAX_AUFNAHME = 45000 // ms
 const SPRACH_SCHWELLE = 0.018 // RMS ab der es als Sprache zählt
+const REINREDEN_SCHWELLE = 0.02 // Reinreden, während Luzzy spricht: mindestens so laut wie normale Sprache
+const REINREDEN_TREFFER = 5 // × 50 ms, damit ein Huster oder Klopfen nicht reicht
 
 export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
   let strom = null
@@ -87,7 +89,8 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
   }
 
   // Nimmt eine Äußerung auf. ohneSpracheNach: so lange wird auf den Anfang gewartet (ms).
-  async function aufnehmen({ ohneSpracheNach = 7000 } = {}) {
+  // Diktat: stilleNach (Pause, die das Ende bedeutet) und maxDauer länger.
+  async function aufnehmen({ ohneSpracheNach = 7000, stilleNach = STILLE_NACH_SPRACHE, maxDauer = MAX_AUFNAHME } = {}) {
     if (aufnahme) return null
     if (!(await starten())) return null
     return new Promise((fertig) => {
@@ -123,9 +126,9 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
           stilleSeit = null
         } else if (gesprochen) {
           stilleSeit ??= jetzt
-          if (jetzt - stilleSeit > STILLE_NACH_SPRACHE) return schluss(true)
+          if (jetzt - stilleSeit > stilleNach) return schluss(true)
         } else if (jetzt - start > ohneSpracheNach) return schluss(false)
-        if (jetzt - start > MAX_AUFNAHME) return schluss(true)
+        if (jetzt - start > maxDauer) return schluss(true)
         uhr = setTimeout(pruefen, 60)
       }
 
@@ -137,9 +140,50 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
     })
   }
 
+  // Reinreden, während Luzzy spricht. Was von ihrer eigenen Stimme im Mikrofon ankommt, hängt davon ab, wie laut
+  // sie gerade spielt (ausgabe(), 0 … 1). Jarves-OS lernt dieses Verhältnis laufend und meldet beiSprache nur,
+  // wenn deutlich mehr ankommt, als ihr Echo erklärt, gut 0,25 s lang. Gibt eine Funktion zum Beenden zurück.
+  function reinreden({ beiSprache, ausgabe = () => 0 }) {
+    let aus = false
+    let uhr = 0
+    let echo = 0 // Mikrofon ÷ Ausgabe: wie viel von Luzzy im Mikrofon landet
+    let rauschen = 0.004 // Grundrauschen im Raum, wenn Luzzy gerade still ist
+    let treffer = 0
+    const zuletzt = [] // Luzzys Lautstärke der letzten 0,4 s (ihr Ton kommt verzögert im Mikrofon an)
+    const start = performance.now()
+    const pruefen = () => {
+      if (aus) return
+      if (!aufnahme && analyse) {
+        const m = pegel()
+        zuletzt.push(ausgabe())
+        if (zuletzt.length > 8) zuletzt.shift()
+        const o = Math.max(...zuletzt)
+        const schwelle = Math.max(REINREDEN_SCHWELLE, rauschen * 4, echo * o * 3)
+        if (performance.now() - start > 400 && m > schwelle) {
+          treffer++
+          if (treffer >= REINREDEN_TREFFER) {
+            aus = true
+            return beiSprache()
+          }
+        } else {
+          treffer = Math.max(0, treffer - 1) // ein kurzer Einbruch zwischen zwei Silben zählt nicht
+          if (o > 0.01) echo = echo ? echo * 0.96 + (m / o) * 0.04 : m / o // lernt Luzzys Echo
+          else rauschen = rauschen * 0.95 + m * 0.05
+        }
+      }
+      uhr = setTimeout(pruefen, 50)
+    }
+    starten().then((ok) => ok && pruefen())
+    return () => {
+      aus = true
+      clearTimeout(uhr)
+    }
+  }
+
   return {
     starten,
     aufnehmen,
+    reinreden,
     stoppen: () => aufnahme?.stoppen(),
     abbrechen: () => aufnahme?.abbrechen(),
     nimmtAuf: () => Boolean(aufnahme),
