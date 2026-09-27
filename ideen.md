@@ -156,9 +156,10 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Hermes, Abos). Nur Überblick, keine Überweisungen.
 30. 🆕 **PC-Steuerung per Stimme** (Killer) – „Öffne Photoshop“, „Mach lauter“, „Zeig mir den Donnerwolf-Ordner.“
     Nur Befehle aus einer Liste, die Felix selbst festlegt, nichts anderes.
-31. **Antwort schon beim Schreiben vorlesen** (Optimierung) – Luzzy fängt an zu sprechen, sobald der erste Satz
+31. ✅ **Antwort schon beim Schreiben vorlesen** (Optimierung, gebaut 27.09.2026) – Luzzy fängt an zu sprechen, sobald der erste Satz
     fertig ist, nicht erst am Ende. Fühlt sich viel schneller an.
-32. **Unterbrechen per Stimme** (Optimierung) – „Stopp“ oder „Hey Luzzy“ während sie spricht bricht ab und hört zu.
+32. ✅ **Unterbrechen per Stimme** (Optimierung, gebaut 27.09.2026) – „Stopp“ oder „Hey Luzzy“ während sie spricht bricht ab und hört zu.
+    Auch Esc. Abschaltbar in Einstellungen → Sprechen.
 33. 🆕 **Notfall-Luzzy ohne Internet** (Extra) – Fällt Internet oder das Cloud-Modell aus, übernimmt ein lokales
     Modell (Ollama ist schon da) die einfachen Sachen: Timer, Notizen, Kalender, Uhrzeit. Luzzy sagt dazu, dass sie im Notbetrieb ist.
 

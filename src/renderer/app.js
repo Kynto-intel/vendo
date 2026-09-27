@@ -2,7 +2,7 @@
 
 import { reaktorErstellen, welleErstellen } from './reaktor.js'
 import { markdownZuHtml } from './markdown.js'
-import { vorleserErstellen } from './vorlesen.js'
+import { vorleserErstellen, satzStueck } from './vorlesen.js'
 import { mikrofonErstellen } from './mikrofon.js'
 import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
@@ -62,7 +62,8 @@ const welle = welleErstellen($('welle'))
 const vorleser = vorleserErstellen({
   beiStart: () => {
     spricht = true
-    mikrofon.wakeSetzen(false) // Luzzys eigene Stimme soll das Aktivierungswort nicht auslösen
+    // „Hey Luzzy“ darf sie unterbrechen (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
+    mikrofon.wakeSetzen(wakeAktiv && einstellungen?.sprache?.unterbrechen !== false)
     zustandZeigen()
   },
   beiEnde: () => {
@@ -75,7 +76,13 @@ const vorleser = vorleserErstellen({
     welle.pegel(werte)
     document.documentElement.style.setProperty('--pegel', String(mittel || 0))
   },
-  beiFehler: (e) => systemNachricht(`Stimme: ${e.message}`)
+  beiFehler: (e) => systemNachricht(`Stimme: ${e.message}`),
+  // Mitten im Sprechen abgebrochen (Felix redet, Esc, „Stopp“): wieder bereit, ohne weiter zuzuhören
+  beiAbbruch: () => {
+    spricht = false
+    mikrofon.wakeSetzen(wakeAktiv)
+    zustandZeigen()
+  }
 })
 
 // ── Sprechen: Mikrofon → Hermes schreibt mit → an Luzzy ──
@@ -217,7 +224,7 @@ async function wakeEinrichten() {
     wakeAktiv = false
     wakeGrund = e.message
   }
-  mikrofon.wakeSetzen(wakeAktiv && !spricht)
+  mikrofon.wakeSetzen(wakeAktiv && (!spricht || einstellungen?.sprache?.unterbrechen !== false))
   mikrofonStatusZeigen(mikrofon.zustand())
 }
 
@@ -548,6 +555,8 @@ function paletteEinfuegen(text) {
 // Sprachbefehle (gehen gesprochen nach „Hey Luzzy“ oder getippt). Mit „…“: Beispiel zum Anpassen in die Eingabe.
 const SPRACHBEFEHLE = [
   ['Hey Luzzy', 'Luzzy hört zu (oder Strg+Leertaste)', 'aktivierungswort zuhören', () => sprechenStarten()],
+  ['Hey Luzzy (während sie spricht)', 'unterbricht sie, du kannst direkt reden', 'unterbrechen dazwischen'],
+  ['Stopp', 'Luzzy hört sofort auf (auch „Halt“, „Das reicht“, „Psst“)', 'still ruhe aufhören abbrechen'],
   ['Wiederhol das', 'letzte Antwort nochmal', 'wie bitte nochmal vorlesen'],
   ['Was hast du gerade gesagt?', '', 'wiederholen'],
   ['Timer 15 Minuten für …', 'z. B. die Nudeln', 'eieruhr countdown kochen'],
@@ -586,6 +595,7 @@ const TASTENKUERZEL = [
   ['Fenster: ganzer Bildschirm', 'Strg+Alt+↑', () => api.fenster.andocken('voll')],
   ['Nachricht abschicken', 'Enter', () => {}],
   ['Neue Zeile in der Eingabe', 'Umschalt+Enter', () => {}],
+  ['Luzzy hört auf zu sprechen', 'Esc', () => vorleser.stoppen()],
   ['Fenster, Palette, Dialog schließen', 'Esc', () => {}],
   ['Zwischenablage-Fenster: Zusammenfassen, Verbessern, Übersetzen, Beantworten', '1 – 4', () => {}],
   ['Entwickler-Werkzeuge (Fehlersuche)', 'F12', () => {}]
@@ -689,6 +699,7 @@ function lokalAntworten(text, { gesprochen = false } = {}) {
 
 // Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
 function lokalerBefehl(text, { gesprochen = false } = {}) {
+  if (STOPPWOERTER.has(text.toLowerCase().replace(/[.,!?]/g, '').replace(/^(hey )?luzzy /, '').replace(/\s+/g, ' ').trim())) return stoppen(), true
   if (istWiederholen(text)) return wiederholen({ gesprochen }), true
   if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) return selbsttest({ gesprochen }), true
   const stoeren = nichtStoerenErkennen(text)
@@ -732,6 +743,42 @@ async function abschicken(feld, { gesprochen = false } = {}) {
   }
   return anLuzzy(text, { gesprochen })
 }
+
+// ── Früher vorlesen: Luzzy spricht schon, während sie noch schreibt (Satz für Satz) ──
+const VORLESE_MAX = 900 // Zeichen; lange Antworten: nur der Anfang, der Rest steht im Gespräch
+let vorleseStrom = null
+let vorleseBis = 0 // bis hierhin ist der Text schon an die Stimme gegangen
+let vorleseZeichen = 0
+function vorleseStromStarten() {
+  vorleseStrom = einstellungen?.vorlesen || vorlesenErzwungen ? vorleser.strom(stimmOptionen()) : null
+  vorleseBis = 0
+  vorleseZeichen = 0
+}
+function vorleseStromFuettern(roh, { schluss = false } = {}) {
+  if (!vorleseStrom?.aktiv()) return
+  if (vorleseZeichen >= VORLESE_MAX) {
+    if (schluss && roh.slice(vorleseBis).trim()) vorleseStrom.stueck('Den Rest hab ich dir unten hingeschrieben.')
+    vorleseBis = roh.length
+    return
+  }
+  const s = satzStueck(roh, vorleseBis, { schluss, mindestens: vorleseZeichen ? 60 : 20 }) // der erste Satz darf kurz sein: schneller Start
+  if (!s) return
+  vorleseBis = s.bis
+  vorleseZeichen += vorleseStrom.stueck(s.stueck)
+}
+
+// „Stopp“, „Halt“, „Das reicht“: Luzzy hört sofort auf (geht nicht an Hermes)
+const STOPPWOERTER = new Set(['stopp', 'stop', 'halt', 'sei still', 'hör auf', 'schluss', 'genug', 'das reicht', 'danke das reicht', 'ok stopp', 'okay stopp', 'still', 'pst', 'psst', 'schon gut'])
+function stoppen() {
+  vorleser.stoppen()
+  if (beschaeftigt) api.hermes.abbrechen('zentrale')
+  untertitelZeigen('Okay, ich bin still.', { fertig: true })
+}
+// Esc: Luzzy hört auf zu sprechen (wenn gerade kein Fenster offen ist, das Esc selbst braucht)
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !spricht || document.querySelector('dialog[open]')) return
+  vorleser.stoppen()
+})
 
 // Schickt einen Auftrag an Luzzy. anzeige = was im Gespräch als Felix' Nachricht erscheint.
 let vorlesenErzwungen = false
@@ -850,6 +897,7 @@ api.hermes.beiEreignis((ev) => {
     case 'message.start':
       beschaeftigt = true
       vorleser.stoppen()
+      vorleseStromStarten()
       if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
       zustandZeigen()
       break
@@ -857,6 +905,7 @@ api.hermes.beiEreignis((ev) => {
       if (typeof p.text !== 'string') break
       if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
       aktuelleAntwort.roh += p.text
+      vorleseStromFuettern(aktuelleAntwort.roh)
       antwortAktualisieren()
       untertitelZeigen(aktuelleAntwort.roh)
       zustandZeigen()
@@ -897,8 +946,16 @@ api.hermes.beiEreignis((ev) => {
         })
         .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
       zustandZeigen()
-      if ((einstellungen?.vorlesen || vorlesenErzwungen) && text && p.status !== 'error') vorleser.sprechen(text, stimmOptionen())
-      else weiterZuhoeren()
+      const gelungen = text && p.status !== 'error' && !p.error
+      if (vorleseStrom && gelungen) {
+        vorleseStromFuettern(text, { schluss: true }) // Rest vorlesen, dann ist der Strom fertig
+        vorleseStrom.ende()
+      } else if ((einstellungen?.vorlesen || vorlesenErzwungen) && gelungen) vorleser.sprechen(text, stimmOptionen())
+      else {
+        if (vorleseStrom) vorleser.stoppen()
+        weiterZuhoeren()
+      }
+      vorleseStrom = null
       vorlesenErzwungen = false
       break
     }
@@ -1187,6 +1244,7 @@ function formularFuellen() {
   $('e-wake').checked = einstellungen.sprache.aktivierungswort
   $('e-auto-senden').checked = einstellungen.sprache.automatischSenden
   $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
+  $('e-unterbrechen').checked = einstellungen.sprache.unterbrechen !== false
   const m = einstellungen.meldungen
   $('e-m-vorlesen').checked = m.vorlesen
   $('e-m-ton').checked = m.ton !== false
@@ -1232,7 +1290,8 @@ function formularLesen() {
     sprache: {
       aktivierungswort: $('e-wake').checked,
       automatischSenden: $('e-auto-senden').checked,
-      weiterZuhoeren: $('e-weiter').checked
+      weiterZuhoeren: $('e-weiter').checked,
+      unterbrechen: $('e-unterbrechen').checked
     },
     animationen: {
       reaktor: $('e-anim-reaktor').checked,
