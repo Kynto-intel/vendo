@@ -1103,3 +1103,13 @@ body.datei-drueber .datei-ablage { display: grid; }
 .crew-raster .bot > .modell-wahl { position: absolute; top: calc(100% + 6px); left: 0; width: max(100%, 350px); z-index: 60; padding: 10px; background: var(--flaeche); border: 1px solid var(--gold-dunkel); border-radius: var(--radius-karte, 12px); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6); cursor: default; }
 .crew-raster .bot:last-child > .modell-wahl, .crew-raster .bot:nth-last-child(2):not(:first-child) > .modell-wahl { left: auto; right: 0; }
 .crew-raster .bot > .modell-wahl[hidden] { display: none; }
+
+/* ── Chats im Crew-Tab: Auswahl „Allgemein ▾“ (Luzzy und Bots); das alte rechte Gesprächsfenster gibt es nicht mehr ── */
+#gespraech-panel { display: none !important; }
+.crew-thema { position: relative; margin-left: auto; }
+.crew-thema[hidden] { display: none; }
+.crew-thema .gespraech-wahl, .crew-thema.gespraech-wahl { padding-left: 0; }
+.crew-thema .gespraech-menue { left: auto; right: 0; }
+.crew-chat #luzzy-form[hidden], .crew-chat #crew-form[hidden] { display: none; }
+.gm-weg { font-size: 12px; opacity: 0.7; }
+.gm-weg:hover { opacity: 1; }

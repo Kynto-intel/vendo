@@ -196,23 +196,73 @@ class Hermes extends EventEmitter {
     if (!t) throw new Error('Unbekannter Bot-Kanal.')
     const [, modus, profil] = t
     if (modus === 'botchat' && profil === PROFIL) return this.crewOeffnen() // Luzzys Bot Chat = Kanal „crew“
+    if (modus === 'normal' && profil === PROFIL) throw new Error('Luzzys normaler Chat ist die Zentrale.')
     const b = this.bots.get(kanal) || { profil, modus, sessionId: null, letzterVerlauf: [] }
     this.bots.set(kanal, b)
     if (b.sessionId) return this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf || [] })
-    // Luzzys normales Gespräch im Crew-Tab heißt anders als die Zentrale, damit es ein eigenes bleibt
-    const titel = modus === 'botchat' ? BOT_CHAT : profil === PROFIL ? 'Crew-Tab' : ZENTRALE_TITEL
-    const liste = await this.rpc('session.list', { title: titel, profile: profil })
-    const vorhanden = liste?.sessions?.[0]
-    let antwort
-    if (vorhanden) {
-      antwort = await this.rpc('session.resume', { session_id: vorhanden.resolved_id || vorhanden.id, profile: profil })
-    } else {
+    // Normale Bot-Chats: mehrere möglich („Allgemein“ = „Jarves-OS“, weitere „Jarves-OS · <Name>“), siehe main.js
+    const gewaehlt = modus === 'normal' ? this.botChat?.(profil) : null
+    const titel = modus === 'botchat' ? BOT_CHAT : gewaehlt?.titel || ZENTRALE_TITEL
+    const weg = (e) => {
+      if (/not found|nicht gefunden|unknown session/i.test(e.message)) return null
+      throw e
+    }
+    let antwort = null
+    let id = null
+    if (gewaehlt?.session) {
+      antwort = await this.rpc('session.resume', { session_id: gewaehlt.session, profile: profil }).catch(weg)
+      if (antwort) id = gewaehlt.session
+    }
+    if (!antwort) {
+      const liste = await this.rpc('session.list', { title: titel, profile: profil })
+      const vorhanden = liste?.sessions?.[0]
+      if (vorhanden) {
+        antwort = await this.rpc('session.resume', { session_id: vorhanden.resolved_id || vorhanden.id, profile: profil }).catch(weg)
+        if (antwort) id = vorhanden.resolved_id || vorhanden.id
+      }
+    }
+    if (!antwort) {
       antwort = await this.rpc('session.create', { profile: profil, cwd: ARBEITSORDNER })
       await this.rpc('session.title', { session_id: antwort.session_id, title: titel }).catch(() => {})
     }
     b.sessionId = antwort.session_id
     b.letzterVerlauf = verlaufAus(antwort.messages)
-    this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf })
+    if (modus === 'normal') this.botChatMerken?.(profil, antwort.stored_session_id || id || null)
+    this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf, gewechselt: true })
+  }
+
+  // Anderen Chat eines Bots öffnen: den bisherigen schließen (bleibt gespeichert), dann den gewählten öffnen
+  async botWechseln(kanal) {
+    const b = this.bots.get(kanal)
+    if (b?.sessionId) {
+      await this.rpc('session.close', { session_id: b.sessionId }).catch(() => {})
+      b.sessionId = null
+    }
+    return this.botOeffnen(kanal)
+  }
+
+  // Gespeicherte Unterhaltung endgültig löschen (Hermes lehnt das ab, solange sie offen ist: dann erst schließen)
+  async sessionLoeschen({ gespeicherteId = null, titel = '', profil = PROFIL }) {
+    let id = gespeicherteId
+    if (!id && titel) {
+      const liste = await this.rpc('session.list', { title: titel, profile: profil })
+      id = liste?.sessions?.[0]?.resolved_id || liste?.sessions?.[0]?.id || null
+    }
+    if (!id) return false
+    const schonWeg = (e) => /not found|nicht gefunden|unknown session/i.test(e.message) // leere Chats speichert Hermes gar nicht
+    try {
+      await this.rpc('session.delete', { session_id: id, profile: profil })
+    } catch (e) {
+      if (schonWeg(e)) return true
+      const offen = await this.rpc('session.active_list', { profile: profil }).catch(() => null)
+      for (const s of offen?.sessions || []) {
+        if (s.session_key === id || (titel && s.title === titel)) await this.rpc('session.close', { session_id: s.id }).catch(() => {})
+      }
+      await this.rpc('session.delete', { session_id: id, profile: profil }).catch((e2) => {
+        if (!schonWeg(e2)) throw e2
+      })
+    }
+    return true
   }
 
   // Rückfrage von Hermes. Freigaben zeigt Jarves-OS an; alles andere (Passwörter, Auswahlfragen …)

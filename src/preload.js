@@ -42,7 +42,13 @@ contextBridge.exposeInMainWorld('jarves', {
   gespraeche: {
     liste: () => ipcRenderer.invoke('gespraeche:liste'),
     wechseln: (name) => ipcRenderer.invoke('gespraeche:wechseln', name),
-    entfernen: (name) => ipcRenderer.invoke('gespraeche:entfernen', name)
+    entfernen: (name) => ipcRenderer.invoke('gespraeche:entfernen', name),
+    loeschen: (name) => ipcRenderer.invoke('gespraeche:loeschen', name)
+  },
+  botChats: {
+    liste: (profil) => ipcRenderer.invoke('botchats:liste', profil),
+    wechseln: (profil, name) => ipcRenderer.invoke('botchats:wechseln', profil, name),
+    loeschen: (profil, name) => ipcRenderer.invoke('botchats:loeschen', profil, name)
   },
   plugins: {
     liste: () => ipcRenderer.invoke('plugins:liste'),

@@ -19,10 +19,10 @@ function zeigen() {
   const menue = $('gespraech-menue')
   menue.innerHTML = `${stand.liste
     .map((g) => `<div class="gm-eintrag${g.name === stand.aktiv ? ' aktiv' : ''}" data-name="${maskieren(g.name)}" tabindex="0">
-        <span>${maskieren(g.name)}</span>${g.name === stand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Aus der Liste nehmen (bleibt in Hermes gespeichert)">✕</button>'}
+        <span>${maskieren(g.name)}</span>${g.name === stand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Chat endgültig löschen">🗑</button>'}
       </div>`)
     .join('')}
-    <form class="gm-neu" id="gm-neu"><input maxlength="40" placeholder="Neues Gespräch, z. B. Shop …" autocomplete="off" /><button class="knopf-flach" type="submit">+</button></form>`
+    <form class="gm-neu" id="gm-neu"><input maxlength="40" placeholder="Neuer Chat, z. B. Shop …" autocomplete="off" /><button class="knopf-flach" type="submit">+</button></form>`
 }
 
 export async function gespraecheLaden() {
@@ -85,7 +85,9 @@ export function gespraecheEinrichten(helfer) {
     const name = eintrag.dataset.name
     try {
       if (e.target.closest('.gm-weg')) {
-        stand = await api.gespraeche.entfernen(name)
+        e.stopPropagation()
+        if (!confirm(`Chat „${name}“ mit Luzzy endgültig löschen? Das lässt sich nicht rückgängig machen.`)) return
+        stand = await api.gespraeche.loeschen(name)
         return zeigen()
       }
       zu()

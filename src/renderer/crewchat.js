@@ -1,7 +1,7 @@
 // Crew-Tab: Bots direkt ansprechen (Offene Entscheidung 3).
 // Zwei Reiter:
-//   💬 Normaler Chat – direktes Gespräch mit Kira, Lira, Milla … (eigenes Gespräch „Jarves-OS“ im Profil des Bots,
-//                      ohne Bot Mode). Mit Luzzy spricht Felix in der Zentrale.
+//   💬 Normaler Chat – direktes Gespräch mit Luzzy (= die Gespräche der Zentrale, „Allgemein ▾“), Kira, Lira, Milla …
+//                      ohne Bot Mode. Pro Bot mehrere Chats: anlegen, wechseln, löschen.
 //   🤖 Bot Mode      – der „Bot Chat“ eines Bots: dort arbeiten die Bots zusammen (message_agent, Übergaben
 //                      Kira → Lira → Milla). Bei Luzzy: Aufträge, die sie an die Crew verteilt (Kanal „crew“).
 // Zusätzlich: „Kira, …“ in der Zentrale geht direkt in den normalen Chat mit Kira.
@@ -34,7 +34,7 @@ function merken() {
   }
 }
 
-const kanalFuer = (m, profil) => (m === 'botchat' && profil === LUZZY ? 'crew' : `${m}:${profil}`)
+const kanalFuer = (m, profil) => (profil === LUZZY ? (m === 'botchat' ? 'crew' : 'zentrale') : `${m}:${profil}`)
 const botVon = (profil) => bots.find((b) => b.profil === profil) || { profil, ...botName({ name: profil || '' }) }
 function botVonKanal(kanal) {
   if (kanal === 'crew') return { ...botVon(LUZZY), modus: 'botchat' }
@@ -45,6 +45,12 @@ function botVonKanal(kanal) {
 // Gespräch zu einem Kanal (wird beim ersten Mal angelegt, mit eigener Liste, gemeinsame Eingabe)
 function gespraech(kanal) {
   if (gespraeche.has(kanal)) return gespraeche.get(kanal)
+  if (kanal === 'zentrale') {
+    // Luzzys normaler Chat ist das Gespräch der Zentrale: Liste, Eingabe und Anzeige macht app.js
+    const eintrag = { liste: $('gespraech'), geoeffnet: true, unterhaltung: null }
+    gespraeche.set(kanal, eintrag)
+    return eintrag
+  }
   const bot = botVonKanal(kanal)
   let liste = kanal === 'crew' ? $('crew-gespraech') : null
   if (!liste) {
@@ -86,7 +92,23 @@ export const aktuellerKanal = () => {
 
 export function crewChatEinrichten(helfer) {
   h = { ...h, crewSichtbar: () => false, ...helfer }
+  // Luzzys Gespräch (früher rechts angedockt) wohnt jetzt im Crew-Tab: Liste, Eingabe und „Allgemein ▾“
+  const alt = $('gespraech-panel')
+  const wahl = alt?.querySelector('.gespraech-wahl')
+  if (wahl) {
+    wahl.querySelector('h3')?.remove()
+    $('crew-thema-luzzy').appendChild(wahl)
+  }
+  $('crew-listen').appendChild($('gespraech'))
+  const luzzyForm = alt?.querySelector('form.eingabe-form')
+  if (luzzyForm) {
+    luzzyForm.id = 'luzzy-form'
+    luzzyForm.hidden = true
+    $('crew-form').after(luzzyForm)
+  }
+  gespraech('zentrale')
   gespraech('crew') // Luzzys Bot Chat gibt es immer
+  chatAuswahlEinrichten()
   $('crew-modus').addEventListener('click', (e) => {
     const knopf = e.target.closest('[data-modus]')
     if (!knopf) return
@@ -129,7 +151,7 @@ function zeichnen() {
     : '<span class="leise klein">Noch keine Bots außer Luzzy.</span>'
   const bot = botVon(gewaehlt[modus])
   $('crew-chat-hinweis').textContent = modus === 'normal'
-    ? bot.profil === LUZZY ? 'Normales Gespräch mit Luzzy, ohne Bot Mode (getrennt von der Zentrale).' : `Direktes Gespräch mit ${bot.name}, ohne Bot Mode.`
+    ? bot.profil === LUZZY ? 'Dein Gespräch mit Luzzy aus der Zentrale, ohne Bot Mode. Über „Allgemein ▾“ wechselst, erstellst und löschst du Chats.' : `Direktes Gespräch mit ${bot.name}, ohne Bot Mode. Über den Knopf links wechselst, erstellst und löschst du Chats.`
     : bot.profil === LUZZY
       ? 'Luzzys Bot Chat: sie verteilt Aufträge an die Crew und bekommt die Ergebnisse zurück.'
       : `${bot.name}s Bot Chat: hier arbeiten die Bots zusammen (Übergaben wie Kira → Lira → Milla).`
@@ -147,6 +169,16 @@ export async function wechseln() {
   if (!kanal) return
   const g = gespraech(kanal)
   g.liste.hidden = false
+  const zentrale = kanal === 'zentrale'
+  $('crew-form').hidden = zentrale
+  if ($('luzzy-form')) $('luzzy-form').hidden = !zentrale
+  $('crew-thema-luzzy').hidden = !zentrale
+  $('crew-thema-bot').hidden = zentrale || modus !== 'normal'
+  if (!zentrale && modus === 'normal') chatListeLaden()
+  if (zentrale) {
+    g.liste.scrollTop = g.liste.scrollHeight
+    return
+  }
   g.unterhaltung.aktivieren()
   if (!g.geoeffnet) {
     g.geoeffnet = true
@@ -158,6 +190,83 @@ export async function wechseln() {
       g.liste.insertAdjacentHTML('beforeend', `<div class="msg system">Konnte das Gespräch nicht öffnen: ${maskieren(e.message)}</div>`)
     }
   }
+}
+
+// ── Mehrere Chats pro Bot (nur Normaler Chat; bei Luzzy macht das gespraeche.js mit „Allgemein ▾“) ──
+let chatStand = { liste: [], aktiv: 'Allgemein' }
+async function chatListeLaden() {
+  const profil = gewaehlt.normal
+  if (!profil || profil === LUZZY) return
+  chatStand = (await h.api.botChats.liste(profil).catch(() => null)) || { liste: [{ name: 'Allgemein' }], aktiv: 'Allgemein' }
+  chatAuswahlZeichnen()
+}
+function chatAuswahlZeichnen() {
+  $('crew-thema-name').textContent = chatStand.aktiv
+  $('crew-thema-menue').innerHTML = `${chatStand.liste
+    .map((c) => `<div class="gm-eintrag${c.name === chatStand.aktiv ? ' aktiv' : ''}" data-name="${maskieren(c.name)}" tabindex="0">
+        <span>${maskieren(c.name)}</span>${c.name === chatStand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Chat endgültig löschen">🗑</button>'}
+      </div>`)
+    .join('')}
+    <form class="gm-neu"><input maxlength="40" placeholder="Neuer Chat, z. B. Herbst-Kollektion …" autocomplete="off" /><button class="knopf-flach" type="submit">+</button></form>`
+}
+function chatAuswahlEinrichten() {
+  const knopf = $('crew-thema-knopf')
+  const menue = $('crew-thema-menue')
+  const zu = () => (menue.hidden = true)
+  knopf.addEventListener('click', (e) => {
+    e.stopPropagation()
+    menue.hidden = !menue.hidden
+    if (!menue.hidden) menue.querySelector('input')?.focus()
+  })
+  document.addEventListener('click', (e) => !menue.contains(e.target) && e.target !== knopf && zu())
+  menue.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') zu()
+    if (e.key === 'Enter' && e.target.classList.contains('gm-eintrag')) e.target.click()
+  })
+  const profil = () => gewaehlt.normal
+  const kanal = () => kanalFuer('normal', profil())
+  const hinweis = (text) => gespraech(kanal()).liste.insertAdjacentHTML('beforeend', `<div class="msg system">${maskieren(text)}</div>`)
+  const oeffnen = async (name) => {
+    if (gespraech(kanal()).unterhaltung?.beschaeftigt()) return hinweis(`${botVon(profil()).name} antwortet noch. Danach wechseln.`)
+    zu()
+    try {
+      gespraech(kanal()).geoeffnet = true
+      chatStand = await h.api.botChats.wechseln(profil(), name)
+      chatAuswahlZeichnen()
+    } catch (err) {
+      hinweis(`Chat: ${String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+    }
+  }
+  menue.addEventListener('click', async (e) => {
+    const eintrag = e.target.closest('.gm-eintrag')
+    if (!eintrag) return
+    const name = eintrag.dataset.name
+    if (e.target.closest('.gm-weg')) {
+      e.stopPropagation()
+      if (!confirm(`Chat „${name}“ mit ${botVon(profil()).name} endgültig löschen? Das lässt sich nicht rückgängig machen.`)) return
+      try {
+        chatStand = await h.api.botChats.loeschen(profil(), name)
+        chatAuswahlZeichnen()
+      } catch (err) {
+        hinweis(`Löschen: ${String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+      }
+      return
+    }
+    if (name !== chatStand.aktiv) oeffnen(name)
+    else zu()
+  })
+  menue.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const feld = e.target.querySelector('input')
+    if (feld.value.trim()) oeffnen(feld.value.trim())
+  })
+}
+
+// Luzzys Chat (Zentrale) im Crew-Tab zeigen (Gesprächs-Karte rechts, Strg+K, Klick auf den Untertitel)
+export function luzzyChatZeigen() {
+  modus = 'normal'
+  gewaehlt.normal = LUZZY
+  return wechseln()
 }
 
 // Ereignisse und Verlauf von Hermes für alle Kanäle außer der Zentrale

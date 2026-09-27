@@ -219,6 +219,71 @@ ipcMain.handle('gespraeche:wechseln', async (_e, name) => {
   await hermes.gespraechOeffnen(ziel.session, ziel.titel)
   return gespraecheFuerOberflaeche()
 })
+// Endgültig löschen (in Hermes). Das offene Gespräch nicht, erst wechseln.
+ipcMain.handle('gespraeche:loeschen', async (_e, name) => {
+  const { liste, aktiv } = gespraeche()
+  const g = liste.find((x) => x.name === name)
+  if (!g) return gespraecheFuerOberflaeche()
+  if (aktiv.name === name) throw new Error('Das offene Gespräch kann nicht gelöscht werden. Erst zu einem anderen wechseln.')
+  await hermes.sessionLoeschen({ gespeicherteId: g.session, titel: g.titel, profil: PROFIL })
+  einstellungen.speichern({ gespraeche: liste.filter((x) => x.name !== name) })
+  return gespraecheFuerOberflaeche()
+})
+
+// Mehrere normale Chats pro Bot (Crew-Tab): Liste in den Einstellungen, „Allgemein“ = Hermes-Titel „Jarves-OS“
+const BOT_PROFIL = /^[a-z0-9][a-z0-9_-]{0,63}$/
+function botChats(profil) {
+  const alle = einstellungen.laden().botChats || {}
+  const eigene = alle[profil] || {}
+  let liste = (Array.isArray(eigene.liste) ? eigene.liste : []).filter((g) => g && typeof g.name === 'string' && g.name.trim())
+  if (!liste.length) liste = [{ name: 'Allgemein', titel: 'Jarves-OS', session: null }]
+  const aktiv = liste.find((g) => g.name === eigene.aktiv) || liste[0]
+  return { alle, liste, aktiv }
+}
+function botChatsSpeichern(profil, liste, aktivName) {
+  const alle = einstellungen.laden().botChats || {}
+  einstellungen.speichern({ botChats: { ...alle, [profil]: { liste, aktiv: aktivName } } })
+}
+const botChatsFuerOberflaeche = (profil) => {
+  const { liste, aktiv } = botChats(profil)
+  return { liste: liste.map((g) => ({ name: g.name })), aktiv: aktiv.name }
+}
+hermes.botChat = (profil) => botChats(profil).aktiv
+hermes.botChatMerken = (profil, id) => {
+  if (!id) return
+  const { liste, aktiv } = botChats(profil)
+  if (aktiv.session === id) return
+  aktiv.session = id
+  botChatsSpeichern(profil, liste, aktiv.name)
+}
+ipcMain.handle('botchats:liste', (_e, profil) => (BOT_PROFIL.test(String(profil)) ? botChatsFuerOberflaeche(String(profil)) : null))
+ipcMain.handle('botchats:wechseln', async (_e, profil, name) => {
+  profil = String(profil || '')
+  if (!BOT_PROFIL.test(profil)) throw new Error('Unbekannter Bot.')
+  name = gespraechName(name) || `Chat ${new Date().toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+  const { liste } = botChats(profil)
+  let ziel = liste.find((g) => g.name.toLowerCase() === name.toLowerCase())
+  if (!ziel) {
+    if (liste.length >= 30) throw new Error('Schon 30 Chats. Lösch erst einen.')
+    ziel = { name, titel: `Jarves-OS · ${name}`, session: null }
+    liste.push(ziel)
+  }
+  botChatsSpeichern(profil, liste, ziel.name)
+  await hermes.botWechseln(`normal:${profil}`)
+  return botChatsFuerOberflaeche(profil)
+})
+ipcMain.handle('botchats:loeschen', async (_e, profil, name) => {
+  profil = String(profil || '')
+  if (!BOT_PROFIL.test(profil)) throw new Error('Unbekannter Bot.')
+  const { liste, aktiv } = botChats(profil)
+  const g = liste.find((x) => x.name === name)
+  if (!g) return botChatsFuerOberflaeche(profil)
+  if (aktiv.name === name) throw new Error('Der offene Chat kann nicht gelöscht werden. Erst zu einem anderen wechseln.')
+  await hermes.sessionLoeschen({ gespeicherteId: g.session, titel: g.titel, profil })
+  botChatsSpeichern(profil, liste.filter((x) => x.name !== name), aktiv.name)
+  return botChatsFuerOberflaeche(profil)
+})
+
 // Aus der Liste nehmen (die Unterhaltung bleibt in Hermes erhalten). Das aktive Gespräch nicht.
 ipcMain.handle('gespraeche:entfernen', (_e, name) => {
   const { liste, aktiv } = gespraeche()

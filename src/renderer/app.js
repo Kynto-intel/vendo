@@ -23,7 +23,7 @@ import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
-import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden } from './crewchat.js'
+import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
@@ -1072,23 +1072,21 @@ for (const form of document.querySelectorAll('.eingabe-form')) {
 }
 
 // ── Gesprächs-Fenster rechts: öffnen/schließen, Breite ziehen ──
+// Das Gespräch mit Luzzy steht nicht mehr rechts angedockt, sondern im Crew-Tab (Normaler Chat → Luzzy).
+// „Öffnen“ (Gesprächs-Karte rechts, Strg+K, Klick auf den Untertitel) springt dorthin, „Schließen“ zurück zur Zentrale.
 const panel = $('gespraech-panel')
-const panelGeschlossen = () => panel.hidden
+const panelGeschlossen = () => !(aktuelleAnsicht === 'crew' && crewKanal() === 'zentrale')
 
-function panelSetzen(offen, { speichern = true } = {}) {
-  panel.hidden = !offen
+function panelSetzen(offen) {
+  panel.hidden = true
   titelfarbeSetzen()
-  $('vorschau').classList.toggle('an', offen)
-  $('vorschau-aktion').textContent = offen ? 'Schließen ‹' : 'Öffnen ›'
   if (offen) {
-    runterScrollen()
-    if (aktuelleAnsicht === 'zentrale') document.querySelector('.befehl .eingabe-text').focus()
-    else panel.querySelector('.eingabe-text').focus()
-  } else document.querySelector('.befehl .eingabe-text').focus()
-  if (speichern && einstellungen) {
-    einstellungen.panel = { ...einstellungen.panel, offen }
-    api.einstellungen.speichern({ panel: einstellungen.panel })
-  }
+    ansichtZeigen('crew')
+    luzzyChatZeigen().then(() => {
+      runterScrollen()
+      $('luzzy-form')?.querySelector('.eingabe-text')?.focus()
+    })
+  } else if (!panelGeschlossen()) ansichtZeigen('zentrale')
 }
 function breiteSetzen(px) {
   const breite = Math.round(Math.max(320, Math.min(px, window.innerWidth * 0.7)))
@@ -1869,7 +1867,7 @@ async function start() {
   const letzte = einstellungen.letzteAnsicht
   if (!testAnsicht && letzte && letzte !== 'zentrale' && BEREICHE.some((b) => b.id === letzte && b.aktiv)) ansichtZeigen(letzte)
   const testPanel = new URLSearchParams(location.search).get('panel') // nur Testmodus: '1' offen, '0' zu
-  panelSetzen(testPanel ? testPanel === '1' : Boolean(einstellungen.panel?.offen), { speichern: false })
+  if (testPanel === '1') panelSetzen(true) // nur Testmodus
 }
 
 start()
