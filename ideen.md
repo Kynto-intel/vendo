@@ -128,7 +128,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Plugin aufrufen. Tippen statt klicken.
 17. ✅ **Gedankenspeicher** (Plugin, gebaut 27.09.2026) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
     oder Sprache. Landet im Vault in einem festen Ordner, Luzzy kennt die Notizen.
-18. **Aufgaben / To-do** (Plugin) – Einfache Aufgabenliste mit Fälligkeit, Erinnerung über die Meldungen,
+18. ✅ **Aufgaben / To-do** (Plugin, gebaut 27.09.2026) – Einfache Aufgabenliste mit Fälligkeit, Erinnerung über die Meldungen,
     „Was muss ich heute noch?“ bekommt Luzzy automatisch mit (wie Wetter und Termine).
 19. **Musik / Fokus** (Plugin) – Kleine Leiste für Hintergrundmusik oder Fokus-Timer (Pomodoro),
     Luzzy stört in der Fokuszeit nicht.
