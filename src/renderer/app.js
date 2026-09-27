@@ -8,6 +8,7 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { tonSpielen } from './toene.js'
+import './auswahl.js' // eigene Auswahlfenster für Datum und Uhrzeit (statt der Windows-Fenster)
 import { ablageEinrichten, ablageErgebnis, ablageOeffnen } from './zwischenablage.js'
 import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'

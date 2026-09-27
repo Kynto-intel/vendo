@@ -931,3 +931,34 @@ input[type='time']::-webkit-calendar-picker-indicator, input[type='date']::-webk
 .palette-filter button { border: 1px solid var(--rahmen); background: var(--flaeche); color: var(--text-leise); border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: color 150ms, border-color 150ms, background-color 150ms; }
 .palette-filter button:hover { color: var(--text); border-color: var(--gold-dunkel); }
 .palette-filter button.an { color: var(--auf-gold); background: var(--gold); border-color: var(--gold); }
+
+/* ── Eigene Auswahlfenster für Datum und Uhrzeit (src/renderer/auswahl.js) ── */
+input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webkit-calendar-picker-indicator { display: none; }
+input[type='date'], input[type='time'] { cursor: pointer; padding-right: 30px !important; background-repeat: no-repeat !important; background-position: right 9px center !important; background-size: 14px !important; }
+input[type='date'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9a14a' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3C/svg%3E") !important; }
+input[type='time'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9a14a' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E") !important; }
+.auswahl-fenster { position: fixed; inset: auto; margin: 0; padding: 12px; width: 268px; background: var(--flaeche-hoch); color: var(--text); border: 1px solid var(--rahmen); border-radius: 12px; box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.5); font-family: var(--schrift); }
+.auswahl-fenster[data-art='time'] { width: 172px; }
+.aw-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.aw-kopf span { font-weight: 600; font-size: 14px; }
+.aw-pfeil { width: 30px; height: 28px; border: 0; border-radius: var(--radius); background: transparent; color: var(--text-leise); font-size: 18px; line-height: 1; cursor: pointer; }
+.aw-pfeil:hover { background: var(--flaeche); color: var(--gold-hell); }
+.aw-woche, .aw-tage { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.aw-woche span { text-align: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--text-leise); padding: 2px 0 6px; }
+.aw-tag, .aw-zeit { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; font-size: 13px; font-variant-numeric: tabular-nums; }
+.aw-tag { height: 32px; }
+.aw-tag:hover, .aw-zeit:hover { background: var(--flaeche); border-color: var(--gold-dunkel); }
+.aw-tag.fremd { color: var(--gedimmt); }
+.aw-tag.heute { border-color: var(--gold); color: var(--gold-hell); }
+.aw-tag.gewaehlt, .aw-zeit.gewaehlt { background: var(--gold); border-color: var(--gold); color: var(--auf-gold); font-weight: 700; }
+.aw-uhr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.aw-spalte { display: flex; flex-direction: column; gap: 2px; height: 216px; overflow-y: auto; padding-right: 2px; }
+.aw-zeit { height: 30px; flex: none; font-family: var(--mono); }
+.aw-fuss { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--rahmen); }
+.aw-fuss button { border: 0; background: none; color: var(--gold); font-size: 12.5px; cursor: pointer; padding: 4px 6px; border-radius: var(--radius); }
+.aw-fuss button:hover { background: var(--flaeche); color: var(--gold-hell); }
+.aw-fuss button[data-aw='loeschen'] { color: var(--text-leise); }
+/* Knöpfe und Schalter oben in den Bereichen nicht in mehrere Zeilen brechen; bei wenig Platz rutscht die Gruppe unter den Titel */
+.seiten-kopf { flex-wrap: wrap; }
+.seiten-knoepfe, .plugin-knoepfe { flex-wrap: wrap; align-items: center; }
+.seiten-knoepfe > *, .plugin-knoepfe > * { white-space: nowrap; }
