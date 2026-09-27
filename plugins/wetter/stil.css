@@ -14,7 +14,7 @@
 .wt-treffer { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .wt-treffer-knopf { text-align: left; background: var(--flaeche); border: 1px solid var(--rahmen); padding: 7px 10px; cursor: pointer; color: var(--text); font-size: 13px; }
 .wt-treffer-knopf:hover { border-color: var(--gold); }
-.wt-tag { display: grid; grid-template-columns: 110px 34px 1fr 110px 60px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #3a3a3a; font-size: 13px; }
+.wt-tag { display: grid; grid-template-columns: 110px 34px 1fr 110px 60px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--linie); font-size: 13px; }
 .wt-tag:last-child { border-bottom: 0; }
 .wt-tag-symbol { font-size: 20px; text-align: center; }
 .wt-tag-text { color: var(--text-leise); }
