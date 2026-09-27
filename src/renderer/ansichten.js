@@ -174,16 +174,22 @@ async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell:
   const liste = wahl.querySelector('.modell-liste')
   const suche = wahl.querySelector('.modell-suche')
   const los = wahl.querySelector('[data-los]')
+  // Anbieter einklappbar: anfangs ist nur der mit dem aktuellen Modell offen, beim Suchen alle mit Treffern
+  const offen = new Set([jetztAnbieter])
   const zeichnen = () => {
     const worte = suche.value.toLowerCase().split(/\s+/).filter(Boolean)
     const passt = (text) => worte.every((w) => text.includes(w))
     let anzahl = 0
     liste.innerHTML = anbieter
       .map((a) => {
-        const treffer = a.models.filter((m) => passt(`${a.name} ${a.slug} ${m}`.toLowerCase())).slice(0, 60)
+        const alle = a.models.filter((m) => passt(`${a.name} ${a.slug} ${m}`.toLowerCase()))
+        const treffer = alle.slice(0, 60)
         anzahl += treffer.length
         if (!treffer.length) return ''
-        return `<div class="modell-gruppe">${maskieren(a.name)}</div>${treffer
+        const auf = worte.length > 0 || offen.has(a.slug)
+        const kopf = `<div class="modell-gruppe${auf ? ' auf' : ''}" role="button" tabindex="0" data-gruppe="${maskieren(a.slug)}" title="${auf ? 'Einklappen' : 'Aufklappen'}"><span class="modell-pfeil">▸</span>${maskieren(a.name)}<small>${alle.length}</small></div>`
+        if (!auf) return kopf
+        return `${kopf}${treffer
           .map((m) => {
             const aktiv = a.slug === gewaehlt.provider && m === gewaehlt.model
             const jetzt = a.slug === jetztAnbieter && m === jetztModell
@@ -197,8 +203,20 @@ async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell:
   zeichnen()
   suche.focus()
   suche.addEventListener('input', zeichnen)
-  liste.addEventListener('keydown', (ev) => ev.key === 'Enter' && ev.target.closest('.modell-eintrag')?.click())
+  liste.addEventListener('keydown', (ev) => ev.key === 'Enter' && ev.target.closest('.modell-eintrag, .modell-gruppe')?.click())
   liste.addEventListener('click', (ev) => {
+    const gruppe = ev.target.closest('.modell-gruppe')
+    if (gruppe) {
+      const slug = gruppe.dataset.gruppe
+      if (suche.value.trim()) {
+        suche.value = '' // beim Suchen sind alle offen: Klick auf einen Anbieter zeigt nur ihn
+        offen.clear()
+        offen.add(slug)
+      } else if (offen.has(slug)) offen.delete(slug)
+      else offen.add(slug)
+      zeichnen()
+      return liste.querySelector(`[data-gruppe="${CSS.escape(slug)}"]`)?.focus()
+    }
     const eintrag = ev.target.closest('.modell-eintrag')
     if (!eintrag) return
     gewaehlt = { provider: eintrag.dataset.anbieter, model: eintrag.dataset.modell }
