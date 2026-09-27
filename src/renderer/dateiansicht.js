@@ -48,8 +48,9 @@ export function dateiBefehlErkennen(text) {
   const suche = worte.join(' ').trim()
   if (!suche) return null
   const endung = /\.\w{2,5}$/.test(suche)
-  // Ohne Schlüsselwort und Endung ist „zeig mir …“ meist keine Datei (Bestellungen, Wetter …): das bleibt bei Luzzy
-  if (!schluessel && !endung && !(suchen && oeffnen) && !NUR_OEFFNEN.test(satz)) return null
+  // Ohne Schlüsselwort und Endung ist „zeig mir …“ meist keine Datei (Bestellungen, Wetter …): das bleibt bei Luzzy.
+  // „Such die Preisliste“ / „Öffne die Preisliste“: unsicher, Jarves-OS schaut nach und gibt sonst an Luzzy weiter
+  if (!schluessel && !endung && !(suchen && oeffnen) && !NUR_OEFFNEN.test(satz) && !suchen) return null
   return { suche, art: ART_WORT[schluessel] || null, endungen: ENDUNG_WORT[schluessel] || null, sicher: Boolean(schluessel || endung || (suchen && oeffnen)) }
 }
 
@@ -80,7 +81,8 @@ export async function dateiSuchenUndZeigen({ suche, art, endungen, pfad }, { nur
   if (pfad) return pfadOeffnen(pfad)
   let treffer = await api.datei.suchen(suche)
   const worte = normal(suche).split(' ')
-  if (nurWennPassend) treffer = treffer.filter((t) => t.imNamen && worte.every((w) => normal(t.name).includes(w)))
+  // Unsicherer Befehl: nur echte Treffer (jedes Wort im Namen oder Ordner), nichts Ungefähres, sonst an Luzzy
+  if (nurWennPassend) treffer = treffer.filter((t) => !t.ungefaehr && worte.some((w) => normal(t.name).includes(w)))
   if (art || endungen) {
     const passend = treffer.filter((t) => (art && t.art === art) || (endungen && endungen.some((e) => t.name.toLowerCase().endsWith(e))))
     if (passend.length) treffer = passend
@@ -218,6 +220,7 @@ export function dateiansichtEinrichten({ beiFehler = () => {} } = {}) {
   $('da-inhalt').addEventListener('keydown', (e) => e.key === 'Enter' && waehlen(e.target.closest('.da-treffer')))
   // Beim Schließen Videos/Musik anhalten
   dialog.addEventListener('close', () => {
+    if (dialog.open) return // gleich wieder geöffnet (nächste Datei): nichts leeren
     $('da-inhalt').innerHTML = ''
     offeneId = null
   })

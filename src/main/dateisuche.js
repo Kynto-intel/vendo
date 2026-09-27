@@ -35,6 +35,7 @@ const PARALLEL = 8
 const INDEX_ALTER = 30 * 60 * 1000
 const MAX_TEXT = 2_000_000
 const INDEX_DATEI = path.join(__dirname, '..', '..', 'daten', 'dateiindex.txt')
+const INDEX_VERSION = 'v3' // ändert sich, wenn sich ändert, was eingelesen wird: altes Verzeichnis dann verwerfen
 
 const ARTEN = {
   markdown: ['.md', '.markdown'],
@@ -160,7 +161,7 @@ async function einlesen() {
 
 // Verzeichnis auf der Festplatte: Zeile 1 Zeit, dann „O<Tab>Pfad“ für Ordner und „D<Tab>Ordnernummer<Tab>Name“
 async function speichern(ix) {
-  const zeilen = [String(ix.zeit)]
+  const zeilen = [`${INDEX_VERSION} ${ix.zeit}`]
   ix.ordner.forEach((o) => zeilen.push(`O\t${o}`))
   for (let i = 0; i < ix.namen.length; i++) zeilen.push(`D\t${ix.ordnerVon[i]}\t${ix.namen[i]}`)
   await fs.mkdir(path.dirname(INDEX_DATEI), { recursive: true })
@@ -170,8 +171,10 @@ function laden() {
   if (process.env.JARVES_TEST_DATEIEN) return null
   try {
     const zeilen = fsSync.readFileSync(INDEX_DATEI, 'utf8').split('\n')
+    const [version, zeit] = zeilen[0].split(' ')
+    if (version !== INDEX_VERSION) return null // von einer älteren Jarves-Version: neu einlesen
     const ix = leererIndex()
-    ix.zeit = Number(zeilen[0]) || 0
+    ix.zeit = Number(zeit) || 0
     for (let i = 1; i < zeilen.length; i++) {
       const z = zeilen[i]
       if (z.startsWith('O\t')) ordnerDazu(ix, z.slice(2))
@@ -235,29 +238,20 @@ function aehnlich(a, b) {
   return vorher[b.length] <= grenze
 }
 
-// Ortsangaben in der Suche („Preisliste Desktop“, „Rechnung Downloads“, „Laufwerk D“): nur dort suchen
-const ORTE = {
-  desktop: ['\\desktop\\'], downloads: ['\\downloads\\'], download: ['\\downloads\\'], dokumente: ['\\documents\\', '\\dokumente\\'],
-  documents: ['\\documents\\'], bilder: ['\\pictures\\', '\\bilder\\'], fotos: ['\\pictures\\', '\\bilder\\'], videos: ['\\videos\\'],
-  musik: ['\\music\\', '\\musik\\'], onedrive: ['\\onedrive'], donnerwolf: ['\\donnerwolf\\']
-}
+// Laufwerk als Ortsangabe („auf Laufwerk D“): nur dort suchen. Ordnernamen („Desktop“, „Donnerwolf“) brauchen
+// keine Sonderbehandlung: jedes Wort darf auch im Ordnerpfad stehen (zählt dann weniger als im Dateinamen).
 function ortAus(worte) {
   const filter = []
   const rest = []
   for (let i = 0; i < worte.length; i++) {
-    const w = worte[i]
-    if ((w === 'laufwerk' || w === 'platte') && /^[a-z]$/.test(worte[i + 1] || '')) {
+    if ((worte[i] === 'laufwerk' || worte[i] === 'platte') && /^[a-z]$/.test(worte[i + 1] || '')) {
       filter.push({ laufwerk: `${worte[i + 1]}:` })
       i++
-    } else if (ORTE[w] && worte.length > 1) filter.push({ teile: ORTE[w] })
-    else rest.push(w)
+    } else rest.push(worte[i])
   }
   return { worte: rest, filter }
 }
-const passtZuOrt = (ordner, filter) => {
-  const o = `${ordner.toLowerCase().replaceAll('\\', '/')}/` // Schrägstriche vereinheitlichen
-  return filter.every((f) => (f.laufwerk ? o.startsWith(f.laufwerk) : f.teile.some((t) => o.includes(t.replaceAll('\\', '/')))))
-}
+const passtZuOrt = (ordner, filter) => filter.every((f) => ordner.toLowerCase().startsWith(f.laufwerk))
 
 // Suchen: alle Wörter müssen im Dateinamen (oder im Ordnerpfad) vorkommen. Beste zuerst.
 // Findet das nichts: mit kleinen Hör- und Tippfehlern, danach reicht die Mehrheit der Wörter (Treffer „ungefähr“).
@@ -338,9 +332,10 @@ async function ergebnis(ix, treffer, max, ungefaehr) {
 function beschreiben(voll, rest) {
   const ordner = path.dirname(voll)
   const heim = os.homedir()
-  const kurz = ordner.toLowerCase().startsWith(heim.toLowerCase()) ? path.relative(heim, ordner) : ordner
-  const [ort, ...unter] = kurz.split(/[\\/]+/)
-  return { id: freigeben(voll), name: path.basename(voll), ort: ort || kurz, ordner: unter.join(' › '), art: artVon(voll), ...rest }
+  const imHeim = ordner.toLowerCase().startsWith(heim.toLowerCase() + path.sep)
+  const teile = (imHeim ? path.relative(heim, ordner) : ordner).split(/[\\/]+/).filter(Boolean)
+  const [ort = ordner, ...unter] = teile
+  return { id: freigeben(voll), name: path.basename(voll), ort, ordner: unter.join(' › '), art: artVon(voll), ...rest }
 }
 
 // Felix nennt einen vollen Pfad (oder er steht in Luzzys Antwort): jede Datei auf dem PC, nur zum Anzeigen,
@@ -382,11 +377,12 @@ function antwortFuer(url) {
   return net.fetch(pathToFileURL(pfadVon(id)).toString())
 }
 
-// Beim Start: gespeichertes Verzeichnis laden (sofort suchbar) und im Hintergrund frisch einlesen
+// Beim Start: gespeichertes Verzeichnis laden (sofort suchbar) und im Hintergrund immer frisch einlesen
 function vorbereiten() {
   setTimeout(() => {
     try {
       verzeichnis()
+      aktualisieren()
     } catch {
       // nächstes Mal
     }
