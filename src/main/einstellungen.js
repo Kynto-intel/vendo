@@ -13,6 +13,7 @@ const STANDARD = {
   vorlesen: true,
   animationen: { reaktor: true, scanlinie: true, welle: true, hintergrund: true },
   start: { intro: true, begruessung: true },
+  tageszeitFarben: true,
   panel: { offen: false, breite: 460 },
   sprache: { aktivierungswort: true, automatischSenden: true, weiterZuhoeren: true },
   meldungen: { vorlesen: true, ton: true, bestellung: true, mail: true, job: true, crew: true, ruheVon: '22:00', ruheBis: '07:00' }

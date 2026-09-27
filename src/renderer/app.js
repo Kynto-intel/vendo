@@ -954,7 +954,23 @@ const crewGespraech = unterhaltungErstellen({
 const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, hoehe: einstellungen.hoehe })
 const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
 
+// Farben nach Tageszeit: morgens 6–10 heller, tagsüber normal, abends 18–22 wärmer, nachts dunkler
+function tageszeitAnwenden() {
+  const test = new URLSearchParams(location.search).get('tageszeit') // nur Testmodus
+  const h = new Date().getHours()
+  const zeit = test || (h >= 6 && h < 10 ? 'morgen' : h >= 10 && h < 18 ? 'tag' : h >= 18 && h < 22 ? 'abend' : 'nacht')
+  const aus = einstellungen?.tageszeitFarben === false && !test
+  if (aus) delete document.documentElement.dataset.tageszeit
+  else document.documentElement.dataset.tageszeit = zeit
+  // Fensterknöpfe in der Farbe der rechten Spalte (--leiste, siehe style.css)
+  const leiste = { morgen: '#30302e', tag: '#2b2b2b', abend: '#2b2824', nacht: '#211f1d' }[aus ? 'tag' : zeit]
+  if (leiste !== tageszeitLeiste) api.fenster.titelfarbe((tageszeitLeiste = leiste))
+}
+let tageszeitLeiste = '#2b2b2b'
+setInterval(tageszeitAnwenden, 60000)
+
 function animationenAnwenden() {
+  tageszeitAnwenden()
   const a = einstellungen.animationen
   document.body.classList.toggle('anim-reaktor', a.reaktor)
   document.body.classList.toggle('anim-welle', a.welle)
@@ -979,6 +995,7 @@ function formularFuellen() {
   $('e-m-ruhe-bis').value = m.ruheBis || ''
   mikrofonStatusZeigen(mikrofon.zustand())
   for (const k of ['reaktor', 'welle', 'scanlinie', 'hintergrund']) $(`e-anim-${k}`).checked = einstellungen.animationen[k]
+  $('e-tageszeit').checked = einstellungen.tageszeitFarben !== false
   $('e-start-intro').checked = einstellungen.start?.intro !== false
   $('e-start-gruss').checked = einstellungen.start?.begruessung !== false
   reglerAnzeigen()
@@ -1024,7 +1041,8 @@ function formularLesen() {
       intro: $('e-start-intro').checked,
       begruessung: $('e-start-gruss').checked
     },
-    karten: kartenFormularLesen() ?? einstellungen.karten
+    karten: kartenFormularLesen() ?? einstellungen.karten,
+    tageszeitFarben: $('e-tageszeit').checked
   }
 }
 

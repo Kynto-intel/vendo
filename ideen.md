@@ -116,7 +116,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
       „Erinner mich um 14 Uhr an den Anruf.“
     - Läuft komplett in Jarves-OS (wie das Auslösewort der Routinen): sofort, ohne auf Hermes zu warten,
       kostet nichts, geht auch ohne Internet.
-11. **Themen nach Tageszeit** (Extra) – Abends wird die Oberfläche wärmer/dunkler, morgens heller.
+11. ✅ **Themen nach Tageszeit** (Extra, gebaut 27.09.2026) – Abends wird die Oberfläche wärmer/dunkler, morgens heller.
 12. ✅ **Donnerwolf-Startsequenz** (Extra, gebaut 26.09.2026) – Beim Start ein kurzes Intro: Reaktor fährt hoch,
     Luzzy begrüßt dich passend zur Tageszeit.
 13. **Erfolge / Meilensteine** (Extra) – „1.500. Bestellung!“ – Luzzy feiert mit, eine Liste der Meilensteine im Vault.

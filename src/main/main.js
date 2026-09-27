@@ -83,6 +83,7 @@ function fensterErstellen() {
   if (process.env.JARVES_TEST_PANEL) query.panel = process.env.JARVES_TEST_PANEL
   if (process.env.JARVES_TEST_STUMM) query.stumm = '1'
   if (process.env.JARVES_TEST_ANSICHT) query.ansicht = process.env.JARVES_TEST_ANSICHT
+  if (process.env.JARVES_TEST_TAGESZEIT) query.tageszeit = process.env.JARVES_TEST_TAGESZEIT
   if (process.env.JARVES_TEST_INTRO) query.intro = '1'
   if (process.env.JARVES_TEST_CREW) query.crewtest = process.env.JARVES_TEST_CREW
   if (process.env.JARVES_TEST_MELDUNG) query.meldungtest = '1'
@@ -208,6 +209,16 @@ ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
 // Ergebnis zurück in die Zwischenablage (Zwischenablage an Luzzy)
 ipcMain.handle('zwischenablage:schreiben', (_e, text) => clipboard.writeText(String(text || '').slice(0, 100000)))
 ipcMain.handle('zwischenablage:lesen', () => clipboard.readText().slice(0, 15000))
+
+// Farben nach Tageszeit: Fensterknöpfe oben rechts in der Farbe der rechten Spalte
+ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {
+  if (!/^#[0-9a-f]{6}$/i.test(String(farbe)) || !fenster || fenster.isDestroyed()) return
+  try {
+    fenster.setTitleBarOverlay({ color: farbe, symbolColor: '#C29A40', height: 38 })
+  } catch {
+    // nicht auf jedem System möglich
+  }
+})
 
 // Taskleiste blinken lassen, wenn Jarves-OS im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
 ipcMain.handle('fenster:aufmerksamkeit', () => {

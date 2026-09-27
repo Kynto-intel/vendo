@@ -19,6 +19,19 @@
   --pegel: 0; /* Lautstärke beim Sprechen, 0 bis 1 */
 }
 
+/* Farben nach Tageszeit (Einstellungen → Animationen): morgens heller, abends wärmer, nachts dunkler.
+   Gesetzt als data-tageszeit an <html> von app.js; tagsüber gelten die Farben oben. Übergang sanft über @property. */
+@property --hintergrund { syntax: '<color>'; inherits: true; initial-value: #333333; }
+@property --leiste { syntax: '<color>'; inherits: true; initial-value: #2b2b2b; }
+@property --flaeche { syntax: '<color>'; inherits: true; initial-value: #3a3a3a; }
+@property --eingabe { syntax: '<color>'; inherits: true; initial-value: #2a2a2a; }
+@property --text { syntax: '<color>'; inherits: true; initial-value: #e8e2d6; }
+@property --text-leise { syntax: '<color>'; inherits: true; initial-value: #9a9387; }
+:root { transition: --hintergrund 4s, --leiste 4s, --flaeche 4s, --eingabe 4s, --text 4s, --text-leise 4s; }
+:root[data-tageszeit='morgen'] { --hintergrund: #393937; --leiste: #30302e; --flaeche: #41403d; --eingabe: #2e2e2c; --text: #efeae0; --text-leise: #a39d91; }
+:root[data-tageszeit='abend'] { --hintergrund: #33302b; --leiste: #2b2824; --flaeche: #3b3731; --eingabe: #29261f; --text: #ecdfca; --text-leise: #9f9480; }
+:root[data-tageszeit='nacht'] { --hintergrund: #272523; --leiste: #211f1d; --flaeche: #2f2c29; --eingabe: #1f1d1b; --text: #dcd1bf; --text-leise: #8a8274; }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {

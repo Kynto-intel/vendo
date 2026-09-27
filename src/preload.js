@@ -77,7 +77,8 @@ contextBridge.exposeInMainWorld('jarves', {
     schreiben: (text) => ipcRenderer.invoke('zwischenablage:schreiben', text)
   },
   fenster: {
-    aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit')
+    aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit'),
+    titelfarbe: (farbe) => ipcRenderer.invoke('fenster:titelfarbe', farbe)
   },
   sicherung: {
     liste: () => ipcRenderer.invoke('sicherung:liste'),
