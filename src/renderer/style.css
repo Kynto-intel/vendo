@@ -760,3 +760,66 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
 /* Listen und Tabellen */
 .spalte, .liste-spalte, .leser { background-color: var(--leiste); border-color: var(--rahmen); }
 .aufgabe { border-radius: var(--radius); }
+
+/* Einstellungen mit Tabs */
+.dialog.einstellungen { width: min(900px, 94vw); height: min(680px, 90vh); max-height: 90vh; padding: 0; }
+.dialog.einstellungen[open] { display: flex; }
+.einstellungen form { display: flex; flex-direction: column; width: 100%; min-height: 0; }
+.e-kopf { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--rahmen); flex: none; }
+.e-kopf h2 { margin: 0; }
+.e-zu { background: none; border: 1px solid transparent; border-radius: var(--radius); color: var(--text-leise); width: 30px; height: 30px; cursor: pointer; font-size: 13px; }
+.e-zu:hover { border-color: var(--rahmen); color: var(--gold-hell); }
+.e-rumpf { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); }
+.e-tabs { background: var(--leiste); border-right: 1px solid var(--rahmen); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.e-tab { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 0; border-radius: var(--radius); background: none; color: #c9c3b7; font-size: 13.5px; text-align: left; cursor: pointer; transition: background-color 150ms, color 150ms; }
+.e-tab svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; }
+.e-tab:hover { background: var(--flaeche); color: var(--text); }
+.e-tab.gewaehlt { background: linear-gradient(90deg, rgba(201, 161, 74, 0.16), rgba(201, 161, 74, 0.03)); color: var(--gold-hell); }
+.e-tab.gewaehlt svg { opacity: 1; }
+.e-tab.gewaehlt::before { content: ''; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 2px; background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.e-inhalt { overflow-y: auto; padding: 20px 26px 24px; min-height: 0; }
+.e-seite { display: flex; flex-direction: column; gap: 16px; max-width: 600px; animation: rein 180ms ease-out; }
+.e-seite[hidden] { display: none; }
+.e-seite-kopf h3 { margin: 0 0 3px; font-size: 18px; font-weight: 600; color: var(--text); }
+.e-seite-kopf p { margin: 0; }
+.einstellungen fieldset { margin: 0; padding: 14px 16px 16px; border: 1px solid var(--rahmen); border-radius: var(--radius); background: rgba(255, 255, 255, 0.012); gap: 12px; }
+.einstellungen legend { padding: 0 6px; color: var(--gold); }
+.e-seite fieldset:only-of-type legend { display: none; } /* eine Gruppe pro Seite: Überschrift steht schon oben */
+.einstellungen label { grid-template-columns: 110px 1fr 56px; }
+.einstellungen label.haken { padding: 2px 0; }
+.einstellungen .ton-probe { margin-left: 26px; }
+.e-fuss { padding: 14px 22px; border-top: 1px solid var(--rahmen); background: var(--leiste); flex: none; margin: 0; }
+.einstellungen .karten-liste li { padding: 5px 8px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--flaeche); }
+.einstellungen .karten-liste { gap: 4px; }
+.e-tab:focus-visible, .bereich:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--gold-leise); }
+
+/* ── Schmale Fenster (Gespräch offen, halber Bildschirm): Bereiche stapeln statt abschneiden ──
+   Der Container „mitte“ ist die mittlere Spalte (siehe oben). */
+.fk-zeit { font-size: clamp(44px, 11cqw, 76px) !important; }
+.ms-zahl { font-size: clamp(44px, 10cqw, 72px) !important; }
+.fk-knoepfe { flex-wrap: wrap; justify-content: center; }
+@container mitte (max-width: 860px) {
+  .fk-raster, .ms-raster, .wt-raster { grid-template-columns: minmax(0, 1fr) !important; }
+  .fk-einstellungen, .ms-liste { max-width: none; }
+  .crew-raster { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ansicht-seite[data-ansicht='crew'] { overflow-y: auto; }
+  .zweispaltig { grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); }
+  .af-neu { grid-template-columns: 1fr 1fr auto !important; }
+  .af-neu input[name='text'] { grid-column: 1 / -1; }
+  .wt-tag { grid-template-columns: 90px 28px 1fr 90px !important; }
+  .wt-tag-regen { display: none; }
+}
+@container mitte (max-width: 720px) {
+  .kal-raster, .rt-raster { grid-template-columns: minmax(0, 1fr) !important; }
+  .plugin-ansicht[data-ansicht='plugin-kalender'], .plugin-ansicht[data-ansicht='plugin-routinen'] { overflow-y: auto !important; }
+  .kal-monatsblatt { min-height: 440px; }
+  .rt-liste { max-height: 260px; }
+  .zweispaltig { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 34%) minmax(0, 1fr); }
+  .ansicht-seite { padding-left: 18px; padding-right: 18px; }
+  .seiten-kopf { flex-wrap: wrap; align-items: flex-start; }
+}
+@container mitte (max-width: 560px) {
+  .crew-raster { grid-template-columns: minmax(0, 1fr) !important; }
+  .af-neu { grid-template-columns: 1fr 1fr !important; }
+  .af-neu .knopf-gold { grid-column: 1 / -1; }
+}

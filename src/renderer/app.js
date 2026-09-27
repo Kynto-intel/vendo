@@ -1085,7 +1085,9 @@ $('einstellungen-oeffnen').addEventListener('click', () => {
   formularFuellen()
   sicherungStandZeigen()
   startStandZeigen()
+  einstellungsTab(letzterTab)
   $('einstellungen').showModal()
+  document.querySelector('.e-tab.gewaehlt')?.focus() // nicht das ✕ (bekäme sonst den Fokusrahmen)
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
 $('e-hoehe').addEventListener('input', reglerAnzeigen)
@@ -1093,6 +1095,20 @@ $('e-probe').addEventListener('click', () => {
   const f = formularLesen()
   vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
 })
+// Einstellungen: Tabs links (der zuletzt offene Tab bleibt gemerkt, solange Jarves-OS läuft)
+let letzterTab = 'stimme'
+function einstellungsTab(id) {
+  letzterTab = id
+  for (const t of document.querySelectorAll('.e-tab')) t.classList.toggle('gewaehlt', t.dataset.eTab === id)
+  for (const seite of document.querySelectorAll('.e-seite')) seite.hidden = seite.dataset.eSeite !== id
+  document.querySelector('.e-inhalt').scrollTop = 0
+}
+document.querySelector('.e-tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-e-tab]')
+  if (tab) einstellungsTab(tab.dataset.eTab)
+})
+$('e-zu').addEventListener('click', () => $('einstellungen').close('abbrechen'))
+
 // Schneller starten: Desktop-Verknüpfung und Autostart (gilt sofort, nicht erst mit „Speichern“)
 async function startStandZeigen(vorweg = '') {
   try {

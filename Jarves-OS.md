@@ -278,10 +278,11 @@ Donnerwolf-Hauptordner, Projekte aus Hermes, zuletzt geänderte Dateien. Öffnen
 
 ## 8. Design
 
-- **Farben** wie das Donnerwolf-Theme:
-  - Anthrazit-Hintergrund `#333333`, Seitenleiste `#2B2B2B`, Flächen `#3A3A3A`
-  - Gold `#C29A40`, helles Gold `#D9B25F`
-  - Text `#E8E2D6`, leiser Text `#9A9387`, Rahmen `#4A4A4A`
+- **Farben** (Design 2, 27.09.2026: dunkler und moderner, alle Farben zentral in `src/renderer/style.css` unter `:root`):
+  - Mitte `#131315`, Seitenspalten `#0E0E10`, Karten `#19191C`, Eingabefelder `#101012`, Rahmen `#26262A`
+  - Gold `#C9A14A`, helles Gold `#E3BE6C`
+  - Text `#ECE6DA`, leiser Text `#8C877E`
+  - Linke Leiste in Gruppen mit Linien-Symbolen, Einstellungen mit Tabs
 - **Formen:** kantig, wenig Rundungen, goldene Linien als Akzente.
 - **HUD-Elemente:** Reaktor mit drehenden Ringen, Sprach-Welle, feine goldene Eckklammern an Panels, dezente Scanlinie.
 - **Animationen:** viel, aber in den Einstellungen abschaltbar: alles aus, oder einzeln (Reaktor-Ringe, Scanlinie, Welle, Hintergrund).
