@@ -1,6 +1,6 @@
 // Dateisuche: „Luzzy, such die Datei Thor-Hoodie und öffne sie“. Sucht nach Dateinamen auf dem ganzen PC (alle
-// Laufwerke) und zeigt die Datei in Jarves-OS an. Ausgelassen: Windows- und Programmordner, AppData (Programmdaten,
-// Zugangsdaten, auch von Hermes), Papierkorb, Entwickler-Ordner.
+// Laufwerke, auch AppData) und zeigt die Datei in Jarves-OS an. Ausgelassen: Windows- und Programmordner, Papierkorb,
+// Zwischenspeicher, Entwickler-Ordner und Dateien mit Zugangsdaten (Hermes-Einstellungen, Schlüssel, Passwörter).
 // Nur lesen: hier wird nichts verändert. Die Oberfläche bekommt keine Pfade zum Öffnen, nur Kennungen aus
 // einer Suche; nur diese Dateien dürfen angezeigt werden (Protokoll jarves-datei://<kennung>).
 // Das Verzeichnis (nur Pfade) liegt in daten/dateiindex.txt, damit die Suche nach einem Neustart sofort geht;
@@ -15,11 +15,19 @@ const { net } = require('electron')
 const { pathToFileURL } = require('node:url')
 const { WURZEL } = require('./wissen')
 
-// Ordnernamen, die nie durchsucht werden (klein geschrieben)
-const UEBERSPRINGEN = new Set([
+// Systemordner: nie durchsuchen, nie anzeigen (klein geschrieben)
+const SYSTEM = new Set([
   'windows', 'windows.old', 'program files', 'program files (x86)', 'programdata', '$recycle.bin', 'system volume information',
-  'recovery', 'perflogs', '$windows.~bt', '$windows.~ws', '$winreagent', 'msocache', 'config.msi', 'appdata', 'application data',
-  'local settings', 'all users', 'default user', 'node_modules', '__pycache__', '.venv', 'venv', 'firecrawl-selfhost', 'kynto backups'
+  'recovery', 'perflogs', '$windows.~bt', '$windows.~ws', '$winreagent', 'msocache', 'config.msi',
+  // Verknüpfungen von Windows auf andere Ordner (sonst doppelt oder im Kreis)
+  'application data', 'local settings', 'all users', 'default user', 'anwendungsdaten', 'lokale einstellungen'
+])
+// Nur beim Einlesen auslassen: Zwischenspeicher und Entwickler-Ordner (Hunderttausende Dateien ohne Nutzen)
+const UEBERSPRINGEN = new Set([
+  ...SYSTEM, 'node_modules', '__pycache__', '.venv', 'venv', 'firecrawl-selfhost', 'kynto backups',
+  'temp', 'tmp', 'cache', 'caches', 'cache2', 'code cache', 'gpucache', 'shadercache', 'dawncache', 'dawngraphitecache', 'dawnwebgpucache',
+  'grshadercache', 'cache_data', 'npm-cache', 'service worker', 'crashpad', 'crashdumps', 'inetcache', 'webcache', 'indexeddb',
+  'blob_storage', 'd3dscache', 'nvidia corporation', 'packages', 'wer'
 ])
 const MAX_DATEIEN = 600_000
 const MAX_TIEFE = 16
@@ -42,12 +50,14 @@ const artVon = (datei) => {
   return Object.keys(ARTEN).find((a) => ARTEN[a].includes(endung)) || 'andere'
 }
 
-// Nie anzeigen: Systemordner, AppData und Dateien mit Zugangsdaten (auch nicht, wenn Luzzy den Pfad nennt)
-const GEHEIM = /(^|[\\/])(\.env(\..*)?|id_rsa.*|id_ed25519.*|.*\.pem|.*\.key|.*\.pfx|credentials.*|auth\.json)$/i
+// Nie finden, nie anzeigen: Systemordner und Dateien mit Zugangsdaten, auch nicht, wenn Luzzy den Pfad nennt.
+// Dazu gehören Hermes' Einstellungen (dort steht der Shopify-Zugang), Browser-Passwörter und Windows-Anmeldedaten.
+const GEHEIM = /(^|[\\/])(\.env(\..*)?|id_rsa.*|id_ed25519.*|.*\.pem|.*\.key|.*\.pfx|.*\.p12|.*\.kdbx|credentials.*|auth.*\.json|login data.*|cookies.*|web data.*|local state)$/i
+const GEHEIME_ORDNER = /[\\/](hermes|\.hermes)[\\/](.*[\\/])?(config\.ya?ml|.*\.env|auth[^\\/]*|.*token[^\\/]*|.*secret[^\\/]*)$|[\\/]microsoft[\\/](credentials|protect|crypto|vault)[\\/]/i
 function gesperrt(voll) {
   const teile = voll.toLowerCase().split(/[\\/]+/)
-  if (teile.some((t) => UEBERSPRINGEN.has(t) && t !== 'node_modules' && t !== 'venv' && t !== '.venv' && t !== '__pycache__')) return true
-  return GEHEIM.test(voll)
+  if (teile.some((t) => SYSTEM.has(t))) return true
+  return GEHEIM.test(voll) || GEHEIME_ORDNER.test(voll)
 }
 
 // Wo gesucht wird: alle Laufwerke (Windows), sonst der Benutzerordner. Testmodus: JARVES_TEST_DATEIEN
@@ -133,7 +143,7 @@ async function einlesen() {
         }
         if (istOrdner) {
           if (tiefe < MAX_TIEFE) schlange.push({ ordner: voll, tiefe: tiefe + 1 })
-        } else if (istDatei && !GEHEIM.test(name)) {
+        } else if (istDatei && !gesperrt(voll)) {
           dateiDazu(ix, nr, name)
         }
       }
