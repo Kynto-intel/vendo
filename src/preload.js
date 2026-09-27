@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld('jarves', {
     inhalt: (id) => ipcRenderer.invoke('datei:inhalt', id),
     pfad: (pfad) => ipcRenderer.invoke('datei:pfad', pfad),
     stand: () => ipcRenderer.invoke('datei:stand'),
+    speichern: (id, text, geaendert) => ipcRenderer.invoke('datei:speichern', id, text, geaendert),
+    rueckgaengig: (id) => ipcRenderer.invoke('datei:rueckgaengig', id),
     mitProgramm: (id) => ipcRenderer.invoke('datei:mitProgramm', id),
     imOrdner: (id) => ipcRenderer.invoke('datei:imOrdner', id)
   },

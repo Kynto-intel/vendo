@@ -15,7 +15,7 @@ import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
 import { gespraecheEinrichten, gespraecheLaden, gespraechBefehl } from './gespraeche.js'
-import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, istOeffnenWunsch, pfadAusAntwortOeffnen } from './dateiansicht.js'
+import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, istOeffnenWunsch, pfadAusAntwortOeffnen, aenderungsBefehl } from './dateiansicht.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
@@ -643,6 +643,7 @@ const SPRACHBEFEHLE = [
   ['Wechsel zum Gespräch …', 'auch oben im Gesprächsfenster auswählen', 'thema chat gespräch wechseln'],
   ['Welche Gespräche gibt es?', '', 'themen gespräche liste'],
   ['Such die Datei … und öffne sie', 'zeigt sie direkt in Jarves (Notiz, Bild, PDF, Video …)', 'datei suchen öffnen finden dokument bild pdf'],
+  ['Ändere … (bei offener Datei)', 'Luzzy ändert die Stellen live im Text, speichern tust du selbst (Strg+S)', 'datei bearbeiten ändern ersetzen korrigieren'],
   ['Öffne die Datei …', 'auch „Zeig mir das Bild …“, „Öffne das PDF …“; mehrere Treffer: „die zweite“', 'datei öffnen zeigen bild foto pdf video tabelle'],
   ['Merk dir: …', 'Gedankenspeicher', 'notiz idee notieren'],
   ['Neue Idee: …', 'Luzzy schreibt sie sauber als Notiz in den Vault (Jarves-OS, Ideen)', 'idee notiz vault diktat schlagworte'],
@@ -783,6 +784,9 @@ function lokalAntworten(text, { gesprochen = false } = {}) {
 // Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
 function lokalerBefehl(text, { gesprochen = false } = {}) {
   if (STOPPWOERTER.has(text.toLowerCase().replace(/[.,!?]/g, '').replace(/^(hey )?luzzy /, '').replace(/\s+/g, ' ').trim())) return stoppen(), true
+  // Ist gerade eine Datei offen: „Luzzy, ändere …“ ändert die Datei (live im Text, gespeichert wird nur per Klick)
+  const aenderung = aenderungsBefehl(text)
+  if (aenderung) return dateiAntworten(aenderung, { gesprochen }), true
   if (istWiederholen(text)) return wiederholen({ gesprochen }), true
   if (SELBSTTEST.test(text.toLowerCase().replace(/[,.!?]/g, '').replace(/\s+/g, ' ').trim())) return selbsttest({ gesprochen }), true
   const stoeren = nichtStoerenErkennen(text)
@@ -809,7 +813,7 @@ async function dateiAntworten(arbeit, { gesprochen }) {
     lokalAntworten(`Das hat nicht geklappt: ${e.message}`, { gesprochen })
   }
 }
-dateiansichtEinrichten({ beiFehler: (e) => systemNachricht(`Datei: ${e.message}`) })
+dateiansichtEinrichten({ beiFehler: (e) => systemNachricht(`Datei: ${e.message}`), luzzy: (text, optionen) => anLuzzy(text, optionen) })
 gespraecheEinrichten({
   darfWechseln: () => verbunden && !beschaeftigt,
   // Vor dem Wechsel: Luzzy still, der neue Verlauf wird auf jeden Fall gezeichnet
@@ -942,12 +946,14 @@ window.addEventListener('keydown', (e) => {
 // selbst wird dann nicht vorgelesen, nur dieser Satz.
 let vorlesenErzwungen = false
 let luzzyNachher = null
-async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false, nachher = null } = {}) {
+let luzzyBeiText = null // bekommt Luzzys Antwort laufend, während sie schreibt (z. B. Änderungen live in eine Datei)
+async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false, nachher = null, beiText = null } = {}) {
   if (!text || beschaeftigt || !verbunden) return false
   letzteEingabeGesprochen = gesprochen
   letzteFrage = anzeige
   vorlesenErzwungen = Boolean(vorlesen)
   luzzyNachher = typeof nachher === 'function' ? nachher : null
+  luzzyBeiText = typeof beiText === 'function' ? beiText : null
   vorleser.stoppen()
   nachrichtAnzeigen('felix', anzeige)
   untertitelZeigen('')
@@ -960,6 +966,7 @@ async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = fa
   } catch (e) {
     beschaeftigt = false
     luzzyNachher = null
+    luzzyBeiText = null
     laufendeBeenden()
     zustandZeigen()
     systemNachricht(`Konnte nicht senden: ${e.message}`)
@@ -1068,6 +1075,11 @@ api.hermes.beiEreignis((ev) => {
       if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
       aktuelleAntwort.roh += p.text
       vorleseStromFuettern(aktuelleAntwort.roh)
+      try {
+        luzzyBeiText?.(aktuelleAntwort.roh)
+      } catch (e) {
+        console.warn('Live-Änderung:', e.message)
+      }
       antwortAktualisieren()
       untertitelZeigen(aktuelleAntwort.roh)
       zustandZeigen()
@@ -1113,6 +1125,7 @@ api.hermes.beiEreignis((ev) => {
       if (gelungen && istOeffnenWunsch(letzteFrage)) pfadAusAntwortOeffnen(text).catch(() => {})
       const nachher = luzzyNachher
       luzzyNachher = null
+      luzzyBeiText = null
       if (nachher) {
         if (gelungen) nachherAusfuehren(nachher, text, { sprechen: Boolean(einstellungen?.vorlesen || vorlesenErzwungen || letzteEingabeGesprochen) })
         else weiterZuhoeren()
@@ -1136,6 +1149,8 @@ api.hermes.beiEreignis((ev) => {
       systemNachricht(p.message || 'Fehler in Hermes.')
       beschaeftigt = false
       aktuelleAntwort = null
+      luzzyNachher = null
+      luzzyBeiText = null
       zustandZeigen()
       break
   }

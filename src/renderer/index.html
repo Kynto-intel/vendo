@@ -294,14 +294,25 @@
     <!-- Dateiansicht: „Luzzy, such die Datei … und öffne sie“ (siehe dateiansicht.js) -->
     <dialog class="dialog hud dateiansicht" id="dateiansicht">
       <header class="da-kopf">
-        <div class="da-titel"><h2 id="da-name">Datei</h2><small id="da-ort"></small></div>
+        <div class="da-titel"><h2 id="da-name">Datei</h2><small id="da-ort"></small><small class="da-status" id="da-status"></small></div>
         <div class="da-knoepfe">
+          <button class="knopf-flach" id="da-bearbeiten" type="button" title="Text selbst ändern oder von Luzzy ändern lassen" hidden>Bearbeiten</button>
+          <button class="knopf-gold" id="da-speichern" type="button" title="Speichern (Strg+S). Vorher wird eine Sicherung angelegt." hidden>Speichern</button>
+          <button class="knopf-flach" id="da-verwerfen" type="button" title="Alle ungespeicherten Änderungen verwerfen" hidden>Verwerfen</button>
+          <button class="knopf-flach" id="da-rueck" type="button" title="Die Fassung vor dem letzten Speichern zurückholen" hidden>Rückgängig</button>
           <button class="knopf-flach" id="da-ordner" type="button" title="Im Explorer zeigen">Im Ordner zeigen</button>
           <button class="knopf-flach" id="da-programm" type="button" title="Mit dem Standardprogramm von Windows öffnen">Mit Programm öffnen</button>
           <button class="knopf-flach" id="da-zu" type="button" title="Schließen (Esc)">✕</button>
         </div>
       </header>
       <div class="da-inhalt" id="da-inhalt"></div>
+      <div class="da-luzzy" id="da-luzzy" hidden>
+        <div class="da-aenderungen" id="da-aenderungen"></div>
+        <form class="da-luzzy-form" id="da-luzzy-form">
+          <input maxlength="2000" autocomplete="off" placeholder="Luzzy soll ändern, z. B. „Preis vom Thor-Hoodie auf 54,90“ (oder sagen: „Luzzy, ändere …“)" />
+          <button class="knopf-flach" type="submit">Luzzy ändern lassen</button>
+        </form>
+      </div>
     </dialog>
 
     <dialog class="dialog hud" id="selbsttest">

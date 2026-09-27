@@ -364,10 +364,53 @@ async function inhalt(id) {
   const basis = { id, name: path.basename(voll), art, groesse: info.size, geaendert: info.mtimeMs, ordner: path.dirname(voll) }
   if (['markdown', 'text', 'tabelle'].includes(art)) {
     if (info.size > MAX_TEXT) return { ...basis, art: 'andere', hinweis: 'Die Datei ist zu groß für die Anzeige.' }
-    return { ...basis, text: await fs.readFile(voll, 'utf8') }
+    return { ...basis, text: await fs.readFile(voll, 'utf8'), bearbeitbar: bearbeitbar(voll), rueckgaengig: Boolean(letzteSicherung.get(voll)) }
   }
   if (['bild', 'pdf', 'video', 'audio'].includes(art)) return { ...basis, url: `jarves-datei://${id}/${encodeURIComponent(path.basename(voll))}` }
   return basis
+}
+
+// ── Bearbeiten: nur Text (Notizen, Texte, CSV) und nur, wenn Felix auf „Speichern“ klickt ──
+// Vor jedem Speichern kommt die alte Fassung nach daten/datei-sicherungen/ (Rückgängig holt die letzte zurück).
+// Wurde die Datei inzwischen woanders geändert (anderes Programm, OneDrive), wird nicht überschrieben.
+const SICHERUNGEN = path.join(__dirname, '..', '..', 'daten', 'datei-sicherungen')
+const letzteSicherung = new Map() // voller Pfad → Sicherungsdatei
+const bearbeitbar = (voll) => ['markdown', 'text', 'tabelle'].includes(artVon(voll)) && !gesperrt(voll) && !istProgramm(voll)
+
+async function sichern(voll) {
+  await fs.mkdir(SICHERUNGEN, { recursive: true })
+  const stempel = new Date().toISOString().replace(/[:.]/g, '-')
+  const ziel = path.join(SICHERUNGEN, `${stempel}__${path.basename(voll)}`)
+  await fs.copyFile(voll, ziel)
+  letzteSicherung.set(voll, ziel)
+  return ziel
+}
+
+async function speichern(id, text, geaendertBeimLaden) {
+  const voll = pfadVon(id)
+  if (!bearbeitbar(voll)) throw new Error('Diese Datei kann Jarves-OS nicht bearbeiten.')
+  if (typeof text !== 'string' || text.length > MAX_TEXT) throw new Error('Der Text ist zu groß.')
+  const info = await fs.stat(voll)
+  if (geaendertBeimLaden && Math.abs(info.mtimeMs - geaendertBeimLaden) > 1) {
+    throw new Error('Die Datei wurde inzwischen woanders geändert. Schließ sie und öffne sie neu, damit nichts verloren geht.')
+  }
+  await sichern(voll)
+  await fs.writeFile(voll, text, 'utf8')
+  const neu = await fs.stat(voll)
+  return { geaendert: neu.mtimeMs, groesse: neu.size, sicherung: true }
+}
+
+// Rückgängig: die Fassung vor dem letzten Speichern zurückholen (die aktuelle wird vorher auch gesichert)
+async function rueckgaengig(id) {
+  const voll = pfadVon(id)
+  const alt = letzteSicherung.get(voll)
+  if (!alt) throw new Error('Es gibt nichts rückgängig zu machen.')
+  const text = await fs.readFile(alt, 'utf8')
+  await sichern(voll)
+  letzteSicherung.set(voll, null)
+  await fs.writeFile(voll, text, 'utf8')
+  const neu = await fs.stat(voll)
+  return { text, geaendert: neu.mtimeMs, groesse: neu.size }
 }
 
 // Für protocol.handle('jarves-datei'): nur freigegebene Dateien. net.fetch liefert sie gestreamt mit passendem Typ
@@ -389,4 +432,4 @@ function vorbereiten() {
   }, 5000)
 }
 
-module.exports = { suchen, stand, inhalt, pfadVon, pfadTreffer, istProgramm, antwortFuer, vorbereiten, normal }
+module.exports = { suchen, stand, inhalt, speichern, rueckgaengig, pfadVon, pfadTreffer, istProgramm, antwortFuer, vorbereiten, normal }

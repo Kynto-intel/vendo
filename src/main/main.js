@@ -259,6 +259,9 @@ ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher
 ipcMain.handle('datei:suchen', (_e, anfrage) => dateisuche.suchen(String(anfrage || '').slice(0, 200)))
 ipcMain.handle('datei:inhalt', (_e, id) => dateisuche.inhalt(id))
 ipcMain.handle('datei:stand', () => dateisuche.stand())
+// Bearbeiten: speichern nur auf Felix' Klick (die Oberfläche ruft das nur vom Speichern-Knopf aus), immer mit Sicherung
+ipcMain.handle('datei:speichern', (_e, id, text, geaendert) => dateisuche.speichern(id, text, Number(geaendert) || 0))
+ipcMain.handle('datei:rueckgaengig', (_e, id) => dateisuche.rueckgaengig(id))
 ipcMain.handle('datei:pfad', (_e, pfad) => dateisuche.pfadTreffer(String(pfad || '').slice(0, 500)))
 ipcMain.handle('datei:mitProgramm', async (_e, id) => {
   const voll = dateisuche.pfadVon(id)
