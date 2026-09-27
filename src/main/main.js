@@ -52,13 +52,13 @@ function fensterErstellen() {
     ...(gemerkt ? { x: gemerkt.x, y: gemerkt.y } : {}),
     minWidth: 1000,
     minHeight: 640,
-    backgroundColor: '#2B2B2B',
+    backgroundColor: '#0E0E10',
     title: 'Jarves-OS',
     autoHideMenuBar: true,
     show: false,
     // Keine Titelleiste; Windows zeichnet nur die drei Fensterknöpfe, in der Farbe der rechten Spalte
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#2B2B2B', symbolColor: '#C29A40', height: 38 },
+    titleBarOverlay: { color: '#0E0E10', symbolColor: '#C9A14A', height: 38 },
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,
@@ -241,7 +241,7 @@ ipcMain.handle('start:autostart', (_e, an) => {
 ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {
   if (!/^#[0-9a-f]{6}$/i.test(String(farbe)) || !fenster || fenster.isDestroyed()) return
   try {
-    fenster.setTitleBarOverlay({ color: farbe, symbolColor: '#C29A40', height: 38 })
+    fenster.setTitleBarOverlay({ color: farbe, symbolColor: '#C9A14A', height: 38 })
   } catch {
     // nicht auf jedem System möglich
   }

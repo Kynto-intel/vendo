@@ -2,8 +2,8 @@
 // Zustände: bereit | denkt | antwortet | spricht | getrennt
 
 const NS = 'http://www.w3.org/2000/svg'
-const GOLD = '#C29A40'
-const GOLD_HELL = '#D9B25F'
+const GOLD = '#C9A14A'
+const GOLD_HELL = '#E3BE6C'
 
 function element(name, attribute = {}, eltern) {
   const el = document.createElementNS(NS, name)
