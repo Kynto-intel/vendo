@@ -456,6 +456,30 @@ function timerAlarm({ text, titel }) {
   })
 }
 
+// ── Kopfzeile der Mitte: nur so weit kürzen, wie es der Platz verlangt ──
+// Stufen: k1 kurzes Datum, k2 kurze Namen („Hermes“), k3 nur Punkte (Tooltip), k4 Datum weg (Uhrzeit bleibt)
+const kopf = document.querySelector('.mitte-kopf')
+function kopfPasst() {
+  const r = kopf.getBoundingClientRect()
+  const rechts = r.right - parseFloat(getComputedStyle(kopf).paddingRight)
+  const kinder = [...kopf.children].filter((e) => !e.hidden && getComputedStyle(e).display !== 'none')
+  return kinder.every((e) => e.getBoundingClientRect().right <= rechts + 0.5)
+}
+let kopfGeplant = false
+function kopfAnpassen() {
+  if (kopfGeplant) return
+  kopfGeplant = true
+  requestAnimationFrame(() => {
+    kopfGeplant = false
+    for (let stufe = 0; stufe <= 4; stufe++) {
+      for (let k = 1; k <= 4; k++) kopf.classList.toggle(`k${k}`, k <= stufe)
+      if (kopfPasst()) break
+    }
+  })
+}
+new ResizeObserver(kopfAnpassen).observe(kopf)
+new MutationObserver(kopfAnpassen).observe(kopf, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] })
+
 // ── Seitenleisten einklappen: links bleibt eine schmale Leiste mit Symbolen, rechts verschwindet ganz ──
 function leistenAnwenden() {
   const l = einstellungen?.leisten || { links: true, rechts: true }

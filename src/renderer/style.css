@@ -637,24 +637,9 @@ body[data-ansicht='zentrale'] .gespraech-panel .eingabe-form { display: none; }
 /* Kopfzeile bleibt einzeilig, auch wenn das Gespräch rechts offen ist:
    bei wenig Platz wird das Datum kurz (Sa., 26.09.2026), dann wird alles etwas enger (die Punkte zeigen den Zustand weiter) */
 .mitte { container-type: inline-size; container-name: mitte; }
-.mitte-kopf .verbindung { white-space: nowrap; min-width: 0; }
-.mitte-kopf .verbindung-text { overflow: hidden; text-overflow: ellipsis; }
 .mitte-kopf .uhr { flex: none; }
 /* langes oder kurzes Datum je nach Platz */
 .uhr-datum-kurz { display: none; }
-@container mitte (max-width: 1000px) {
-  .uhr-datum { display: none; }
-  .uhr-datum-kurz { display: inline; }
-}
-@container mitte (max-width: 760px) {
-  .mitte-kopf { gap: 12px; padding: 0 12px; }
-  .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { gap: 6px; padding: 0; }
-}
-/* Noch enger: statt „Mit Hermes verbunden“ nur „Hermes“, der Punkt davor zeigt den Zustand */
-@container mitte (max-width: 900px) {
-  .mitte-kopf [data-kurz] .verbindung-text { display: none; }
-  .mitte-kopf [data-kurz]::after { content: attr(data-kurz); }
-}
 
 /* ════════════════════════════════════════════════════════════════════════════
    Design 2 (27.09.2026): dunkler, ruhiger, moderner. Gleiche Donnerwolf-DNA
@@ -693,7 +678,6 @@ body.anim-hintergrund .mitte {
     linear-gradient(90deg, rgba(201, 161, 74, 0.022) 1px, transparent 1px) 0 0 / 36px 36px,
     var(--hintergrund);
 }
-.mitte-kopf { background: linear-gradient(180deg, var(--hintergrund) 55%, transparent); }
 
 /* Kopfzeile: Zustände als kleine Chips */
 .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 3px 9px; border: 1px solid var(--rahmen); border-radius: var(--radius); background: rgba(25, 25, 28, 0.7); }
@@ -890,18 +874,6 @@ body.rechts-zu { --rechts-breite: 0px; }
 .leisten-knopf:hover { color: var(--gold-hell); background: var(--flaeche-hoch); }
 .leisten-knopf:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--gold-leise); }
 body.rechts-zu .leisten-knopf svg { transform: scaleX(-1); }
-/* Kopfzeile schmal: Chips behalten ihren Innenabstand, das Datum weicht (Uhrzeit bleibt) */
-@container mitte (max-width: 760px) {
-  .mitte-kopf { gap: 6px; }
-  .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 3px 7px; }
-}
-/* Ganz schmal: das Datum bleibt, dafür zeigen die Zustände oben nur noch ihren farbigen Punkt
-   (Maus drüber: Tooltip mit dem Zustand) */
-@container mitte (max-width: 700px) {
-  .mitte-kopf [data-kurz]::after { content: none; }
-  .mitte-kopf .verbindung, .mitte-kopf .verbindung-knopf { padding: 0; width: 22px; height: 22px; justify-content: center; }
-  .mitte-kopf .verbindung .punkt { width: 7px; height: 7px; }
-}
 
 /* Links eingeklappt: nur Symbole (Namen als Tooltip). Beim Ein-/Ausklappen bewegt sich nichts:
    die Symbole bleiben genau an ihrem Platz, nur die Breite gleitet und die Texte blenden weich aus. */
@@ -924,3 +896,18 @@ body.rechts-zu .live { visibility: hidden; transition: visibility 0s linear 220m
 .mitte-kopf, .gespraech-panel .panel-kopf { transition: padding-right 220ms ease; }
 body.rechts-zu .app:has(.gespraech-panel[hidden]) .mitte-kopf { padding-right: 190px; }
 body.rechts-zu .gespraech-panel .panel-kopf { padding-right: 186px; }
+
+/* ── Kopfzeile der Mitte: kein eigener Hintergrund (geht nahtlos in die Mitte über).
+   Was hineinpasst, misst app.js (kopfAnpassen) und kürzt nur so weit wie nötig:
+   k1 kurzes Datum · k2 kurze Namen · k3 nur Punkte (Tooltip) · k4 Datum weg ── */
+.mitte-kopf { background: none; overflow: hidden; gap: 10px; }
+.mitte-kopf > * { flex-shrink: 0; }
+.mitte-kopf .verbindung { white-space: nowrap; }
+.mitte-kopf .uhr { margin-left: auto; }
+.mitte-kopf.k1 .uhr-datum { display: none; }
+.mitte-kopf.k1 .uhr-datum-kurz { display: inline; }
+.mitte-kopf.k2 [data-kurz] .verbindung-text { display: none; }
+.mitte-kopf.k2 [data-kurz]::after { content: attr(data-kurz); }
+.mitte-kopf.k3 [data-kurz]::after { content: none; }
+.mitte-kopf.k3 [data-kurz] { padding: 0; width: 22px; height: 22px; justify-content: center; }
+.mitte-kopf.k4 .uhr-datum, .mitte-kopf.k4 .uhr-datum-kurz { display: none; }
