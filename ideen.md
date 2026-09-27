@@ -137,10 +137,11 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 
 ### ⚡⚡ Mittel: je ungefähr 1–3 Abende (13 Ideen)
 
-21. **Sprach-Diktat ins Vault** (Killer) – „Hey Luzzy, neue Idee: …“ – Luzzy schreibt es sauber als Notiz
-    mit Datum und Schlagworten in den richtigen Ordner.
-22. 🆕 **Diktiermodus für Mails und Texte** (Killer) – Einfach frei drauflos reden, auch länger. Luzzy macht daraus
+21. ✅ **Sprach-Diktat ins Vault** (Killer, gebaut 27.09.2026) – „Hey Luzzy, neue Idee: …“ – Luzzy schreibt es sauber als Notiz
+    mit Datum und Schlagworten in den richtigen Ordner (Jarves-OS\Ideen, das Original-Diktat steht mit drin).
+22. ✅ **Diktiermodus für Mails und Texte** (Killer, gebaut 27.09.2026) – Einfach frei drauflos reden, auch länger. Luzzy macht daraus
     eine saubere Mail oder einen Text, legt ihn in die Zwischenablage oder als Entwurf ab. Abschicken tut Felix.
+    „Diktat“ (lange Aufnahme, Pausen bis 3,5 Sekunden), „Diktat: …“ oder „Schreib eine Mail an …, dass …“.
 23. ✅ **„Der Laden redet mit dir“** (Killer, gebaut 27.09.2026) – Bei jeder Bestellung sagt Luzzy nicht nur „neue Bestellung“, sondern
     „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“. Ohne Namen und Adresse, nichts wird gespeichert.
 24. **Mini-Modus** (Optimierung) – Kleines, immer sichtbares Fenster in der Ecke: Reaktor, Uhr, Wetter,

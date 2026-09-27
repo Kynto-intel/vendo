@@ -87,7 +87,8 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
   }
 
   // Nimmt eine Äußerung auf. ohneSpracheNach: so lange wird auf den Anfang gewartet (ms).
-  async function aufnehmen({ ohneSpracheNach = 7000 } = {}) {
+  // Diktat: stilleNach (Pause, die das Ende bedeutet) und maxDauer länger.
+  async function aufnehmen({ ohneSpracheNach = 7000, stilleNach = STILLE_NACH_SPRACHE, maxDauer = MAX_AUFNAHME } = {}) {
     if (aufnahme) return null
     if (!(await starten())) return null
     return new Promise((fertig) => {
@@ -123,9 +124,9 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
           stilleSeit = null
         } else if (gesprochen) {
           stilleSeit ??= jetzt
-          if (jetzt - stilleSeit > STILLE_NACH_SPRACHE) return schluss(true)
+          if (jetzt - stilleSeit > stilleNach) return schluss(true)
         } else if (jetzt - start > ohneSpracheNach) return schluss(false)
-        if (jetzt - start > MAX_AUFNAHME) return schluss(true)
+        if (jetzt - start > maxDauer) return schluss(true)
         uhr = setTimeout(pruefen, 60)
       }
 

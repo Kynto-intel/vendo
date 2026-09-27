@@ -1,13 +1,42 @@
 // Gedankenspeicher: „Merk dir: Stoffproben bestellen“ (Sprache oder Tippen) oder hier eintippen.
 // Daten in plugins/gedanken/daten.json: { notizen: [{ id, text, zeit, erledigt }] }
 // Jede neue Notiz landet zusätzlich im Vault (Jarves-OS\Gedankenspeicher.md). Luzzy kennt die offenen Notizen.
+// „Neue Idee: …“ (Sprach-Diktat): Luzzy macht daraus eine saubere Notiz mit Titel und Schlagworten,
+// die als eigene Datei in Jarves-OS\Ideen\ landet; im Gedankenspeicher steht dann „Idee: <Titel>“.
 
 const neueId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const zeitText = (t) => new Date(t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 const ohneLuzzy = (text) => String(text || '').trim().replace(/^\s*(hey|hi|hallo|ok)?\s*luzzy[,!.:\s]*/i, '')
 
-// „Merk dir: …“, „Notier: …“, „Schreib dir auf, dass …“, „Neue Idee: …“, „Halt fest: …“
-const MERKEN = /^(?:merk(?:e)? dir|notier(?:e)?(?: dir)?|schreib(?:e)? (?:dir )?auf|halt(?:e)? fest|neue idee|idee:|gedanke:|notiz:)(?:\s+(?:mal|noch|kurz|schnell|bitte))*[:,]?\s+(?:dass\s+)?(.+)$/i
+// „Merk dir: …“, „Notier: …“, „Schreib dir auf, dass …“, „Halt fest: …“
+const MERKEN = /^(?:merk(?:e)? dir|notier(?:e)?(?: dir)?|schreib(?:e)? (?:dir )?auf|halt(?:e)? fest|gedanke:|notiz:)(?:\s+(?:mal|noch|kurz|schnell|bitte))*[:,]?\s+(?:dass\s+)?(.+)$/i
+// „Neue Idee: …“, „Idee: …“, „Ich hab eine Idee: …“
+const IDEE = /^(?:neue idee|idee|ich hab(?:e)? (?:eine|ne|'ne) idee)[:,.!]?\s+([\s\S]+)$/i
+
+// Auftrag an Luzzy: aus dem Diktat eine Notiz machen (festes Format, damit Jarves-OS sie ablegen kann)
+const IDEE_AUFTRAG = (roh) => `Felix hat eine Idee diktiert (Rohtext der Spracherkennung, kann Fehler haben). Mach daraus eine saubere Notiz für seinen Obsidian-Vault. Antworte genau in diesem Format, sonst nichts:
+TITEL: kurzer, treffender Titel (höchstens 8 Wörter)
+SCHLAGWORTE: 2 bis 5 Schlagworte, kleingeschrieben, mit Komma getrennt
+---
+Die Idee als kurze, klare Notiz in Markdown (ein, zwei Absätze oder Stichpunkte). Nichts erfinden, nichts weglassen.
+Keine Werkzeuge benutzen und nichts selbst speichern, das Ablegen übernimmt Jarves-OS.
+
+"""
+${roh}
+"""`
+
+// Luzzys Antwort zerlegen: { titel, schlagworte, text }; fehlt etwas, bleibt es leer
+export function ideeZerlegen(antwort) {
+  const roh = String(antwort || '').replace(/^```[a-z]*\n([\s\S]*?)\n```$/i, '$1').trim()
+  const titel = (roh.match(/^\s*\**titel\**:\s*(.+)$/im) || [])[1]?.replace(/[*#"„“]/g, '').trim() || ''
+  const schlagworte = ((roh.match(/^\s*\**schlagw(?:o|ö)rte?\**:\s*(.+)$/im) || [])[1] || '')
+    .split(/[,;]/)
+    .map((t) => t.replace(/[*#]/g, '').trim())
+    .filter(Boolean)
+  const trenner = roh.search(/^\s*---\s*$/m)
+  const text = (trenner >= 0 ? roh.slice(trenner).replace(/^\s*---\s*/, '') : roh.replace(/^\s*\**(?:titel|schlagw(?:o|ö)rte?)\**:.*$/gim, '')).trim()
+  return { titel, schlagworte, text }
+}
 // „Was wollte ich mir merken?“, „Was hab ich mir gemerkt?“, „Lies meine Notizen vor“
 const ABFRAGE = /^(?:was (?:wollte ich mir merken|hab(?:e)? ich mir (?:gemerkt|notiert|aufgeschrieben))|(?:zeig|lies|sag|nenn)(?: mir)? (?:meine )?(?:gedanken|notizen|ideen)(?: vor)?|meine (?:gedanken|notizen))$/
 
@@ -43,9 +72,40 @@ export async function starten(ctx) {
     }
   }
 
-  // Sprache/Text: „Merk dir …“ und „Was wollte ich mir merken?“ beantwortet das Plugin selbst
-  ctx.befehl(async (text) => {
+  // „Neue Idee: …“ → Luzzy schreibt sie sauber, Jarves-OS legt sie als Notiz im Vault ab
+  async function ideeDiktiert(roh, { gesprochen = false } = {}) {
+    roh = roh.trim()
+    const zeit = Date.now()
+    const ok = await ctx.luzzy(IDEE_AUFTRAG(roh), {
+      anzeige: `💡 Neue Idee: ${roh}`,
+      gesprochen,
+      nachher: async (antwort) => {
+        const idee = ideeZerlegen(antwort)
+        const titel = idee.titel || roh.split(/\s+/).slice(0, 6).join(' ')
+        let pfad
+        try {
+          pfad = await ctx.aufrufen('ideeAnlegen', { titel, schlagworte: idee.schlagworte, text: idee.text || roh, original: roh, zeit })
+        } catch (e) {
+          console.warn('Idee Vault:', e.message)
+          await merken(`Idee: ${roh}`)
+          return 'Den Vault hab ich gerade nicht gefunden. Die Idee steht erstmal im Gedankenspeicher.'
+        }
+        daten.notizen.push({ id: neueId(), text: `Idee: ${titel}`, zeit, erledigt: false, datei: pfad })
+        await speichern()
+        return `Deine Idee „${titel}“ liegt im Vault, im Ordner Jarves-OS, Ideen.`
+      }
+    })
+    if (ok !== false) return true
+    // Luzzy antwortet gerade noch oder Hermes ist weg: nichts verlieren
+    await merken(`Idee: ${roh}`)
+    return 'Luzzy ist gerade beschäftigt, ich hab die Idee erstmal im Gedankenspeicher notiert.'
+  }
+
+  // Sprache/Text: „Merk dir …“, „Neue Idee: …“ und „Was wollte ich mir merken?“ beantwortet das Plugin selbst
+  ctx.befehl(async (text, { gesprochen } = {}) => {
     const satz = ohneLuzzy(text)
+    const idee = IDEE.exec(satz)
+    if (idee) return ideeDiktiert(idee[1], { gesprochen })
     const treffer = MERKEN.exec(satz)
     if (treffer) return merken(treffer[1])
     const frage = satz.toLowerCase().replace(/[?!.]/g, '').replace(/\s+/g, ' ').trim()

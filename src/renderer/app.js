@@ -13,6 +13,7 @@ import { ablageEinrichten, ablageErgebnis, ablageOeffnen } from './zwischenablag
 import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
+import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
@@ -138,7 +139,7 @@ function piep(hoch = true) {
 }
 
 let sprichtGerade = false // verhindert doppelten Start
-async function sprechenStarten({ ohneSpracheNach = 7000, leise = false } = {}) {
+async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat = false } = {}) {
   if (mikrofon.nimmtAuf()) return mikrofon.stoppen() // zweiter Druck = fertig gesprochen
   if (sprichtGerade || !verbunden) return
   sprichtGerade = true
@@ -154,11 +155,14 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false } = {}) {
     if (!leise) piep(true)
     hoert = true
     zustandZeigen()
-    const ton = await mikrofon.aufnehmen({ ohneSpracheNach })
+    if (diktat) untertitelZeigen('Diktat läuft. Sprich ganz normal, auch länger. Fertig: kurz Pause machen oder aufs Mikrofon klicken.', { fertig: true })
+    // Diktat: Denkpausen bis 3,5 Sekunden, höchstens 5 Minuten
+    const ton = await mikrofon.aufnehmen(diktat ? { ohneSpracheNach: 10000, stilleNach: 3500, maxDauer: 300000 } : { ohneSpracheNach })
     hoert = false
     welle.pegel(null)
     document.documentElement.style.setProperty('--pegel', '0')
     if (!ton) {
+      if (diktat) untertitelZeigen('Ich hab nichts gehört. Sag „Diktat“, wenn du nochmal willst.', { fertig: true })
       zustandZeigen()
       return
     }
@@ -175,6 +179,11 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false } = {}) {
     zustandZeigen()
     if (!text) {
       untertitelZeigen('Hab dich nicht verstanden. Nochmal?', { fertig: true })
+      return
+    }
+    if (diktat) {
+      losgelegt = true
+      await diktatVerarbeiten({ art: '', inhalt: text }, { gesprochen: true })
       return
     }
     const feld = document.querySelector('.befehl .eingabe-text')
@@ -568,6 +577,9 @@ const SPRACHBEFEHLE = [
   ['Nicht stören für … Minuten', 'oder „bis 15 Uhr keine Meldungen“', 'ruhe still'],
   ['Meldungen wieder an', 'beendet Nicht stören', 'ruhe vorbei'],
   ['Merk dir: …', 'Gedankenspeicher', 'notiz idee notieren'],
+  ['Neue Idee: …', 'Luzzy schreibt sie sauber als Notiz in den Vault (Jarves-OS, Ideen)', 'idee notiz vault diktat schlagworte'],
+  ['Diktat', 'frei reden, auch länger: Luzzy macht eine fertige Mail oder Nachricht daraus (Zwischenablage)', 'diktieren diktiermodus mail text', () => sprechenStarten({ diktat: true })],
+  ['Schreib eine Mail an …, dass …', 'fertige Mail in der Zwischenablage, abschicken tust du selbst', 'mail email nachricht whatsapp brief entwurf diktat'],
   ['Was wollte ich mir merken?', '', 'gedanken notizen'],
   ['Neue Aufgabe: … bis Freitag', 'oder „morgen um 14 Uhr“', 'todo to-do liste'],
   ['Erledigt: …', 'Aufgabe abhaken', 'fertig abhaken aufgabe'],
@@ -706,7 +718,27 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   if (stoeren) return nichtStoerenSetzen(stoeren.an || 0, { gesprochen }), true
   const timerAntwort = timerBefehl(text)
   if (timerAntwort) return lokalAntworten(timerAntwort, { gesprochen }), true
+  const diktat = diktatErkennen(text)
+  if (diktat) return diktatVerarbeiten(diktat, { gesprochen }), true
   return false
+}
+
+// Diktiermodus (siehe diktat.js): „Diktat“ allein startet eine lange Aufnahme, sonst macht Luzzy den Text fertig
+async function diktatVerarbeiten(diktat, { gesprochen = false } = {}) {
+  if (diktat.start) {
+    setTimeout(() => sprechenStarten({ diktat: true }), 150) // läuft evtl. noch in der vorigen Aufnahme
+    return
+  }
+  const kurz = diktat.inhalt.replace(/\s+/g, ' ')
+  const ok = await anLuzzy(diktatAuftrag(diktat), {
+    anzeige: `✍️ Diktat${diktat.art ? ` (${diktat.art})` : ''}: ${kurz.length > 300 ? `${kurz.slice(0, 300)} …` : kurz}`,
+    gesprochen,
+    nachher: (antwort) => diktatAblegen(antwort, diktat)
+  })
+  if (ok !== false) return
+  // Luzzy kann gerade nicht: nichts verlieren, das Diktat roh in die Zwischenablage
+  await api.zwischenablage.schreiben(diktat.inhalt).catch(() => {})
+  lokalAntworten(`${verbunden ? 'Luzzy antwortet gerade noch' : 'Hermes ist gerade nicht verbunden'}. Ich hab dir das Diktat erstmal roh in die Zwischenablage gelegt.`, { gesprochen })
 }
 
 let losgelegt = false // Felix hat schon etwas gesagt oder getippt (dann keine Begrüßung mehr dazwischen)
@@ -750,7 +782,7 @@ let vorleseStrom = null
 let vorleseBis = 0 // bis hierhin ist der Text schon an die Stimme gegangen
 let vorleseZeichen = 0
 function vorleseStromStarten() {
-  vorleseStrom = einstellungen?.vorlesen || vorlesenErzwungen ? vorleser.strom(stimmOptionen()) : null
+  vorleseStrom = !luzzyNachher && (einstellungen?.vorlesen || vorlesenErzwungen) ? vorleser.strom(stimmOptionen()) : null
   vorleseBis = 0
   vorleseZeichen = 0
 }
@@ -767,6 +799,21 @@ function vorleseStromFuettern(roh, { schluss = false } = {}) {
   vorleseZeichen += vorleseStrom.stueck(s.stueck)
 }
 
+// Luzzys Antwort weiterverarbeiten (Idee in den Vault, Diktat in die Zwischenablage) und kurz Bescheid geben
+async function nachherAusfuehren(nachher, antwort, { sprechen }) {
+  let satz = ''
+  try {
+    satz = String((await nachher(antwort)) || '')
+  } catch (e) {
+    satz = `Das hat nicht geklappt: ${e.message}`
+  }
+  if (!satz) return weiterZuhoeren()
+  aktivitaetMelden(satz)
+  $('untertitel').insertAdjacentHTML('beforeend', `<span class="leise-hinweis">${maskieren(satz)}</span>`)
+  if (sprechen) vorleser.sprechen(satz, stimmOptionen())
+  else weiterZuhoeren()
+}
+
 // „Stopp“, „Halt“, „Das reicht“: Luzzy hört sofort auf (geht nicht an Hermes)
 const STOPPWOERTER = new Set(['stopp', 'stop', 'halt', 'sei still', 'hör auf', 'schluss', 'genug', 'das reicht', 'danke das reicht', 'ok stopp', 'okay stopp', 'still', 'pst', 'psst', 'schon gut'])
 function stoppen() {
@@ -781,12 +828,16 @@ window.addEventListener('keydown', (e) => {
 })
 
 // Schickt einen Auftrag an Luzzy. anzeige = was im Gespräch als Felix' Nachricht erscheint.
+// nachher(antwort) → Satz für Felix: Jarves-OS macht mit der Antwort etwas (Vault, Zwischenablage). Die Antwort
+// selbst wird dann nicht vorgelesen, nur dieser Satz.
 let vorlesenErzwungen = false
-async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false } = {}) {
+let luzzyNachher = null
+async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = false, nachher = null } = {}) {
   if (!text || beschaeftigt || !verbunden) return false
   letzteEingabeGesprochen = gesprochen
   letzteFrage = anzeige
   vorlesenErzwungen = Boolean(vorlesen)
+  luzzyNachher = typeof nachher === 'function' ? nachher : null
   vorleser.stoppen()
   nachrichtAnzeigen('felix', anzeige)
   untertitelZeigen('')
@@ -798,6 +849,7 @@ async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = fa
     await api.hermes.senden('zentrale', text)
   } catch (e) {
     beschaeftigt = false
+    luzzyNachher = null
     laufendeBeenden()
     zustandZeigen()
     systemNachricht(`Konnte nicht senden: ${e.message}`)
@@ -947,7 +999,12 @@ api.hermes.beiEreignis((ev) => {
         .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
       zustandZeigen()
       const gelungen = text && p.status !== 'error' && !p.error
-      if (vorleseStrom && gelungen) {
+      const nachher = luzzyNachher
+      luzzyNachher = null
+      if (nachher) {
+        if (gelungen) nachherAusfuehren(nachher, text, { sprechen: Boolean(einstellungen?.vorlesen || vorlesenErzwungen || letzteEingabeGesprochen) })
+        else weiterZuhoeren()
+      } else if (vorleseStrom && gelungen) {
         vorleseStromFuettern(text, { schluss: true }) // Rest vorlesen, dann ist der Strom fertig
         vorleseStrom.ende()
       } else if ((einstellungen?.vorlesen || vorlesenErzwungen) && gelungen) vorleser.sprechen(text, stimmOptionen())
