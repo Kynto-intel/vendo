@@ -7,22 +7,19 @@ Der Plan und der Bau-Stand stehen in `Jarves-OS.md`.
 
 ## Offene Entscheidungen
 
-### 1. Freigaben für Luzzy und die Crew
-Luzzys Regeln in ihrer `SOUL.md` sagen: nichts veröffentlichen, nichts im Shop ändern, keine neuen Dateien ohne Felix' Ja.
-Bei der Planung stand aber auch: Die Crew darf ohne Freigabe senden und veröffentlichen.
-- **Variante A (gilt aktuell):** Regeln bleiben. Jarves-OS könnte Freigaben bequemer machen (Luzzy fragt per Stimme, Felix sagt „Ja“ oder klickt „Freigeben“).
-- **Variante B:** Felix lockert die Regeln in der SOUL.md, Jarves-OS protokolliert jede Aktion.
-
-### 2. Kürzere Antworten bei Spracheingabe
-Wenn Felix mit Luzzy spricht statt schreibt, antwortet sie kürzer (Hinweis an Hermes, dass die Frage gesprochen kam).
+### 1. ✅ Freigaben für Luzzy und die Crew (entschieden: Variante A, gebaut 28.09.2026)
+Luzzys Regeln in der `SOUL.md` bleiben (nichts veröffentlichen, nichts im Shop ändern ohne Felix' Ja). Jarves-OS macht das Freigeben bequemer:
+- **Hermes-Freigaben:** Will Luzzy oder die Crew einen Befehl ausführen, den Hermes für riskant hält, erscheint über der Eingabe
+  eine Karte (Einmal erlauben · Für dieses Gespräch · Ablehnen). Luzzy sagt laut, worum es geht; „Ja“ / „Nein“ per Stimme oder Tippen reicht.
+  (Vorher hat Hermes solche Befehle in Jarves-OS einfach abgebrochen, weil Jarves-OS keine Rückfragen annahm.)
+- **Luzzys Ja-Fragen:** Endet ihre Antwort mit einer Frage wie „Soll ich das so anlegen?“, stehen darunter „Ja, mach“ und „Nein“.
 
 ### 3. Bots direkt ansprechen
 Zusätzlich zu Luzzy als Chefin einzelne Bots direkt anschreiben, z. B. im Crew-Tab (Recherche-, Schreib-, Code-Bot).
 
-### 4. Rollen der Bots breiter fassen
-Die Bots sind nur auf den Blog zugeschnitten (Recherche für Artikel, Artikel schreiben, HTML-Vorlage).
-Möglich: Recherche-Bot für alle Recherchen, Schreib-Bot für alle Texte, Code-Bot für alle Technik.
-Felix: vorerst so lassen.
+### 4. ✅ Rollen der Bots (erledigt von Felix, 27.09.2026)
+Felix hat die Crew neu aufgestellt, als Design-Kette: **Kira** (Trend-Scout) → **Lira** (Design-Konzept) → **Milla** (Listing-Texte für Shopify).
+Der Crew-Tab erkennt die Profile automatisch.
 
 ### 5. Morgenbericht automatisch
 **Erledigt über Idee 8:** Routine „Morgenbericht“ hat einen Zeitplan (Uhrzeit + Wochentage), einfach im Tab „Routinen“ einschalten. Läuft, solange Jarves-OS offen ist.
@@ -35,10 +32,12 @@ Hängt eng mit Idee 8 (Routinen) zusammen.
 Die Agenten legen lange Texte (Recherchen, Berichte, Strategien) automatisch als Datei in `Donnerwolf\Bibliothek` ab statt in den Chat.
 Die Anzeige in Jarves-OS ist schon vorbereitet. Braucht eine Regel für Luzzy und die Bots (SOUL.md oder Hermes-Skill), erst nach Felix' Ja.
 
-### 7. Termine per Sprache
-Ein kleiner Hermes-Skill, damit Luzzy selbst Termine in den Jarves-Kalender eintragen kann,
-z. B. „Luzzy, trag mir morgen um 10 Zahnarzt ein.“
-(Termine liegen in `jarves-os\plugins\kalender\daten.json`.) Update-fest im Profil donnerwolf, erst nach Felix' Ja.
+### 7. ✅ Termine per Sprache (gebaut 28.09.2026)
+Luzzy trägt Termine selbst in den Jarves-Kalender ein, ändert und löscht sie: „Luzzy, trag mir morgen um 10 Zahnarzt ein.“
+- Hermes-Skill `jarves-kalender` im Profil donnerwolf (update-fest): `profiles\donnerwolf\skills\productivity\jarves-kalender\`
+  mit Hilfsprogramm `scripts\termin.py` (neu, ändern, löschen, suchen, liste; versteht „morgen“, „freitag“, „3.10.“, meldet Überschneidungen).
+- Jarves-OS zeigt Luzzys Einträge sofort an (beobachtet die Kalender-Datei) und überschreibt sie beim eigenen Speichern nicht.
+- Geht überall, wo Luzzy das Terminal-Werkzeug hat: Jarves-OS und Hermes-App. In Telegram nicht (dort hat Luzzy kein Terminal).
 
 ---
 
