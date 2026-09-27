@@ -461,8 +461,8 @@ function leistenAnwenden() {
   document.body.classList.toggle('links-zu', l.links === false)
   document.body.classList.toggle('rechts-zu', l.rechts === false)
   $('links-umschalten').title = l.links === false ? 'Leiste aufklappen (Strg+B)' : 'Leiste einklappen (Strg+B)'
-  $('links-umschalten').querySelector('span').textContent = l.links === false ? 'Aufklappen' : 'Einklappen'
-  $('rechts-umschalten').classList.toggle('an', l.rechts !== false)
+  $('rechts-umschalten').title = l.rechts === false ? 'Rechte Spalte aufklappen (Strg+J)' : 'Rechte Spalte einklappen (Strg+J)'
+  titelfarbeSetzen()
 }
 function leisteUmschalten(seite) {
   // Erst sofort übernehmen, dann speichern: zweimal schnell hintereinander darf sich nicht überschreiben
@@ -665,6 +665,7 @@ const panelGeschlossen = () => panel.hidden
 
 function panelSetzen(offen, { speichern = true } = {}) {
   panel.hidden = !offen
+  titelfarbeSetzen()
   $('vorschau').classList.toggle('an', offen)
   $('vorschau-aktion').textContent = offen ? 'Schließen ‹' : 'Öffnen ›'
   if (offen) {
@@ -1025,11 +1026,20 @@ function tageszeitAnwenden() {
   const aus = einstellungen?.tageszeitFarben === false && !test
   if (aus) delete document.documentElement.dataset.tageszeit
   else document.documentElement.dataset.tageszeit = zeit
-  // Fensterknöpfe in der Farbe der rechten Spalte (--leiste, siehe style.css)
-  const leiste = { morgen: '#121214', tag: '#0e0e10', abend: '#0f0d0b', nacht: '#090807' }[aus ? 'tag' : zeit]
-  if (leiste !== tageszeitLeiste) api.fenster.titelfarbe((tageszeitLeiste = leiste))
+  farbZeit = aus ? 'tag' : zeit
+  titelfarbeSetzen()
 }
-let tageszeitLeiste = '#0e0e10'
+// Fensterknöpfe oben rechts (Windows zeichnet sie selbst) in der Farbe dessen, was darunter liegt:
+// rechte Spalte offen → ihre Farbe; zu → Gespräch (falls offen) oder die Mitte. Werte wie in style.css.
+let farbZeit = 'tag'
+let titelfarbe = '#0e0e10'
+function titelfarbeSetzen() {
+  const leiste = { morgen: '#121214', tag: '#0e0e10', abend: '#0f0d0b', nacht: '#090807' }[farbZeit]
+  const mitte = { morgen: '#17171a', tag: '#131315', abend: '#141210', nacht: '#0d0c0b' }[farbZeit]
+  const rechtsZu = document.body.classList.contains('rechts-zu')
+  const farbe = !rechtsZu || !$('gespraech-panel').hidden ? leiste : mitte
+  if (farbe !== titelfarbe) api.fenster.titelfarbe((titelfarbe = farbe))
+}
 setInterval(tageszeitAnwenden, 60000)
 
 function animationenAnwenden() {

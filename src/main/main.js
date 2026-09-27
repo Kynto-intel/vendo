@@ -50,8 +50,8 @@ function fensterErstellen() {
     width: gemerkt?.width || 1440,
     height: gemerkt?.height || 900,
     ...(gemerkt ? { x: gemerkt.x, y: gemerkt.y } : {}),
-    minWidth: 1000,
-    minHeight: 640,
+    minWidth: 720, // klein genug fürs Andocken an die Bildschirmhälfte (Full HD: 960 px)
+    minHeight: 560,
     backgroundColor: '#0E0E10',
     title: 'Jarves-OS',
     autoHideMenuBar: true,
@@ -240,6 +240,7 @@ ipcMain.handle('start:autostart', (_e, an) => {
 // Farben nach Tageszeit: Fensterknöpfe oben rechts in der Farbe der rechten Spalte
 ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {
   if (!/^#[0-9a-f]{6}$/i.test(String(farbe)) || !fenster || fenster.isDestroyed()) return
+  if (process.env.JARVES_TEST_JS) console.log('TEST-TITELFARBE:', farbe) // nur Testmodus
   try {
     fenster.setTitleBarOverlay({ color: farbe, symbolColor: '#C9A14A', height: 38 })
   } catch {
