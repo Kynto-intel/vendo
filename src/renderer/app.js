@@ -14,6 +14,7 @@ import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
 import { paletteEinrichten, paletteOeffnen } from './palette.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
+import { gespraecheEinrichten, gespraecheLaden, gespraechBefehl } from './gespraeche.js'
 import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten } from './dateiansicht.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
@@ -638,6 +639,9 @@ const SPRACHBEFEHLE = [
   ['Alle Timer stoppen', '', 'timer löschen aus'],
   ['Nicht stören für … Minuten', 'oder „bis 15 Uhr keine Meldungen“', 'ruhe still'],
   ['Meldungen wieder an', 'beendet Nicht stören', 'ruhe vorbei'],
+  ['Neues Gespräch …', 'eigenes Thema, z. B. „Neues Gespräch Shop“; Luzzy behält pro Thema den Faden', 'thema chat gespräch neu'],
+  ['Wechsel zum Gespräch …', 'auch oben im Gesprächsfenster auswählen', 'thema chat gespräch wechseln'],
+  ['Welche Gespräche gibt es?', '', 'themen gespräche liste'],
   ['Such die Datei … und öffne sie', 'zeigt sie direkt in Jarves (Notiz, Bild, PDF, Video …)', 'datei suchen öffnen finden dokument bild pdf'],
   ['Öffne die Datei …', 'auch „Zeig mir das Bild …“, „Öffne das PDF …“; mehrere Treffer: „die zweite“', 'datei öffnen zeigen bild foto pdf video tabelle'],
   ['Merk dir: …', 'Gedankenspeicher', 'notiz idee notieren'],
@@ -787,6 +791,9 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   if (timerAntwort) return lokalAntworten(timerAntwort, { gesprochen }), true
   const diktat = diktatErkennen(text)
   if (diktat) return diktatVerarbeiten(diktat, { gesprochen }), true
+  // Mehrere Gespräche: „Neues Gespräch Shop“, „Wechsel zum Gespräch Privat“, „Welche Gespräche gibt es?“
+  const gespraech = gespraechBefehl(text)
+  if (gespraech) return dateiAntworten(gespraech, { gesprochen }), true
   // Datei suchen und in Jarves-OS zeigen; bei mehreren Treffern: „die zweite“
   const nummer = trefferNummer(text)
   if (nummer) return dateiAntworten(trefferOeffnen(nummer), { gesprochen }), true
@@ -803,6 +810,18 @@ async function dateiAntworten(arbeit, { gesprochen }) {
   }
 }
 dateiansichtEinrichten({ beiFehler: (e) => systemNachricht(`Datei: ${e.message}`) })
+gespraecheEinrichten({
+  darfWechseln: () => verbunden && !beschaeftigt,
+  // Vor dem Wechsel: Luzzy still, der neue Verlauf wird auf jeden Fall gezeichnet
+  vorWechsel: () => {
+    vorleser.stoppen()
+    aktuelleAntwort = null
+    gezeigterVerlauf = ''
+    untertitelZeigen('')
+  },
+  melden: (satz) => untertitelZeigen(satz, { fertig: true }),
+  beiFehler: (e) => systemNachricht(`Gespräch: ${e.message}`)
+})
 
 // Diktiermodus (siehe diktat.js): „Diktat“ allein startet eine lange Aufnahme, sonst macht Luzzy den Text fertig
 async function diktatVerarbeiten(diktat, { gesprochen = false } = {}) {
@@ -1136,6 +1155,7 @@ api.hermes.beiStatus(statusZeigen)
 
 function statusZeigen({ zustand: z, text }) {
   verbunden = z === 'bereit'
+  if (verbunden) gespraecheLaden()
   const v = $('verbindung')
   v.dataset.zustand = z
   v.querySelector('.verbindung-text').textContent =

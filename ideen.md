@@ -149,8 +149,11 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 25. 🆕 **Datei oder Bild an Luzzy** (Optimierung) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
     „Was steht da drin?“, „Fass das zusammen.“ (Für Bilder braucht es ein Modell, das Bilder versteht.)
 26. **Suche über alles** (Optimierung) – Ein Suchfeld (Strg+F) für Vault, Gespräche, Termine, Bestellungen, Mails.
-27. 🆕 **Mehrere Gespräche** (Optimierung) – Themen getrennt halten (z. B. Shop, Privat, ein Projekt): Liste im
-    Gesprächs-Fenster, Wechsel mit einem Klick, Luzzy verliert nicht den Faden.
+27. ✅ **Mehrere Gespräche** (Optimierung, gebaut 27.09.2026) – Themen getrennt halten (z. B. Shop, Privat, ein Projekt): Liste im
+    Gesprächs-Fenster, Wechsel mit einem Klick, Luzzy verliert nicht den Faden. Auch per Stimme: „Neues Gespräch Shop“,
+    „Wechsel zum Gespräch Privat“, „Welche Gespräche gibt es?“. Jedes Thema ist eine eigene Hermes-Unterhaltung.
+    ➕ Dazu (Felix' Wunsch): **Datei suchen und in Jarves öffnen** – „Luzzy, such die Datei … und öffne sie“: Notizen,
+    Texte, Tabellen, Bilder, PDF, Videos und Musik erscheinen in einem Fenster über Jarves-OS, ohne eigenen Tab.
 28. 🆕 **Hermes-Update-Wächter** (Killer) – Meldet, wenn es eine neue Hermes-Version gibt, und erklärt in einfachen
     Worten, was neu ist. Sichert vorher Profile und Einstellungen und prüft nach dem Update, ob Jarves-OS noch alles kann.
 29. **Finanzen & Kosten** (Plugin) – Einnahmen vs. Ausgaben im Monat (Shopify-Umsatz, Gebühren, KI-Kosten aus

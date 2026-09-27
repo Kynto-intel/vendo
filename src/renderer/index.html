@@ -202,7 +202,11 @@
       <section class="gespraech-panel" id="gespraech-panel" hidden>
         <div class="griff" id="griff" title="Ziehen, um die Breite zu ändern"></div>
         <header class="zug panel-kopf">
-          <h3>Gespräch mit Luzzy</h3>
+          <div class="gespraech-wahl">
+            <h3>Gespräch</h3>
+            <button class="gespraech-thema-knopf" id="gespraech-thema-knopf" type="button" title="Gespräch wechseln oder ein neues anlegen (auch per Stimme: „Neues Gespräch Shop“)"><span id="gespraech-thema">Allgemein</span><span class="gt-pfeil">▾</span></button>
+            <div class="gespraech-menue hud" id="gespraech-menue" hidden></div>
+          </div>
           <button class="titel-knopf klein" id="gespraech-schliessen" type="button" title="Schließen (Strg+K)">✕</button>
         </header>
         <div class="gespraech" id="gespraech">

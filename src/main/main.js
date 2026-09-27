@@ -20,9 +20,27 @@ const dateisuche = require('./dateisuche')
 
 const hermes = new Hermes()
 // Die Zentrale-Unterhaltung über ihre feste ID wiederfinden (Titel kann Hermes ändern)
-hermes.gemerkteSession = () => einstellungen.laden().zentraleSession || null
+// Mehrere Gespräche (#27): Liste der Themen in den Einstellungen, jedes mit seiner Hermes-Unterhaltung.
+// „Allgemein“ ist die bisherige Zentrale (Titel „Jarves-OS“), neue Themen heißen in Hermes „Jarves-OS · <Name>“.
+function gespraeche() {
+  const e = einstellungen.laden()
+  let liste = (Array.isArray(e.gespraeche) ? e.gespraeche : []).filter((g) => g && typeof g.name === 'string' && g.name.trim())
+  if (!liste.length) liste = [{ name: 'Allgemein', titel: 'Jarves-OS', session: e.zentraleSession || null }]
+  const aktiv = liste.find((g) => g.name === e.aktivesGespraech) || liste[0]
+  return { liste, aktiv }
+}
+hermes.gemerkteSession = () => gespraeche().aktiv.session || null
+hermes.gemerkterTitel = () => gespraeche().aktiv.titel || 'Jarves-OS'
 hermes.sessionMerken = (id) => {
-  if (einstellungen.laden().zentraleSession !== id) einstellungen.speichern({ zentraleSession: id })
+  const { liste, aktiv } = gespraeche()
+  if (aktiv.session === id && einstellungen.laden().gespraeche) return
+  aktiv.session = id
+  einstellungen.speichern({ gespraeche: liste, aktivesGespraech: aktiv.name, zentraleSession: id })
+}
+const gespraechName = (name) => String(name || '').replace(/[\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40)
+const gespraecheFuerOberflaeche = () => {
+  const { liste, aktiv } = gespraeche()
+  return { liste: liste.map((g) => ({ name: g.name })), aktiv: aktiv.name }
 }
 let fenster = null
 
@@ -146,6 +164,29 @@ ipcMain.handle('hermes:status', () => ({ zustand: hermes.zustand, text: hermes.s
 ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(kanal), String(text || '').slice(0, 20000)))
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
+ipcMain.handle('gespraeche:liste', () => gespraecheFuerOberflaeche())
+// Wechseln oder (gibt es den Namen noch nicht) neu anlegen
+ipcMain.handle('gespraeche:wechseln', async (_e, name) => {
+  name = gespraechName(name)
+  if (!name) throw new Error('Kein Name für das Gespräch.')
+  const { liste } = gespraeche()
+  let ziel = liste.find((g) => g.name.toLowerCase() === name.toLowerCase())
+  if (!ziel) {
+    if (liste.length >= 30) throw new Error('Schon 30 Gespräche. Lösch erst eins.')
+    ziel = { name, titel: `Jarves-OS · ${name}`, session: null }
+    liste.push(ziel)
+  }
+  einstellungen.speichern({ gespraeche: liste, aktivesGespraech: ziel.name })
+  await hermes.gespraechOeffnen(ziel.session, ziel.titel)
+  return gespraecheFuerOberflaeche()
+})
+// Aus der Liste nehmen (die Unterhaltung bleibt in Hermes erhalten). Das aktive Gespräch nicht.
+ipcMain.handle('gespraeche:entfernen', (_e, name) => {
+  const { liste, aktiv } = gespraeche()
+  if (aktiv.name === name) throw new Error('Das offene Gespräch kann nicht entfernt werden. Erst wechseln.')
+  einstellungen.speichern({ gespraeche: liste.filter((g) => g.name !== name) })
+  return gespraecheFuerOberflaeche()
+})
 
 // Nur lesende Abfragen an diese Hermes-Bereiche (Jobs, Crew, Kosten, Kanban, Modell-Liste, Status)
 const LESEN_ERLAUBT = [/^\/api\/cron\/jobs/, /^\/api\/profiles/, /^\/api\/analytics\//, /^\/api\/plugins\/kanban\//, /^\/api\/model\/options/, /^\/api\/status$/, /^\/api\/sessions/]
