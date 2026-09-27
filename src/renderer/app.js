@@ -60,14 +60,19 @@ let wakeGrund = '' // warum „Hey Luzzy“ nicht zuhört (siehe wakeEinrichten)
 const reaktor = reaktorErstellen($('reaktor-rahmen'))
 const welle = welleErstellen($('welle'))
 
+let reinredenAus = () => {} // beendet die Reinreden-Erkennung, solange Luzzy nicht spricht
 const vorleser = vorleserErstellen({
   beiStart: () => {
     spricht = true
-    // „Hey Luzzy“ darf sie unterbrechen (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
-    mikrofon.wakeSetzen(wakeAktiv && einstellungen?.sprache?.unterbrechen !== false)
+    // „Hey Luzzy“ oder einfach Reinreden unterbricht sie (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
+    const unterbrechen = einstellungen?.sprache?.unterbrechen !== false
+    mikrofon.wakeSetzen(wakeAktiv && unterbrechen)
+    reinredenAus()
+    if (unterbrechen && verbunden) reinredenAus = mikrofon.reinreden({ beiSprache: () => sprechenStarten({ ohneSpracheNach: 5000 }) })
     zustandZeigen()
   },
   beiEnde: () => {
+    reinredenAus()
     spricht = false
     mikrofon.wakeSetzen(wakeAktiv)
     zustandZeigen()
@@ -80,6 +85,7 @@ const vorleser = vorleserErstellen({
   beiFehler: (e) => systemNachricht(`Stimme: ${e.message}`),
   // Mitten im Sprechen abgebrochen (Felix redet, Esc, „Stopp“): wieder bereit, ohne weiter zuzuhören
   beiAbbruch: () => {
+    reinredenAus()
     spricht = false
     mikrofon.wakeSetzen(wakeAktiv)
     zustandZeigen()
@@ -564,7 +570,7 @@ function paletteEinfuegen(text) {
 // Sprachbefehle (gehen gesprochen nach „Hey Luzzy“ oder getippt). Mit „…“: Beispiel zum Anpassen in die Eingabe.
 const SPRACHBEFEHLE = [
   ['Hey Luzzy', 'Luzzy hört zu (oder Strg+Leertaste)', 'aktivierungswort zuhören', () => sprechenStarten()],
-  ['Hey Luzzy (während sie spricht)', 'unterbricht sie, du kannst direkt reden', 'unterbrechen dazwischen'],
+  ['Einfach reinreden (während sie spricht)', 'Luzzy hört auf und hört dir zu, auch „Hey Luzzy“ geht', 'unterbrechen dazwischen reden'],
   ['Stopp', 'Luzzy hört sofort auf (auch „Halt“, „Das reicht“, „Psst“)', 'still ruhe aufhören abbrechen'],
   ['Wiederhol das', 'letzte Antwort nochmal', 'wie bitte nochmal vorlesen'],
   ['Was hast du gerade gesagt?', '', 'wiederholen'],

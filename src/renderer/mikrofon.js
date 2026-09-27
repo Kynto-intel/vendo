@@ -7,6 +7,8 @@
 const STILLE_NACH_SPRACHE = 1300 // ms
 const MAX_AUFNAHME = 45000 // ms
 const SPRACH_SCHWELLE = 0.018 // RMS ab der es als Sprache zählt
+const REINREDEN_SCHWELLE = 0.045 // Reinreden, während Luzzy spricht: deutlich lauter als normale Sprache nötig
+const REINREDEN_DAUER = 300 // ms am Stück, damit ein Huster oder Klopfen nicht reicht
 
 export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
   let strom = null
@@ -138,9 +140,45 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
     })
   }
 
+  // Reinreden, während Luzzy spricht: meldet beiSprache, sobald Felix deutlich lauter ist als das, was von
+  // Luzzys eigener Stimme noch im Mikrofon ankommt (Echo-Unterdrückung filtert das meiste schon weg).
+  // Gibt eine Funktion zum Beenden zurück.
+  function reinreden({ beiSprache }) {
+    let aus = false
+    let uhr = 0
+    let echo = 0 // wie laut Luzzys Stimme im Mikrofon noch ist (gleitend)
+    let lautSeit = 0
+    const start = performance.now()
+    const pruefen = () => {
+      if (aus) return
+      if (!aufnahme && analyse) {
+        const p = pegel()
+        const jetzt = performance.now()
+        const schwelle = Math.min(0.12, Math.max(REINREDEN_SCHWELLE, echo * 2.5)) // gedeckelt: redet Felix schon beim Start, zählt das nicht als Echo
+        if (jetzt - start > 500 && p > schwelle) {
+          lautSeit ||= jetzt
+          if (jetzt - lautSeit > REINREDEN_DAUER) {
+            aus = true
+            return beiSprache()
+          }
+        } else {
+          lautSeit = 0
+          echo = Math.max(p, echo * 0.97)
+        }
+      }
+      uhr = setTimeout(pruefen, 50)
+    }
+    starten().then((ok) => ok && pruefen())
+    return () => {
+      aus = true
+      clearTimeout(uhr)
+    }
+  }
+
   return {
     starten,
     aufnehmen,
+    reinreden,
     stoppen: () => aufnahme?.stoppen(),
     abbrechen: () => aufnahme?.abbrechen(),
     nimmtAuf: () => Boolean(aufnahme),
