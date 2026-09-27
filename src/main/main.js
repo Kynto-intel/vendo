@@ -1,6 +1,6 @@
 // Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
 
-const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard, protocol } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard, protocol, dialog } = require('electron')
 
 // Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
 if (process.env.JARVES_TEST_MIKROFON) {
@@ -18,6 +18,7 @@ const stimme = require('./stimme')
 const einstellungen = require('./einstellungen')
 const dateisuche = require('./dateisuche')
 const pc = require('./pc')
+const notfall = require('./notfall')
 
 const hermes = new Hermes()
 // Die Zentrale-Unterhaltung über ihre feste ID wiederfinden (Titel kann Hermes ändern)
@@ -168,6 +169,24 @@ ipcMain.handle('hermes:status', () => ({ zustand: hermes.zustand, text: hermes.s
 ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(kanal), String(text || '').slice(0, 20000)))
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
+// Anhänge: nur echte Dateien, die Felix ausgesucht oder ins Fenster gezogen hat
+ipcMain.handle('hermes:anhang', (_e, pfad) => {
+  const p = String(pfad || '')
+  if (!path.isAbsolute(p) || !require('node:fs').statSync(p, { throwIfNoEntry: false })?.isFile()) throw new Error('Datei nicht gefunden.')
+  return hermes.anhangHinzufuegen(p)
+})
+ipcMain.handle('hermes:bild', (_e, base64, name) => {
+  const b = String(base64 || '')
+  if (!b || b.length > 30_000_000) throw new Error('Bild fehlt oder ist zu groß.')
+  return hermes.bildHinzufuegen(b, String(name || 'bild.png').slice(0, 80))
+})
+ipcMain.handle('datei:waehlen', async () => {
+  const r = await dialog.showOpenDialog(fenster, { title: 'Datei oder Bild für Luzzy', properties: ['openFile', 'multiSelections'] })
+  return r.canceled ? [] : r.filePaths.slice(0, 10)
+})
+// Notfall-Luzzy: lokal über Ollama, wenn Hermes oder die Cloud nicht erreichbar ist
+ipcMain.handle('notfall:fragen', (_e, nachrichten, modell) => notfall.fragen(Array.isArray(nachrichten) ? nachrichten.slice(-24) : [], String(modell || '')))
+ipcMain.handle('notfall:modelle', () => notfall.modelle())
 ipcMain.handle('hermes:freigabe', (_e, id, wahl) => hermes.freigabeBeantworten(String(id), String(wahl)))
 ipcMain.handle('gespraeche:liste', () => gespraecheFuerOberflaeche())
 // Wechseln oder (gibt es den Namen noch nicht) neu anlegen

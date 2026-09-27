@@ -21,7 +21,9 @@ import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffne
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
-import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung } from './plugin-host.js'
+import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
+import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
+import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
 const $ = (id) => document.getElementById(id)
@@ -874,8 +876,24 @@ async function diktatVerarbeiten(diktat, { gesprochen = false } = {}) {
 let losgelegt = false // Felix hat schon etwas gesagt oder getippt (dann keine Begrüßung mehr dazwischen)
 async function abschicken(feld, { gesprochen = false } = {}) {
   const text = feld.value.trim()
-  if (!text) return
+  if (!text && !anhaengeAnzahl()) return
   losgelegt = true
+  // Mit Anhang (Datei oder Bild): direkt an Luzzy, keine lokalen Befehle
+  if (anhaengeAnzahl()) {
+    if (!verbunden) return systemNachricht('Anhänge gehen nur, wenn Hermes verbunden ist.')
+    if (beschaeftigt) return systemNachricht('Luzzy antwortet noch. Schick den Anhang gleich nochmal.')
+    feld.value = ''
+    feldHoehe(feld)
+    let a
+    try {
+      a = await anhaengeSenden()
+    } catch (e) {
+      return systemNachricht(`Anhang: ${String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+    }
+    const frage = text || 'Schau dir das an und sag mir kurz, was drin ist.'
+    const liste = a.namen.map((n, i) => `${a.symbole[i]} ${n}`).join('   ')
+    return anLuzzy(`${frage}${a.text ? `\n\n${a.text}` : ''}`, { anzeige: `${liste}${text ? `\n${text}` : ''}`, gesprochen })
+  }
   if (lokalerBefehl(text, { gesprochen })) {
     feld.value = ''
     feldHoehe(feld)
@@ -910,7 +928,13 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     }
   }
   if (beschaeftigt) return
-  if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')
+  if (!verbunden) {
+    // Notbetrieb: Luzzy antwortet lokal über Ollama
+    if (einstellungen?.notfall?.an === false) return systemNachricht('Noch keine Verbindung zu Hermes.')
+    feld.value = ''
+    feldHoehe(feld)
+    return notfallFrage(text, { gesprochen, grund: 'Hermes ist nicht erreichbar' })
+  }
   feld.value = ''
   feldHoehe(feld)
   // Plugins dürfen die Eingabe abfangen, z. B. das Auslösewort einer Routine ("Morgenbericht")
@@ -1006,6 +1030,7 @@ async function anLuzzy(text, { anzeige = text, vorlesen = false, gesprochen = fa
     laufendeBeenden()
     zustandZeigen()
     systemNachricht(`Konnte nicht senden: ${e.message}`)
+    if (!verbunden || NETZ_FEHLER.test(e.message)) notfallFrage(anzeige, { gesprochen, ohneFrage: true, grund: 'Hermes ist nicht erreichbar' })
     return false
   }
   return true
@@ -1142,7 +1167,11 @@ api.hermes.beiEreignis((ev) => {
         aktuelleAntwort.el.roh = text
       }
       else if (text) nachrichtAnzeigen('luzzy', text)
-      if (p.status === 'error' || p.error) systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
+      if (p.status === 'error' || p.error) {
+        systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
+        // Internet oder Cloud-Modell weg: Luzzy antwortet im Notbetrieb lokal
+        if (NETZ_FEHLER.test(String(p.error || p.failure_reason || '')) && letzteFrage) setTimeout(() => notfallFrage(letzteFrage, { gesprochen: letzteEingabeGesprochen, ohneFrage: true, grund: 'Das Cloud-Modell antwortet nicht' }), 0)
+      }
       // Bittet Luzzy um Felix' Ja: Knöpfe „Ja, mach“ / „Nein“ darunter
       else if (text) jaKnoepfeAnhaengen(aktuelleAntwort?.el || [...document.querySelectorAll('#gespraech .msg.luzzy')].at(-1), text)
       aktuelleAntwort = null
@@ -1187,6 +1216,7 @@ api.hermes.beiEreignis((ev) => {
       break
     case 'error':
       systemNachricht(p.message || 'Fehler in Hermes.')
+      if (NETZ_FEHLER.test(String(p.message || '')) && letzteFrage && beschaeftigt) setTimeout(() => notfallFrage(letzteFrage, { gesprochen: letzteEingabeGesprochen, ohneFrage: true, grund: 'Das Cloud-Modell antwortet nicht' }), 0)
       beschaeftigt = false
       aktuelleAntwort = null
       luzzyNachher = null
@@ -1378,6 +1408,31 @@ meldungenEinrichten({
   einstellungen: () => einstellungen
 })
 api.waechter.beiMeldung(meldungNeu)
+
+// Datei oder Bild an Luzzy (siehe anhaenge.js)
+anhaengeEinrichten({ api, melden: (satz) => untertitelZeigen(satz, { fertig: true }) })
+
+// Notfall-Luzzy: lokal über Ollama, wenn Hermes oder die Cloud nicht erreichbar ist (siehe notfall.js)
+notfallEinrichten({
+  api,
+  kontext: () => pluginKontext(),
+  felix: (text) => nachrichtAnzeigen('felix', text),
+  luzzy: (text, modell) => {
+    const { el } = nachrichtAnzeigen('luzzy', text)
+    el.classList.add('notfall')
+    el.querySelector('.msg-wer').insertAdjacentHTML('beforeend', `<span class="notfall-marke">🛟 Notbetrieb${modell ? ` · ${maskieren(modell)}` : ''}</span>`)
+    letzteAntwortMerken(text)
+  },
+  untertitel: (text) => untertitelZeigen(text, { fertig: true }),
+  sprechen: (text) => vorleser.sprechen(text, stimmOptionen()),
+  zuhoeren: () => weiterZuhoeren(),
+  modell: () => einstellungen?.notfall?.modell || ''
+})
+function notfallFrage(text, { gesprochen = false, ohneFrage = false, grund = '' } = {}) {
+  if (einstellungen?.notfall?.an === false) return false
+  letzteEingabeGesprochen = gesprochen
+  return notfallAntworten(text, { gesprochen: gesprochen || Boolean(einstellungen?.vorlesen), ohneFrage, grund })
+}
 
 // Freigaben: Hermes fragt vor riskanten Befehlen, Luzzy vor Shop-Änderungen (siehe freigaben.js)
 freigabenEinrichten({

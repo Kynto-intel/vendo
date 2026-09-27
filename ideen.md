@@ -145,8 +145,9 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“. Ohne Namen und Adresse, nichts wird gespeichert.
 24. ✅ **Mini-Modus** (Optimierung, gebaut 27.09.2026) – Felix' Wunsch: schmale Leiste fest oben mittig, immer im
     Vordergrund, zeigt nur Luzzys Stimme als Balken. Klick: sprechen, Doppelklick oder Strg+Umschalt+M: großes Fenster.
-25. 🆕 **Datei oder Bild an Luzzy** (Optimierung) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
-    „Was steht da drin?“, „Fass das zusammen.“ (Für Bilder braucht es ein Modell, das Bilder versteht.)
+25. ✅ **Datei oder Bild an Luzzy** (Optimierung, gebaut 28.09.2026) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
+    „Was steht da drin?“, „Fass das zusammen.“ Auch per 📎-Knopf neben dem Mikrofon oder Bild mit Strg+V.
+    Anhänge stehen als Kärtchen über der Eingabe; Hermes bekommt Bilder als Bild, PDFs Seite für Seite, den Rest als Datei.
 26. **Suche über alles** (Optimierung) – Ein Suchfeld (Strg+F) für Vault, Gespräche, Termine, Bestellungen, Mails.
 27. ✅ **Mehrere Gespräche** (Optimierung, gebaut 27.09.2026) – Themen getrennt halten (z. B. Shop, Privat, ein Projekt): Liste im
     Gesprächs-Fenster, Wechsel mit einem Klick, Luzzy verliert nicht den Faden. Auch per Stimme: „Neues Gespräch Shop“,
@@ -165,8 +166,10 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     fertig ist, nicht erst am Ende. Fühlt sich viel schneller an.
 32. ✅ **Unterbrechen per Stimme** (Optimierung, gebaut 27.09.2026) – „Stopp“ oder „Hey Luzzy“ während sie spricht bricht ab und hört zu.
     Auch Esc. Abschaltbar in Einstellungen → Sprechen.
-33. 🆕 **Notfall-Luzzy ohne Internet** (Extra) – Fällt Internet oder das Cloud-Modell aus, übernimmt ein lokales
-    Modell (Ollama ist schon da) die einfachen Sachen: Timer, Notizen, Kalender, Uhrzeit. Luzzy sagt dazu, dass sie im Notbetrieb ist.
+33. ✅ **Notfall-Luzzy ohne Internet** (Extra, gebaut 28.09.2026) – Ist Hermes nicht erreichbar oder scheitert eine Antwort an
+    Internet/Cloud, antwortet Luzzy lokal über Ollama (kleinstes Modell, gemma4:12b; Jarves-OS startet Ollama selbst).
+    Sie kennt Datum, Uhrzeit, Termine, Aufgaben, Notizen; Shop, Mails und Internet gehen nicht, das sagt sie ehrlich.
+    Antworten sind mit „🛟 Notbetrieb“ markiert. Timer, Notizen und Aufgaben liefen ohnehin schon ohne Hermes.
 
 ### ⚡⚡⚡ Groß: mehrere Tage, eher ein eigenes Projekt (6 Ideen)
 

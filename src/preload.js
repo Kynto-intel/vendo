@@ -1,6 +1,6 @@
 // Sichere Brücke zwischen Oberfläche und Hauptprozess. Die Oberfläche bekommt nur diese Funktionen.
 
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 const abonnieren = (kanal) => (rueckruf) => {
   const hoerer = (_e, daten) => rueckruf(daten)
@@ -9,6 +9,13 @@ const abonnieren = (kanal) => (rueckruf) => {
 }
 
 contextBridge.exposeInMainWorld('jarves', {
+  // Pfad einer ins Fenster gezogenen Datei (Anhang für Luzzy)
+  pfadVon: (datei) => webUtils.getPathForFile(datei),
+  anhangWaehlen: () => ipcRenderer.invoke('datei:waehlen'),
+  notfall: {
+    fragen: (nachrichten, modell) => ipcRenderer.invoke('notfall:fragen', nachrichten, modell),
+    modelle: () => ipcRenderer.invoke('notfall:modelle')
+  },
   hermes: {
     status: () => ipcRenderer.invoke('hermes:status'),
     info: () => ipcRenderer.invoke('hermes:info'),
@@ -20,6 +27,8 @@ contextBridge.exposeInMainWorld('jarves', {
     beiStatus: abonnieren('hermes:status'),
     beiEreignis: abonnieren('hermes:ereignis'),
     beiFreigabe: abonnieren('hermes:freigabe'),
+    anhang: (pfad) => ipcRenderer.invoke('hermes:anhang', pfad),
+    bild: (base64, name) => ipcRenderer.invoke('hermes:bild', base64, name),
     freigabe: (id, wahl) => ipcRenderer.invoke('hermes:freigabe', id, wahl),
     beiVerlauf: abonnieren('hermes:verlauf'),
     verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal)
