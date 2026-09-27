@@ -144,8 +144,8 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     „Diktat“ (lange Aufnahme, Pausen bis 3,5 Sekunden), „Diktat: …“ oder „Schreib eine Mail an …, dass …“.
 23. ✅ **„Der Laden redet mit dir“** (Killer, gebaut 27.09.2026) – Bei jeder Bestellung sagt Luzzy nicht nur „neue Bestellung“, sondern
     „Thor-Hoodie in L nach Hamburg, dritte Bestellung von dieser Person“. Ohne Namen und Adresse, nichts wird gespeichert.
-24. **Mini-Modus** (Optimierung) – Kleines, immer sichtbares Fenster in der Ecke: Reaktor, Uhr, Wetter,
-    letzte Meldung.
+24. ✅ **Mini-Modus** (Optimierung, gebaut 27.09.2026) – Felix' Wunsch: schmale Leiste fest oben mittig, immer im
+    Vordergrund, zeigt nur Luzzys Stimme als Balken. Klick: sprechen, Doppelklick oder Strg+Umschalt+M: großes Fenster.
 25. 🆕 **Datei oder Bild an Luzzy** (Optimierung) – PDF, Foto oder Tabelle per Drag & Drop in den Chat ziehen:
     „Was steht da drin?“, „Fass das zusammen.“ (Für Bilder braucht es ein Modell, das Bilder versteht.)
 26. **Suche über alles** (Optimierung) – Ein Suchfeld (Strg+F) für Vault, Gespräche, Termine, Bestellungen, Mails.

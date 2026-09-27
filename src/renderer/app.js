@@ -289,8 +289,34 @@ function zustand() {
   return 'bereit'
 }
 
+// Mini-Modus (Leiste oben mittig, siehe mini.html): bekommt Zustand und Pegel, solange sie offen ist
+let miniAn = false
+let miniLetzterPegel = 0
+function miniSenden(pegel) {
+  if (!miniAn) return
+  if (pegel !== undefined) {
+    const jetzt = performance.now()
+    if (pegel && jetzt - miniLetzterPegel < 40) return // höchstens 25× pro Sekunde
+    miniLetzterPegel = jetzt
+  }
+  const z = zustand()
+  api.fenster.miniZustand({ zustand: z, titel: z === 'bereit' && wakeAktiv ? 'Hört auf „Hey Luzzy“' : ZUSTAND_TEXT[z], ...(pegel !== undefined ? { pegel } : {}) })
+}
+api.fenster.beiMini((an) => {
+  miniAn = Boolean(an)
+  if (miniAn) setTimeout(() => miniSenden(), 300) // die Leiste braucht einen Moment zum Laden
+})
+{
+  const pegelZeigen = welle.pegel.bind(welle)
+  welle.pegel = (werte) => {
+    pegelZeigen(werte)
+    miniSenden(werte || null)
+  }
+}
+
 function zustandZeigen() {
   const z = zustand()
+  miniSenden()
   reaktor.zustand(z === 'versteht' ? 'denkt' : z)
   const el = $('luzzy-zustand')
   if (werkzeug && beschaeftigt) el.innerHTML = `Arbeite · <b>${maskieren(werkzeug)}</b>`
@@ -640,6 +666,7 @@ const TASTENKUERZEL = [
   ['Fenster: linke Bildschirmhälfte', 'Strg+Alt+←', () => api.fenster.andocken('links')],
   ['Fenster: rechte Bildschirmhälfte', 'Strg+Alt+→', () => api.fenster.andocken('rechts')],
   ['Fenster: ganzer Bildschirm', 'Strg+Alt+↑', () => api.fenster.andocken('voll')],
+  ['Mini-Modus: nur eine Leiste oben mittig (auch aus jedem Programm)', 'Strg+Umschalt+M', () => api.fenster.mini(true)],
   ['Nachricht abschicken', 'Enter', () => {}],
   ['Neue Zeile in der Eingabe', 'Umschalt+Enter', () => {}],
   ['Luzzy hört auf zu sprechen', 'Esc', () => vorleser.stoppen()],
@@ -734,6 +761,7 @@ paletteEinrichten({
   }
 })
 $('palette-oeffnen').addEventListener('click', paletteOeffnen)
+$('mini-an').addEventListener('click', () => api.fenster.mini(true))
 
 // ── Senden (aus der Mitte oder aus dem Gesprächs-Fenster) ──
 // Luzzy antwortet selbst, ohne Hermes (Timer, Nicht stören …)

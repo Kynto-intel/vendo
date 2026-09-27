@@ -34,7 +34,14 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
   let audio = null
   let kontext = null
   let analyse = null
-  let animation = 0
+  let animation = null
+  // Im Mini-Modus ist das große Fenster versteckt, dort gibt es keine Bildschirm-Frames: dann per Timer weiter
+  const naechsterFrame = (fn) => (document.hidden ? { t: setTimeout(fn, 33) } : { r: requestAnimationFrame(fn) })
+  const animationStopp = () => {
+    if (animation?.t) clearTimeout(animation.t)
+    if (animation?.r) cancelAnimationFrame(animation.r)
+    animation = null
+  }
   let pausiert = false // Felix redet vielleicht rein: kurz anhalten, bis klar ist, ob er etwas gesagt hat
   let weiterNachPause = []
   let angehalten = null
@@ -53,9 +60,9 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
         werte.push(Math.min(1, summe / breite / 180))
       }
       beiPegel(werte, werte.reduce((a, b) => a + b, 0) / werte.length)
-      animation = requestAnimationFrame(schritt)
+      animation = naechsterFrame(schritt)
     }
-    cancelAnimationFrame(animation)
+    animationStopp()
     schritt()
   }
 
@@ -120,7 +127,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     for (const weiter of weiterNachPause.splice(0)) weiter()
     if (audio) audio.pause()
     audio = null
-    cancelAnimationFrame(animation)
+    animationStopp()
     beiPegel(null, 0)
     // Mitten im Sprechen abgebrochen: melden, damit Jarves-OS weiß, dass Luzzy nicht mehr spricht
     if (tonAn) {
@@ -150,7 +157,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
       if (meinLauf === lauf) beiFehler(e)
     } finally {
       if (meinLauf === lauf) {
-        cancelAnimationFrame(animation)
+        animationStopp()
         beiPegel(null, 0)
         ende()
       }
@@ -210,7 +217,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
       } finally {
         laeuft = false
         if (meinLauf === lauf && fertig && !schlange.length) {
-          cancelAnimationFrame(animation)
+          animationStopp()
           beiPegel(null, 0)
           ende()
         }
