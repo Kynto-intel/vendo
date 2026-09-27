@@ -7,8 +7,8 @@
 const STILLE_NACH_SPRACHE = 1300 // ms
 const MAX_AUFNAHME = 45000 // ms
 const SPRACH_SCHWELLE = 0.018 // RMS ab der es als Sprache zählt
-const REINREDEN_SCHWELLE = 0.045 // Reinreden, während Luzzy spricht: deutlich lauter als normale Sprache nötig
-const REINREDEN_DAUER = 300 // ms am Stück, damit ein Huster oder Klopfen nicht reicht
+const REINREDEN_SCHWELLE = 0.02 // Reinreden, während Luzzy spricht: mindestens so laut wie normale Sprache
+const REINREDEN_TREFFER = 5 // × 50 ms, damit ein Huster oder Klopfen nicht reicht
 
 export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
   let strom = null
@@ -140,30 +140,35 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
     })
   }
 
-  // Reinreden, während Luzzy spricht: meldet beiSprache, sobald Felix deutlich lauter ist als das, was von
-  // Luzzys eigener Stimme noch im Mikrofon ankommt (Echo-Unterdrückung filtert das meiste schon weg).
-  // Gibt eine Funktion zum Beenden zurück.
-  function reinreden({ beiSprache }) {
+  // Reinreden, während Luzzy spricht. Was von ihrer eigenen Stimme im Mikrofon ankommt, hängt davon ab, wie laut
+  // sie gerade spielt (ausgabe(), 0 … 1). Jarves-OS lernt dieses Verhältnis laufend und meldet beiSprache nur,
+  // wenn deutlich mehr ankommt, als ihr Echo erklärt, gut 0,25 s lang. Gibt eine Funktion zum Beenden zurück.
+  function reinreden({ beiSprache, ausgabe = () => 0 }) {
     let aus = false
     let uhr = 0
-    let echo = 0 // wie laut Luzzys Stimme im Mikrofon noch ist (gleitend)
-    let lautSeit = 0
+    let echo = 0 // Mikrofon ÷ Ausgabe: wie viel von Luzzy im Mikrofon landet
+    let rauschen = 0.004 // Grundrauschen im Raum, wenn Luzzy gerade still ist
+    let treffer = 0
+    const zuletzt = [] // Luzzys Lautstärke der letzten 0,4 s (ihr Ton kommt verzögert im Mikrofon an)
     const start = performance.now()
     const pruefen = () => {
       if (aus) return
       if (!aufnahme && analyse) {
-        const p = pegel()
-        const jetzt = performance.now()
-        const schwelle = Math.min(0.12, Math.max(REINREDEN_SCHWELLE, echo * 2.5)) // gedeckelt: redet Felix schon beim Start, zählt das nicht als Echo
-        if (jetzt - start > 500 && p > schwelle) {
-          lautSeit ||= jetzt
-          if (jetzt - lautSeit > REINREDEN_DAUER) {
+        const m = pegel()
+        zuletzt.push(ausgabe())
+        if (zuletzt.length > 8) zuletzt.shift()
+        const o = Math.max(...zuletzt)
+        const schwelle = Math.max(REINREDEN_SCHWELLE, rauschen * 4, echo * o * 3)
+        if (performance.now() - start > 400 && m > schwelle) {
+          treffer++
+          if (treffer >= REINREDEN_TREFFER) {
             aus = true
             return beiSprache()
           }
         } else {
-          lautSeit = 0
-          echo = Math.max(p, echo * 0.97)
+          treffer = Math.max(0, treffer - 1) // ein kurzer Einbruch zwischen zwei Silben zählt nicht
+          if (o > 0.01) echo = echo ? echo * 0.96 + (m / o) * 0.04 : m / o // lernt Luzzys Echo
+          else rauschen = rauschen * 0.95 + m * 0.05
         }
       }
       uhr = setTimeout(pruefen, 50)

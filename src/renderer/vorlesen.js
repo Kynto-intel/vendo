@@ -35,6 +35,9 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
   let kontext = null
   let analyse = null
   let animation = 0
+  let pausiert = false // Felix redet vielleicht rein: kurz anhalten, bis klar ist, ob er etwas gesagt hat
+  let weiterNachPause = []
+  let angehalten = null
 
   function pegelMessen() {
     if (!analyse) return
@@ -84,8 +87,37 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     tonAn = false
     beiEnde()
   }
+  // Kurz anhalten (Felix redet vielleicht rein) und genau dort weitermachen
+  function pausieren() {
+    if (!tonAn || pausiert) return
+    pausiert = true
+    angehalten = audio && !audio.paused && !audio.ended ? audio : null // nur das, was gerade wirklich spielt
+    angehalten?.pause()
+  }
+  function fortsetzen() {
+    if (!pausiert) return
+    pausiert = false
+    angehalten?.play().catch(() => {})
+    angehalten = null
+    for (const weiter of weiterNachPause.splice(0)) weiter()
+  }
+  const pauseAbwarten = () => (pausiert ? new Promise((r) => weiterNachPause.push(r)) : null)
+
+  // Wie laut Luzzy gerade aus den Lautsprechern kommt (0 … 1), damit das Mikrofon ihr Echo erkennt
+  function ausgabePegel() {
+    if (!analyse || !tonAn || pausiert) return 0
+    const daten = new Float32Array(analyse.fftSize)
+    analyse.getFloatTimeDomainData(daten)
+    let summe = 0
+    for (const w of daten) summe += w * w
+    return Math.sqrt(summe / daten.length)
+  }
+
   function stoppen() {
     lauf++
+    pausiert = false
+    angehalten = null
+    for (const weiter of weiterNachPause.splice(0)) weiter()
     if (audio) audio.pause()
     audio = null
     cancelAnimationFrame(animation)
@@ -105,6 +137,8 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     start()
     try {
       const bytes = await window.jarves.stimme.sprechen(sauber, optionen)
+      if (meinLauf !== lauf) return
+      await pauseAbwarten()
       if (meinLauf !== lauf) return
       const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }))
       try {
@@ -160,6 +194,8 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
             continue
           }
           if (meinLauf !== lauf) return
+          await pauseAbwarten()
+          if (meinLauf !== lauf) return
           if (!gestartet) {
             gestartet = true
             start()
@@ -202,7 +238,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     }
   }
 
-  return { sprechen, stoppen, strom }
+  return { sprechen, stoppen, strom, pausieren, fortsetzen, pausiert: () => pausiert, ausgabePegel }
 }
 
 // Aus dem bisher geschriebenen Text das nächste sprechbare Stück schneiden: bis zum letzten Satzende

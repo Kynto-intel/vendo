@@ -61,14 +61,22 @@ const reaktor = reaktorErstellen($('reaktor-rahmen'))
 const welle = welleErstellen($('welle'))
 
 let reinredenAus = () => {} // beendet die Reinreden-Erkennung, solange Luzzy nicht spricht
+// Redet Felix rein, hält Luzzy kurz an und hört zu (siehe sprechenStarten, unterbrechung)
+function reinredenStarten() {
+  reinredenAus()
+  if (!verbunden) return
+  reinredenAus = mikrofon.reinreden({
+    ausgabe: () => vorleser.ausgabePegel(),
+    beiSprache: () => sprechenStarten({ ohneSpracheNach: 2500, unterbrechung: true })
+  })
+}
 const vorleser = vorleserErstellen({
   beiStart: () => {
     spricht = true
     // „Hey Luzzy“ oder einfach Reinreden unterbricht sie (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
     const unterbrechen = einstellungen?.sprache?.unterbrechen !== false
     mikrofon.wakeSetzen(wakeAktiv && unterbrechen)
-    reinredenAus()
-    if (unterbrechen && verbunden) reinredenAus = mikrofon.reinreden({ beiSprache: () => sprechenStarten({ ohneSpracheNach: 5000 }) })
+    if (unterbrechen) reinredenStarten()
     zustandZeigen()
   },
   beiEnde: () => {
@@ -145,15 +153,24 @@ function piep(hoch = true) {
 }
 
 let sprichtGerade = false // verhindert doppelten Start
-async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat = false } = {}) {
+// unterbrechung: Felix hat reingeredet, während Luzzy spricht. Sie hält nur an; erst wenn wirklich etwas
+// verstanden wurde, bricht sie ab. Sonst (Husten, ihr eigenes Echo) spricht sie einfach weiter.
+async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat = false, unterbrechung = false } = {}) {
   if (mikrofon.nimmtAuf()) return mikrofon.stoppen() // zweiter Druck = fertig gesprochen
-  if (sprichtGerade || !verbunden) return
+  if (sprichtGerade || !verbunden) return unterbrechung && vorleser.fortsetzen()
   sprichtGerade = true
+  const weiterSprechen = () => {
+    if (!unterbrechung || !vorleser.pausiert()) return false
+    vorleser.fortsetzen()
+    reinredenStarten()
+    return true
+  }
   try {
-    if (beschaeftigt) {
-      api.hermes.abbrechen('zentrale') // wer spricht, unterbricht Luzzy
+    if (unterbrechung) vorleser.pausieren()
+    else {
+      if (beschaeftigt) api.hermes.abbrechen('zentrale') // wer spricht, unterbricht Luzzy
+      vorleser.stoppen()
     }
-    vorleser.stoppen()
     if (!(await mikrofon.starten())) {
       untertitelZeigen('Kein Mikrofon gefunden. Steck eins ein, dann klick auf das Mikrofon.', { fertig: true })
       return
@@ -167,6 +184,7 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
     hoert = false
     welle.pegel(null)
     document.documentElement.style.setProperty('--pegel', '0')
+    if (!ton && weiterSprechen()) return zustandZeigen()
     if (!ton) {
       if (diktat) untertitelZeigen('Ich hab nichts gehört. Sag „Diktat“, wenn du nochmal willst.', { fertig: true })
       zustandZeigen()
@@ -183,9 +201,18 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
     }
     versteht = false
     zustandZeigen()
+    if (!text && weiterSprechen()) return
     if (!text) {
       untertitelZeigen('Hab dich nicht verstanden. Nochmal?', { fertig: true })
       return
+    }
+    if (unterbrechung) {
+      // Felix hat wirklich etwas gesagt: Luzzy hört auf, eine laufende Antwort wird abgebrochen
+      vorleser.stoppen()
+      if (beschaeftigt) {
+        api.hermes.abbrechen('zentrale')
+        for (let i = 0; i < 30 && beschaeftigt; i++) await new Promise((r) => setTimeout(r, 100)) // bis Hermes bestätigt
+      }
     }
     if (diktat) {
       losgelegt = true
