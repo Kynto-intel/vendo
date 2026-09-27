@@ -139,8 +139,8 @@ ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
 
-// Nur lesende Abfragen an diese Hermes-Bereiche (Jobs, Crew, Kosten, Kanban, Status)
-const LESEN_ERLAUBT = [/^\/api\/cron\/jobs/, /^\/api\/profiles/, /^\/api\/analytics\//, /^\/api\/plugins\/kanban\//, /^\/api\/status$/, /^\/api\/sessions/]
+// Nur lesende Abfragen an diese Hermes-Bereiche (Jobs, Crew, Kosten, Kanban, Modell-Liste, Status)
+const LESEN_ERLAUBT = [/^\/api\/cron\/jobs/, /^\/api\/profiles/, /^\/api\/analytics\//, /^\/api\/plugins\/kanban\//, /^\/api\/model\/options/, /^\/api\/status$/, /^\/api\/sessions/]
 ipcMain.handle('hermes:lesen', (_e, pfad) => {
   if (typeof pfad !== 'string' || !LESEN_ERLAUBT.some((m) => m.test(pfad))) throw new Error('Abfrage nicht erlaubt.')
   return hermes.rest(pfad)

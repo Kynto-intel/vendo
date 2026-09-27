@@ -57,12 +57,23 @@ function fehlerKarte(el, text) {
 }
 
 // ── Crew ──
-let modellOptionen = null
-async function modelleLaden() {
-  if (modellOptionen) return modellOptionen
-  const antwort = await lesen('/api/plugins/kanban/model-options')
-  modellOptionen = antwort?.providers || []
-  return modellOptionen
+// Modell-Liste aus Hermes (GET /api/model/options, dieselbe Liste wie in der Hermes-App): nur Anbieter, für die
+// das Profil einen Zugang hat. Ältere Hermes-Versionen: Liste aus dem Kanban-Plugin.
+const modellListen = new Map() // profil → [{ slug, name, models: [id] }]
+async function modelleLaden(profil, { neu = false } = {}) {
+  if (!neu && modellListen.get(profil)?.length) return modellListen.get(profil)
+  const antwort =
+    (await lesen(`/api/model/options?profile=${encodeURIComponent(profil)}${neu ? '&refresh=1' : ''}`)) ||
+    (await lesen('/api/plugins/kanban/model-options'))
+  const liste = (antwort?.providers || [])
+    .map((a) => ({
+      slug: String(a.slug || ''),
+      name: String(a.name || a.label || a.slug || ''),
+      models: (a.models || []).map((m) => String(typeof m === 'string' ? m : m?.id || m?.model || m?.name || '')).filter(Boolean)
+    }))
+    .filter((a) => a.slug && a.models.length)
+  modellListen.set(profil, liste)
+  return liste
 }
 
 export async function crewLaden() {
@@ -132,36 +143,99 @@ function crewKurzZeigen(karten) {
     .join('')
 }
 
-// Modell eines Agenten ändern (Hermes: PUT /api/profiles/{name}/model)
+// Modell eines Agenten ändern (Hermes: PUT /api/profiles/{name}/model). Suchfeld + Liste statt Auswahlfeld,
+// weil es schnell ein paar hundert Modelle sind.
 document.addEventListener('click', async (e) => {
   const knopf = e.target.closest('.modell-aendern')
   if (!knopf) return
   const wahl = knopf.nextElementSibling
   if (!wahl.hidden) return (wahl.hidden = true)
   wahl.hidden = false
-  wahl.innerHTML = '<div class="leise">Lade Modelle …</div>'
-  const anbieter = await modelleLaden()
-  const optionen = anbieter
-    .map((a) => `<optgroup label="${maskieren(a.label)}">${a.models.map((m) => {
-      const id = typeof m === 'string' ? m : m.id || m.model || m.name
-      const gewaehlt = a.slug === knopf.dataset.anbieter && id === knopf.dataset.modell ? ' selected' : ''
-      return `<option value="${maskieren(a.slug)}|${maskieren(id)}"${gewaehlt}>${maskieren(id)}</option>`
-    }).join('')}</optgroup>`)
-    .join('')
-  wahl.innerHTML = anbieter.length
-    ? `<select>${optionen}</select><div class="modell-knoepfe"><button class="knopf-flach" data-los type="button">Übernehmen</button></div>`
-    : '<div class="leise">Keine Modell-Liste verfügbar.</div>'
-  wahl.querySelector('[data-los]')?.addEventListener('click', async () => {
-    const [provider, model] = wahl.querySelector('select').value.split('|')
+  await modellWahlZeigen(wahl, knopf.dataset)
+})
+
+async function modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell: jetztModell }, { neu = false } = {}) {
+  wahl.innerHTML = `<div class="leise">${neu ? 'Frage die Anbieter neu ab …' : 'Lade Modelle …'}</div>`
+  const anbieter = await modelleLaden(profil, { neu })
+  if (!anbieter.length) {
+    wahl.innerHTML = `<div class="leise">Hermes hat keine Modelle geliefert. In der Hermes-App unter Modelle prüfen, ob ein Anbieter eingerichtet ist.</div>
+      <div class="modell-knoepfe"><button class="knopf-flach" data-neu type="button">Neu laden</button></div>`
+    wahl.querySelector('[data-neu]').addEventListener('click', () => modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell: jetztModell }, { neu: true }))
+    return
+  }
+  let gewaehlt = { provider: jetztAnbieter, model: jetztModell }
+  wahl.innerHTML = `
+    <input class="modell-suche" type="search" placeholder="Modell suchen …" autocomplete="off" />
+    <div class="modell-liste" role="listbox"></div>
+    <div class="modell-knoepfe">
+      <button class="knopf-flach" data-neu type="button" title="Anbieter neu abfragen (neue Modelle)">Neu laden</button>
+      <button class="knopf-gold" data-los type="button" disabled>Übernehmen</button>
+    </div>`
+  const liste = wahl.querySelector('.modell-liste')
+  const suche = wahl.querySelector('.modell-suche')
+  const los = wahl.querySelector('[data-los]')
+  // Anbieter einklappbar: anfangs ist nur der mit dem aktuellen Modell offen, beim Suchen alle mit Treffern
+  const offen = new Set([jetztAnbieter])
+  const zeichnen = () => {
+    const worte = suche.value.toLowerCase().split(/\s+/).filter(Boolean)
+    const passt = (text) => worte.every((w) => text.includes(w))
+    let anzahl = 0
+    liste.innerHTML = anbieter
+      .map((a) => {
+        const alle = a.models.filter((m) => passt(`${a.name} ${a.slug} ${m}`.toLowerCase()))
+        const treffer = alle.slice(0, 60)
+        anzahl += treffer.length
+        if (!treffer.length) return ''
+        const auf = worte.length > 0 || offen.has(a.slug)
+        const kopf = `<div class="modell-gruppe${auf ? ' auf' : ''}" role="button" tabindex="0" data-gruppe="${maskieren(a.slug)}" title="${auf ? 'Einklappen' : 'Aufklappen'}"><span class="modell-pfeil">▸</span>${maskieren(a.name)}<small>${alle.length}</small></div>`
+        if (!auf) return kopf
+        return `${kopf}${treffer
+          .map((m) => {
+            const aktiv = a.slug === gewaehlt.provider && m === gewaehlt.model
+            const jetzt = a.slug === jetztAnbieter && m === jetztModell
+            return `<div role="option" tabindex="0" class="modell-eintrag${aktiv ? ' gewaehlt' : ''}" data-anbieter="${maskieren(a.slug)}" data-modell="${maskieren(m)}" title="${maskieren(m)}">${maskieren(m)}${jetzt ? ' <small>aktuell</small>' : ''}</div>`
+          })
+          .join('')}`
+      })
+      .join('')
+    if (!anzahl) liste.innerHTML = '<div class="leise">Kein Modell passt.</div>'
+  }
+  zeichnen()
+  suche.focus()
+  suche.addEventListener('input', zeichnen)
+  liste.addEventListener('keydown', (ev) => ev.key === 'Enter' && ev.target.closest('.modell-eintrag, .modell-gruppe')?.click())
+  liste.addEventListener('click', (ev) => {
+    const gruppe = ev.target.closest('.modell-gruppe')
+    if (gruppe) {
+      const slug = gruppe.dataset.gruppe
+      if (suche.value.trim()) {
+        suche.value = '' // beim Suchen sind alle offen: Klick auf einen Anbieter zeigt nur ihn
+        offen.clear()
+        offen.add(slug)
+      } else if (offen.has(slug)) offen.delete(slug)
+      else offen.add(slug)
+      zeichnen()
+      return liste.querySelector(`[data-gruppe="${CSS.escape(slug)}"]`)?.focus()
+    }
+    const eintrag = ev.target.closest('.modell-eintrag')
+    if (!eintrag) return
+    gewaehlt = { provider: eintrag.dataset.anbieter, model: eintrag.dataset.modell }
+    los.disabled = gewaehlt.provider === jetztAnbieter && gewaehlt.model === jetztModell
+    zeichnen()
+  })
+  wahl.querySelector('[data-neu]').addEventListener('click', () => modellWahlZeigen(wahl, { profil, anbieter: jetztAnbieter, modell: jetztModell }, { neu: true }))
+  los.addEventListener('click', async () => {
+    los.disabled = true
     try {
-      await api.hermes.aktion('modell-setzen', { name: knopf.dataset.profil, provider, model })
+      await api.hermes.aktion('modell-setzen', { name: profil, provider: gewaehlt.provider, model: gewaehlt.model })
       wahl.hidden = true
       crewLaden()
     } catch (err) {
+      los.disabled = false
       wahl.insertAdjacentHTML('beforeend', `<div class="fehler">${maskieren(err.message)}</div>`)
     }
   })
-})
+}
 
 // ── Jobs ──
 export async function jobsLaden() {
