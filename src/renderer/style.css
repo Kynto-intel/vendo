@@ -222,6 +222,15 @@ body { user-select: none; }
 .bot-rolle { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-leise); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .modell-wahl { display: flex; flex-direction: column; gap: 8px; }
 .modell-wahl select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px; font-size: 12px; }
+.modell-suche { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 6px 8px; font-size: 12px; color: inherit; width: 100%; }
+.modell-liste { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 4px; background: var(--eingabe); }
+.modell-gruppe { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; opacity: .6; padding: 6px 6px 2px; }
+.modell-eintrag { all: unset; cursor: pointer; font-size: 11.5px; padding: 4px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modell-eintrag:hover { background: var(--gold-flaeche); }
+.modell-eintrag.gewaehlt { background: var(--gold-flaeche); outline: 1px solid var(--gold-dunkel); }
+.modell-eintrag small { opacity: .6; margin-left: 4px; }
+.modell-knoepfe { display: flex; gap: 6px; justify-content: flex-end; }
+.modell-knoepfe button { white-space: nowrap; font-size: 10px; padding: 6px 10px; }
 .crew-chat { flex: 1; min-height: 380px; display: flex; flex-direction: column; padding: 12px 14px 14px; gap: 10px; background-color: var(--tief); }
 .crew-chat-kopf { display: flex; align-items: baseline; gap: 12px; }
 .crew-chat-kopf h3 { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
