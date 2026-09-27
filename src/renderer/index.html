@@ -257,6 +257,12 @@
     <!-- Befehlspalette (src/renderer/palette.js) -->
     <dialog class="dialog hud palette" id="palette">
       <input class="palette-eingabe" id="palette-eingabe" type="text" placeholder="Befehl suchen oder Luzzy fragen …" autocomplete="off" spellcheck="false" />
+      <div class="palette-filter" id="palette-filter">
+        <button type="button" data-filter="" class="an">Alles</button>
+        <button type="button" data-filter="Sprachbefehl">Sprachbefehle</button>
+        <button type="button" data-filter="Tastenkürzel">Tastenkürzel</button>
+        <button type="button" data-filter="Bereich">Bereiche</button>
+      </div>
       <ul class="palette-liste" id="palette-liste"></ul>
       <div class="palette-hilfe leise">↑ ↓ wählen · Enter ausführen · Esc schließen</div>
     </dialog>
