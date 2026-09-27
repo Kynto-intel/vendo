@@ -14,7 +14,7 @@ import { selbsttestStarten } from './selbsttest.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
-import { pluginsStarten, pluginEingabe, kontextFuer, pluginBegruessung } from './plugin-host.js'
+import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung } from './plugin-host.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
 const $ = (id) => document.getElementById(id)
@@ -538,6 +538,13 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     feld.value = ''
     feldHoehe(feld)
     return
+  }
+  // Plugin-Befehle, die das Plugin selbst beantwortet (z. B. „Merk dir: …“)
+  const pluginAntwort = await pluginBefehl(text)
+  if (pluginAntwort) {
+    feld.value = ''
+    feldHoehe(feld)
+    return lokalAntworten(pluginAntwort, { gesprochen })
   }
   if (beschaeftigt) return
   if (!verbunden) return systemNachricht('Noch keine Verbindung zu Hermes.')

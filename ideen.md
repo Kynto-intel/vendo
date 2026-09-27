@@ -126,7 +126,7 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Luzzy fasst zusammen, verbessert, übersetzt oder beantwortet ihn. Funktioniert auch, wenn Jarves-OS im Hintergrund ist.
 16. ✅ **Befehlspalette (Strg+P)** (Optimierung, gebaut 27.09.2026) – Ein Feld für alles: Tab öffnen, Routine starten, Einstellung ändern,
     Plugin aufrufen. Tippen statt klicken.
-17. **Gedankenspeicher** (Plugin) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
+17. ✅ **Gedankenspeicher** (Plugin, gebaut 27.09.2026) – Schnell etwas festhalten („Merk dir: Stoffproben bestellen“), per Tippen
     oder Sprache. Landet im Vault in einem festen Ordner, Luzzy kennt die Notizen.
 18. **Aufgaben / To-do** (Plugin) – Einfache Aufgabenliste mit Fälligkeit, Erinnerung über die Meldungen,
     „Was muss ich heute noch?“ bekommt Luzzy automatisch mit (wie Wetter und Termine).

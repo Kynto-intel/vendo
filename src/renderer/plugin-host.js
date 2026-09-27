@@ -10,6 +10,7 @@ const kontextAnbieter = [] // { id, fn } liefern Text für Luzzy (z. B. Termine)
 const stichwoerter = [] // { id, muster } bei diesen Wörtern bekommt Luzzy den Kontext des Plugins mit
 const begruessungen = [] // { id, fn } kurzer Satz für Luzzys Begrüßung beim Start
 const eingabeFilter = [] // { id, fn } dürfen eine Eingabe abfangen (z. B. Auslösewort einer Routine)
+const befehle = [] // { id, fn } beantworten eine Eingabe selbst (z. B. „Merk dir: …“), ohne Hermes
 const knoepfe = new Map() // id → [{ name, titel, fn }] Knöpfe über der Eingabe
 let knopfLeiste = null
 
@@ -94,6 +95,9 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       kontextFuer,
       // Eingaben abfangen: fn(text) → { text, anzeige?, vorlesen? } oder null
       eingabeFilter: (fn) => eingabeFilter.push({ id: m.id, fn }),
+      // Befehle, die das Plugin selbst beantwortet: fn(text) → Antwort (Text, Luzzy sagt ihn) oder null.
+      // Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
+      befehl: (fn) => befehle.push({ id: m.id, fn }),
       // Knöpfe über der Eingabe setzen (ersetzt die bisherigen Knöpfe dieses Plugins)
       knoepfe: (liste) => {
         knoepfe.set(m.id, Array.isArray(liste) ? liste : [])
@@ -166,6 +170,19 @@ export async function pluginKontext() {
     }
   }
   return teile.join('\n\n')
+}
+
+// Befehle der Plugins, die sie selbst beantworten (erster Treffer gewinnt) → Antwort oder null
+export async function pluginBefehl(text) {
+  for (const { id, fn } of befehle) {
+    try {
+      const antwort = await fn(text)
+      if (antwort) return String(antwort)
+    } catch (e) {
+      console.warn(`Befehl ${id}:`, e.message)
+    }
+  }
+  return null
 }
 
 // Eingabe durch die Plugins schicken (erster Treffer gewinnt)

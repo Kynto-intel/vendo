@@ -1,0 +1,8 @@
+{
+  "id": "gedanken",
+  "name": "Gedankenspeicher",
+  "version": "1.0.0",
+  "beschreibung": "Schnell etwas festhalten: „Merk dir: Stoffproben bestellen“, per Sprache oder Tippen. Landet auch im Vault (Jarves-OS\\Gedankenspeicher.md), Luzzy kennt die Notizen.",
+  "bereich": { "name": "Gedanken" },
+  "luzzy": { "stichwoerter": "gedankenspeicher|gemerkt|merken wollte|meine notizen|meine gedanken|meine ideen|was wollte ich" }
+}
