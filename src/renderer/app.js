@@ -25,6 +25,7 @@ import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegrues
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
+import { kostenEinrichten } from './kosten.js'
 import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -1549,6 +1550,17 @@ api.waechter.beiMeldung(meldungNeu)
 
 // Shopify-Token im System-Tab erneuern (siehe shopifyzugang.js)
 shopifyZugangEinrichten({ melden: meldungNeu })
+
+// Kosten-Wächter im System-Tab, warnt bei 80 % / 100 % des Budgets (siehe kosten.js)
+kostenEinrichten({
+  api,
+  einstellungen: () => einstellungen,
+  speichern: async (teil) => {
+    Object.assign(einstellungen, teil)
+    await api.einstellungen.speichern(teil)
+  },
+  melden: meldungNeu
+})
 
 // Datei oder Bild an Luzzy (siehe anhaenge.js)
 anhaengeEinrichten({ api, melden: (satz) => untertitelZeigen(satz, { fertig: true }) })

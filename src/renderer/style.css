@@ -1238,3 +1238,20 @@ body.datei-drueber .datei-ablage { display: grid; }
 .cl-fertig { font-size: 13px; color: var(--gruen); font-weight: 600; }
 .cl-fertig small { font-weight: 400; color: var(--text-leise); }
 .cl-ruhe { font-size: 12px; color: var(--text-leise); }
+
+/* Kosten-Wächter im System-Tab (kosten.js) */
+.kw-zahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.kw-zahlen > div { display: flex; flex-direction: column; gap: 3px; }
+.kw-zahlen b { font-family: var(--mono); font-size: 20px; color: var(--gold-hell); }
+.kw-balken { height: 6px; border-radius: 3px; background: var(--eingabe); border: 1px solid var(--rahmen); overflow: hidden; margin-top: 4px; }
+.kw-balken > div { height: 100%; background: var(--gruen); }
+.kw-balken.knapp > div { background: var(--gold); }
+.kw-balken.voll > div { background: var(--rot); }
+.kw-titel { margin-top: 14px; }
+.kw-verlauf { display: flex; align-items: flex-end; gap: 3px; height: 44px; margin: 4px 0 10px; padding-bottom: 2px; border-bottom: 1px solid var(--rahmen); }
+.kw-verlauf span { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--gold-dunkel); }
+.kw-verlauf span.heute { background: var(--gold); }
+.kw-tabelle { margin-bottom: 10px; }
+.kw-budget { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 6px 0; font-size: 12px; }
+.kw-budget input { width: 70px; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 4px 7px; color: var(--text); font: inherit; outline: none; }
+.kw-budget input:focus { border-color: var(--gold); }

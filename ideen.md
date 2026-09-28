@@ -10,7 +10,7 @@ Regel wie immer: Hermes wird nicht verändert, nur seine eingebauten Befehle wer
 
 ## A. Optimierungen (10)
 
-1. ⚡ **Kosten-Wächter** – Tages- und Monatsbudget in den Einstellungen. Luzzy warnt bei 80 % („Wir sind heute bei
+1. ✅ **Kosten-Wächter** (gebaut 28.09.2026, im System-Tab) – Tages- und Monatsbudget in den Einstellungen. Luzzy warnt bei 80 % („Wir sind heute bei
    4 von 5 Euro“), Anzeige oben neben der Uhr. Zahlen kommen aus Hermes' Nutzungsstatistik.
 2. ⚡ **Schnelle Kleinaufträge ohne Chat** – Zwischenablage, Diktat, Übersetzen und Kurzfragen laufen über Hermes'
    `llm.oneshot` statt über Luzzys Gespräch: schneller, günstiger, und der Chat bleibt sauber.

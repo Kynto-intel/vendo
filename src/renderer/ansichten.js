@@ -1,6 +1,7 @@
 // Bereiche der Zentrale: Crew, Jobs, Kanban, System. Alle Daten kommen live aus Hermes.
 
 import { bestaetigen, hinweis } from './fenster.js'
+import { kostenKarteLaden } from './kosten.js' // Kosten-Wächter im System-Tab
 const api = window.jarves
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const $ = (id) => document.getElementById(id)
@@ -348,6 +349,7 @@ $('kanban-auswahl')?.addEventListener('change', kanbanLaden)
 
 // ── System ──
 export async function systemLaden() {
+  kostenKarteLaden().catch(() => {}) // Kosten-Wächter (kosten.js), holt höchstens einmal pro Minute neu
   const [status, details, werte, nutzung] = await Promise.all([
     lesen('/api/status'),
     api.system.details().catch(() => null),

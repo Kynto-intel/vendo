@@ -144,7 +144,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 | **Werkzeuge** | **Aufgaben** · **Kalender** · **Fokus** · **Gedanken** · **Wetter** · **Meilensteine** | Plugins, siehe [Plugins](#plugins) |
 | **Wissen** | **Wissen** | Der Obsidian-Vault (`Documents\Donnerwolf`) zum Lesen, mit Morgenbericht |
 | | **Bibliothek** · **Entscheidungen** · **Dateien** | Nachschlagen, offene Entscheidungen, Dokumente – nur lesend |
-| **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Shopify-Zugang**, **Selbsttest** |
+| **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Kosten-Wächter**, **Shopify-Zugang**, **Selbsttest** |
 
 **Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):
 
@@ -159,6 +159,10 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 - **Dateien:** Donnerwolf-Ordner und zuletzt geänderte Dateien, öffnen im Programm oder Explorer.
 - **Jobs:** Hermes-Jobs aller Profile mit Zeitplan, letztem und nächstem Lauf; ausführen, pausieren, löschen (mit Rückfrage).
 - **Kanban:** Hermes' eigenes Kanban-Board (Tafeln, Spalten, Aufgaben der Agenten).
+- **Kosten-Wächter** (System): was Luzzy und die Crew heute und diesen Monat kosten (in Dollar, wie Hermes rechnet),
+  dazu Tokens und Aufrufe, ein 14-Tage-Verlauf und wer wie viel verbraucht. Tages- und Monatsbudget eintragen:
+  Luzzy warnt bei 80 % und 100 % (je einmal, als Meldung mit Warnton), auch wenn der System-Tab nicht offen ist.
+  Kostenlose Modelle zählen 0 $ – dann zeigt der Verlauf die Tokens.
 
 ## Luzzy und die Crew
 

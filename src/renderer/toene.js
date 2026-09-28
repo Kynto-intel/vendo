@@ -6,7 +6,7 @@ const WICHTIG = ['horn', 'warnung', 'glocke'] // bei mehreren Meldungen auf einm
 
 export function tonFuer(art) {
   if (art === 'bestellung' || art === 'meilenstein') return 'horn'
-  if (art === 'job' || art === 'hinweis') return 'warnung'
+  if (art === 'job' || art === 'hinweis' || art === 'kosten') return 'warnung'
   return 'glocke'
 }
 
