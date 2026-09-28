@@ -195,7 +195,6 @@ ipcMain.on('terminal:schreiben', (_e, text) => terminal.schreiben(String(text ??
 ipcMain.on('terminal:groesse', (_e, cols, rows) => terminal.groesseSetzen(cols, rows))
 ipcMain.handle('terminal:befehl', (_e, text) => terminal.befehl(String(text || '').slice(0, 4000), senden))
 ipcMain.handle('terminal:neu', () => terminal.beenden())
-ipcMain.handle('terminal:fenster', () => terminal.inFenster())
 ipcMain.handle('terminal:befehle', () => terminal.befehleLaden())
 ipcMain.handle('terminal:befehleSpeichern', (_e, liste) => terminal.befehleSpeichern(liste))
 app.on('will-quit', () => terminal.beenden())

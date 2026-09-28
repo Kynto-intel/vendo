@@ -6,7 +6,6 @@
 
 const path = require('node:path')
 const os = require('node:os')
-const { spawn } = require('node:child_process')
 
 const HERMES_BIN = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'bin')
 // „Meine Befehle“: eigene Datei, leicht zu lesen und von Hand zu bearbeiten (Jarves-OS dabei geschlossen lassen)
@@ -78,13 +77,6 @@ function beenden() {
   return true
 }
 
-// Normale PowerShell in einem eigenen Fenster (falls Felix eins neben Jarves-OS will)
-function inFenster() {
-  const kind = spawn('cmd.exe', ['/c', 'start', '"Jarves-OS Terminal"', 'powershell.exe', '-NoLogo'], { cwd: os.homedir(), env: umgebung(), detached: true, stdio: 'ignore' })
-  kind.unref()
-  return true
-}
-
 // Gespeicherte Befehle lesen. Noch keine Datei: frühere Befehle aus den Einstellungen übernehmen (einmalig),
 // sonst null (dann zeigt die Oberfläche die Standardbefehle).
 function befehleLaden() {
@@ -118,4 +110,4 @@ function befehleSpeichern(liste) {
   return sauber
 }
 
-module.exports = { starten, schreiben, groesseSetzen, befehl, beenden, inFenster, befehleLaden, befehleSpeichern }
+module.exports = { starten, schreiben, groesseSetzen, befehl, beenden, befehleLaden, befehleSpeichern }

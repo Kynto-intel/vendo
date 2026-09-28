@@ -139,7 +139,6 @@ export function terminalEinrichten() {
     await konsoleStarten()
     term.focus()
   })
-  $('term-fenster').addEventListener('click', () => window.jarves.terminal.fenster())
 
   // Meine Befehle: aus der eigenen Datei laden, dann ausführen, löschen, speichern, Standard wiederherstellen
   listeZeichnen()
