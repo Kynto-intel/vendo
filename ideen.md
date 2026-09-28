@@ -29,8 +29,7 @@ Der Crew-Tab erkennt die Profile automatisch.
 **Erledigt über Idee 8:** Routine „Morgenbericht“ hat einen Zeitplan (Uhrzeit + Wochentage), einfach im Tab „Routinen“ einschalten. Läuft, solange Jarves-OS offen ist.
 
 Ein Hermes-Job erstellt jeden Morgen den Bericht (im Vault unter `04_Analytics\Morgenberichte`).
-Offen: Uhrzeit, und ob Luzzy ihn beim Start von Jarves-OS automatisch vorliest.
-Hängt eng mit Idee 8 (Routinen) zusammen.
+Uhrzeit und Vorlesen stellt Felix selbst in der Routine ein (erledigt, 28.09.2026).
 
 ### 7. ✅ Termine per Sprache (gebaut 28.09.2026)
 Luzzy trägt Termine selbst in den Jarves-Kalender ein, ändert und löscht sie: „Luzzy, trag mir morgen um 10 Zahnarzt ein.“
