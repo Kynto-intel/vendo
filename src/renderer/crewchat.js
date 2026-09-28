@@ -9,6 +9,7 @@
 import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewProfile, botName, LUZZY } from './ansichten.js'
 import { bestaetigen } from './fenster.js'
+import { buehneEinrichten, buehneStarten, buehneAnstossen } from './buehne.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -87,6 +88,7 @@ function gespraech(kanal) {
 }
 
 export const aktuellerKanal = () => {
+  if (modus === 'buehne') return null
   const profil = gewaehlt[modus]
   return profil ? kanalFuer(modus, profil) : null
 }
@@ -110,6 +112,11 @@ export function crewChatEinrichten(helfer) {
   gespraech('zentrale')
   gespraech('crew') // Luzzys Bot Chat gibt es immer
   chatAuswahlEinrichten()
+  buehneEinrichten({
+    sichtbar: () => h.crewSichtbar() && !document.hidden,
+    buehneOffen: () => modus === 'buehne' && h.crewSichtbar(),
+    botChatZeigen
+  })
   $('crew-modus').addEventListener('click', (e) => {
     const knopf = e.target.closest('[data-modus]')
     if (!knopf) return
@@ -127,6 +134,7 @@ export function crewChatEinrichten(helfer) {
     if (e.target.closest('button, select, input, a, .modell-wahl')) return
     const karte = e.target.closest('article.bot[data-profil]')
     if (!karte) return
+    if (modus === 'buehne') modus = 'botchat' // auf der Arbeitsbühne: Klick zeigt den Bot Chat des Bots
     gewaehlt[modus] = karte.dataset.profil // der gewählte Reiter (Normaler Chat / Bot Mode) bleibt
     wechseln()
     $('crew-form').querySelector('textarea').focus()
@@ -146,6 +154,11 @@ export async function crewBotsLaden() {
 
 function zeichnen() {
   for (const k of $('crew-modus').querySelectorAll('[data-modus]')) k.classList.toggle('an', k.dataset.modus === modus)
+  $('crew-bots').hidden = modus === 'buehne'
+  if (modus === 'buehne') {
+    $('crew-chat-hinweis').textContent = 'Live: wer gerade woran arbeitet und was die Bots einander übergeben. Klick auf eine Zeile zeigt alles.'
+    return
+  }
   const liste = bots
   $('crew-bots').innerHTML = liste.length
     ? liste.map((b) => `<button class="crew-bot${b.profil === gewaehlt[modus] ? ' an' : ''}" data-bot="${maskieren(b.profil)}" type="button" title="Hermes-Profil: ${maskieren(b.profil)}">${maskieren(b.name)}${b.rolle ? `<small>${maskieren(b.rolle)}</small>` : ''}</button>`).join('')
@@ -165,6 +178,13 @@ function zeichnen() {
 export async function wechseln() {
   merken()
   zeichnen()
+  const buehne = modus === 'buehne'
+  $('crew-buehne').hidden = !buehne
+  $('crew-listen').hidden = buehne
+  if (buehne) {
+    for (const k of ['crew-form', 'luzzy-form', 'crew-thema-luzzy', 'crew-thema-bot']) if ($(k)) $(k).hidden = true
+    return buehneStarten()
+  }
   const kanal = aktuellerKanal()
   for (const [k, g] of gespraeche) g.liste.hidden = k !== kanal
   if (!kanal) return
@@ -263,6 +283,18 @@ function chatAuswahlEinrichten() {
   })
 }
 
+// Bot Chat eines Bots zeigen (von der Arbeitsbühne aus)
+export function botChatZeigen(profil) {
+  modus = 'botchat'
+  gewaehlt.botchat = profil
+  return wechseln()
+}
+
+// Crew-Bereich wird sichtbar: Arbeitsbühne/Karten live halten (auch wenn gerade ein Chat-Reiter offen ist)
+export function crewSichtbarGeworden() {
+  buehneStarten()
+}
+
 // Luzzys Chat (Zentrale) im Crew-Tab zeigen (Gesprächs-Karte rechts, Strg+K, Klick auf den Untertitel)
 export function luzzyChatZeigen() {
   modus = 'normal'
@@ -273,6 +305,8 @@ export function luzzyChatZeigen() {
 // Ereignisse und Verlauf von Hermes für alle Kanäle außer der Zentrale
 export function crewEreignis(ev) {
   gespraech(ev.kanal).unterhaltung.ereignis(ev)
+  // Übergaben und fertige Antworten: Arbeitsbühne sofort nachlesen
+  if (ev.type === 'tool.start' || ev.type === 'tool.complete' || ev.type === 'message.complete') buehneAnstossen()
 }
 export function crewVerlauf(v) {
   gespraech(v.kanal).unterhaltung.verlauf(v.verlauf)

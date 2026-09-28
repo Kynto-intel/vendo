@@ -29,8 +29,7 @@ Der Crew-Tab erkennt die Profile automatisch.
 **Erledigt über Idee 8:** Routine „Morgenbericht“ hat einen Zeitplan (Uhrzeit + Wochentage), einfach im Tab „Routinen“ einschalten. Läuft, solange Jarves-OS offen ist.
 
 Ein Hermes-Job erstellt jeden Morgen den Bericht (im Vault unter `04_Analytics\Morgenberichte`).
-Offen: Uhrzeit, und ob Luzzy ihn beim Start von Jarves-OS automatisch vorliest.
-Hängt eng mit Idee 8 (Routinen) zusammen.
+Uhrzeit und Vorlesen stellt Felix selbst in der Routine ein (erledigt, 28.09.2026).
 
 ### 7. ✅ Termine per Sprache (gebaut 28.09.2026)
 Luzzy trägt Termine selbst in den Jarves-Kalender ein, ändert und löscht sie: „Luzzy, trag mir morgen um 10 Zahnarzt ein.“
@@ -178,8 +177,9 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 37. 🆕 **„Luzzy, was siehst du?“** (Killer) – Auf Befehl schaut Luzzy auf den Bildschirm (ein Bild, nur wenn Felix
     es sagt, nie heimlich) und hilft bei dem, was gerade offen ist: Fehlermeldung, Shopify-Seite, Design.
     Braucht ein Modell, das Bilder versteht.
-38. **Crew-Arbeitsbühne** (Killer) – Man sieht live, wie die Bots zusammenarbeiten: wer gerade was macht,
-    Zwischenergebnisse, wer wem etwas übergibt. Wie ein kleines Team auf dem Bildschirm.
+38. ✅ **Crew-Arbeitsbühne** (Killer, gebaut 28.09.2026) – Man sieht live, wie die Bots zusammenarbeiten: wer gerade was macht,
+    wer an wen übergibt. Crew-Tab, Reiter „🎬 Arbeitsbühne“: Kette Luzzy → Kira → Lira → Milla mit wanderndem Brief,
+    Ablauf des Auftrags (Klick: Auftrag und Antwort), Bot-Karten oben leuchten live. Liest nur die Bot Chats mit.
 39. 🆕 **Eigene Luzzy-Stimme, lokal** (Extra) – Eine unverwechselbare eigene Stimme über ein lokales Sprachmodell
     auf dem PC: läuft ohne Internet und ohne Microsoft-Dienst, klingt nur nach Luzzy.
 

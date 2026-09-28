@@ -59,6 +59,9 @@ Luzzy ist die Chefin, die Crew sind die übrigen Hermes-Profile: **Kira** (Trend
 - **💬 Normaler Chat:** direkt mit Luzzy, Kira, Lira oder Milla, ohne Bot Mode. Pro Bot mehrere Chats
   (anlegen, wechseln, löschen über „Allgemein ▾“). Luzzys normaler Chat ist das Gespräch der Zentrale.
 - **🤖 Bot Mode:** der „Bot Chat“ eines Bots – dort arbeiten die Bots zusammen; bei Luzzy: Crew-Aufträge.
+- **🎬 Arbeitsbühne:** live sehen, wie die Bots zusammenarbeiten: Kette Luzzy → Kira → Lira → Milla, ein Brief wandert
+  bei jeder Übergabe, darunter der Ablauf des Auftrags (Klick: ganzer Auftrag und Antwort). Die Bot-Karten oben
+  leuchten gold, solange ein Bot arbeitet. Jarves-OS liest die Bot Chats dafür nur mit.
 - **Beim Namen rufen:** „Kira, was ist gerade Trend?“ geht direkt an Kira.
 - **Modell ändern:** Zahnrad auf der Bot-Karte.
 - **Freigaben:** Bei riskanten Befehlen erscheint eine Karte (Einmal erlauben · Für dieses Gespräch · Ablehnen) oder
