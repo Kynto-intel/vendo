@@ -16,7 +16,7 @@ const STANDARD = {
   tageszeitFarben: true,
   leisten: { links: true, rechts: true }, // true = aufgeklappt
   panel: { offen: false, breite: 460 },
-  sprache: { aktivierungswort: true, automatischSenden: true, weiterZuhoeren: true, unterbrechen: true, musikErkennen: true },
+  sprache: { freihaendig: true, crewStill: true, aktivierungswort: true, automatischSenden: true, weiterZuhoeren: true, unterbrechen: true, musikErkennen: true },
   meldungen: { vorlesen: true, ton: true, bestellung: true, mail: true, job: true, crew: true, ruheVon: '22:00', ruheBis: '07:00' }
 }
 

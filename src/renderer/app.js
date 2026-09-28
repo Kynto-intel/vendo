@@ -64,6 +64,12 @@ let versteht = false // Hermes schreibt das Gesprochene gerade mit
 let letzteEingabeGesprochen = false
 let wakeAktiv = false
 let wakeGrund = '' // warum „Hey Luzzy“ nicht zuhört (siehe wakeEinrichten)
+// Freihändig (Standard): „Hey Luzzy“, Reinreden, Weiter-Zuhören. Aus: nur auf Knopfdruck (Headset, Anrufe).
+// Im Crew-Bereich (Felix schreibt mit Kira & Co.) hört Luzzy automatisch nur auf Knopfdruck (abschaltbar).
+let crewOffen = false
+const freihaendigEingestellt = () => einstellungen?.sprache?.freihaendig !== false
+const crewStill = () => crewOffen && einstellungen?.sprache?.crewStill !== false
+const freihaendig = () => freihaendigEingestellt() && !crewStill()
 
 const reaktor = reaktorErstellen($('reaktor-rahmen'))
 const welle = welleErstellen($('welle'))
@@ -82,7 +88,7 @@ const vorleser = vorleserErstellen({
   beiStart: () => {
     spricht = true
     // „Hey Luzzy“ oder einfach Reinreden unterbricht sie (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
-    const unterbrechen = einstellungen?.sprache?.unterbrechen !== false
+    const unterbrechen = einstellungen?.sprache?.unterbrechen !== false && freihaendig()
     mikrofon.wakeSetzen(wakeAktiv && unterbrechen)
     if (unterbrechen && !musikAktiv()) reinredenStarten() // Musik würde Luzzy sonst unterbrechen
     zustandZeigen()
@@ -121,20 +127,22 @@ const mikrofon = mikrofonErstellen({
 
 function mikrofonStatusZeigen(z, text) {
   const el = $('mikrofon-status')
-  const anzeige = z === 'bereit' && wakeAktiv ? 'wake' : z
+  const anzeige = z === 'bereit' && crewStill() && freihaendigEingestellt() ? 'crew' : z === 'bereit' && !freihaendig() ? 'knopf' : z === 'bereit' && wakeAktiv ? 'wake' : z
   el.dataset.zustand = anzeige
   const texte = {
     aus: 'Mikrofon …',
     bereit: 'Mikrofon bereit',
     wake: 'Hört auf „Hey Luzzy“',
+    knopf: 'Mikrofon: nur auf Knopfdruck',
+    crew: 'Mikrofon: im Crew-Bereich nur auf Knopfdruck',
     'nimmt-auf': 'Nimmt auf',
     'kein-mikrofon': 'Kein Mikrofon',
     verweigert: 'Mikrofon verweigert'
   }
   // „Hey Luzzy“ gewünscht, aber Hermes hört nicht: kleiner Hinweis statt stiller Konsolen-Warnung
-  const wakeFehlt = z === 'bereit' && !wakeAktiv && wakeGrund && einstellungen?.sprache?.aktivierungswort
+  const wakeFehlt = z === 'bereit' && freihaendig() && !wakeAktiv && wakeGrund && einstellungen?.sprache?.aktivierungswort
   el.querySelector('.verbindung-text').textContent = wakeFehlt ? 'Mikrofon bereit · „Hey Luzzy“ aus' : texte[anzeige] || text || z
-  el.title = wakeFehlt ? wakeHinweis() : texte[anzeige] || text || z // Tooltip, auch wenn oben nur der Punkt zu sehen ist
+  el.title = `${wakeFehlt ? wakeHinweis() : texte[anzeige] || text || z}\nKlick oder Strg+Umschalt+H: ${freihaendig() ? 'nur noch auf Knopfdruck zuhören' : 'wieder freihändig („Hey Luzzy“)'}` // Tooltip, auch wenn oben nur der Punkt zu sehen ist
   $('mikrofon').classList.toggle('fehlt', z === 'kein-mikrofon' || z === 'verweigert')
   $('mikrofon').title = z === 'kein-mikrofon' ? 'Kein Mikrofon gefunden. Einstecken, dann klicken.' : 'Sprechen (Strg+Leertaste)'
   const e = $('e-mikrofon-status')
@@ -280,7 +288,7 @@ function nurMusik(text) {
 
 // Nach Luzzys Antwort kurz weiter zuhören, wenn die Frage gesprochen war (Gesprächsmodus)
 function weiterZuhoeren() {
-  if (!letzteEingabeGesprochen || !einstellungen?.sprache?.weiterZuhoeren) return
+  if (!letzteEingabeGesprochen || !einstellungen?.sprache?.weiterZuhoeren || !freihaendig()) return
   if (musikAktiv()) return (letzteEingabeGesprochen = false) // läuft Musik, würde sie sonst mitgeschrieben
   letzteEingabeGesprochen = false
   setTimeout(() => {
@@ -295,7 +303,7 @@ const wakeHinweis = () =>
     ? '„Hey Luzzy“ ist in Hermes aus. Meist, weil die Hermes-App offen war und Jarves-OS an ihr Hermes angedockt hat (anderes Profil). Hermes-App schließen und Jarves-OS neu starten.'
     : `„Hey Luzzy“ hört gerade nicht zu (${wakeGrund}).`
 async function wakeEinrichten() {
-  const soll = Boolean(einstellungen?.sprache?.aktivierungswort) && verbunden
+  const soll = Boolean(einstellungen?.sprache?.aktivierungswort) && freihaendig() && verbunden
   if (!soll) {
     if (wakeAktiv) await api.wake.stoppen()
     wakeAktiv = false
@@ -318,6 +326,33 @@ async function wakeEinrichten() {
 
 $('mikrofon').addEventListener('click', () => sprechenStarten())
 api.sprache.beiUmschalten(() => sprechenStarten())
+
+// Freihändig an/aus: Klick auf „Mikrofon“ oben, Strg+Umschalt+H (überall), Befehlspalette, Einstellungen
+async function freihaendigSetzen(an, { sagen = true } = {}) {
+  einstellungen = await api.einstellungen.speichern({ sprache: { ...einstellungen.sprache, freihaendig: Boolean(an) } })
+  reinredenAus()
+  await wakeEinrichten()
+  mikrofonStatusZeigen(mikrofon.zustand())
+  const satz = an ? 'Ich höre wieder von selbst zu. Sag einfach Hey Luzzy.' : 'Okay, ich höre nur noch zu, wenn du das Mikrofon startest.'
+  aktivitaetMelden(satz)
+  if (sagen) untertitelZeigen(satz, { fertig: true })
+}
+// Umschalten: im Crew-Bereich (dort ist Luzzy still) heißt das „hier doch mithören“, sonst freihändig an/aus
+async function hoerModusUmschalten() {
+  if (crewStill() && freihaendigEingestellt()) {
+    einstellungen = await api.einstellungen.speichern({ sprache: { ...einstellungen.sprache, crewStill: false } })
+    hoerModusAnwenden()
+    return untertitelZeigen('Okay, ich höre jetzt auch im Crew-Bereich zu. Zurückstellen: Einstellungen, Sprechen.', { fertig: true })
+  }
+  return freihaendigSetzen(!freihaendigEingestellt())
+}
+function hoerModusAnwenden() {
+  reinredenAus()
+  wakeEinrichten()
+  mikrofonStatusZeigen(mikrofon.zustand())
+}
+$('mikrofon-status').addEventListener('click', hoerModusUmschalten)
+api.sprache.beiFreihaendig(hoerModusUmschalten)
 // Mikrofon eingesteckt: automatisch aufnehmen
 navigator.mediaDevices.addEventListener('devicechange', () => {
   if (['kein-mikrofon', 'aus'].includes(mikrofon.zustand())) wakeEinrichten()
@@ -669,6 +704,7 @@ function paletteEinfuegen(text) {
 // Sprachbefehle (gehen gesprochen nach „Hey Luzzy“ oder getippt). Mit „…“: Beispiel zum Anpassen in die Eingabe.
 const SPRACHBEFEHLE = [
   ['Hey Luzzy', 'Luzzy hört zu (oder Strg+Leertaste)', 'aktivierungswort zuhören', () => sprechenStarten()],
+  ['Hör nur noch auf Knopfdruck', 'kein „Hey Luzzy“ mehr, z. B. beim Telefonieren (Strg+Umschalt+H schaltet zurück)', 'mikrofon headset anruf freihändig aus', () => freihaendigSetzen(false)],
   ['Einfach reinreden (während sie spricht)', 'Luzzy hört auf und hört dir zu, auch „Hey Luzzy“ geht', 'unterbrechen dazwischen reden'],
   ['Stopp', 'Luzzy hört sofort auf (auch „Halt“, „Das reicht“, „Psst“)', 'still ruhe aufhören abbrechen'],
   ['Wiederhol das', 'letzte Antwort nochmal', 'wie bitte nochmal vorlesen'],
@@ -717,6 +753,7 @@ const SPRACHBEFEHLE = [
 const TASTENKUERZEL = [
   ['Befehlspalette', 'Strg+P', () => {}],
   ['Sprechen (auch im Hintergrund)', 'Strg+Leertaste', () => sprechenStarten()],
+  ['Freihändig an/aus („Hey Luzzy“ oder nur auf Knopfdruck, z. B. mit Headset)', 'Strg+Umschalt+H', () => hoerModusUmschalten()],
   ['Zwischenablage an Luzzy (aus jedem Programm)', 'Strg+Umschalt+L', () => ablageOeffnen()],
   ['Gespräch öffnen/schließen', 'Strg+K', () => panelSetzen(panelGeschlossen())],
   ['Linke Leiste ein/aus (oder Klick aufs Logo)', 'Strg+B', () => leisteUmschalten('links')],
@@ -837,6 +874,10 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   const freigabe = freigabeAusText(text)
   if (freigabe) return lokalAntworten(freigabe, { gesprochen }), true
   if (STOPPWOERTER.has(text.toLowerCase().replace(/[.,!?]/g, '').replace(/^(hey )?luzzy /, '').replace(/\s+/g, ' ').trim())) return stoppen(), true
+  // „Hör nur noch auf Knopfdruck“ / „Freihändig an“
+  const hoerBefehl = text.toLowerCase().replace(/[.,!?]/g, '').replace(/^(hey )?luzzy /, '').replace(/\s+/g, ' ').trim()
+  if (/^(?:hör|höre) (?:nur noch |nur )?auf knopfdruck$|^(?:freihändig|freihand|mikrofon) aus$|^(?:hör|höre) (?:nicht mehr zu|nicht mehr mit|auf mitzuhören)$/.test(hoerBefehl)) return freihaendigSetzen(false, { sagen: false }), lokalAntworten('Okay, ich höre nur noch zu, wenn du das Mikrofon startest.', { gesprochen }), true
+  if (/^(?:freihändig|freihand) (?:an|ein)$|^(?:hör|höre) wieder (?:mit|zu)$/.test(hoerBefehl)) return freihaendigSetzen(true, { sagen: false }), lokalAntworten('Ich höre wieder von selbst zu. Sag einfach Hey Luzzy.', { gesprochen }), true
   // Ist gerade eine Datei offen: „Luzzy, ändere …“ ändert die Datei (live im Text, gespeichert wird nur per Klick)
   const aenderung = aenderungsBefehl(text)
   if (aenderung) return dateiAntworten(aenderung, { gesprochen }), true
@@ -1383,6 +1424,11 @@ let crewGeoeffnet = false
 
 function ansichtZeigen(id) {
   aktuelleAnsicht = id
+  // Crew-Bereich: Luzzy hört nicht mit (Felix schreibt dort mit den Bots), beim Verlassen wieder wie eingestellt
+  if (crewOffen !== (id === 'crew')) {
+    crewOffen = id === 'crew'
+    hoerModusAnwenden()
+  }
   // Zuletzt offenen Bereich merken (nicht im Testmodus), damit er beim nächsten Start wieder aufgeht
   if (einstellungen && einstellungen.letzteAnsicht !== id && !new URLSearchParams(location.search).has('stumm')) {
     einstellungen.letzteAnsicht = id
@@ -1613,6 +1659,8 @@ function formularFuellen() {
   $('e-tempo').value = zahl(einstellungen.tempo)
   $('e-hoehe').value = zahl(einstellungen.hoehe)
   $('e-vorlesen').checked = einstellungen.vorlesen
+  $('e-freihaendig').checked = einstellungen.sprache.freihaendig !== false
+  $('e-crewstill').checked = einstellungen.sprache.crewStill !== false
   $('e-wake').checked = einstellungen.sprache.aktivierungswort
   $('e-auto-senden').checked = einstellungen.sprache.automatischSenden
   $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
@@ -1661,6 +1709,8 @@ function formularLesen() {
       ruheBis: $('e-m-ruhe-bis').value
     },
     sprache: {
+      freihaendig: $('e-freihaendig').checked,
+      crewStill: $('e-crewstill').checked,
       aktivierungswort: $('e-wake').checked,
       automatischSenden: $('e-auto-senden').checked,
       weiterZuhoeren: $('e-weiter').checked,

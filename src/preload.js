@@ -97,7 +97,8 @@ contextBridge.exposeInMainWorld('jarves', {
   },
   sprache: {
     transkribieren: (bytes, mime) => ipcRenderer.invoke('sprache:transkribieren', bytes, mime),
-    beiUmschalten: abonnieren('mikrofon:umschalten')
+    beiUmschalten: abonnieren('mikrofon:umschalten'),
+    beiFreihaendig: abonnieren('mikrofon:freihaendig')
   },
   wake: {
     starten: () => ipcRenderer.invoke('wake:starten'),

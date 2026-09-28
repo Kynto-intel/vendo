@@ -79,6 +79,11 @@ select option::checkmark { display: none; }
 /* Mikrofon */
 #mikrofon-status[data-zustand='bereit'] .punkt { background: var(--gruen); }
 #mikrofon-status[data-zustand='wake'] .punkt { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+/* Nur auf Knopfdruck (Headset, Anrufe): ruhiger, heller Punkt ohne Leuchten */
+#mikrofon-status[data-zustand='knopf'] .punkt { background: transparent; border: 1.5px solid var(--text-leise); box-shadow: none; }
+#mikrofon-status[data-zustand='knopf'] .verbindung-text { color: var(--text-leise); }
+#mikrofon-status[data-zustand='crew'] .punkt { background: transparent; border: 1.5px solid var(--gold-dunkel); box-shadow: none; }
+#mikrofon-status[data-zustand='crew'] .verbindung-text { color: var(--text-leise); }
 #mikrofon-status[data-zustand='nimmt-auf'] .punkt { background: var(--rot); box-shadow: 0 0 8px var(--rot); animation: puls 0.8s infinite; }
 #mikrofon-status[data-zustand='kein-mikrofon'] .punkt,
 #mikrofon-status[data-zustand='verweigert'] .punkt { background: var(--gedimmt); }

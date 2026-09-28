@@ -44,9 +44,9 @@
           <div class="verbindung" id="verbindung" data-kurz="Hermes">
             <span class="punkt"></span><span class="verbindung-text">Verbinde …</span>
           </div>
-          <div class="verbindung" id="mikrofon-status" data-zustand="aus" data-kurz="Mikrofon">
+          <button class="verbindung verbindung-knopf" id="mikrofon-status" data-zustand="aus" data-kurz="Mikrofon" type="button">
             <span class="punkt"></span><span class="verbindung-text">Mikrofon …</span>
-          </div>
+          </button>
           <button class="verbindung verbindung-knopf" id="shopify-status" data-zustand="verbinde" data-kurz="Shopify" type="button" title="Wird geprüft … (Klick: jetzt prüfen)">
             <span class="punkt"></span><span class="verbindung-text">Shopify …</span>
           </button>
@@ -388,6 +388,8 @@
           <div class="e-seite-kopf"><h3>Sprechen</h3><p class="leise">Aktivierungswort, Mikrofon und Gesprächsmodus.</p></div>
           <fieldset>
             <legend>Sprechen</legend>
+            <label class="haken" title="Aus: Luzzy hört nur zu, wenn du das Mikrofon startest (Strg+Leertaste oder Mikrofon-Knopf). Gut mit Headset oder in Anrufen. Umschalten: Strg+Umschalt+H oder Klick auf „Mikrofon“ oben."><input id="e-freihaendig" type="checkbox" /> Freihändig: Luzzy hört von selbst mit (aus = nur auf Knopfdruck, Strg+Umschalt+H)</label>
+            <label class="haken" title="Im Crew-Bereich schreibst du mit Kira, Lira und Milla. Dort hört Luzzy nicht mit, auch nicht auf Musik im Headset. Sprechen geht weiter mit Strg+Leertaste."><input id="e-crewstill" type="checkbox" /> Im Crew-Bereich nicht mithören (nur auf Knopfdruck)</label>
             <label class="haken"><input id="e-wake" type="checkbox" /> Auf „Hey Luzzy“ hören</label>
             <label class="haken"><input id="e-auto-senden" type="checkbox" /> Gesprochenes sofort abschicken</label>
             <label class="haken"><input id="e-weiter" type="checkbox" /> Nach Luzzys Antwort kurz weiter zuhören</label>

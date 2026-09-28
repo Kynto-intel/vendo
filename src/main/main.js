@@ -649,6 +649,8 @@ app.whenReady().then(() => {
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))
+  // Strg+Umschalt+H: freihändig an/aus („Hey Luzzy“ & Co. oder nur auf Knopfdruck), auch mitten in einem Anruf
+  if (!globalShortcut.register('Control+Shift+H', () => senden('mikrofon:freihaendig'))) console.warn('Strg+Umschalt+H ist schon von einem anderen Programm belegt.')
   // Strg+Umschalt+L: kopierten Text an Luzzy (auch aus jedem anderen Programm)
   const ok = globalShortcut.register('Control+Shift+L', () => {
     if (!fenster || fenster.isDestroyed()) return
