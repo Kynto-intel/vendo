@@ -1,4 +1,4 @@
-// Suchleiste oben in der Zentrale (Strg+F): nach allem suchen, der Treffer öffnet sich in der App.
+// Suchleiste oben in der Kopfleiste (Strg+F): nach allem suchen, der Treffer öffnet sich in der App.
 //   • Bots        → kleines Chat-Fenster unten rechts (crewchat.js), direkt mit dem Bot schreiben
 //   • Bereiche, Routinen, Befehle → aus der Befehlspalette (palette.js), öffnet den Tab bzw. führt aus
 //   • Notizen     → Vault (Wissen-Tab öffnet die Notiz)
@@ -79,7 +79,21 @@ function zeichnen() {
     })
     .join('')
   liste.hidden = false
+  listeAusrichten()
   liste.querySelector('.gewaehlt')?.scrollIntoView({ block: 'nearest' })
+}
+
+// Die Liste hängt unter der Kopfleiste (dort würde sie abgeschnitten): unter das Suchfeld schieben, mindestens 380 px breit
+function listeAusrichten() {
+  const liste = $('suche-liste')
+  const r = $('suche-eingabe').getBoundingClientRect()
+  const m = (liste.offsetParent || document.body).getBoundingClientRect()
+  const breite = Math.min(Math.max(r.width, 380), m.width - 24)
+  let links = r.left - m.left
+  if (links + breite > m.width - 12) links = Math.max(12, m.width - 12 - breite)
+  liste.style.left = `${links}px`
+  liste.style.width = `${breite}px`
+  liste.style.top = `${r.bottom - m.top + 6}px`
 }
 
 // Notizen und Dateien: kurz nach dem Tippen im Hintergrund suchen

@@ -756,7 +756,7 @@ const SPRACHBEFEHLE = [
 // Tastenkürzel (zum Nachschlagen, Anklicken führt aus, wo es geht)
 const TASTENKUERZEL = [
   ['Befehlspalette', 'Strg+P', () => {}],
-  ['Suchleiste in der Zentrale: Bots, Bereiche, Notizen, Dateien', 'Strg+F', () => sucheOeffnen()],
+  ['Suchleiste oben: Bots, Bereiche, Notizen, Dateien', 'Strg+F', () => sucheOeffnen()],
   ['Sprechen (auch im Hintergrund)', 'Strg+Leertaste', () => sprechenStarten()],
   ['Freihändig an/aus („Hey Luzzy“ oder nur auf Knopfdruck, z. B. mit Headset)', 'Strg+Umschalt+H', () => hoerModusUmschalten()],
   ['Zwischenablage an Luzzy (aus jedem Programm)', 'Strg+Umschalt+L', () => ablageOeffnen()],
@@ -1572,8 +1572,7 @@ sucheEinrichten({
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
     e.preventDefault()
-    if (aktuelleAnsicht !== 'zentrale') ansichtZeigen('zentrale')
-    sucheOeffnen()
+    sucheOeffnen() // die Suchleiste sitzt in der Kopfleiste, geht in jedem Bereich
   }
 })
 

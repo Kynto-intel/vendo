@@ -57,16 +57,16 @@
             <span class="nicht-stoeren-zeichen">◐</span><span class="verbindung-text"></span>
           </button>
           <div class="timer-leiste" id="timer-leiste" hidden></div>
+          <!-- Suchleiste (src/renderer/suche.js): Bots, Bereiche, Befehle, Notizen, Dateien -->
+          <div class="kopf-suche" id="suche">
+            <span class="suche-lupe" aria-hidden="true">⌕</span>
+            <input class="suche-eingabe" id="suche-eingabe" type="search" placeholder="Suchen … (Strg+F)" title="Bots, Bereiche, Befehle, Notizen und Dateien (Strg+F)" autocomplete="off" spellcheck="false" />
+          </div>
           <div class="uhr" id="uhr"><span class="uhr-datum" id="uhr-datum"></span><span class="uhr-datum-kurz" id="uhr-datum-kurz"></span><span class="uhr-zeit" id="uhr-zeit"></span></div>
         </div>
+        <ul class="suche-liste hud" id="suche-liste" hidden></ul>
         <!-- Zentrale: Luzzy -->
         <section class="ansicht ansicht-zentrale" data-ansicht="zentrale">
-          <!-- Suchleiste (src/renderer/suche.js): Bots, Bereiche, Befehle, Notizen, Dateien -->
-          <div class="zentral-suche" id="suche">
-            <span class="suche-lupe" aria-hidden="true">⌕</span>
-            <input class="suche-eingabe" id="suche-eingabe" type="search" placeholder="Suchen: Bots, Bereiche, Notizen, Dateien … (Strg+F)" autocomplete="off" spellcheck="false" />
-            <ul class="suche-liste hud" id="suche-liste" hidden></ul>
-          </div>
           <section class="luzzy-bereich">
             <div class="reaktor-rahmen" id="reaktor-rahmen"></div>
             <div class="luzzy-name">LUZZY</div>

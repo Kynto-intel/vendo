@@ -1258,12 +1258,13 @@ body.datei-drueber .datei-ablage { display: grid; }
 
 /* Suchleiste oben in der Zentrale (suche.js) */
 .ansicht-zentrale { position: relative; }
-.zentral-suche { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 56px)); z-index: 30; }
-.suche-lupe { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-leise); font-size: 16px; pointer-events: none; }
-.suche-eingabe { width: 100%; box-sizing: border-box; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 999px; padding: 9px 16px 9px 36px; font: inherit; font-size: 13px; color: var(--text); outline: none; transition: border-color 150ms, box-shadow 150ms; }
+/* sitzt in der Kopfleiste: nimmt den freien Platz; wird es enger, kürzt app.js (kopfAnpassen) erst die Knöpfe daneben */
+.mitte-kopf > .kopf-suche { position: relative; flex: 1 1 360px; flex-shrink: 1; min-width: 170px; max-width: 460px; }
+.suche-lupe { position: absolute; left: 9px; top: 50%; transform: translateY(-52%); color: var(--text-leise); font-size: 14px; pointer-events: none; }
+.suche-eingabe { width: 100%; box-sizing: border-box; height: 26px; background: rgba(25, 25, 28, 0.7); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 0 10px 0 28px; font: inherit; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; transition: border-color 150ms, box-shadow 150ms; }
 .suche-eingabe:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-flaeche, rgba(201, 161, 74, 0.12)); }
 .suche-eingabe::-webkit-search-cancel-button { display: none; }
-.suche-liste { position: absolute; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; max-height: min(62vh, 520px); overflow-y: auto; box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.7); }
+.suche-liste { position: absolute; top: 40px; left: 18px; width: 460px; z-index: 50; margin: 0; padding: 6px; list-style: none; max-height: min(62vh, 520px); overflow-y: auto; box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.7); }
 .suche-liste[hidden] { display: none; }
 .suche-gruppe { padding: 8px 10px 4px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-leise); }
 .suche-treffer { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius); cursor: pointer; }
