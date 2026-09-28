@@ -450,6 +450,8 @@ git pull
 
 Neue Funktionen kommen direkt auf `main` oder als Pull Request auf dem Branch `claude/fervent-pasteur-dft0hp`.
 
+**Neue Ideen** (Runde 2: Optimierungen, Stimme, Killer-Funktionen, ungenutzte Hermes-Funktionen): [`ideen.md`](ideen.md).
+
 **Für später** (bewusst nicht gebaut): eine kostenpflichtige ElevenLabs-Stimme, falls Pocket TTS einmal nicht reicht.
 Neue Wünsche am einfachsten als Plugin über die [Werkstatt](#plugins) bauen lassen.
 
