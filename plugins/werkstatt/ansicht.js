@@ -56,6 +56,11 @@ Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix n
     if (wunsch.length < 3) return
     if (!ctx.bereit()) return ctx.hinweis('Luzzy ist gerade beschäftigt oder nicht verbunden. Gleich nochmal versuchen.', { titel: 'Werkstatt' })
     await ctx.luzzy(auftragAendern(id, wunsch), { anzeige: `🛠 Werkstatt – ${id} ändern: ${wunsch}`, ansichtWechseln: false })
+    // Eingabefeld schließen – solange es offen ist, zeichnet laden() bewusst nicht neu
+    for (const f of ctx.element.querySelectorAll('.ws-aendern')) {
+      f.hidden = true
+      f.reset()
+    }
     berichte.delete(id)
     await laden()
   }
