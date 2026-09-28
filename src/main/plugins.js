@@ -69,6 +69,14 @@ function wiederEinschalten(id) {
   startZustandSpeichern(z)
   return true
 }
+// Plugin entfernt: Notbremse vergisst es
+function vergessen(id) {
+  const z = startZustand()
+  z.aus = z.aus.filter((x) => x !== id)
+  z.neu = z.neu.filter((x) => x !== id)
+  startZustandSpeichern(z)
+  abgeschaltet = abgeschaltet.filter((x) => x !== id)
+}
 const notbremse = () => ({ jetzt: abgeschaltet, aus: startZustand().aus })
 
 function datenPfad(id) {
@@ -172,4 +180,4 @@ function beobachten(id, beiAenderung) {
   return true
 }
 
-module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, notbremse }
+module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, vergessen, notbremse }

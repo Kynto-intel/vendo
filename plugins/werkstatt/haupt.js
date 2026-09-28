@@ -233,6 +233,7 @@ async function entfernen(idRoh) {
   fs.mkdirSync(SICHERUNG, { recursive: true })
   fs.cpSync(ordner, path.join(SICHERUNG, `plugin-${id}_${zeitstempel()}`), { recursive: true })
   await require('electron').shell.trashItem(ordner)
+  lader.vergessen?.(id) // Notbremse-Hinweis verschwindet mit dem Plugin
   return true
 }
 

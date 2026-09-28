@@ -362,6 +362,16 @@ ipcMain.handle('plugins:datenLaden', (_e, id) => plugins.datenLaden(String(id)))
 ipcMain.handle('plugins:datenSpeichern', (_e, id, daten) => plugins.datenSpeichern(String(id), daten))
 ipcMain.handle('plugins:beobachten', (_e, id) => plugins.beobachten(String(id), (pid) => fenster?.webContents.send('plugins:geaendert', pid)))
 ipcMain.handle('plugins:startOk', () => plugins.startOk()) // Notbremse: Start hat geklappt
+// Notbremse: Wird Jarves-OS normal beendet (auch schnell nach dem Start), zählt das als geglückter Start.
+// Nur Absturz oder Hänger der Oberfläche lösen sie beim nächsten Start aus.
+let oberflaecheGestoert = false
+app.on('web-contents-created', (_e, wc) => {
+  if (wc.getType() !== 'window') return
+  wc.on('render-process-gone', (_ev, d) => { if (wc === fenster?.webContents && d.reason !== 'clean-exit') oberflaecheGestoert = true })
+  wc.on('unresponsive', () => { if (wc === fenster?.webContents) oberflaecheGestoert = true })
+  wc.on('responsive', () => { if (wc === fenster?.webContents) oberflaecheGestoert = false })
+})
+app.on('before-quit', () => { if (!oberflaecheGestoert) plugins.startOk() })
 ipcMain.handle('plugins:aufrufen', (_e, id, name, argumente) => plugins.aufrufen(String(id), String(name), Array.isArray(argumente) ? argumente : []))
 
 // Wissen (nur lesen, nur im Donnerwolf-Ordner)
