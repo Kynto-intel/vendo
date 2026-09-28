@@ -14,7 +14,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'jarves-datei', privileges: { st
 const os = require('node:os')
 const path = require('node:path')
 const { Hermes, PROFIL } = require('./hermes')
-const stimme = require('./stimme')
+const pocket = require('./pocket')
 const einstellungen = require('./einstellungen')
 const dateisuche = require('./dateisuche')
 const pc = require('./pc')
@@ -398,11 +398,32 @@ ipcMain.handle('datei:mitProgramm', async (_e, id) => {
 })
 ipcMain.handle('datei:imOrdner', (_e, id) => shell.showItemInFolder(dateisuche.pfadVon(id)))
 
-ipcMain.handle('stimme:liste', () => stimme.STIMMEN)
+// Luzzys Stimme: Pocket TTS (#39), lokal auf dem PC. Kein Text geht ins Internet.
+const pocketDateiFuer = (o) => (pocket.stimmeGueltig(o.stimme) === 'eigen' ? o.pocketDatei : '')
+const frist = (ms, text) => new Promise((_r, fehler) => setTimeout(() => fehler(new Error(text)), ms))
+ipcMain.handle('stimme:liste', () => [...pocket.STIMMEN, pocket.EIGEN])
 ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
-  const mp3 = await stimme.sprechen(String(text || '').slice(0, 3000), optionen || einstellungen.laden())
-  return mp3 // Buffer kommt in der Oberfläche als Uint8Array an
+  const o = { ...einstellungen.laden(), ...(optionen || {}) }
+  const stimmeId = pocket.stimmeGueltig(o.stimme)
+  const datei = pocketDateiFuer({ ...o, stimme: stimmeId })
+  // Startet der Server noch: warten (bei „Probe hören“ auch beim allerersten Start, der das Modell lädt)
+  if (!pocket.bereit()) await Promise.race([pocket.starten(datei), frist(o.aufPocketWarten ? 10 * 60000 : 90000, 'Pocket TTS startet noch.')])
+  return pocket.sprechen(String(text || '').slice(0, 3000), { stimme: stimmeId, datei }) // Buffer kommt als Uint8Array an
 })
+ipcMain.handle('stimme:pocketZustand', () => pocket.zustand())
+ipcMain.handle('stimme:pocketStarten', (_e, optionen) => {
+  pocket.starten(pocketDateiFuer({ ...einstellungen.laden(), ...(optionen || {}) })).catch(() => {})
+  return pocket.zustand()
+})
+ipcMain.handle('stimme:pocketDateiWaehlen', async () => {
+  const r = await dialog.showOpenDialog(fenster, {
+    title: 'Aufnahme für Luzzys Stimme (10 bis 30 Sekunden, nur mit Zustimmung der Person)',
+    properties: ['openFile'],
+    filters: [{ name: 'Aufnahme', extensions: ['wav', 'mp3', 'flac', 'ogg', 'm4a', 'safetensors'] }]
+  })
+  return r.canceled ? '' : pocket.stimmDatei(r.filePaths[0])
+})
+app.on('will-quit', () => pocket.stoppen())
 
 ipcMain.handle('einstellungen:laden', () => einstellungen.laden())
 // Ergebnis zurück in die Zwischenablage (Zwischenablage an Luzzy)
@@ -646,6 +667,8 @@ app.whenReady().then(() => {
   })
   dateisuche.vorbereiten()
   pc.vorbereiten()
+  // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann
+  pocket.starten(pocketDateiFuer(einstellungen.laden())).catch(() => {})
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))

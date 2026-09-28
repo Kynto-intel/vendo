@@ -380,8 +380,16 @@
           <fieldset>
             <legend>Luzzys Stimme</legend>
             <label>Stimme <select id="e-stimme"></select></label>
+            <div class="e-pocket" id="e-pocket" hidden>
+              <div class="e-pocket-datei" id="e-pocket-datei-zeile">
+                <span id="e-pocket-datei" class="leise">Keine Aufnahme gewählt</span>
+                <button class="knopf-flach" id="e-pocket-waehlen" type="button">Aufnahme wählen …</button>
+              </div>
+              <p class="leise" id="e-pocket-hinweis">Eine saubere Aufnahme, 10 bis 30 Sekunden, ohne Musik. Nur von jemandem, der zugestimmt hat.</p>
+              <div class="leise" id="e-pocket-status">Pocket TTS: wird geprüft …</div>
+              <p class="leise">Pocket TTS läuft lokal auf deinem PC, kein Text geht ins Internet. Nach dem Start von Jarves braucht es ein paar Sekunden, bis Luzzy sprechen kann.</p>
+            </div>
             <label>Tempo <input id="e-tempo" type="range" min="-20" max="20" step="1" /> <output id="e-tempo-wert"></output></label>
-            <label>Tonhöhe <input id="e-hoehe" type="range" min="-10" max="10" step="1" /> <output id="e-hoehe-wert"></output></label>
             <label class="haken"><input id="e-vorlesen" type="checkbox" /> Antworten automatisch vorlesen</label>
             <button class="knopf-flach" id="e-probe" type="button">Probe hören</button>
           </fieldset>
