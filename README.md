@@ -235,6 +235,12 @@ automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
   den Auftrag und eine kleine Kette (gold = arbeitet, grün = fertig). Ist er fertig und gibt weiter, wechselt die Karte
   von selbst zum nächsten Bot. Klick öffnet die Arbeitsbühne. Ein- und ausschalten: Einstellungen → Rechte Spalte.
 - **Beim Namen rufen:** „Kira, was ist gerade Trend?“ geht in der Zentrale direkt an Kira (Antwort als Untertitel).
+- **Neuen Bot anlegen:** „＋ Neuer Bot“ oben in der Bot-Liste. Name, Rolle (daraus wird das Profil, z. B.
+  `freya-social-media-bot`), Bild (optional), **Wofür ist er da?** (1–2 Sätze – daran erkennt Luzzy, wann sie ihn
+  fragt), **Aufgaben und Charakter** (kommt in seine `SOUL.md`) und **Einstellungen übernehmen von** (Modell,
+  Zugänge und Skills eines bestehenden Bots, ohne Messenger-Kanäle). Angelegt wird mit Hermes' eigenem Befehl
+  `hermes profile create` – update-fest, am Hermes-Programm ändert sich nichts. Hermes nimmt jeden Bot automatisch ins
+  Crew-Team auf; danach öffnet sich gleich der Chat mit ihm.
 - **Modell ändern:** Zahnrad auf der Bot-Karte. Liste mit Suche, Anbieter zum Ein- und Ausklappen.
 - **Im Crew-Bereich hört Luzzy nicht von selbst mit** (z. B. Musik im Headset). Sprechen geht dort mit Strg+Leertaste.
 - **Freigaben:** Bei riskanten Befehlen erscheint eine Karte (Einmal erlauben · Für dieses Gespräch · Ablehnen) und
@@ -421,6 +427,7 @@ nicht anfasst. Am Hermes-Programm (`hermes-agent\`) wurde nie etwas geändert.
 
 | Wo | Was | Sicherung |
 |---|---|---|
+| `profiles\<neuer-bot>\` | Bots, die du mit „＋ Neuer Bot“ anlegst (`hermes profile create`, `SOUL.md`, `assets\avatar.png`) | – (neu) |
 | `profiles\donnerwolf\config.yaml` | Spracherkennung an, Deutsch (`stt.enabled`, `stt.language: de`, Modell `base`) | `config.yaml.vor-jarves-os-20260926-0207.bak` |
 | `profiles\donnerwolf\config.yaml` | Aktivierungswort (`wake_word`: provider sherpa, phrase „hey luzzy“, capture client, surface tui, sensitivity 0.45) | `config.yaml.vor-jarves-os-phase2-*.bak` |
 | `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) | – (neu) |
