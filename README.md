@@ -143,7 +143,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 
 | Gruppe | Bereich | Was er kann |
 |---|---|---|
-| **Luzzy** | **Zentrale** | **Cockpit** (siehe unten), Reaktor (bewegt sich mit Luzzys Stimme), Untertitel, Schnellbefehle, Eingabe. 📌 an jeder Antwort merkt sie im Vault |
+| **Luzzy** | **Zentrale** | **Cockpit** (siehe unten) und die Chat-Eingabe; Luzzys Reaktor sitzt unten in der rechten Spalte. Ohne Cockpit: Reaktor, Untertitel, Schnellbefehle, 📌 Antwort merken |
 | | **Crew** | Bot-Karten, Normaler Chat, Bot Mode, Arbeitsbühne (siehe unten) |
 | **Automation** | **Jobs** | Hermes-Jobs ansehen, ausführen, pausieren, löschen (mit Rückfrage) |
 | | **Kanban** | Hermes-Kanban-Board |
@@ -161,9 +161,10 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 - **Agenten-Orchestrierung:** Luzzy als Chefin oben (mit „arbeiten gerade“), darunter die 4 aktivsten Bots mit Anteil
   an den Aufträgen der letzten 24 Stunden, Ø Antwortzeit und Sitzungen. Ein Bot, der gerade arbeitet, leuchtet gold.
   Klick auf einen Bot öffnet das kleine Chat-Fenster.
-- **Luzzy unten rechts:** Mit Cockpit sitzt Luzzy (Reaktor, Name, Zustand, Sprach-Welle) unten in der rechten Spalte,
-  ohne Untertitel – ihre Antworten hörst du, der Verlauf steht im Crew-Tab. Ist die rechte Spalte eingeklappt (Strg+J)
-  oder das Cockpit aus, steht sie wieder in der Mitte.
+- **Zentrale = nur Cockpit und Chat-Eingabe.** Luzzy (Reaktor, Name, Zustand, Sprach-Welle) sitzt unten in der rechten
+  Spalte, ohne Untertitel – ihre Antworten hörst du, der Verlauf steht im Crew-Tab. Die Schnellbefehl-Knöpfe sind
+  ausgeblendet (Routinen gehen weiter per Auslösewort, Befehlspalette oder Suchleiste). Freigabe-Karten und Anhänge
+  erscheinen wie gewohnt über der Eingabe. Cockpit aus (Einstellungen → Aussehen): alles wieder wie früher.
 - **So wird gerechnet** (Hermes selbst führt keine Erfolgsquote): Ein Auftrag ist jede Nachricht an einen Agenten – von
   dir oder von einem anderen Bot. Erfolgreich, wenn danach eine fertige Antwort kommt; gescheitert, wenn keine kommt.
   Ein gescheiterter Auftrag in den letzten 24 Stunden oder ein nicht erreichbarer Dienst setzt den Status auf

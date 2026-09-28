@@ -298,15 +298,15 @@ export function cockpitAnzeigen(an) {
   if (an) runde()
 }
 
-// Mit Cockpit wohnt Luzzy (Reaktor, Name, Zustand) unten in der rechten Spalte, ohne Untertitel.
-// Ist die rechte Spalte eingeklappt oder das Cockpit aus, steht sie wieder an ihrem Platz in der Zentrale.
+// Mit Cockpit wohnt Luzzy (Reaktor, Name, Zustand) unten in der rechten Spalte, ohne Untertitel – nie in der Zentrale
+// (Felix' Wunsch: dort nur Cockpit und Chat-Eingabe). Nur ohne Cockpit steht sie wieder an ihrem alten Platz.
 let luzzyHeimat = null
 function luzzyPlatzieren() {
   const luzzy = document.querySelector('.luzzy-bereich')
   const spalte = document.querySelector('aside.live')
   if (!luzzy || !spalte) return
   luzzyHeimat ??= { eltern: luzzy.parentNode, danach: luzzy.nextSibling }
-  const rechts = !$('cockpit').hidden && !document.body.classList.contains('rechts-zu')
+  const rechts = !$('cockpit').hidden
   if (rechts && luzzy.parentNode !== spalte) spalte.appendChild(luzzy)
   else if (!rechts && luzzy.parentNode !== luzzyHeimat.eltern) luzzyHeimat.eltern.insertBefore(luzzy, luzzyHeimat.danach)
   luzzy.classList.toggle('in-spalte', rechts)
@@ -322,7 +322,5 @@ export function cockpitEinrichten(helfer) {
   })
   $('cockpit').addEventListener('keydown', (e) => e.key === 'Enter' && e.target.closest('[data-ck-bot],[data-ck-chef]')?.click())
   document.addEventListener('visibilitychange', () => !document.hidden && cockpitAnstossen())
-  // Rechte Spalte ein-/ausgeklappt (Strg+J): Luzzy umziehen
-  new MutationObserver(luzzyPlatzieren).observe(document.body, { attributes: true, attributeFilter: ['class'] })
   runde()
 }

@@ -1395,3 +1395,6 @@ body.datei-drueber .datei-ablage { display: grid; }
 .luzzy-bereich.in-spalte .luzzy-name { font-size: 20px; }
 .luzzy-bereich.in-spalte .untertitel, .luzzy-bereich.in-spalte .unter-knoepfe { display: none; }
 .ck-bot-balken .ck-titel, .ck-bot-fuss .ck-titel { white-space: nowrap; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; }
+
+/* Zentrale mit Cockpit: nur Cockpit und Chat-Eingabe (Freigaben und Anhänge erscheinen weiter über der Eingabe) */
+.ansicht-zentrale.mit-cockpit > .schnellbefehle { display: none !important; }
