@@ -8,7 +8,7 @@ body.testlauf { margin: 0; display: flex; flex-direction: column; overflow: hidd
 .tl-status.fehler { color: var(--rot-hell, #e07a70); }
 .tl-hinweis { flex-basis: 100%; font-size: 11px; color: var(--text-leise); }
 .tl-raster { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; padding: 12px 16px; }
-#tl-bereich { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+#tl-bereich { position: static; padding: 0; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
 #tl-bereich .plugin-inhalt { flex: 1; min-height: 0; }
 .tl-seite { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
 .tl-karten { display: flex; flex-direction: column; gap: 10px; }
