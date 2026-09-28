@@ -1259,7 +1259,7 @@ body.datei-drueber .datei-ablage { display: grid; }
 /* Suchleiste oben in der Zentrale (suche.js) */
 .ansicht-zentrale { position: relative; }
 /* sitzt in der Kopfleiste: nimmt den freien Platz; wird es enger, kürzt app.js (kopfAnpassen) erst die Knöpfe daneben */
-.mitte-kopf > .kopf-suche { position: relative; flex: 1 1 360px; flex-shrink: 1; min-width: 170px; max-width: 460px; }
+.mitte-kopf > .kopf-suche { position: relative; flex: 0 1 230px; flex-shrink: 1; min-width: 150px; max-width: 230px; }
 .suche-lupe { position: absolute; left: 9px; top: 50%; transform: translateY(-52%); color: var(--text-leise); font-size: 14px; pointer-events: none; }
 .suche-eingabe { width: 100%; box-sizing: border-box; height: 26px; background: rgba(25, 25, 28, 0.7); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 0 10px 0 28px; font: inherit; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; transition: border-color 150ms, box-shadow 150ms; }
 .suche-eingabe:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-flaeche, rgba(201, 161, 74, 0.12)); }
