@@ -706,6 +706,7 @@ const SPRACHBEFEHLE = [
   ['Hey Luzzy', 'Luzzy hört zu (oder Strg+Leertaste)', 'aktivierungswort zuhören', () => sprechenStarten()],
   ['Hör nur noch auf Knopfdruck', 'kein „Hey Luzzy“ mehr, z. B. beim Telefonieren (Strg+Umschalt+H schaltet zurück)', 'mikrofon headset anruf freihändig aus', () => freihaendigSetzen(false)],
   ['Einfach reinreden (während sie spricht)', 'Luzzy hört auf und hört dir zu, auch „Hey Luzzy“ geht', 'unterbrechen dazwischen reden'],
+  ['Luzzy, was siehst du?', 'nur im Mini-Modus: sie schaut EINMAL auf den Bildschirm und hilft (auch „Schau dir das an“)', 'bildschirm sehen schauen screenshot foto'],
   ['Stopp', 'Luzzy hört sofort auf (auch „Halt“, „Das reicht“, „Psst“)', 'still ruhe aufhören abbrechen'],
   ['Wiederhol das', 'letzte Antwort nochmal', 'wie bitte nochmal vorlesen'],
   ['Was hast du gerade gesagt?', '', 'wiederholen'],
@@ -868,6 +869,26 @@ function lokalAntworten(text, { gesprochen = false } = {}) {
   vorleser.sprechen(text, stimmOptionen())
 }
 
+// ── „Luzzy, was siehst du?“ (Idee 37) ──
+// Nur im Mini-Modus und nur auf Felix' Befehl: EIN Bildschirmfoto (Bildschirm mit der Maus) geht an Luzzy, sie sagt,
+// was sie sieht, und hilft bei dem, was offen ist. Nie heimlich, nichts wird gespeichert. Die Leiste leuchtet dabei weiß.
+const SEHEN = /^(?:was siehst du|was ist (?:das|hier) auf (?:dem|meinem) bildschirm|(?:schau|guck|sieh)(?: dir)?(?: mal)?(?: kurz)? (?:auf |über )?(?:den |meinen )?bildschirm|(?:schau|guck|sieh) (?:dir )?(?:mal )?(?:kurz )?(?:das|hier)(?: mal)?(?: kurz)? an|kannst du (?:meinen bildschirm|das) sehen)/
+async function bildschirmZeigen(text, { gesprochen = false } = {}) {
+  if (!verbunden) return lokalAntworten('Ich bin gerade nicht mit Hermes verbunden, darum kann ich nicht schauen.', { gesprochen })
+  if (beschaeftigt) return lokalAntworten('Ich antworte noch. Frag mich gleich nochmal.', { gesprochen })
+  api.fenster.miniZustand({ zustand: 'schaut', titel: 'Luzzy schaut auf den Bildschirm' })
+  try {
+    await api.hermes.bild(await api.fenster.bildschirmAufnehmen(), 'bildschirm.jpg')
+  } catch (e) {
+    miniSenden()
+    return lokalAntworten(`Ich konnte nicht auf den Bildschirm schauen: ${String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`, { gesprochen })
+  }
+  anLuzzy(
+    `${text}\n\n[Felix hat dich gerade gebeten, auf seinen Bildschirm zu schauen. Das Bild im Anhang ist ein einzelnes Bildschirmfoto davon. Sag kurz, was du siehst, und hilf bei dem, was dort offen ist (z. B. Fehlermeldung, Shopify-Seite, Design). Antworte kurz, deine Antwort wird vorgelesen: keine Tabellen, keine Listen mit Code.]`,
+    { anzeige: `📸 Bildschirm\n${text}`, gesprochen, vorlesen: true }
+  )
+}
+
 // Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
 function lokalerBefehl(text, { gesprochen = false } = {}) {
   // Wartet eine Hermes-Freigabe: „Ja“ / „Nein“ / „Stopp“ beantworten sie
@@ -878,6 +899,8 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   const hoerBefehl = text.toLowerCase().replace(/[.,!?]/g, '').replace(/^(hey )?luzzy /, '').replace(/\s+/g, ' ').trim()
   if (/^(?:hör|höre) (?:nur noch |nur )?auf knopfdruck$|^(?:freihändig|freihand|mikrofon) aus$|^(?:hör|höre) (?:nicht mehr zu|nicht mehr mit|auf mitzuhören)$/.test(hoerBefehl)) return freihaendigSetzen(false, { sagen: false }), lokalAntworten('Okay, ich höre nur noch zu, wenn du das Mikrofon startest.', { gesprochen }), true
   if (/^(?:freihändig|freihand) (?:an|ein)$|^(?:hör|höre) wieder (?:mit|zu)$/.test(hoerBefehl)) return freihaendigSetzen(true, { sagen: false }), lokalAntworten('Ich höre wieder von selbst zu. Sag einfach Hey Luzzy.', { gesprochen }), true
+  // „Luzzy, was siehst du?“ – nur im Mini-Modus: ein Bildschirmfoto an Luzzy
+  if (miniAn && SEHEN.test(hoerBefehl)) return bildschirmZeigen(text, { gesprochen }), true
   // Ist gerade eine Datei offen: „Luzzy, ändere …“ ändert die Datei (live im Text, gespeichert wird nur per Klick)
   const aenderung = aenderungsBefehl(text)
   if (aenderung) return dateiAntworten(aenderung, { gesprochen }), true

@@ -179,9 +179,10 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Schreib-Bot macht Text und Namen, daraus wird ein fertiger Produktentwurf zum Absegnen.
 36. **Social-Planer** (Plugin) – Kalender für Instagram- und Facebook-Posts: Entwürfe von Schreib-Bot, Bild dazu,
     geplantes Datum. Veröffentlicht wird nur nach Felix' Ja (Luzzy-Regel bleibt).
-37. 🆕 **„Luzzy, was siehst du?“** (Killer) – Auf Befehl schaut Luzzy auf den Bildschirm (ein Bild, nur wenn Felix
+37. ✅ **„Luzzy, was siehst du?“** (Killer, gebaut 28.09.2026) – Auf Befehl schaut Luzzy auf den Bildschirm (ein Bild, nur wenn Felix
     es sagt, nie heimlich) und hilft bei dem, was gerade offen ist: Fehlermeldung, Shopify-Seite, Design.
-    Braucht ein Modell, das Bilder versteht.
+    Nur im Mini-Modus (Felix' Wunsch). Bildschirm mit der Maus, Mini-Leiste leuchtet weiß, Foto wird nicht gespeichert.
+    Bilder versteht Hermes über sein Bild-Modell (auxiliary vision), auch wenn Luzzys Hauptmodell keine Bilder kann.
 38. ✅ **Crew-Arbeitsbühne** (Killer, gebaut 28.09.2026) – Man sieht live, wie die Bots zusammenarbeiten: wer gerade was macht,
     wer an wen übergibt. Crew-Tab, Reiter „🎬 Arbeitsbühne“: Kette Luzzy → Kira → Lira → Milla mit wanderndem Brief,
     Ablauf des Auftrags (Klick: Auftrag und Antwort), Bot-Karten oben leuchten live. Liest nur die Bot Chats mit.

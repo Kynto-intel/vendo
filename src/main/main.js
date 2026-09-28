@@ -659,6 +659,26 @@ function miniSetzen(an, { schliessen = false } = {}) {
   if (!fenster.isMinimized()) fenster.minimize()
 }
 ipcMain.handle('mini:setzen', (_e, an) => miniSetzen(Boolean(an)))
+// „Luzzy, was siehst du?“ (Idee 37): EIN Bildschirmfoto, nur im Mini-Modus und nur auf Felix' Befehl (nie heimlich).
+// Bildschirm, auf dem die Maus steht; die Mini-Leiste kurz ausblenden, damit sie nicht mit drauf ist. Nichts wird gespeichert.
+ipcMain.handle('bildschirm:aufnehmen', async () => {
+  if (!mini || mini.isDestroyed()) throw new Error('Das geht nur im Mini-Modus.')
+  const { desktopCapturer, screen } = require('electron')
+  const anzeige = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const faktor = Math.min(1, 1920 / (anzeige.size.width * anzeige.scaleFactor))
+  const groesse = { width: Math.round(anzeige.size.width * anzeige.scaleFactor * faktor), height: Math.round(anzeige.size.height * anzeige.scaleFactor * faktor) }
+  const leiste = mini
+  leiste.hide()
+  try {
+    await new Promise((z) => setTimeout(z, 150))
+    const quellen = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: groesse })
+    const quelle = quellen.find((q) => q.display_id === String(anzeige.id)) || quellen[0]
+    if (!quelle || quelle.thumbnail.isEmpty()) throw new Error('Der Bildschirm ließ sich nicht aufnehmen.')
+    return quelle.thumbnail.toJPEG(85).toString('base64')
+  } finally {
+    if (!leiste.isDestroyed()) leiste.showInactive()
+  }
+})
 ipcMain.on('mini:zustand', (_e, daten) => {
   if (mini && !mini.isDestroyed()) mini.webContents.send('mini:zustand', daten)
 })

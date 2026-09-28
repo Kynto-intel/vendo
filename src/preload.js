@@ -134,7 +134,8 @@ contextBridge.exposeInMainWorld('jarves', {
     andocken: (seite) => ipcRenderer.invoke('fenster:andocken', seite),
     mini: (an) => ipcRenderer.invoke('mini:setzen', an),
     beiMini: abonnieren('mini:geaendert'),
-    miniZustand: (daten) => ipcRenderer.send('mini:zustand', daten)
+    miniZustand: (daten) => ipcRenderer.send('mini:zustand', daten),
+    bildschirmAufnehmen: () => ipcRenderer.invoke('bildschirm:aufnehmen')
   },
   start: {
     stand: () => ipcRenderer.invoke('start:stand'),

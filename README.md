@@ -268,6 +268,11 @@ Eine schmale Leiste **fest oben in der Bildschirmmitte**, immer im Vordergrund, 
 So kannst du jederzeit mit ihr reden, ohne dass Jarves-OS Platz braucht.
 **AltGr+L** oder Strg+Umschalt+M: an/aus · **Klick:** sprechen · **Doppelklick:** großes Fenster.
 
+**„Luzzy, was siehst du?“** (nur im Mini-Modus): Luzzy macht **ein** Bildschirmfoto vom Bildschirm mit der Maus,
+sagt, was sie sieht, und hilft bei dem, was offen ist (Fehlermeldung, Shopify-Seite, Design). Geht nur auf deinen Befehl,
+nie heimlich; die Leiste leuchtet dabei weiß. Das Foto wird nicht gespeichert. Auch: „Schau dir das an“,
+„Schau mal auf den Bildschirm“, „Kannst du das sehen?“ – gern mit Frage dahinter („Was siehst du, warum geht das nicht?“).
+
 ## Meldungen und Wächter
 
 Jarves-OS prüft regelmäßig und meldet (rechts in der Liste und auf Wunsch laut, mit Ton):

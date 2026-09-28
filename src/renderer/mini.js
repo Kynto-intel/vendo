@@ -14,7 +14,7 @@ for (let i = 0; i < ANZAHL; i++) {
 window.mini.beiZustand(({ zustand, pegel, titel } = {}) => {
   if (zustand && pille.dataset.zustand !== zustand) pille.dataset.zustand = zustand
   if (titel) pille.title = `${titel} · Klick: sprechen · Doppelklick: großes Fenster (AltGr+L)`
-  const denkt = ['denkt', 'versteht', 'antwortet'].includes(zustand)
+  const denkt = ['denkt', 'versteht', 'antwortet', 'schaut'].includes(zustand) // Höhe kommt dann aus mini.html
   if (pegel === undefined && (zustand === 'spricht' || zustand === 'hoert')) return // Balken bleiben, bis der nächste Pegel kommt
   for (let i = 0; i < ANZAHL; i++) {
     // Pegel (24 Werte, tief → hoch) auf die Balken verteilen. Die Stimme steckt vor allem in den tiefen Werten,

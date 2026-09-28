@@ -21,6 +21,9 @@
     [data-zustand='hoert'] .balken { background: #ece6da; }
     [data-zustand='denkt'] .balken, [data-zustand='versteht'] .balken, [data-zustand='antwortet'] .balken { background: #c9a14a; animation: denken 1.1s ease-in-out infinite; animation-delay: calc(var(--i) * 45ms); }
     @keyframes denken { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+    /* schaut auf den Bildschirm (nur auf Befehl): weiß, deutlich sichtbar */
+    [data-zustand='schaut'] { border-color: rgba(255, 255, 255, 0.85); }
+    [data-zustand='schaut'] .balken { background: #ffffff; height: 8px; }
     [data-zustand='bereit'] .balken { animation: atmen 3.2s ease-in-out infinite; }
     @keyframes atmen { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
     .gross {
