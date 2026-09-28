@@ -1,6 +1,6 @@
 # Jarves-OS: Ideen, Runde 2
 
-Neue Sammlung vom 28.09.2026: **keine neuen Plugins**, sondern Optimierungen, Stimme, Killer-Funktionen und was
+Neue Sammlung vom 28.09.2026: **keine neuen Plugins**, sondern Optimierungen, Stimme, Killer-Funktionen, echte JARVIS-Momente und was
 Hermes kann, das Jarves-OS noch nicht nutzt. Nichts davon ist gebaut. Felix sucht aus.
 
 Aufwand: ⚡ klein (ein Abend) · ⚡⚡ mittel (1–3 Abende) · ⚡⚡⚡ groß (mehrere Tage).
@@ -99,6 +99,35 @@ Regel wie immer: Hermes wird nicht verändert, nur seine eingebauten Befehle wer
     Karte mit Bild, nach deinem Ja landet er in der Buffer-Warteschlange (veröffentlicht wird dort nach Plan).
 40. ⚡ **Claude-Code-Chats mitnehmen** – Hermes kann Unterhaltungen aus Claude Code und Codex übernehmen
     (`session.foreign.*`). So kennt Luzzy z. B., was wir an Jarves-OS gebaut haben, und kann Fragen dazu beantworten.
+
+## E. Was einen echten JARVIS ausmacht (10)
+
+Tony Starks JARVIS wartet nicht auf Befehle: Er denkt voraus, kennt die Lage und hat Charakter.
+
+41. ⚡ **„Status.“** – Ein Wort, und Luzzy gibt in 20 Sekunden den Lagebericht: Shop, Crew, Jobs, Termine, Wetter,
+    PC. Lokal zusammengestellt, ohne auf Hermes zu warten. Mit „Details zu …“ geht sie tiefer.
+42. ⚡ **Denkt an dich** – Wie „Sir, Sie sind seit 36 Stunden wach“: Luzzy merkt über die Windows-Aktivität, wie lange
+    du durcharbeitest, erinnert an Pausen und Wasser und schlägt spät abends Feierabend vor. Nichts wird gespeichert.
+43. ⚡ **Charakter mit Timing** – Luzzy reagiert auf Momente, nicht nur auf Fragen: nachts um zwei („Felix, der Shop
+    läuft auch ohne dich“), bei der 1.000. Bestellung, am ersten warmen Tag. Kurz, trocken, nicht nervig; abschaltbar.
+44. ⚡⚡ **Denkt voraus** – Luzzy spricht dich von selbst an, wenn sie etwas bemerkt: Termin in 15 Minuten, aber du bist
+    im Fokus · Regen morgen, Päckchen heute noch raus · ein Produkt verkauft sich auffällig gut · ein Job ist dreimal
+    hintereinander gescheitert. Jarves-OS erkennt das, Luzzy sagt es in einem Satz.
+45. ⚡⚡ **Protokolle** – Wie Starks „House Party Protocol“: ein Satz löst eine Kette von Aktionen aus, direkt in
+    Jarves-OS. „Protokoll Feierabend“: Tagesrückblick, Musik aus, Nicht stören bis morgen, PC sperren.
+    „Protokoll Fokus“: Meldungen still, Fokus-Timer, Musik an. Selbst zusammenklicken, per Stimme starten.
+46. ⚡⚡ **Weiß, woran du gerade bist** – Jarves-OS sieht, welches Programm vorne ist (nur der Name): In Photoshop gibt es
+    Design-Schnellbefehle, im Shopify-Admin Shop-Hilfe, beim Telefonieren ist Luzzy still. „Was siehst du?“ braucht
+    dann oft gar kein Bild mehr.
+47. ⚡⚡ **Versteht Bezüge** – „Und die andere?“, „Schick das Kira“, „Wie war das nochmal mit der Bestellung von vorhin?“
+    Luzzy weiß, was zuletzt passiert ist: offene Datei, letzte Meldung, letztes Suchergebnis, laufender Timer.
+48. ⚡⚡ **Wache-Modus** – „Luzzy, pass auf, ich bin weg.“ PC sperrt sich, Meldungen werden gesammelt, Wichtiges
+    (große Bestellung, dringende Mail) kommt per Telegram aufs Handy. Beim Zurückkommen: kurzer Bericht.
+49. ⚡⚡ **Labor-Modus** – Hände frei beim Arbeiten (Drucken, Verpacken, Fotografieren): Luzzy führt Schritt für Schritt
+    durch („nächster Schritt“, „nochmal“, „wie weit bin ich?“), stellt Timer und notiert Werte, die du ihr zurufst.
+50. ⚡⚡⚡ **Kommandobrücke** – Vollbild-HUD für den zweiten Bildschirm: Reaktor in der Mitte, Live-Karten drumherum
+    (Shop-Puls, Crew, Termine, Wetter) und ein Globus, auf dem neue Bestellungen aufleuchten (nur die Stadt, keine
+    Namen). Das Iron-Man-Labor für Donnerwolf.
 
 ---
 
