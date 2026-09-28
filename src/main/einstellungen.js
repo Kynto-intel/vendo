@@ -10,6 +10,7 @@ const DATEI = path.join(__dirname, '..', '..', 'daten', 'einstellungen.json')
 const STANDARD = {
   stimme: 'alba', // Pocket TTS, lokal
   tempo: '+0%',
+  lautstaerke: 250, // Prozent: Pocket TTS ist von sich aus leise
   vorlesen: true,
   animationen: { reaktor: true, scanlinie: true, welle: true, hintergrund: true },
   start: { intro: true, begruessung: true },
