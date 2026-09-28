@@ -11,6 +11,15 @@ Aufgaben und Notizen, findet und bearbeitet Dateien, steuert den PC – und viel
 > (REST, WebSocket, eingebaute Befehle) und update-feste Einstellungen (Profile, config) – immer mit Sicherung.
 > Nichts wird nachgebaut, was Hermes schon kann. Ein Hermes-Update macht nichts kaputt.
 
+**Grundprinzip: Hermes ist das Gehirn, Jarves-OS ist das Gesicht.** Agenten, Werkzeuge, Skills, Gedächtnis, Jobs,
+Kanban, Spracherkennung und Modelle kommen aus Hermes. Jarves-OS zeigt das schöner an, macht es per Stimme bedienbar
+und bündelt alles an einem Ort.
+
+- **Ziele:** mit Luzzy reden wie Tony Stark mit JARVIS · alle Agenten, Jobs und Aufgaben auf einen Blick · alles zum
+  Shop auf Zuruf · Luzzy verteilt Arbeit an die Crew · Automationen und Meldungen im Blick.
+- **Bewusst nicht:** kein eigener Agent, keine eigene Werkzeugsammlung oder Job-Planung, kein Server im Internet,
+  keine Handy-App. Jarves-OS läuft nur auf Felix' PC.
+
 ## Inhalt
 
 1. [Einrichten](#einrichten)
@@ -137,14 +146,38 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 | | **Bibliothek** · **Entscheidungen** · **Dateien** | Nachschlagen, offene Entscheidungen, Dokumente – nur lesend |
 | **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Shopify-Zugang**, **Selbsttest** |
 
+**Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):
+
+- **Wissen:** der Obsidian-Vault mit Suche und Notiz-Links, Einstieg über `00_Übersicht.md`. Zugangsdaten in Notizen
+  werden verdeckt. Änderungen am Vault macht Luzzy nur nach deinem Ja.
+- **Morgenbericht:** Ein Hermes-Job erstellt ihn und legt ihn unter `04_Analytics\Morgenberichte\JJJJ-MM-TT.md` ab.
+  Jarves-OS zeigt ihn als Karte, liest ihn vor und startet ihn über die Routine „Morgenbericht“ (mit Zeitplan) oder
+  „Heute erstellen“.
+- **Bibliothek:** Blog-Recherchen, Entwürfe, fertige Artikel und der Ordner `Donnerwolf\Bibliothek`, schön formatiert.
+- **Entscheidungen:** das Entscheidungs-Tagebuch aus `Donnerwolf-Shop\04_Decision_Log\` mit Filter gilt / überholt /
+  Prüfung fällig. Neue Entscheidungen legt Luzzy an.
+- **Dateien:** Donnerwolf-Ordner und zuletzt geänderte Dateien, öffnen im Programm oder Explorer.
+- **Jobs:** Hermes-Jobs aller Profile mit Zeitplan, letztem und nächstem Lauf; ausführen, pausieren, löschen (mit Rückfrage).
+- **Kanban:** Hermes' eigenes Kanban-Board (Tafeln, Spalten, Aufgaben der Agenten).
+
 ## Luzzy und die Crew
+
+**Luzzy** ist Felix' rechte Hand bei Donnerwolf und läuft im Hermes-Profil `donnerwolf`. Ihr Charakter und ihre Regeln
+stehen in `hermes\profiles\donnerwolf\SOUL.md`: direkt, warm, trocken im Humor, loyal, ehrliche Meinung, Ergebnis
+zuerst, immer Deutsch und „du“. Jarves-OS schickt **keinen eigenen Persona-Text** mit – es gibt nur eine Luzzy, egal
+ob Felix sie in der Hermes-App, in Telegram oder in Jarves-OS anspricht.
 
 Luzzy ist die Chefin, die Crew sind die übrigen Hermes-Profile (alle außer `default`), zurzeit eine Design-Kette:
 **Kira** (Trend-Scout) → **Lira** (Design-Konzept) → **Milla** (Listing-Texte für Shopify). Neue Profile erscheinen
 automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
 
+- **Bot-Karten oben:** Bild, Name, Rolle, zuletzt aktiv (Details wie Modell, Tokens und Kosten der letzten 30 Tage
+  im Tooltip). Klick auf eine Karte öffnet den Chat mit diesem Bot, die gewählte Karte ist hervorgehoben.
 - **💬 Normaler Chat:** direkt mit Luzzy, Kira, Lira oder Milla, ohne Bot Mode. Pro Bot mehrere Chats
-  (anlegen, wechseln, löschen über „Allgemein ▾“). Luzzys normaler Chat ist das Gespräch der Zentrale.
+  (anlegen, wechseln, mit dem Papierkorb-Symbol löschen über „Allgemein ▾“). Luzzys normaler Chat ist das Gespräch der Zentrale.
+- **Aktualisieren** (oben rechts): lädt Bot-Karten und Bot-Liste neu und holt den offenen Chat frisch aus Hermes –
+  z. B. nachdem du in der Hermes-App Nachrichten oder einen Chat gelöscht hast. Nichts geht dabei verloren.
+  Hermes löscht einen Chat nicht, solange Jarves-OS ihn offen hat: dann erst in Jarves-OS zu einem anderen Chat wechseln.
 - **🤖 Bot Mode:** der „Bot Chat“ eines Bots – dort arbeiten die Bots zusammen; bei Luzzy: Crew-Aufträge.
   Den Bot Chat nur für die Zusammenarbeit nutzen, sonst wird er lang, teuer und unübersichtlich.
 - **🎬 Arbeitsbühne:** live sehen, wie die Bots zusammenarbeiten: Kette Luzzy → Kira → Lira → Milla, ein Brief wandert
@@ -305,13 +338,13 @@ Je ein Ordner in `plugins\<id>\` – eigener Bereich links, optional eine Karte 
 | Plugin | Was es kann |
 |---|---|
 | **Routinen** | Deine Standardaufgaben: Auslösewort sagen oder tippen, Luzzy erledigt den hinterlegten Auftrag. Bausteine (Wetter, Termine, Shop, Postfach …) werden automatisch angehängt. Mit Zeitplan (z. B. Morgenbericht werktags 7:30) und als Schnellbefehle über der Eingabe |
-| **Kalender** | Eigener Kalender, Erinnerung vor Terminen; Luzzy trägt per Sprache ein, ändert und löscht |
+| **Kalender** | Eigener Kalender (statt Google/Outlook): Monatsansicht zum Einklappen, Tagesliste, Suche, Erinnerung vor Terminen, „Heute“-Karte rechts; Luzzy trägt per Sprache ein, ändert und löscht (auch Post-Termine für Instagram/Facebook) |
 | **Aufgaben** | To-do-Liste mit Fälligkeit und Erinnerung, dazu das **Wochen-Review**: Sonntagabend fasst Luzzy die Woche zusammen, fragt nach Zielen und legt sie als Aufgaben an |
 | **Gedanken** | Gedankenspeicher: „Merk dir: …“, landet auch im Vault (`Jarves-OS\Gedankenspeicher.md`); Ideen in `Jarves-OS\Ideen\` |
 | **Fokus** | Pomodoro-Timer mit Hintergrundklang; in der Fokuszeit stört Luzzy nicht |
 | **Wetter** | Jetzt und 7 Tage für deinen Ort (Open-Meteo, kostenlos, ohne Konto; übertragen wird nur der Ort) |
 | **Meilensteine** | Bestellungen insgesamt, der nächste Meilenstein und alle erreichten (Liste auch im Vault) |
-| **Werkstatt** | Neue Plugins in eigenen Worten bestellen („Bau mir ein Plugin für …“): Luzzy baut sie in `werkstatt\`, Jarves-OS prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht), eingebaut wird erst nach deinem Ja (altes Plugin gesichert, deine Daten bleiben). **Vorher Pflicht: Testlauf** in einem eigenen Fenster (Plugin wie echt ausprobieren; Daten nur simuliert, Hintergrundteil in einem eigenen Prozess – Absturz oder Aufhängen betrifft nur den Test). **Notbremse:** Startet Jarves-OS nach dem Einbauen nicht richtig, wird das neue Plugin beim nächsten Start automatisch abgeschaltet. **Luzzy repariert selbst:** Sie baut mit ihrem Hermes-Skill `jarves-plugin-werkstatt`, prüft sich mit dem Prüfprogramm und liest die Fehler aus deinem Testlauf; „🔧 Luzzy soll die Fehler beheben“ schickt sie ihr. Auch eingebaute Plugins ändern lassen oder entfernen; danach Jarves-OS neu starten (Knopf) |
+| **Werkstatt** | Neue Plugins in eigenen Worten bestellen („Bau mir ein Plugin für …“): Luzzy baut sie in `werkstatt\`, Jarves-OS prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht), eingebaut wird erst nach deinem Ja (altes Plugin gesichert, deine Daten bleiben). **Vorher Pflicht: Testlauf** in einem eigenen Fenster (Plugin wie echt ausprobieren; Daten nur simuliert, Hintergrundteil in einem eigenen Prozess – Absturz oder Aufhängen betrifft nur den Test). **Notbremse:** Stürzt die Oberfläche nach dem Einbauen ab oder hängt sie, wird das neue Plugin beim nächsten Start automatisch abgeschaltet (normales Schließen zählt nicht; entfernte Plugins vergisst sie). **Luzzy repariert selbst:** Sie baut mit ihrem Hermes-Skill `jarves-plugin-werkstatt`, prüft sich mit dem Prüfprogramm und liest die Fehler aus deinem Testlauf; „🔧 Luzzy soll die Fehler beheben“ schickt sie ihr. Auch eingebaute Plugins ändern lassen oder entfernen; danach Jarves-OS neu starten (Knopf) |
 
 Plugin-Daten (`plugins\*\daten.json`) bleiben lokal und gehören nicht ins Git-Projekt.
 
@@ -332,14 +365,39 @@ Knopf „Einstellungen“ unten links. Gespeichert in `daten\einstellungen.json`
 
 | Wo | Was |
 |---|---|
-| `profiles\donnerwolf\config.yaml` | Spracherkennung Deutsch, Aktivierungswort „hey luzzy“ |
-| `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) |
-| `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`) |
-| `config.yaml` / `.env` (Hermes und Profile) | Shopify-Token – nur über System → Shopify-Zugang |
+Alles liegt unter `C:\Users\Felix\AppData\Local\hermes\` in Profil- bzw. Nutzer-Einstellungen, die ein Hermes-Update
+nicht anfasst. Am Hermes-Programm (`hermes-agent\`) wurde nie etwas geändert.
 
-Genutzte Hermes-Befehle: `session.*`, `prompt.submit`, `approval.respond`, `image/pdf/file.attach`, `reload.env`,
-`reload.mcp`, `wake.*`. Gelesen wird über REST nur, was freigegeben ist (Jobs, Profile, Nutzung, Kanban, Modelle,
-Status, Sitzungen).
+| Wo | Was | Sicherung |
+|---|---|---|
+| `profiles\donnerwolf\config.yaml` | Spracherkennung an, Deutsch (`stt.enabled`, `stt.language: de`, Modell `base`) | `config.yaml.vor-jarves-os-20260926-0207.bak` |
+| `profiles\donnerwolf\config.yaml` | Aktivierungswort (`wake_word`: provider sherpa, phrase „hey luzzy“, capture client, surface tui, sensitivity 0.45) | `config.yaml.vor-jarves-os-phase2-*.bak` |
+| `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) | – (neu) |
+| `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`: neu, ändern, löschen, suchen, liste; meldet Überschneidungen) | – (neu) |
+| `config.yaml` / `.env` (Hermes und Profile) | Shopify-Token – nur über System → Shopify-Zugang | automatisch bei jedem Eintragen |
+
+`surface: tui` sorgt dafür, dass nur Jarves-OS das Aktivierungswort bekommt, nicht die Hermes-App.
+Empfindlichkeit: höher = strenger. Termine per Sprache gehen überall, wo Luzzy das Terminal-Werkzeug hat
+(Jarves-OS, Hermes-App), nicht in Telegram.
+
+**So spricht Jarves-OS mit Hermes:**
+
+- **Nur ein Hermes-Backend pro PC.** Läuft schon eins (z. B. weil die Hermes-App offen ist), dockt Jarves-OS an –
+  die Adresse steht in `hermes\spawn-ledger.json`. Sonst startet es selbst `hermes serve --host 127.0.0.1 --port 0`.
+  Alles nur lokal (127.0.0.1).
+- **REST** mit Kopfzeile `X-Hermes-Session-Token`, **Live-Verbindung** `ws://127.0.0.1:<port>/api/ws?token=…`
+  (JSON-RPC, Antworten kommen Wort für Wort: `message.start/delta/complete`, `tool.start/complete`, `thinking.delta` …).
+- **Gespräche:** Zentrale = Luzzys Chat „Jarves-OS“ (weitere Themen „Jarves-OS · <Name>“), Crew = Luzzys fester
+  „Bot Chat“ (nur dort hat sie `message_agent` und kann an die Bots delegieren), Bots = je ein Chat „Jarves-OS“ im
+  Profil des Bots. Arbeitsordner der Sitzungen: `Documents\Donnerwolf`. Ist eine Unterhaltung weg, legt Jarves-OS
+  sie neu an. Lange Chats fasst Hermes selbst zusammen.
+- **Spracherkennung:** Jarves-OS nimmt das Mikrofon selbst auf und schickt den Ton an `POST /api/audio/transcribe`,
+  Hermes schreibt ihn lokal mit faster-whisper mit. Das Aktivierungswort läuft über `wake.feed`.
+- **Genutzte Befehle:** `session.*` (list, create, resume, title, close, delete, active_list), `prompt.submit`,
+  `approval.respond`, `image.attach` / `image.attach_bytes` / `pdf.attach` / `file.attach`, `reload.env`,
+  `reload.mcp`, `skills.reload`, `wake.*`.
+- **Gelesen über REST:** `/api/profiles` (auch Modell pro Bot ändern), `/api/sessions`, `/api/analytics/usage`,
+  `/api/cron/jobs` (ausführen, pausieren, fortsetzen, löschen), `/api/plugins/kanban/*`, `/api/config`, Status.
 
 ## Sicherheit, Regeln und Datenschutz
 
@@ -390,8 +448,13 @@ git switch main
 git pull
 ```
 
-Neue Funktionen kommen als Pull Request auf dem Branch `claude/fervent-pasteur-dft0hp`. Ideen und Bau-Stand:
-[`ideen.md`](ideen.md).
+Neue Funktionen kommen direkt auf `main` oder als Pull Request auf dem Branch `claude/fervent-pasteur-dft0hp`.
+
+**Für später** (bewusst nicht gebaut): eine kostenpflichtige ElevenLabs-Stimme, falls Pocket TTS einmal nicht reicht.
+Neue Wünsche am einfachsten als Plugin über die [Werkstatt](#plugins) bauen lassen.
+
+**Bewusst gestrichen:** Produktideen-Schmiede (macht die Crew mit Kira → Lira → Milla schon) und Social-Planer
+(Post-Termine stehen im Kalender, veröffentlicht wird nur nach deinem Ja).
 
 ## Aufbau (für Entwickler)
 
@@ -410,8 +473,16 @@ Electron 38, reines JavaScript ohne Build. Einzige Abhängigkeit: `ws`.
 | `src/preload.js` · `src/mini-preload.js` | Sichere Brücke `window.jarves` zur Oberfläche |
 | `src/renderer/` | Oberfläche (ES-Module): `app.js` (Zentrale, Befehle), `vorlesen.js`, `mikrofon.js`, `crewchat.js`, `buehne.js`, `ansichten.js`, `dateiansicht.js`, `pcsteuerung.js`, `gespraeche.js`, `diktat.js`, `meldungen.js`, `timer.js`, `palette.js`, `selbsttest.js`, `mini.js` … |
 | `plugins/` | Plugins (siehe oben) |
+| `plugins/werkstatt/` | Werkstatt: Prüfung, Testlauf-Fenster (`test.html`, `test-runner.js`), Prüfprogramm für Luzzy (`pruefen-cli.js`) |
+| `werkstatt/` | Plugin-Entwürfe, an denen Luzzy baut (nicht in Git) |
 | `scripts/backup.js` | Sicherung |
-| `daten/` | Einstellungen, Dateiindex, Datei-Sicherungen (nicht in Git) |
+| `daten/` | Einstellungen, Dateiindex, Datei-Sicherungen, Notbremse (`plugin-start.json`) – nicht in Git |
+
+**Design:** Donnerwolf Gold auf Anthrazit, alle Farben zentral in `src/renderer/style.css` unter `:root`
+(Mitte `#131315`, Seitenspalten `#0E0E10`, Karten `#19191C`, Eingaben `#101012`, Rahmen `#26262A`, Gold `#C9A14A`,
+helles Gold `#E3BE6C`, Text `#ECE6DA`, leiser Text `#8C877E`). Karten mit runden Ecken und weichem Schatten, Gold nur
+als Akzent, Monospace für Status und Zahlen. Reaktor mit drehenden Ringen, Sprach-Welle, Scanlinie – alles abschaltbar.
+Plugins nutzen dieselben Variablen und Klassen (`hud`, `knopf-gold`, `knopf-flach`, `leise`).
 
 **Testmodus** (Umgebungsvariablen):
 
