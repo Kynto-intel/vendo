@@ -188,6 +188,7 @@ ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
 ipcMain.handle('hermes:botOeffnen', (_e, kanal) => hermes.botOeffnen(String(kanal || '')))
+ipcMain.handle('hermes:kanalNeuLaden', (_e, kanal) => hermes.kanalNeuLaden(String(kanal || '')))
 // Bild eines Bots: hermes\profiles\<profil>\assets\avatar.(png|jpg|jpeg|webp) als data:-Adresse (nur lesen)
 ipcMain.handle('crew:bild', (_e, profil) => {
   const name = String(profil || '')

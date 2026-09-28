@@ -241,6 +241,24 @@ class Hermes extends EventEmitter {
     return this.botOeffnen(kanal)
   }
 
+  // „Aktualisieren“: offenes Gespräch schließen und neu aus dem gespeicherten Stand von Hermes öffnen
+  // (z. B. nachdem Felix in der Hermes-App Nachrichten oder den ganzen Chat gelöscht hat). Hermes speichert jede
+  // Nachricht sofort, beim Schließen geht nichts verloren. Ist der Chat gelöscht, wird er leer neu angelegt.
+  async kanalNeuLaden(kanal) {
+    kanal = String(kanal || '')
+    if (kanal === 'zentrale') {
+      if (this.sessionId) await this.rpc('session.close', { session_id: this.sessionId }).catch(() => {})
+      this.sessionId = null
+      return this.gespraechOeffnen(this.gemerkteSession?.() || null, this.gemerkterTitel?.() || ZENTRALE_TITEL)
+    }
+    if (kanal === 'crew' || kanal === `botchat:${PROFIL}`) {
+      if (this.crew.sessionId) await this.rpc('session.close', { session_id: this.crew.sessionId }).catch(() => {})
+      this.crew.sessionId = null
+      return this.crewOeffnen()
+    }
+    return this.botWechseln(kanal)
+  }
+
   // Gespeicherte Unterhaltung endgültig löschen (Hermes lehnt das ab, solange sie offen ist: dann erst schließen)
   // Geänderte Einstellungen (z. B. neuer Shopify-Token) ohne Neustart übernehmen. Nutzt nur Befehle, die Hermes
   // selbst anbietet: .env neu einlesen und die Anbindungen (MCP, darunter Shopify) neu starten. Hermes bleibt unverändert.

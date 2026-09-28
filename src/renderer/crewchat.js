@@ -291,6 +291,17 @@ function chatAuswahlEinrichten() {
   })
 }
 
+// „Aktualisieren“: den gerade gezeigten Chat neu aus Hermes holen (z. B. nach Löschen in der Hermes-App)
+export async function aktuellenChatNeuLaden() {
+  const kanal = aktuellerKanal()
+  if (!kanal) return
+  const g = gespraech(kanal)
+  if (g.unterhaltung?.beschaeftigt()) throw new Error('Antwort läuft noch')
+  await h.api.hermes.kanalNeuLaden(kanal)
+  g.geoeffnet = true
+  if (kanal !== 'zentrale' && modus === 'normal') await chatListeLaden()
+}
+
 // Bot Chat eines Bots zeigen (von der Arbeitsbühne aus)
 export function botChatZeigen(profil) {
   modus = 'botchat'

@@ -24,7 +24,7 @@ import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
-import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden } from './crewchat.js'
+import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
@@ -1472,6 +1472,12 @@ async function neuLadenMitRueckmeldung(knopf) {
   let ok = true
   try {
     await Promise.all([LADEN[bereich]?.(), bereich === 'crew' ? crewBotsLaden() : null]) // Crew: auch neue/umbenannte Bots
+    if (bereich === 'crew') {
+      // Offenen Chat neu aus Hermes holen (z. B. nach Löschen in der Hermes-App); nicht während einer Antwort
+      if (crewKanal() === 'zentrale' && (beschaeftigt || aktuelleAntwort)) throw new Error('Antwort läuft noch')
+      gezeigterVerlauf = ''
+      await aktuellenChatNeuLaden()
+    }
   } catch {
     ok = false
   }
