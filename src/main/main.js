@@ -206,6 +206,19 @@ ipcMain.handle('hermes:sitzungenMitTitel', async (_e, titel, profil) => {
 })
 ipcMain.handle('hermes:kanalNeuLaden', (_e, kanal) => hermes.kanalNeuLaden(String(kanal || '')))
 // Bild eines Bots: hermes\profiles\<profil>\assets\avatar.(png|jpg|jpeg|webp) als data:-Adresse (nur lesen)
+// Neuen Bot anlegen (bots.js, über hermes profile create) und ein Bild dafür wählen
+const bots = require('./bots')
+ipcMain.handle('crew:botAnlegen', async (_e, daten) => {
+  const d = daten && typeof daten === 'object' ? daten : {}
+  const r = await bots.botAnlegen({ name: d.name, rolle: d.rolle, beschreibung: d.beschreibung, aufgaben: String(d.aufgaben || '').slice(0, 8000), vorlage: d.vorlage, bild: d.bild, andere: Array.isArray(d.andere) ? d.andere.slice(0, 30) : [] })
+  hermes.rest('/api/profiles').catch(() => {}) // Hermes die neue Liste gleich einlesen lassen
+  return r
+})
+ipcMain.handle('crew:profilId', (_e, name, rolle) => bots.profilId(name, rolle))
+ipcMain.handle('crew:bildWaehlen', async () => {
+  const r = await dialog.showOpenDialog(fenster, { title: 'Bild für den neuen Bot', properties: ['openFile'], filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })
+  return r.canceled ? null : r.filePaths[0] || null
+})
 ipcMain.handle('crew:bild', (_e, profil) => {
   const name = String(profil || '')
   if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(name)) return null

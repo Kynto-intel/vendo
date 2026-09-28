@@ -1502,3 +1502,25 @@ body.datei-drueber .datei-ablage { display: grid; }
 .term-standard { align-self: flex-start; margin-top: 4px; }
 .term-eigen .term-weg { opacity: 0; transition: opacity 120ms; }
 .term-eigen:hover .term-weg, .term-eigen .term-weg:focus { opacity: 1; }
+
+/* Neuer Bot (Crew) */
+.crew-seite-kopf { flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.crew-seite-kopf > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.crew-neu-bot { flex: none; white-space: nowrap; }
+.neuer-bot { width: 520px; }
+.neuer-bot form { display: flex; flex-direction: column; gap: 10px; }
+.neuer-bot h3 { margin: 0 0 4px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); }
+.neuer-bot label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text); }
+.neuer-bot input, .neuer-bot textarea, .neuer-bot select { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 7px 9px; font: inherit; font-size: 13px; color: var(--text); outline: none; resize: vertical; }
+.neuer-bot input:focus, .neuer-bot textarea:focus, .neuer-bot select:focus { border-color: var(--gold); }
+.nb-oben { display: flex; gap: 14px; align-items: flex-start; }
+.nb-namen { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.nb-bild { flex: none; width: 86px; height: 86px; border-radius: 50%; border: 2px dashed var(--rahmen); background: var(--eingabe); color: var(--text-leise); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; overflow: hidden; }
+.nb-bild:hover { border-color: var(--gold-dunkel); color: var(--gold-hell); }
+.nb-bild small { max-width: 76px; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb-status { min-height: 16px; font-size: 12px; color: var(--gold-hell); }
+.nb-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
+.neuer-bot form { text-align: left; }
+.neuer-bot label { align-items: stretch; }
+.neuer-bot input, .neuer-bot textarea, .neuer-bot select { width: 100%; box-sizing: border-box; }
+.neuer-bot label > small { font-size: 11px; }

@@ -113,6 +113,7 @@ export function crewChatEinrichten(helfer) {
   gespraech('crew') // Luzzys Bot Chat gibt es immer
   chatAuswahlEinrichten()
   botFensterEinrichten()
+  neuerBotEinrichten()
   buehneEinrichten({
     sichtbar: () => h.crewSichtbar() && !document.hidden,
     buehneOffen: () => modus === 'buehne' && h.crewSichtbar(),
@@ -524,3 +525,64 @@ document.addEventListener('input', (e) => e.target.id === 'crew-finden' && crewF
 // Live-Zustand der Karten (gold = arbeitet) ändert sich zwischendurch: Netzwerk-Karte mitziehen
 const netzBeobachter = new MutationObserver(() => netzZeigen())
 if (document.getElementById('crew-karten')) netzBeobachter.observe(document.getElementById('crew-karten'), { subtree: true, attributes: true, attributeFilter: ['class'] })
+
+// ── Neuen Bot anlegen (Knopf „＋ Neuer Bot“ in der Bot-Liste): hermes profile create über den Hauptprozess (bots.js) ──
+let nbBild = null
+async function neuerBotOeffnen() {
+  if (!bots.length) await crewBotsLaden()
+  const d = $('neuer-bot')
+  const f = $('neuer-bot-form')
+  f.reset()
+  nbBild = null
+  $('nb-bild').innerHTML = '<span>＋ Bild</span>'
+  $('nb-status').textContent = ''
+  $('nb-id').textContent = 'Profil: –'
+  $('nb-anlegen').disabled = false
+  // Vorlage: am besten ein Crew-Bot (nicht Luzzy), damit Modell und Skills passen
+  const vorlagen = [...bots.filter((b) => b.profil !== LUZZY), ...bots.filter((b) => b.profil === LUZZY)]
+  $('nb-vorlage').innerHTML = vorlagen.map((b) => `<option value="${maskieren(b.profil)}">${maskieren(b.name)}${b.rolle ? ` (${maskieren(b.rolle)})` : ''}</option>`).join('')
+  d.showModal()
+  f.name.focus()
+}
+
+async function nbIdZeigen() {
+  const f = $('neuer-bot-form')
+  const id = f.name.value.trim() ? await h.api.hermes.profilId(f.name.value, f.rolle.value).catch(() => '') : ''
+  $('nb-id').textContent = `Profil: ${id || '–'}`
+}
+
+function neuerBotEinrichten() {
+  const f = $('neuer-bot-form')
+  if (!f) return
+  $('crew-neu-bot')?.addEventListener('click', neuerBotOeffnen)
+  $('nb-abbrechen').addEventListener('click', () => $('neuer-bot').close())
+  f.name.addEventListener('input', nbIdZeigen)
+  f.rolle.addEventListener('input', nbIdZeigen)
+  $('nb-bild').addEventListener('click', async () => {
+    const pfad = await h.api.hermes.bildWaehlen().catch(() => null)
+    if (!pfad) return
+    nbBild = pfad
+    $('nb-bild').innerHTML = `<span>✓ Bild</span><small>${maskieren(pfad.split(/[\\/]/).pop())}</small>`
+  })
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    $('nb-anlegen').disabled = true
+    $('nb-status').textContent = 'Hermes legt den Bot an … (kann einen Moment dauern)'
+    try {
+      const r = await h.api.hermes.botAnlegen({
+        name: f.name.value, rolle: f.rolle.value, beschreibung: f.beschreibung.value, aufgaben: f.aufgaben.value,
+        vorlage: f.vorlage.value, bild: nbBild, andere: bots.map((b) => ({ profil: b.profil, name: b.name, rolle: b.rolle }))
+      })
+      $('neuer-bot').close()
+      await crewBotsLaden()
+      document.querySelector('[data-neu-laden="crew"]')?.click() // Karten rechts neu zeichnen
+      // gleich den Chat mit dem neuen Bot öffnen
+      modus = 'normal'
+      gewaehlt.normal = r.id
+      wechseln()
+    } catch (err) {
+      $('nb-status').textContent = `Hat nicht geklappt: ${String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`
+      $('nb-anlegen').disabled = false
+    }
+  })
+}

@@ -129,7 +129,7 @@
             </form>
           </section>
           <aside class="crew-seite">
-            <div class="crew-seite-kopf"><span class="ck-titel">Deine Crew</span><b>Direkter Draht zu jedem Bot</b></div>
+            <div class="crew-seite-kopf"><div><span class="ck-titel">Deine Crew</span><b>Direkter Draht zu jedem Bot</b></div><button class="knopf-mini crew-neu-bot" id="crew-neu-bot" type="button" title="Einen neuen Bot (Hermes-Profil) anlegen">＋ Neuer Bot</button></div>
             <input class="crew-finden" id="crew-finden" type="search" placeholder="Bot finden …" autocomplete="off" spellcheck="false" />
             <div class="crew-raster" id="crew-karten"><div class="leise">Lade …</div></div>
             <div class="crew-netz" id="crew-netz"></div>
@@ -355,6 +355,29 @@
         </button>
       </aside>
     </div>
+
+    <!-- Neuer Bot (crewchat.js → hermes profile create) -->
+    <dialog class="dialog hud neuer-bot" id="neuer-bot">
+      <form id="neuer-bot-form" autocomplete="off">
+        <h3>Neuer Bot</h3>
+        <div class="nb-oben">
+          <button class="nb-bild" id="nb-bild" type="button" title="Bild wählen (optional)"><span>＋ Bild</span></button>
+          <div class="nb-namen">
+            <label>Name <input name="name" maxlength="40" placeholder="z. B. Freya" required /></label>
+            <label>Rolle <input name="rolle" maxlength="40" placeholder="z. B. Social Media" /></label>
+            <small class="leise" id="nb-id">Profil: –</small>
+          </div>
+        </div>
+        <label>Wofür ist er da? <small class="leise">1–2 Sätze, daran erkennt Luzzy, wann sie ihn fragt</small>
+          <textarea name="beschreibung" rows="2" maxlength="400" placeholder="z. B. Schreibt Instagram- und Facebook-Posts für Donnerwolf."></textarea></label>
+        <label>Aufgaben und Charakter <small class="leise">kommt in seine SOUL.md, später jederzeit änderbar</small>
+          <textarea name="aufgaben" rows="5" maxlength="8000" placeholder="z. B. Du schreibst Captions und Hashtags im Donnerwolf-Stil (Wikinger, Wolf, direkt, mit Humor). Du veröffentlichst nichts selbst."></textarea></label>
+        <label>Einstellungen übernehmen von <select name="vorlage" id="nb-vorlage"></select></label>
+        <small class="leise">Modell, Zugänge (z. B. Shopify) und Skills kommen vom gewählten Bot – Messenger-Kanäle wie Telegram nicht. Hermes nimmt den neuen Bot automatisch ins Crew-Team auf.</small>
+        <div class="nb-status" id="nb-status"></div>
+        <div class="nb-knoepfe"><button class="knopf-flach" id="nb-abbrechen" type="button">Abbrechen</button><button class="knopf-gold" id="nb-anlegen" type="submit">Bot anlegen</button></div>
+      </form>
+    </dialog>
 
     <!-- Befehlspalette (src/renderer/palette.js) -->
     <dialog class="dialog hud palette" id="palette">
