@@ -154,7 +154,8 @@ export async function crewBotsLaden() {
 
 function zeichnen() {
   for (const k of $('crew-modus').querySelectorAll('[data-modus]')) k.classList.toggle('an', k.dataset.modus === modus)
-  $('crew-bots').hidden = modus === 'buehne'
+  $('crew-bots').hidden = true // Bot-Auswahl läuft über die Karten oben (der gewählte Bot ist dort hervorgehoben)
+  kartenMarkieren()
   if (modus === 'buehne') {
     $('crew-chat-hinweis').textContent = 'Live: wer gerade woran arbeitet und was die Bots einander übergeben. Klick auf eine Zeile zeigt alles.'
     return
@@ -165,7 +166,7 @@ function zeichnen() {
     : '<span class="leise klein">Noch keine Bots außer Luzzy.</span>'
   const bot = botVon(gewaehlt[modus])
   $('crew-chat-hinweis').textContent = modus === 'normal'
-    ? bot.profil === LUZZY ? 'Dein Gespräch mit Luzzy aus der Zentrale, ohne Bot Mode. Über „Allgemein ▾“ wechselst, erstellst und löschst du Chats.' : `Direktes Gespräch mit ${bot.name}, ohne Bot Mode. Über den Knopf links wechselst, erstellst und löschst du Chats.`
+    ? bot.profil === LUZZY ? 'Dein Gespräch mit Luzzy aus der Zentrale, ohne Bot Mode. Über „Allgemein ▾“ wechselst, erstellst und löschst du Chats.' : `Direktes Gespräch mit ${bot.name}, ohne Bot Mode. Über die Chat-Auswahl rechts wechselst, erstellst und löschst du Chats.`
     : bot.profil === LUZZY
       ? 'Luzzys Bot Chat: sie verteilt Aufträge an die Crew und bekommt die Ergebnisse zurück.'
       : `${bot.name}s Bot Chat: hier arbeiten die Bots zusammen (Übergaben wie Kira → Lira → Milla).`
@@ -173,6 +174,13 @@ function zeichnen() {
     ? `Nachricht an ${bot.name} …`
     : bot.profil === LUZZY ? 'Auftrag für die Crew, z. B. „Kira soll Trends für Herbst-Shirts suchen“ …' : `Nachricht in ${bot.name}s Bot Chat …`
 }
+
+// Karte des gewählten Bots oben hervorheben (nicht auf der Arbeitsbühne)
+function kartenMarkieren() {
+  const profil = modus === 'buehne' ? null : gewaehlt[modus]
+  for (const k of document.querySelectorAll('#crew-karten article.bot[data-profil]')) k.classList.toggle('gewaehlt', k.dataset.profil === profil)
+}
+document.addEventListener('crew-karten-gezeichnet', kartenMarkieren) // Karten werden regelmäßig neu gezeichnet
 
 // Gewählten Kanal sichtbar machen und (beim ersten Mal) bei Hermes öffnen
 export async function wechseln() {
