@@ -1255,3 +1255,38 @@ body.datei-drueber .datei-ablage { display: grid; }
 .kw-budget { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 6px 0; font-size: 12px; }
 .kw-budget input { width: 70px; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 4px 7px; color: var(--text); font: inherit; outline: none; }
 .kw-budget input:focus { border-color: var(--gold); }
+
+/* Suchleiste oben in der Zentrale (suche.js) */
+.ansicht-zentrale { position: relative; }
+.zentral-suche { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 56px)); z-index: 30; }
+.suche-lupe { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-leise); font-size: 16px; pointer-events: none; }
+.suche-eingabe { width: 100%; box-sizing: border-box; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 999px; padding: 9px 16px 9px 36px; font: inherit; font-size: 13px; color: var(--text); outline: none; transition: border-color 150ms, box-shadow 150ms; }
+.suche-eingabe:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-flaeche, rgba(201, 161, 74, 0.12)); }
+.suche-eingabe::-webkit-search-cancel-button { display: none; }
+.suche-liste { position: absolute; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; max-height: min(62vh, 520px); overflow-y: auto; box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.7); }
+.suche-liste[hidden] { display: none; }
+.suche-gruppe { padding: 8px 10px 4px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-leise); }
+.suche-treffer { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius); cursor: pointer; }
+.suche-treffer.gewaehlt, .suche-treffer:hover { background: var(--gold-flaeche, rgba(201, 161, 74, 0.1)); }
+.suche-symbol { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--flaeche); border: 1px solid var(--rahmen); color: var(--gold-hell); font-size: 12px; }
+.suche-text { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.suche-text b { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suche-text small { font-size: 11px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suche-aktion { flex: none; font-size: 11px; color: var(--gold-hell); }
+.suche-luzzy .suche-text b { color: var(--gold-hell); }
+
+/* Kleines Bot-Fenster (crewchat.js) */
+.botfenster { position: absolute; right: 18px; bottom: 18px; width: min(380px, calc(100% - 36px)); height: min(500px, calc(100% - 90px)); z-index: 40; display: flex; flex-direction: column; padding: 0; overflow: hidden; box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.75); }
+.botfenster[hidden] { display: none; }
+.bf-kopf { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--rahmen); }
+.bf-bild { flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; border: 2px solid var(--gold-dunkel); background: var(--eingabe); color: var(--gold-hell); font-weight: 600; }
+.bf-bild img { width: 100%; height: 100%; object-fit: cover; }
+.bf-wer { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bf-wer b { font-size: 13.5px; }
+.bf-wer small { font-size: 10.5px; color: var(--text-leise); }
+.bf-liste { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.bf-liste > .gespraech { flex: 1; min-height: 0; height: auto; max-height: none; overflow-y: auto; padding: 10px 12px; }
+.bf-form { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--rahmen); }
+.bf-form textarea { flex: 1; min-width: 0; resize: none; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 8px 10px; font: inherit; font-size: 13px; color: var(--text); outline: none; max-height: 120px; }
+.bf-form textarea:focus { border-color: var(--gold); }
+.bf-senden { padding: 8px 14px; }

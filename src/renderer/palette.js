@@ -17,9 +17,9 @@ let treffer = []
 let auswahl = 0
 let gruppenFilter = '' // Schnellfilter oben (Sprachbefehle, Tastenkürzel, Bereiche), leer = alles
 
-function filtern(text) {
+function filtern(text, { ohneLuzzy = false, gruppe = gruppenFilter } = {}) {
   const woerter = normal(text).split(/\s+/).filter(Boolean)
-  const alle = befehleHolen().filter((b) => !gruppenFilter || b.gruppe === gruppenFilter)
+  const alle = befehleHolen().filter((b) => !gruppe || b.gruppe === gruppe)
   // Jedes getippte Wort muss ein Wort des Befehls anfangen („kal“ → Kalender, aber „sich“ nicht → Ansicht)
   const passt = (b) => {
     const teile = normal(`${b.name} ${b.gruppe} ${b.stichwoerter || ''} ${b.taste || ''} ${b.hinweis || ''}`).split(/[^a-z0-9+]+/)
@@ -28,7 +28,7 @@ function filtern(text) {
   const passend = woerter.length ? alle.filter(passt) : [...alle].sort((a, b) => gruppenRang(a.gruppe) - gruppenRang(b.gruppe))
   // Treffer am Namensanfang zuerst
   if (woerter.length) passend.sort((a, b) => Number(!normal(a.name).startsWith(woerter[0])) - Number(!normal(b.name).startsWith(woerter[0])))
-  if (text.trim() && !gruppenFilter) passend.push({ name: `An Luzzy: „${text.trim()}“`, gruppe: 'Luzzy', luzzy: true, ausfuehren: () => anLuzzy(text.trim()) })
+  if (text.trim() && !gruppe && !ohneLuzzy) passend.push({ name: `An Luzzy: „${text.trim()}“`, gruppe: 'Luzzy', luzzy: true, ausfuehren: () => anLuzzy(text.trim()) })
   return passend
 }
 
@@ -54,6 +54,9 @@ function ausfuehren(i) {
   $('palette').close()
   befehl.ausfuehren()
 }
+
+// Für die Suchleiste der Zentrale (suche.js): passende Befehle, ohne „An Luzzy“ am Ende
+export const befehleSuchen = (text) => (String(text || '').trim() ? filtern(text, { ohneLuzzy: true, gruppe: '' }) : [])
 
 export async function paletteOeffnen() {
   if ($('palette').open) return $('palette').close()

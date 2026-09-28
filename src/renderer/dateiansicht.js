@@ -171,7 +171,7 @@ function listeZeigen(suche, treffer) {
   inhalt.querySelector('.da-treffer')?.focus()
 }
 
-async function dateiZeigen(treffer) {
+export async function dateiZeigen(treffer) {
   if (ungespeichert()) throw new Error('Du hast noch ungespeicherte Änderungen. Erst speichern oder verwerfen.')
   const d = await api.datei.inhalt(treffer.id)
   offeneId = d.id

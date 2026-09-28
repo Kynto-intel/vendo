@@ -12,12 +12,13 @@ import { tonSpielen } from './toene.js'
 import './auswahl.js' // eigene Auswahlfenster für Datum und Uhrzeit (statt der Windows-Fenster)
 import { ablageEinrichten, ablageErgebnis, ablageOeffnen } from './zwischenablage.js'
 import { timerEinrichten, timerBefehl, timerListe } from './timer.js'
-import { paletteEinrichten, paletteOeffnen } from './palette.js'
+import { paletteEinrichten, paletteOeffnen, befehleSuchen } from './palette.js'
+import { sucheEinrichten, sucheOeffnen } from './suche.js'
 import { selbsttestStarten } from './selbsttest.js'
 import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
 import { pcBefehlErkennen, pcAusfuehren } from './pcsteuerung.js'
 import { gespraecheEinrichten, gespraecheLaden, gespraechBefehl } from './gespraeche.js'
-import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, istOeffnenWunsch, pfadAusAntwortOeffnen, aenderungsBefehl } from './dateiansicht.js'
+import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, dateiZeigen, istOeffnenWunsch, pfadAusAntwortOeffnen, aenderungsBefehl } from './dateiansicht.js'
 import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
@@ -26,9 +27,9 @@ import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.j
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
 import { kostenEinrichten } from './kosten.js'
-import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden } from './crewchat.js'
+import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
-import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
+import { wissenEinrichten, notizOeffnen, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
 
 const $ = (id) => document.getElementById(id)
 const api = window.jarves
@@ -755,6 +756,7 @@ const SPRACHBEFEHLE = [
 // Tastenkürzel (zum Nachschlagen, Anklicken führt aus, wo es geht)
 const TASTENKUERZEL = [
   ['Befehlspalette', 'Strg+P', () => {}],
+  ['Suchleiste in der Zentrale: Bots, Bereiche, Notizen, Dateien', 'Strg+F', () => sucheOeffnen()],
   ['Sprechen (auch im Hintergrund)', 'Strg+Leertaste', () => sprechenStarten()],
   ['Freihändig an/aus („Hey Luzzy“ oder nur auf Knopfdruck, z. B. mit Headset)', 'Strg+Umschalt+H', () => hoerModusUmschalten()],
   ['Zwischenablage an Luzzy (aus jedem Programm)', 'Strg+Umschalt+L', () => ablageOeffnen()],
@@ -1550,6 +1552,30 @@ api.waechter.beiMeldung(meldungNeu)
 
 // Shopify-Token im System-Tab erneuern (siehe shopifyzugang.js)
 shopifyZugangEinrichten({ melden: meldungNeu })
+
+// Suchleiste oben in der Zentrale (siehe suche.js): Bots öffnen ein kleines Chat-Fenster, alles andere den Tab
+sucheEinrichten({
+  api,
+  befehle: befehleSuchen,
+  bots: crewBots,
+  botsLaden: crewBotsLaden,
+  botFenster: botFensterOeffnen,
+  dateiZeigen,
+  notizOeffnen,
+  luzzy: (text) => {
+    ansichtZeigen('zentrale')
+    const feld = document.querySelector('.befehl .eingabe-text')
+    feld.value = text
+    abschicken(feld)
+  }
+})
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+    e.preventDefault()
+    if (aktuelleAnsicht !== 'zentrale') ansichtZeigen('zentrale')
+    sucheOeffnen()
+  }
+})
 
 // Kosten-Wächter im System-Tab, warnt bei 80 % / 100 % des Budgets (siehe kosten.js)
 kostenEinrichten({

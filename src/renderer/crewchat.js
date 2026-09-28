@@ -80,7 +80,7 @@ function gespraech(kanal) {
       const zurueck = warten.get(kanal)
       warten.delete(kanal)
       if (zurueck) return zurueck(text)
-      if (!(h.crewSichtbar() && aktuellerKanal() === kanal)) h.fertigWoanders(bot, text)
+      if (!(h.crewSichtbar() && aktuellerKanal() === kanal) && fensterKanal !== kanal) h.fertigWoanders(bot, text) // im Bot-Fenster sieht Felix die Antwort ja
     }
   })
   gespraeche.set(kanal, eintrag)
@@ -112,6 +112,7 @@ export function crewChatEinrichten(helfer) {
   gespraech('zentrale')
   gespraech('crew') // Luzzys Bot Chat gibt es immer
   chatAuswahlEinrichten()
+  botFensterEinrichten()
   buehneEinrichten({
     sichtbar: () => h.crewSichtbar() && !document.hidden,
     buehneOffen: () => modus === 'buehne' && h.crewSichtbar(),
@@ -199,7 +200,8 @@ export async function wechseln() {
     return buehneStarten()
   }
   const kanal = aktuellerKanal()
-  for (const [k, g] of gespraeche) g.liste.hidden = k !== kanal
+  if (kanal && kanal === fensterKanal) botFensterSchliessen() // derselbe Chat jetzt groß im Crew-Tab
+  for (const [k, g] of gespraeche) if (k !== fensterKanal) g.liste.hidden = k !== kanal // die Liste im Bot-Fenster bleibt sichtbar
   if (!kanal) return
   const g = gespraech(kanal)
   g.liste.hidden = false
@@ -362,4 +364,110 @@ export async function anBotSenden(bot, text, fertig) {
   if (fertig) warten.set(kanal, fertig)
   g.unterhaltung.senden(text)
   return true
+}
+
+// ── Kleines Bot-Fenster (aus der Suchleiste der Zentrale): direkt mit einem Bot schreiben ──
+// Es ist derselbe „Normale Chat“ wie im Crew-Tab: die Liste des Gesprächs wandert ins Fenster und beim Schließen zurück.
+let fensterKanal = null
+let fensterTakt = 0
+export const crewBots = () => bots
+export const botFensterOffen = () => fensterKanal
+
+export async function botFensterOeffnen(profil) {
+  if (!bots.length) await crewBotsLaden()
+  if (!profil || profil === LUZZY) return false // Luzzy ist die Zentrale selbst
+  const kanal = kanalFuer('normal', profil)
+  if (fensterKanal && fensterKanal !== kanal) botFensterSchliessen()
+  const g = gespraech(kanal)
+  const bot = botVon(profil)
+  const f = $('botfenster')
+  f.querySelector('.bf-name').textContent = bot.name
+  f.querySelector('.bf-rolle').textContent = bot.rolle || ''
+  const bild = f.querySelector('.bf-bild')
+  bild.textContent = bot.name.charAt(0)
+  h.api.hermes.botBild(profil).then((b) => b?.bild && (bild.innerHTML = `<img src="${b.bild}" alt="" />`)).catch(() => {})
+  f.querySelector('textarea').placeholder = `Nachricht an ${bot.name} …`
+  f.querySelector('.bf-liste').appendChild(g.liste)
+  g.liste.hidden = false
+  fensterKanal = kanal
+  f.dataset.profil = profil
+  f.hidden = false
+  f.querySelector('textarea').focus()
+  clearInterval(fensterTakt)
+  fensterTakt = setInterval(fensterKnopf, 400) // Senden ↔ Stopp, solange der Bot antwortet
+  if (!g.geoeffnet) {
+    g.geoeffnet = true
+    try {
+      await h.api.hermes.botOeffnen(kanal)
+    } catch (e) {
+      g.geoeffnet = false
+      g.liste.insertAdjacentHTML('beforeend', `<div class="msg system">Konnte das Gespräch nicht öffnen: ${maskieren(e.message)}</div>`)
+    }
+  }
+  g.liste.scrollTop = g.liste.scrollHeight
+  return true
+}
+
+export function botFensterSchliessen() {
+  if (!fensterKanal) return
+  const g = gespraeche.get(fensterKanal)
+  const kanal = fensterKanal
+  fensterKanal = null
+  clearInterval(fensterTakt)
+  $('botfenster').hidden = true
+  if (g) {
+    $('crew-listen').appendChild(g.liste)
+    g.liste.hidden = aktuellerKanal() !== kanal
+  }
+}
+
+function fensterKnopf() {
+  const g = fensterKanal && gespraeche.get(fensterKanal)
+  if (!g) return
+  const knopf = $('botfenster').querySelector('.bf-senden')
+  const laeuft = g.unterhaltung.beschaeftigt()
+  knopf.textContent = laeuft ? 'Stopp' : 'Senden'
+  knopf.classList.toggle('stopp', laeuft)
+}
+
+function botFensterEinrichten() {
+  const f = $('botfenster')
+  if (!f) return
+  const feld = f.querySelector('textarea')
+  const abschicken = () => {
+    const g = fensterKanal && gespraeche.get(fensterKanal)
+    if (!g) return
+    if (g.unterhaltung.beschaeftigt()) return h.api.hermes.abbrechen(fensterKanal)
+    const text = feld.value.trim()
+    if (!text) return
+    feld.value = ''
+    feld.style.height = 'auto'
+    g.unterhaltung.senden(text)
+    fensterKnopf()
+  }
+  f.querySelector('form').addEventListener('submit', (e) => {
+    e.preventDefault()
+    abschicken()
+  })
+  feld.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      abschicken()
+    }
+    if (e.key === 'Escape') botFensterSchliessen()
+  })
+  feld.addEventListener('input', () => {
+    feld.style.height = 'auto'
+    feld.style.height = `${Math.min(feld.scrollHeight, 120)}px`
+  })
+  f.querySelector('.bf-zu').addEventListener('click', botFensterSchliessen)
+  // Groß öffnen: derselbe Chat im Crew-Tab
+  f.querySelector('.bf-gross').addEventListener('click', () => {
+    const profil = f.dataset.profil
+    botFensterSchliessen()
+    modus = 'normal'
+    gewaehlt.normal = profil
+    h.crewOeffnen?.()
+    wechseln()
+  })
 }

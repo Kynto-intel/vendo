@@ -61,6 +61,12 @@
         </div>
         <!-- Zentrale: Luzzy -->
         <section class="ansicht ansicht-zentrale" data-ansicht="zentrale">
+          <!-- Suchleiste (src/renderer/suche.js): Bots, Bereiche, Befehle, Notizen, Dateien -->
+          <div class="zentral-suche" id="suche">
+            <span class="suche-lupe" aria-hidden="true">⌕</span>
+            <input class="suche-eingabe" id="suche-eingabe" type="search" placeholder="Suchen: Bots, Bereiche, Notizen, Dateien … (Strg+F)" autocomplete="off" spellcheck="false" />
+            <ul class="suche-liste hud" id="suche-liste" hidden></ul>
+          </div>
           <section class="luzzy-bereich">
             <div class="reaktor-rahmen" id="reaktor-rahmen"></div>
             <div class="luzzy-name">LUZZY</div>
@@ -226,6 +232,20 @@
             <section class="karte hud kostenwaechter"><h3>Kosten-Wächter</h3><div id="system-kostenwaechter"><div class="leise">Lade …</div></div></section>
             <section class="karte hud"><h3>Luzzy · Nutzung 30 Tage</h3><div id="system-kosten"><div class="leise">Lade …</div></div></section>
           </div>
+        </section>
+        <!-- Kleines Bot-Fenster (aus der Suchleiste): direkt mit einem Bot schreiben, siehe crewchat.js -->
+        <section class="botfenster hud" id="botfenster" hidden>
+          <header class="bf-kopf">
+            <span class="bf-bild"></span>
+            <div class="bf-wer"><b class="bf-name"></b><small class="bf-rolle"></small></div>
+            <button class="knopf-mini bf-gross" type="button" title="Groß im Crew-Tab öffnen">⤢</button>
+            <button class="knopf-mini bf-zu" type="button" title="Schließen (Esc)">✕</button>
+          </header>
+          <div class="bf-liste"></div>
+          <form class="bf-form">
+            <textarea rows="1" placeholder="Nachricht …" autocomplete="off"></textarea>
+            <button class="knopf-gold bf-senden" type="submit">Senden</button>
+          </form>
         </section>
       </main>
 

@@ -116,6 +116,7 @@ und Wetter. Klick oder Esc überspringt das Intro. Fenstergröße, Position und 
 
 | Taste | Wirkung |
 |---|---|
+| **Strg+F** | Suchleiste in der Zentrale: Bots, Bereiche, Befehle, Notizen und Dateien |
 | **Strg+P** | Befehlspalette: alle Befehle, Bereiche, Tastenkürzel und Sprachbefehle zum Tippen |
 | **Strg+K** | Luzzys Chat öffnen/schließen (im Crew-Bereich) |
 | **Strg+B** / **Strg+J** | Linke / rechte Leiste ein- und ausklappen |
@@ -125,6 +126,11 @@ und Wetter. Klick oder Esc überspringt das Intro. Fenstergröße, Position und 
 
 - **Oben:** Hermes, Mikrofon, Shopify, Postfach (grün = verbunden, Klick = neu prüfen), Nicht-stören-Symbol,
   Datum, Uhrzeit und laufende Timer. Klick auf „Mikrofon“ schaltet Freihändig um.
+- **Suchleiste** (oben in der Zentrale, Strg+F): nach allem suchen, der Treffer öffnet sich in der App. Gruppen:
+  **Bots** (öffnet ein kleines Chat-Fenster unten rechts: direkt mit Kira, Lira oder Milla schreiben – derselbe Chat
+  wie im Crew-Tab, ⤢ öffnet ihn groß), **Bereiche** und **Befehle** (wie in der Befehlspalette), **Notizen** aus dem
+  Vault, **Dateien** auf dem PC (ohne Programm- und Hermes-Innereien) und ganz unten „Luzzy fragen“.
+  ↑ ↓ wählen, Enter öffnet, Esc schließt.
 - **Anhänge:** Datei oder Bild ins Fenster ziehen, 📎-Knopf oder Strg+V – geht mit der nächsten Nachricht an Luzzy.
   Hermes bekommt Bilder als Bild, PDFs Seite für Seite, den Rest als Datei.
 
