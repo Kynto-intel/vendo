@@ -115,7 +115,12 @@ export function crewChatEinrichten(helfer) {
   buehneEinrichten({
     sichtbar: () => h.crewSichtbar() && !document.hidden,
     buehneOffen: () => modus === 'buehne' && h.crewSichtbar(),
-    botChatZeigen
+    botChatZeigen,
+    buehneZeigen: () => {
+      modus = 'buehne'
+      h.crewOeffnen?.() // Crew-Bereich zeigen (app.js)
+      return wechseln()
+    }
   })
   $('crew-modus').addEventListener('click', (e) => {
     const knopf = e.target.closest('[data-modus]')

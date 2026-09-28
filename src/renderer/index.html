@@ -263,6 +263,11 @@
           <h3>Timer</h3>
           <div id="timer-karte-inhalt"></div>
         </section>
+        <!-- Crew live: nur der Bot, der gerade arbeitet (Daten von der Arbeitsbühne, src/renderer/buehne.js) -->
+        <section class="karte hud crewlive" id="crewlive-karte" data-karte="crewlive" data-name="Crew live (wer gerade arbeitet)" tabindex="0" title="Klick: Arbeitsbühne öffnen">
+          <h3><span>Crew live</span><span class="vorschau-aktion">Bühne ›</span></h3>
+          <div id="crewlive"><div class="leise klein">Lade …</div></div>
+        </section>
         <section class="karte hud" data-karte="meldungen" data-name="Meldungen">
           <h3><span>Meldungen</span> <button class="knopf-mini" id="meldungen-leeren" type="button" hidden>Leeren</button></h3>
           <div class="meldungen-liste" id="meldungen-liste"></div>

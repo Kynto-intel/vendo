@@ -24,6 +24,7 @@ import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
+import { buehneStarten } from './buehne.js'
 import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -1623,6 +1624,7 @@ setInterval(() => verbunden && aktuelleAnsicht !== 'crew' && crewLaden(), 30000)
 crewChatEinrichten({
   api,
   crewSichtbar: () => aktuelleAnsicht === 'crew',
+  crewOeffnen: () => aktuelleAnsicht !== 'crew' && ansichtZeigen('crew'),
   aktivitaet: (text, laeuft) => {
     if (laeuft) return aktivitaetMelden(text, true)
     laufendeBeenden()
@@ -2011,6 +2013,7 @@ async function start() {
   zustandZeigen()
   const s = await api.hermes.status()
   if (s.zustand === 'bereit') crewBotsLaden().catch(() => {}) // Namen der Bots für „Kira, …“
+  if (s.zustand === 'bereit') buehneStarten().catch(() => {}) // Karte „Crew live“ rechts mitlesen lassen
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)

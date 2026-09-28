@@ -104,8 +104,6 @@ Regel wie immer: Hermes wird nicht verändert, nur seine eingebauten Befehle wer
 
 Tony Starks JARVIS wartet nicht auf Befehle: Er denkt voraus, kennt die Lage und hat Charakter.
 
-41. ⚡ **„Status.“** – Ein Wort, und Luzzy gibt in 20 Sekunden den Lagebericht: Shop, Crew, Jobs, Termine, Wetter,
-    PC. Lokal zusammengestellt, ohne auf Hermes zu warten. Mit „Details zu …“ geht sie tiefer.
 42. ⚡ **Denkt an dich** – Wie „Sir, Sie sind seit 36 Stunden wach“: Luzzy merkt über die Windows-Aktivität, wie lange
     du durcharbeitest, erinnert an Pausen und Wasser und schlägt spät abends Feierabend vor. Nichts wird gespeichert.
 43. ⚡ **Charakter mit Timing** – Luzzy reagiert auf Momente, nicht nur auf Fragen: nachts um zwei („Felix, der Shop

@@ -184,15 +184,25 @@ async function nachlesen() {
   }
 }
 
+// Mitlesen, solange der Crew-Bereich offen ist ODER die Karte „Crew live“ rechts zu sehen ist
+const liveKarteSichtbar = () => {
+  const k = $('crewlive-karte')
+  return Boolean(k && !k.hidden && !document.hidden)
+}
+const mitlesen = () => h.sichtbar() || liveKarteSichtbar()
+
 function planen() {
   clearTimeout(uhr)
-  if (!h.sichtbar()) return
+  if (!mitlesen()) {
+    uhr = setTimeout(planen, 15000) // nichts zu sehen: nur ab und zu nachschauen, ob wieder etwas zu sehen ist (ohne Hermes zu fragen)
+    return
+  }
   const modell = bots.length ? buehneModell(bots, protokolle, { auftrag: auftragWahl }) : null
   const aktiv = modell && !modell.leer && !modell.fertig
   uhr = setTimeout(async () => {
     await nachlesen()
     planen()
-  }, aktiv ? 2500 : 5000)
+  }, aktiv ? 2500 : h.sichtbar() ? 5000 : 12000) // nur die Karte: in Ruhe seltener nachlesen
 }
 
 // Von außen: Crew-Bereich geöffnet/geschlossen, Werkzeug-Ereignis (sofort nachlesen)
@@ -201,7 +211,7 @@ export async function buehneStarten() {
   planen()
 }
 export function buehneAnstossen() {
-  if (!h.sichtbar()) return
+  if (!mitlesen()) return
   nachlesen().then(planen)
 }
 
@@ -215,6 +225,8 @@ const uhrzeit = (ms) => (ms ? new Date(ms).toLocaleTimeString('de-DE', { hour: '
 function zeichnen() {
   const modell = bots.length ? buehneModell(bots, protokolle, { auftrag: auftragWahl }) : { leer: true }
   kartenZeichnen(modell)
+  // Karte rechts zeigt immer den neuesten Auftrag, auch wenn auf der Bühne ein älterer gewählt ist
+  liveKarteZeichnen(auftragWahl === -1 || !bots.length ? modell : buehneModell(bots, protokolle))
   if (!h.buehneOffen()) return
   const el = $('crew-buehne')
   if (modell.leer) {
@@ -289,8 +301,79 @@ function kartenZeichnen(modell) {
   }
 }
 
+// ── Karte „Crew live“ rechts: immer nur der Bot, der gerade dran ist ──
+// Werkzeugnamen von Hermes in Felix' Worten
+const TAETIGKEIT = [
+  [/web_search|x_search|search/, 'sucht im Netz'],
+  [/web_extract|fetch|scrape/, 'liest eine Webseite'],
+  [/browser/, 'arbeitet im Browser'],
+  [/image_gen|image\.generate|generate_image/, 'malt ein Bild'],
+  [/vision|analyze_image/, 'schaut sich ein Bild an'],
+  [/delegate/, 'schickt Helfer los'],
+  [/terminal|shell|code_execution|python/, 'rechnet und probiert aus'],
+  [/write_file|patch|edit/, 'schreibt eine Datei'],
+  [/read_file|search_files|file/, 'liest Dateien'],
+  [/memory/, 'merkt sich etwas'],
+  [/skill/, 'schlägt in einem Skill nach'],
+  [/shopify/, 'schaut in den Shop'],
+  [/mail/, 'schaut ins Postfach'],
+  [/todo|kanban/, 'plant die Aufgaben'],
+  [/session_search/, 'sucht in alten Gesprächen']
+]
+const taetigkeit = (werkzeug) => (werkzeug ? TAETIGKEIT.find(([m]) => m.test(werkzeug))?.[1] || `arbeitet (${werkzeug})` : '')
+const bilder = {} // profil → Bild-URL oder '' (einmal holen)
+function bildVon(profil) {
+  if (!(profil in bilder)) {
+    bilder[profil] = ''
+    api.hermes.botBild(profil).then((b) => {
+      if (!b?.bild) return
+      bilder[profil] = b.bild
+      liveKarteZeichnen(letztesLiveModell)
+    }).catch(() => {})
+  }
+  return bilder[profil]
+}
+let letztesLiveModell = null
+
+export function liveKarteZeichnen(modell) { // exportiert auch für Tests
+  const el = $('crewlive')
+  if (!el) return
+  letztesLiveModell = modell
+  if (!modell || modell.leer) {
+    el.innerHTML = '<div class="cl-ruhe">Die Crew ruht. Aufträge gibst du Luzzy im 🤖 Bot Mode.</div>'
+    return
+  }
+  const kette = `<div class="cl-kette">${modell.stationen.map((s) => `<span class="cl-punkt ${s.zustand}" title="${maskieren(s.name)}: ${maskieren(s.was)}"></span>`).join('<i></i>')}</div>`
+  const auftrag = `<div class="cl-auftrag">„${maskieren(modell.titel)}“</div>`
+  if (modell.fertig) {
+    const her = Date.now() - modell.start - modell.dauer
+    el.innerHTML = her > 30 * 60 * 1000
+      ? `<div class="cl-ruhe">Die Crew ruht. Letzter Auftrag fertig um ${uhrzeit(modell.start + modell.dauer)}.</div>`
+      : `<div class="cl-fertig">✓ Auftrag fertig <small>in ${dauerText(modell.dauer)}</small></div>${auftrag}${kette}`
+    return
+  }
+  // Wer ist dran? Ein Bot, der arbeitet (der zuletzt beauftragte zuerst), sonst Luzzy
+  const aktive = modell.stationen.filter((s) => s.zustand === 'aktiv')
+  const s = aktive.filter((x) => x.profil !== LUZZY).sort((a, b) => (b.seit || 0) - (a.seit || 0))[0] || aktive[0] || modell.stationen[0]
+  const bild = bildVon(s.profil)
+  const was = s.werkzeug ? taetigkeit(s.werkzeug) : s.was
+  el.innerHTML = `
+    <div class="cl-bot ${s.zustand}">
+      <div class="cl-bild">${bild ? `<img src="${bild}" alt="" />` : `<span>${maskieren(s.name.charAt(0))}</span>`}</div>
+      <div class="cl-info">
+        <b>${maskieren(s.name)}</b>${s.rolle ? ` <small>${maskieren(s.rolle)}</small>` : ''}
+        <div class="cl-was">${s.zustand === 'aktiv' ? '● ' : ''}${maskieren(was)}${s.seit ? ` · ${dauerText(Date.now() - s.seit)}` : ''}</div>
+      </div>
+    </div>${auftrag}${kette}`
+}
+
 export function buehneEinrichten(helfer) {
   h = { ...h, ...helfer }
+  // Karte „Crew live“: Klick öffnet die Arbeitsbühne; wird sie (wieder) sichtbar, sofort nachlesen
+  const live = $('crewlive-karte')
+  live?.addEventListener('click', () => h.buehneZeigen?.())
+  live?.addEventListener('keydown', (e) => e.key === 'Enter' && h.buehneZeigen?.())
+  document.addEventListener('visibilitychange', () => !document.hidden && liveKarteSichtbar() && buehneAnstossen())
   // Karten werden alle 15 s neu gezeichnet: Live-Zeile gleich wieder drauf
   document.addEventListener('crew-karten-gezeichnet', () => kartenZeichnen(bots.length ? buehneModell(bots, protokolle, { auftrag: auftragWahl }) : null))
   $('crew-buehne').addEventListener('click', (e) => {

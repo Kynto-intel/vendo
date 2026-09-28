@@ -130,7 +130,7 @@ und Wetter. Klick oder Esc überspringt das Intro. Fenstergröße, Position und 
 
 ## Die Oberfläche
 
-**Links** die Bereiche, **in der Mitte** der gewählte Bereich, **rechts** Karten (Wetter, Meldungen, Heute, Crew,
+**Links** die Bereiche, **in der Mitte** der gewählte Bereich, **rechts** Karten (Wetter, Crew live, Meldungen, Heute, Crew,
 Timer, Plugin-Karten – welche und in welcher Reihenfolge stellst du in den Einstellungen ein). Die Farben wechseln
 mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 
@@ -183,6 +183,9 @@ automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
 - **🎬 Arbeitsbühne:** live sehen, wie die Bots zusammenarbeiten: Kette Luzzy → Kira → Lira → Milla, ein Brief wandert
   bei jeder Übergabe, darunter der Ablauf des Auftrags (Klick: ganzer Auftrag und Antwort, „Bot Chat öffnen“).
   Die Bot-Karten oben leuchten gold, solange ein Bot arbeitet. Jarves-OS liest die Bot Chats dafür nur mit.
+- **Crew live (rechte Spalte):** zeigt immer nur den Bot, der gerade dran ist – Bild, was er tut („sucht im Netz · 1:20“),
+  den Auftrag und eine kleine Kette (gold = arbeitet, grün = fertig). Ist er fertig und gibt weiter, wechselt die Karte
+  von selbst zum nächsten Bot. Klick öffnet die Arbeitsbühne. Ein- und ausschalten: Einstellungen → Rechte Spalte.
 - **Beim Namen rufen:** „Kira, was ist gerade Trend?“ geht in der Zentrale direkt an Kira (Antwort als Untertitel).
 - **Modell ändern:** Zahnrad auf der Bot-Karte. Liste mit Suche, Anbieter zum Ein- und Ausklappen.
 - **Im Crew-Bereich hört Luzzy nicht von selbst mit** (z. B. Musik im Headset). Sprechen geht dort mit Strg+Leertaste.
