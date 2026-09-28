@@ -24,8 +24,10 @@ export function shopifyZugangEinrichten({ melden = () => {} } = {}) {
     try {
       const r = await api.shopify.tokenEintragen(token)
       hinweis.className = 'klein sz-gut'
-      hinweis.textContent = `✓ Token funktioniert (${r.shopName}) und ist an ${r.dateien.length} Stellen eingetragen. Damit Luzzy und die Bots ihn nutzen, Hermes einmal neu starten.`
-      melden({ art: 'hinweis', titel: 'Shopify-Token erneuert', anzeige: `An ${r.dateien.length} Stellen eingetragen. Hermes neu starten.`, zeit: Date.now() })
+      hinweis.textContent = r.neuGeladen
+        ? `✓ Token funktioniert (${r.shopName}), ist an ${r.dateien.length} Stellen eingetragen und sofort aktiv. Kein Neustart nötig.`
+        : `✓ Token funktioniert (${r.shopName}) und ist an ${r.dateien.length} Stellen eingetragen. Hermes konnte ihn nicht selbst neu laden: bitte Hermes einmal neu starten.`
+      melden({ art: 'hinweis', titel: 'Shopify-Token erneuert', anzeige: r.neuGeladen ? `An ${r.dateien.length} Stellen eingetragen, sofort aktiv.` : `An ${r.dateien.length} Stellen eingetragen. Hermes neu starten.`, zeit: Date.now() })
     } catch (err) {
       hinweis.className = 'klein sz-fehler'
       hinweis.textContent = `✗ ${fehlertext(err)} Es wurde nichts geändert.`

@@ -150,6 +150,8 @@ const shopifyToken = require('./shopifytoken')
 ipcMain.handle('shopify:stellen', () => shopifyToken.stellen().length)
 ipcMain.handle('shopify:tokenEintragen', async (_e, token) => {
   const ergebnis = await shopifyToken.eintragen(String(token || '').slice(0, 200))
+  // Ohne Neustart übernehmen (Hermes-eigene Befehle reload.env / reload.mcp); klappt das nicht: Hinweis auf Neustart
+  ergebnis.neuGeladen = await hermes.einstellungenNeuLaden().catch(() => false)
   waechter.pruefen().catch(() => {})
   return ergebnis
 })

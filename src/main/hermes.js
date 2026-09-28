@@ -242,6 +242,14 @@ class Hermes extends EventEmitter {
   }
 
   // Gespeicherte Unterhaltung endgültig löschen (Hermes lehnt das ab, solange sie offen ist: dann erst schließen)
+  // Geänderte Einstellungen (z. B. neuer Shopify-Token) ohne Neustart übernehmen. Nutzt nur Befehle, die Hermes
+  // selbst anbietet: .env neu einlesen und die Anbindungen (MCP, darunter Shopify) neu starten. Hermes bleibt unverändert.
+  async einstellungenNeuLaden() {
+    await this.rpc('reload.env', {})
+    const r = await this.rpc('reload.mcp', { confirm: true })
+    return r?.status === 'reloaded'
+  }
+
   async sessionLoeschen({ gespeicherteId = null, titel = '', profil = PROFIL }) {
     let id = gespeicherteId
     if (!id && titel) {
