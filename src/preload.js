@@ -138,6 +138,15 @@ contextBridge.exposeInMainWorld('jarves', {
     miniZustand: (daten) => ipcRenderer.send('mini:zustand', daten),
     bildschirmAufnehmen: () => ipcRenderer.invoke('bildschirm:aufnehmen')
   },
+  terminal: {
+    ausfuehren: (befehl) => ipcRenderer.invoke('terminal:ausfuehren', befehl),
+    eingeben: (text) => ipcRenderer.invoke('terminal:eingeben', text),
+    stoppen: () => ipcRenderer.invoke('terminal:stoppen'),
+    fenster: (befehl) => ipcRenderer.invoke('terminal:fenster', befehl),
+    stand: () => ipcRenderer.invoke('terminal:stand'),
+    beiAusgabe: abonnieren('terminal:ausgabe'),
+    beiEnde: abonnieren('terminal:ende')
+  },
   start: {
     stand: () => ipcRenderer.invoke('start:stand'),
     verknuepfung: () => ipcRenderer.invoke('start:verknuepfung'),

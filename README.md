@@ -152,6 +152,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 | **Wissen** | **Wissen** | Der Obsidian-Vault (`Documents\Donnerwolf`) zum Lesen, mit Morgenbericht |
 | | **Bibliothek** · **Entscheidungen** · **Dateien** | Nachschlagen, offene Entscheidungen, Dokumente – nur lesend |
 | **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Kosten-Wächter**, **Shopify-Zugang**, **Selbsttest** |
+| | **Terminal** | PowerShell in Jarves-OS mit den gängigen Hermes-Befehlen zum Anklicken und eigenen gespeicherten Befehlen (siehe unten) |
 
 **Cockpit in der Zentrale** – auf einen Blick sehen, was los ist (abschaltbar: Einstellungen → Aussehen):
 
@@ -169,6 +170,20 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
   dir oder von einem anderen Bot. Erfolgreich, wenn danach eine fertige Antwort kommt; gescheitert, wenn keine kommt.
   Ein gescheiterter Auftrag in den letzten 24 Stunden oder ein nicht erreichbarer Dienst setzt den Status auf
   „Eingeschränkt“, ohne Hermes auf „Gestört“. Jarves-OS rechnet nur, solange die Zentrale zu sehen ist.
+
+**Terminal** (System → Terminal):
+
+- Eine **PowerShell** direkt in Jarves-OS: Befehl tippen, Enter, die Ausgabe läuft live mit. `cd` wird gemerkt, ↑ ↓ holt
+  frühere Befehle, „cls“ leert. `hermes …` geht ohne Pfad.
+- **Rückfragen** eines Befehls (z. B. „Fortfahren? [j/n]“) beantwortest du im selben Feld; **Stopp** oder Strg+C bricht ab.
+- **Hermes-Befehle zum Anklicken:** Status, Version & Updates, Einstellungen prüfen, Nutzung · **Gateway** Status,
+  starten, stoppen, neu starten (über das Standard-Profil, dem der Gateway gehört) · **Notbremse** (`hermes pause` /
+  `resume`) · Profile, Gespräche, Jobs, Skills · Protokolle (alle, nur Fehler, Gateway) · Update suchen, aktualisieren,
+  Sicherung. Befehle mit ⚠ fragen vorher nach, ebenso getippte Befehle, die etwas stoppen, löschen oder verändern.
+- **Eigene Befehle:** Befehl ins Feld tippen, „＋ Speichern“, Namen geben – liegt dann rechts zum Anklicken.
+- Programme mit eigenem Menü (`hermes chat`, `model`, `setup`, `update` …) öffnen sich in einem **eigenen
+  Konsolenfenster**; „⧉ Fenster“ öffnet jederzeit eine normale PowerShell im aktuellen Ordner.
+- Das Terminal bedienst nur du – Luzzy und die Crew haben darauf keinen Zugriff.
 
 **Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):
 

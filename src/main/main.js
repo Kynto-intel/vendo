@@ -188,6 +188,14 @@ ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
 ipcMain.handle('hermes:botOeffnen', (_e, kanal) => hermes.botOeffnen(String(kanal || '')))
+// Terminal-Bereich (terminal.js): Felix' Befehle in PowerShell, Ausgabe live
+const terminal = require('./terminal')
+ipcMain.handle('terminal:ausfuehren', (_e, befehl) => terminal.ausfuehren(String(befehl || '').slice(0, 4000), senden))
+ipcMain.handle('terminal:eingeben', (_e, text) => terminal.eingeben(String(text ?? '').slice(0, 2000)))
+ipcMain.handle('terminal:stoppen', () => terminal.stoppen())
+ipcMain.handle('terminal:fenster', (_e, befehl) => terminal.inFenster(String(befehl || '').slice(0, 4000)))
+ipcMain.handle('terminal:stand', () => terminal.stand())
+app.on('will-quit', () => terminal.stoppen())
 // Gespräche mit einem bestimmten Titel finden (auch versteckte wie Luzzys „Bot Chat“, die /api/sessions weglässt)
 ipcMain.handle('hermes:sitzungenMitTitel', async (_e, titel, profil) => {
   if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(String(profil))) throw new Error('Unbekanntes Profil.')

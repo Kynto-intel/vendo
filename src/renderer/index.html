@@ -216,6 +216,36 @@
         </section>
 
         <!-- System -->
+        <!-- Terminal (src/renderer/terminal.js, src/main/terminal.js): PowerShell mit gespeicherten Hermes-Befehlen -->
+        <section class="ansicht ansicht-seite" data-ansicht="terminal" hidden>
+          <div class="term-layout">
+            <section class="term hud">
+              <header class="term-kopf">
+                <span class="term-punkte"><i></i><i></i><i></i></span>
+                <span class="term-titel">PowerShell</span>
+                <span class="term-ordner" id="term-ordner"></span>
+                <span class="term-knoepfe">
+                  <button class="knopf-mini" id="term-fenster" type="button" title="Befehl (oder leere Konsole) in einem eigenen Fenster öffnen – für interaktive Programme wie hermes chat">⧉ Fenster</button>
+                  <button class="knopf-mini" id="term-leeren" type="button" title="Ausgabe leeren">Leeren</button>
+                  <button class="knopf-mini gefahr" id="term-stopp" type="button" title="Laufenden Befehl abbrechen" hidden>■ Stopp</button>
+                </span>
+              </header>
+              <pre class="term-ausgabe" id="term-ausgabe"></pre>
+              <form class="term-eingabe" id="term-form">
+                <span class="term-prompt" id="term-prompt">PS&gt;</span>
+                <input id="term-feld" type="text" autocomplete="off" spellcheck="false" placeholder="Befehl eingeben, z. B. hermes status" />
+              </form>
+              <div class="term-fuss leise klein">Enter führt aus · ↑ ↓ frühere Befehle · während ein Befehl läuft, geht Enter als Antwort an ihn (z. B. „j“) · Strg+C stoppt</div>
+            </section>
+            <aside class="term-seite">
+              <section class="term-karte hud"><div class="term-karte-kopf"><h3>Hermes-Befehle</h3><span class="leise klein">Klick führt aus</span></div><div id="term-hermes"></div></section>
+              <section class="term-karte hud"><div class="term-karte-kopf"><h3>Eigene Befehle</h3><button class="knopf-mini" id="term-speichern" type="button" title="Den Befehl aus dem Eingabefeld speichern">＋ Speichern</button></div>
+                <form class="term-neu" id="term-neu" hidden><input name="name" placeholder="Name, z. B. Shop-Log" maxlength="40" /><button class="knopf-gold" type="submit">OK</button></form>
+                <div id="term-eigene"></div>
+              </section>
+            </aside>
+          </div>
+        </section>
         <section class="ansicht ansicht-seite" data-ansicht="system" hidden>
           <header class="seiten-kopf">
             <div><h2>System</h2><p class="leise">Hermes, dein PC und die lokalen Modelle.</p></div>

@@ -1444,3 +1444,49 @@ body.datei-drueber .datei-ablage { display: grid; }
 }
 .crew-seite .crew-raster { align-items: stretch; }
 .crew-seite .crew-raster .bot { width: 100%; box-sizing: border-box; }
+
+/* ── Terminal-Bereich (terminal.js) ── */
+.ansicht-seite[data-ansicht="terminal"] { overflow: hidden; }
+.term-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 14px; }
+.term { min-height: 0; display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #09090b; }
+.term-kopf { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--rahmen); background: #0e0e10; }
+.term-punkte { display: flex; gap: 5px; }
+.term-punkte i { width: 9px; height: 9px; border-radius: 50%; background: #3a3a3e; }
+.term-punkte i:first-child { background: #c0584d; }
+.term-punkte i:nth-child(2) { background: var(--gold); }
+.term-punkte i:last-child { background: var(--gruen); }
+.term-titel { font-family: var(--mono); font-size: 11px; color: var(--text); padding: 2px 8px; border: 1px solid var(--rahmen); border-radius: 999px; }
+.term-ordner { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.term-knoepfe { display: flex; gap: 6px; }
+.term-ausgabe { flex: 1; min-height: 0; margin: 0; padding: 12px 14px; overflow-y: auto; font-family: var(--mono); font-size: 12px; line-height: 1.5; color: #d9d4c8; white-space: pre-wrap; word-break: break-word; user-select: text; cursor: text; }
+.term-befehl { color: var(--gold-hell); }
+.term-ausgabe .term-befehl { font-weight: 600; }
+.term-fehler { color: #e07a70; }
+.term-hinweis { color: var(--text-leise); font-style: italic; }
+.term-eingabe { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-top: 1px solid var(--rahmen); background: #0c0c0e; }
+.term-prompt { flex: none; max-width: 45%; font-family: var(--mono); font-size: 12px; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.term-eingabe input { flex: 1; min-width: 0; background: none; border: 0; outline: none; font-family: var(--mono); font-size: 12.5px; color: var(--text); caret-color: var(--gold); }
+.term-fuss { padding: 5px 14px 8px; background: #0c0c0e; }
+
+/* rechte Seite: Befehle */
+.term-seite { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.term-karte { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.term-karte-kopf { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.term-karte-kopf h3 { margin: 0; }
+.term-gruppe { margin: 8px 2px 2px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-leise); }
+.term-gruppe:first-child { margin-top: 0; }
+.term-seite .term-befehl { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 9px; background: none; border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; text-align: left; color: var(--text); font-weight: 400; }
+.term-seite .term-befehl:hover { border-color: var(--rahmen); background: var(--eingabe); }
+.term-befehl-name { font-size: 12.5px; }
+.term-seite .term-befehl code { font-family: var(--mono); font-size: 10.5px; color: var(--text-leise); }
+.term-seite .term-befehl.vorsicht .term-befehl-name { color: var(--gold-hell); }
+.term-eigen { display: flex; align-items: center; gap: 4px; }
+.term-neu { display: flex; gap: 6px; margin-bottom: 6px; }
+.term-neu[hidden] { display: none; }
+.term-neu input { flex: 1; min-width: 0; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; }
+.term-neu input:focus { border-color: var(--gold); }
+
+@container mitte (max-width: 760px) {
+  .term-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 38%); }
+}
+.term-karte-kopf h3 { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); }
