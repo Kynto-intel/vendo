@@ -52,6 +52,13 @@ async function pruefungen(h) {
   }
 
   await pruefen('Stimme', async () => {
+    // Pocket TTS (lokal): meldet seinen eigenen Zustand; bis er läuft, spricht Luzzy mit Edge
+    if (String(h.stimmOptionen().stimme || '').startsWith('pocket')) {
+      const z = await api.stimme.pocketZustand().catch(() => ({ zustand: 'fehler', text: 'nicht erreichbar' }))
+      if (z.zustand === 'bereit') return { ok: true, text: `Pocket TTS ${z.text}` }
+      if (z.zustand === 'startet') return { ok: true, text: 'Pocket TTS startet, bis dahin spricht Ingrid' }
+      return { ok: false, text: `Pocket TTS: ${z.text}`, tun: 'In den Einstellungen unter Stimme auf „Probe hören“ klicken. Fehlt uv, im Terminal installieren: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"' }
+    }
     const tun = 'Die Stimme braucht Internet (Microsoft-Dienst). Internetverbindung prüfen.'
     try {
       const bytes = await api.stimme.sprechen('Test', h.stimmOptionen())

@@ -1196,3 +1196,13 @@ body.datei-drueber .datei-ablage { display: grid; }
 #crew-karten article.bot.live-aktiv .bot-live { color: var(--gold-hell); }
 #crew-karten article.bot.live-fertig .bot-live { color: var(--gruen); }
 .bot-live { font-size: 10.5px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+/* Pocket TTS (#39): lokale Stimme in den Einstellungen */
+.e-pocket { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--rahmen); border-radius: 8px; background: rgba(255, 255, 255, 0.02); }
+.e-pocket[hidden], .e-pocket [hidden] { display: none; }
+.e-pocket p { margin: 0; }
+.e-pocket-datei { display: flex; align-items: center; gap: 10px; }
+.e-pocket-datei span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#e-pocket-status[data-zustand='bereit'] { color: var(--gruen, #5fd38d); }
+#e-pocket-status[data-zustand='fehler'] { color: var(--rot, #ff6b6b); }
+.einstellungen label.aus { opacity: 0.4; }

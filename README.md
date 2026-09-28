@@ -72,7 +72,10 @@ Luzzy ist die Chefin, die Crew sind die übrigen Hermes-Profile: **Kira** (Trend
 
 ## Sprache
 
-Spracherkennung über Hermes (lokal, Deutsch), Stimme über Edge-Neural (Seraphina, Katja, Amala, Ingrid, Leni).
+Spracherkennung über Hermes (lokal, Deutsch), Stimme über Edge-Neural (Seraphina, Katja, Amala, Ingrid, Leni)
+oder lokal über **Pocket TTS** (Kyutai, Deutsch: Stimme „Jürgen“ oder eine eigene Aufnahme, 10 bis 30 s, nur mit
+Zustimmung der Person). Pocket TTS braucht `uv` und einmalig die Hugging-Face-Freigabe; Jarves-OS startet
+`uvx pocket-tts serve` selbst (nur 127.0.0.1) und beendet es beim Schließen. Bis es läuft, spricht Ingrid.
 Satz-für-Satz-Vorlesen, Reinreden/„Stopp“, Gesprächsmodus, „Wiederhol das“, 📌 Antwort merken, Diktat
 (fertige Mail in die Zwischenablage), „Neue Idee: …“ in den Vault.
 **Musik erkennen:** Läuft Musik/Video auf dem PC, zählt sie nicht als Sprache; bei „Hey Luzzy“ pausiert sie kurz.
@@ -133,7 +136,7 @@ Das Projekt liegt privat auf GitHub (Kynto-intel/jarves-os); `daten\` und Plugin
 ## Aufbau (für Entwickler)
 
 Electron 38, reines JavaScript ohne Build. `src/main` (Hauptprozess: `main.js`, `hermes.js`, `waechter.js`,
-`stimme.js`, `notfall.js`, `musik.js`, `pc.js`, `dateisuche.js`, `wissen.js`, `vaultschreiben.js`, `shopifytoken.js`,
+`stimme.js`, `pocket.js`, `notfall.js`, `musik.js`, `pc.js`, `dateisuche.js`, `wissen.js`, `vaultschreiben.js`, `shopifytoken.js`,
 `plugins.js`, `einstellungen.js`), `src/preload.js` (sichere Brücke), `src/renderer` (Oberfläche, ES-Module),
 `plugins/`, `scripts/backup.js`.
 

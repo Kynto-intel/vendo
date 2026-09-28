@@ -180,8 +180,10 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 38. ✅ **Crew-Arbeitsbühne** (Killer, gebaut 28.09.2026) – Man sieht live, wie die Bots zusammenarbeiten: wer gerade was macht,
     wer an wen übergibt. Crew-Tab, Reiter „🎬 Arbeitsbühne“: Kette Luzzy → Kira → Lira → Milla mit wanderndem Brief,
     Ablauf des Auftrags (Klick: Auftrag und Antwort), Bot-Karten oben leuchten live. Liest nur die Bot Chats mit.
-39. 🆕 **Eigene Luzzy-Stimme, lokal** (Extra) – Eine unverwechselbare eigene Stimme über ein lokales Sprachmodell
-    auf dem PC: läuft ohne Internet und ohne Microsoft-Dienst, klingt nur nach Luzzy.
+39. ✅ **Eigene Luzzy-Stimme, lokal** (Extra, gebaut 28.09.2026) – Eine unverwechselbare eigene Stimme über ein lokales Sprachmodell
+    auf dem PC: läuft ohne Internet und ohne Microsoft-Dienst, klingt nur nach Luzzy. Umgesetzt mit Pocket TTS (Kyutai,
+    Deutsch): Stimme „Jürgen“ oder eine eigene Aufnahme (10 bis 30 s, nur mit Zustimmung). Jarves startet den Server
+    selbst; solange er hochfährt, spricht Ingrid (Edge).
 
 ---
 

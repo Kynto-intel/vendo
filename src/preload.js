@@ -109,7 +109,10 @@ contextBridge.exposeInMainWorld('jarves', {
   },
   stimme: {
     liste: () => ipcRenderer.invoke('stimme:liste'),
-    sprechen: (text, optionen) => ipcRenderer.invoke('stimme:sprechen', text, optionen)
+    sprechen: (text, optionen) => ipcRenderer.invoke('stimme:sprechen', text, optionen),
+    pocketZustand: () => ipcRenderer.invoke('stimme:pocketZustand'),
+    pocketStarten: (optionen) => ipcRenderer.invoke('stimme:pocketStarten', optionen),
+    pocketDateiWaehlen: () => ipcRenderer.invoke('stimme:pocketDateiWaehlen')
   },
   einstellungen: {
     laden: () => ipcRenderer.invoke('einstellungen:laden'),

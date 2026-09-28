@@ -1620,6 +1620,31 @@ async function botAnsprechen({ bot, text }, { gesprochen = false } = {}) {
 
 // ── Einstellungen ──
 const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, hoehe: einstellungen.hoehe })
+
+// Pocket TTS (#39): Aufnahme wählen, Zustand zeigen
+let pocketDatei = ''
+let pocketUhr = null
+const dateiName = (p) => String(p || '').split(/[\\/]/).pop()
+async function pocketAnzeigen() {
+  const wahl = $('e-stimme').value
+  const pocketAn = wahl.startsWith('pocket')
+  $('e-pocket').hidden = !pocketAn
+  $('e-hoehe').closest('label').classList.toggle('aus', pocketAn)
+  $('e-pocket-datei-zeile').hidden = $('e-pocket-hinweis').hidden = wahl !== 'pocket-eigen'
+  $('e-pocket-datei').textContent = pocketDatei ? dateiName(pocketDatei) : 'Keine Aufnahme gewählt'
+  clearTimeout(pocketUhr)
+  if (!pocketAn) return
+  const z = await api.stimme.pocketZustand().catch(() => ({ zustand: 'fehler', text: 'nicht erreichbar' }))
+  const status = $('e-pocket-status')
+  status.textContent = `Pocket TTS: ${z.text}`
+  status.dataset.zustand = z.zustand
+  if ($('einstellungen').open && z.zustand === 'startet') pocketUhr = setTimeout(pocketAnzeigen, 2000)
+}
+function pocketStarten() {
+  const wahl = $('e-stimme').value
+  if (!wahl.startsWith('pocket')) return
+  api.stimme.pocketStarten({ stimme: wahl, pocketDatei }).then(pocketAnzeigen, pocketAnzeigen)
+}
 const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
 
 // Farben nach Tageszeit: morgens 6–10 heller, tagsüber normal, abends 18–22 wärmer, nachts dunkler
@@ -1657,6 +1682,8 @@ function animationenAnwenden() {
 
 function formularFuellen() {
   $('e-stimme').value = einstellungen.stimme
+  pocketDatei = einstellungen.pocketDatei || ''
+  pocketAnzeigen()
   $('e-tempo').value = zahl(einstellungen.tempo)
   $('e-hoehe').value = zahl(einstellungen.hoehe)
   $('e-vorlesen').checked = einstellungen.vorlesen
@@ -1695,6 +1722,7 @@ function formularLesen() {
   const h = Number($('e-hoehe').value)
   return {
     stimme: $('e-stimme').value,
+    pocketDatei,
     tempo: `${t >= 0 ? '+' : ''}${t}%`,
     hoehe: `${h >= 0 ? '+' : ''}${h}Hz`,
     vorlesen: $('e-vorlesen').checked,
@@ -1743,9 +1771,33 @@ $('einstellungen-oeffnen').addEventListener('click', () => {
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
 $('e-hoehe').addEventListener('input', reglerAnzeigen)
-$('e-probe').addEventListener('click', () => {
+$('e-probe').addEventListener('click', async () => {
   const f = formularLesen()
-  vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe })
+  if (f.stimme === 'pocket-eigen' && !pocketDatei) return ($('e-pocket-status').textContent = 'Wähle erst eine Aufnahme für die eigene Stimme.')
+  const knopf = $('e-probe')
+  // Bei Pocket TTS auf den Start warten, damit du wirklich die neue Stimme hörst (nicht Ingrid)
+  if (f.stimme.startsWith('pocket')) {
+    knopf.disabled = true
+    knopf.textContent = 'Pocket TTS startet …'
+    pocketStarten()
+  }
+  try {
+    await vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, hoehe: f.hoehe, pocketDatei, aufPocketWarten: true })
+  } finally {
+    knopf.disabled = false
+    knopf.textContent = 'Probe hören'
+    pocketAnzeigen()
+  }
+})
+$('e-stimme').addEventListener('change', () => {
+  pocketAnzeigen()
+  pocketStarten()
+})
+$('e-pocket-waehlen').addEventListener('click', async () => {
+  const datei = await api.stimme.pocketDateiWaehlen()
+  if (!datei) return
+  pocketDatei = datei
+  pocketStarten()
 })
 // Einstellungen: Tabs links (der zuletzt offene Tab bleibt gemerkt, solange Jarves-OS läuft)
 let letzterTab = 'stimme'
@@ -1827,6 +1879,7 @@ document.querySelector('.ton-probe').addEventListener('click', (e) => {
 $('einstellungen').addEventListener('close', async () => {
   if ($('einstellungen').returnValue !== 'speichern') return
   einstellungen = await api.einstellungen.speichern(formularLesen())
+  api.stimme.pocketStarten().catch(() => {}) // Pocket gewählt: starten, sonst beenden
   animationenAnwenden()
   kartenAnwenden(einstellungen.karten)
   wakeEinrichten()

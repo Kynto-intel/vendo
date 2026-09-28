@@ -28,6 +28,17 @@ export function fuersVorlesen(text, { kuerzen = true } = {}) {
   return s
 }
 
+// Edge liefert MP3 (Tempo schon eingerechnet), Pocket TTS liefert WAV: dort das Tempo beim Abspielen setzen
+function tonQuelle(bytes, optionen) {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+  const wav = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 // "RIFF"
+  const prozent = Number(String(optionen?.tempo || '').replace('%', '')) || 0
+  return {
+    url: URL.createObjectURL(new Blob([b], { type: wav ? 'audio/wav' : 'audio/mpeg' })),
+    tempo: wav ? Math.min(1.5, Math.max(0.7, 1 + prozent / 100)) : 1
+  }
+}
+
 export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiAbbruch = () => {} }) {
   let lauf = 0
   let tonAn = false // hat beiStart gemeldet, beiEnde/beiAbbruch noch nicht
@@ -66,10 +77,11 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     schritt()
   }
 
-  function abspielen(url, meinLauf) {
+  function abspielen(url, meinLauf, tempo = 1) {
     return new Promise((fertig) => {
       if (meinLauf !== lauf) return fertig()
       audio = new Audio(url)
+      audio.playbackRate = tempo // Tonhöhe bleibt dabei gleich
       try {
         kontext ??= new AudioContext()
         const quelle = kontext.createMediaElementSource(audio)
@@ -147,9 +159,9 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
       if (meinLauf !== lauf) return
       await pauseAbwarten()
       if (meinLauf !== lauf) return
-      const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }))
+      const { url, tempo } = tonQuelle(bytes, optionen)
       try {
-        await abspielen(url, meinLauf)
+        await abspielen(url, meinLauf, tempo)
       } finally {
         URL.revokeObjectURL(url)
       }
@@ -207,9 +219,9 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
             gestartet = true
             start()
           }
-          const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }))
+          const { url, tempo } = tonQuelle(bytes, optionen)
           try {
-            await abspielen(url, meinLauf)
+            await abspielen(url, meinLauf, tempo)
           } finally {
             URL.revokeObjectURL(url)
           }
