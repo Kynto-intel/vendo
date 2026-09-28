@@ -699,8 +699,9 @@ app.whenReady().then(() => {
   })
   dateisuche.vorbereiten()
   pc.vorbereiten()
-  // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann
-  pocket.starten(pocketDateiFuer(einstellungen.laden())).catch(() => {})
+  // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann (im stummen Testmodus nicht:
+  // dort wird nichts vorgelesen, und abgebrochene Testläufe ließen sonst Server zurück)
+  if (!process.env.JARVES_TEST_STUMM || process.env.JARVES_TEST_POCKET) pocket.starten(pocketDateiFuer(einstellungen.laden())).catch(() => {})
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))

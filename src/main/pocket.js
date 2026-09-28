@@ -76,6 +76,25 @@ function stimmDatei(datei) {
   return d && ENDUNGEN.test(d) && fs.existsSync(d) ? d : ''
 }
 
+// Reste aufräumen: Wurde Jarves-OS hart beendet (Absturz, Task-Manager), läuft sein Pocket-TTS-Server weiter und
+// belegt pro Stück rund 150 MB. Einmal pro Start alle Pocket-Server beenden, deren Jarves-OS nicht mehr läuft
+// (Elternprozess weg). Pocket TTS nutzt auf diesem PC nur Jarves-OS.
+let aufgeraeumt = null
+function resteAufraeumen() {
+  if (aufgeraeumt) return aufgeraeumt
+  if (process.platform !== 'win32') return (aufgeraeumt = Promise.resolve())
+  // Für jeden Pocket-Prozess die Kette der Eltern hochgehen (Pocket-Prozesse und Konsolen-Hüllen überspringen):
+  // Kommt oben kein lebender anderer Prozess (uvx/Jarves-OS), ist er verwaist und wird beendet.
+  const skript = `$a = @{}; Get-CimInstance Win32_Process | % { $a[[int]$_.ProcessId] = $_ }
+foreach ($p in @($a.Values | ? { $_.CommandLine -like '*pocket-tts*serve*--language german*' })) {
+  $e = $a[[int]$p.ParentProcessId]
+  while ($e -and ($e.CommandLine -like '*pocket-tts*' -or $e.Name -eq 'conhost.exe')) { $e = $a[[int]$e.ParentProcessId] }
+  if (-not $e) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
+}`
+  aufgeraeumt = new Promise((fertig) => execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', skript], { windowsHide: true, timeout: 20000 }, () => fertig()))
+  return aufgeraeumt
+}
+
 function starten(datei) {
   const stimme = stimmDatei(datei)
   if (TEST) return gesund(TEST).then((ok) => (ok ? (adresse = TEST) : Promise.reject(new Error('Pocket TTS (Test) antwortet nicht.'))))
@@ -86,6 +105,7 @@ function starten(datei) {
   letzterFehler = ''
   protokoll = ''
   startet = (async () => {
+    await resteAufraeumen()
     const port = await freierPort()
     const url = `http://127.0.0.1:${port}`
     const argumente = ['pocket-tts', 'serve', '--language', 'german', '--host', '127.0.0.1', '--port', String(port)]
