@@ -38,12 +38,23 @@ function listeZeichnen() {
     : '<div class="leise klein">Keine Befehle gespeichert. Unten einen eintragen.</div>'
 }
 
+// Anzeige und Konsole müssen gleich viele Zeilen und Spalten haben, sonst zeichnet PowerShell die Eingabezeile
+// an der falschen Stelle (z. B. ganz unten). Daher nach jeder Größenänderung, nach dem Laden der Schrift und
+// kurz nach dem Start die genaue Größe an die Konsole geben.
+function anpassen() {
+  if (!term || !$('term-xterm').offsetParent) return // Bereich nicht sichtbar: nichts messen
+  fit.fit()
+  if (gestartet) window.jarves.terminal.groesse(term.cols, term.rows)
+}
+
 async function konsoleStarten() {
   if (gestartet) return
   gestartet = true
+  await document.fonts?.ready // erst messen, wenn die Schrift da ist (sonst stimmen Zeilen und Spalten nicht)
   fit.fit()
   try {
     await window.jarves.terminal.starten(term.cols, term.rows)
+    setTimeout(anpassen, 250)
   } catch (e) {
     gestartet = false
     term.writeln(`\x1b[31mDie Konsole ließ sich nicht starten: ${fehlertext(e)}\x1b[0m`)
@@ -61,7 +72,7 @@ async function ausfuehren(b) {
 export function terminalLaden() {
   requestAnimationFrame(async () => {
     await konsoleStarten()
-    fit.fit()
+    anpassen()
     term.focus()
   })
 }
@@ -109,11 +120,12 @@ export function terminalEinrichten(helfer) {
     term.writeln('\r\n\x1b[90m[Konsole beendet – „↻ Neu“ oder einen Befehl anklicken startet sie wieder]\x1b[0m')
   })
   // Größe mitziehen (Fenster, Leisten ein-/ausklappen)
+  let takt = 0
   new ResizeObserver(() => {
-    if (!$('term-xterm').offsetParent) return // Bereich nicht sichtbar
-    fit.fit()
-    if (gestartet) window.jarves.terminal.groesse(term.cols, term.rows)
+    clearTimeout(takt)
+    takt = setTimeout(anpassen, 60) // beim Ziehen am Fenster nicht bei jedem Pixel
   }).observe($('term-xterm'))
+  document.fonts?.ready.then(anpassen)
 
   $('term-leeren').addEventListener('click', () => {
     term.clear()
