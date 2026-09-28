@@ -178,7 +178,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
   gewohnt; auch interaktive Programme (`hermes chat`, `hermes model`, `hermes setup`) laufen direkt darin.
   `hermes …` geht ohne Pfad. Die Konsole läuft weiter, wenn du den Bereich wechselst.
 - **Strg+C** kopiert markierten Text (sonst bricht es den laufenden Befehl ab), **Strg+V** fügt ein.
-  „↻ Neu“ startet die Konsole neu, „⧉ Fenster“ öffnet eine normale PowerShell daneben.
+  „↻ Neu“ startet die Konsole neu, „⧉ Fenster“ öffnet eine normale PowerShell daneben. Leeren: `cls` eintippen.
 - **Meine Befehle** (rechts): eine Liste zum Anklicken. Am Anfang 5 Standardbefehle (Hermes-Status, Gateway-Status,
   Gateway neu starten, Nach Update suchen, Nur Fehler). **Jeden** kannst du löschen (✕ beim Drüberfahren), eigene mit
   Name und Befehl speichern, „Standard wiederherstellen“ holt gelöschte Standardbefehle zurück. Befehle, die etwas

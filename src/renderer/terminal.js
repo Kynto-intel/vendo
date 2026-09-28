@@ -127,10 +127,8 @@ export function terminalEinrichten(helfer) {
   }).observe($('term-xterm'))
   document.fonts?.ready.then(anpassen)
 
-  $('term-leeren').addEventListener('click', () => {
-    term.clear()
-    term.focus()
-  })
+  // Kein „Leeren“-Knopf: er leerte nur die Anzeige, die Konsole wusste nichts davon und schrieb dann versetzt.
+  // Leeren geht mit „cls“ in der Konsole (leert beides).
   $('term-neu-start').addEventListener('click', async () => {
     await window.jarves.terminal.neu()
     gestartet = false
