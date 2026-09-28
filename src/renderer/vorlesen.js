@@ -33,9 +33,11 @@ function tonQuelle(bytes, optionen) {
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
   const wav = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 // "RIFF"
   const prozent = Number(String(optionen?.tempo || '').replace('%', '')) || 0
+  const laut = Number(optionen?.lautstaerke) || 250 // Prozent
   return {
     url: URL.createObjectURL(new Blob([b], { type: wav ? 'audio/wav' : 'audio/mpeg' })),
-    tempo: wav ? Math.min(1.5, Math.max(0.7, 1 + prozent / 100)) : 1
+    tempo: wav ? Math.min(1.5, Math.max(0.7, 1 + prozent / 100)) : 1,
+    lautstaerke: Math.min(5, Math.max(0.5, laut / 100))
   }
 }
 
@@ -77,7 +79,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     schritt()
   }
 
-  function abspielen(url, meinLauf, tempo = 1) {
+  function abspielen(url, meinLauf, tempo = 1, lautstaerke = 1) {
     return new Promise((fertig) => {
       if (meinLauf !== lauf) return fertig()
       audio = new Audio(url)
@@ -85,9 +87,20 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
       try {
         kontext ??= new AudioContext()
         const quelle = kontext.createMediaElementSource(audio)
+        // Lauter machen (Pocket TTS ist leise) und oben begrenzen, damit es nicht übersteuert
+        const verstaerker = kontext.createGain()
+        verstaerker.gain.value = lautstaerke
+        const begrenzer = kontext.createDynamicsCompressor()
+        begrenzer.threshold.value = -3
+        begrenzer.knee.value = 0
+        begrenzer.ratio.value = 20
+        begrenzer.attack.value = 0.002
+        begrenzer.release.value = 0.1
         analyse = kontext.createAnalyser()
         analyse.fftSize = 256
-        quelle.connect(analyse)
+        quelle.connect(verstaerker)
+        verstaerker.connect(begrenzer)
+        begrenzer.connect(analyse)
         analyse.connect(kontext.destination)
         pegelMessen()
       } catch {
@@ -159,9 +172,9 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
       if (meinLauf !== lauf) return
       await pauseAbwarten()
       if (meinLauf !== lauf) return
-      const { url, tempo } = tonQuelle(bytes, optionen)
+      const { url, tempo, lautstaerke } = tonQuelle(bytes, optionen)
       try {
-        await abspielen(url, meinLauf, tempo)
+        await abspielen(url, meinLauf, tempo, lautstaerke)
       } finally {
         URL.revokeObjectURL(url)
       }
@@ -219,9 +232,9 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
             gestartet = true
             start()
           }
-          const { url, tempo } = tonQuelle(bytes, optionen)
+          const { url, tempo, lautstaerke } = tonQuelle(bytes, optionen)
           try {
-            await abspielen(url, meinLauf, tempo)
+            await abspielen(url, meinLauf, tempo, lautstaerke)
           } finally {
             URL.revokeObjectURL(url)
           }

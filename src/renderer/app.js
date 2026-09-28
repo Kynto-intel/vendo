@@ -1619,7 +1619,7 @@ async function botAnsprechen({ bot, text }, { gesprochen = false } = {}) {
 }
 
 // ── Einstellungen ──
-const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo })
+const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, lautstaerke: einstellungen.lautstaerke })
 
 // Pocket TTS (#39): Aufnahme wählen, Zustand zeigen
 let pocketDatei = ''
@@ -1680,6 +1680,7 @@ function formularFuellen() {
   pocketDatei = einstellungen.pocketDatei || ''
   pocketAnzeigen()
   $('e-tempo').value = zahl(einstellungen.tempo)
+  $('e-lautstaerke').value = einstellungen.lautstaerke || 250
   $('e-vorlesen').checked = einstellungen.vorlesen
   $('e-freihaendig').checked = einstellungen.sprache.freihaendig !== false
   $('e-crewstill').checked = einstellungen.sprache.crewStill !== false
@@ -1707,6 +1708,7 @@ function formularFuellen() {
 function reglerAnzeigen() {
   const t = Number($('e-tempo').value)
   $('e-tempo-wert').textContent = `${t > 0 ? '+' : ''}${t} %`
+  $('e-lautstaerke-wert').textContent = `${$('e-lautstaerke').value} %`
 }
 
 function formularLesen() {
@@ -1714,6 +1716,7 @@ function formularLesen() {
   return {
     stimme: $('e-stimme').value,
     pocketDatei,
+    lautstaerke: Number($('e-lautstaerke').value) || 250,
     tempo: `${t >= 0 ? '+' : ''}${t}%`,
     vorlesen: $('e-vorlesen').checked,
     meldungen: {
@@ -1760,6 +1763,7 @@ $('einstellungen-oeffnen').addEventListener('click', () => {
   document.querySelector('.e-tab.gewaehlt')?.focus() // nicht das ✕ (bekäme sonst den Fokusrahmen)
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
+$('e-lautstaerke').addEventListener('input', reglerAnzeigen)
 $('e-probe').addEventListener('click', async () => {
   const f = formularLesen()
   if (f.stimme === 'eigen' && !pocketDatei) return ($('e-pocket-status').textContent = 'Wähle erst eine Aufnahme für die eigene Stimme.')
@@ -1769,7 +1773,7 @@ $('e-probe').addEventListener('click', async () => {
   knopf.textContent = 'Luzzy spricht gleich …'
   pocketStarten()
   try {
-    await vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, pocketDatei, aufPocketWarten: true })
+    await vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, lautstaerke: f.lautstaerke, pocketDatei, aufPocketWarten: true })
   } finally {
     knopf.disabled = false
     knopf.textContent = 'Probe hören'
