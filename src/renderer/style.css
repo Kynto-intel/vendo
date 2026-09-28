@@ -1384,7 +1384,14 @@ body.datei-drueber .datei-ablage { display: grid; }
   .ck-leiste { grid-template-columns: repeat(2, 1fr); }
   .ck-zelle:nth-child(3) { border-left: 0; }
   .ck-zelle:nth-child(n + 3) { border-top: 1px solid var(--rahmen); }
-  .ck-bots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ck-bots { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
   .ck-verbinder { display: none; }
   .ck-chef { margin-bottom: 10px; }
 }
+
+/* Luzzy unten in der rechten Spalte (cockpit.js, wenn das Cockpit an ist): Reaktor, Name, Zustand, ohne Untertitel */
+.live > .luzzy-bereich.in-spalte { order: 9999; margin-top: auto; padding-top: 10px; gap: 4px; }
+.luzzy-bereich.in-spalte .reaktor-rahmen { width: 150px; height: 150px; }
+.luzzy-bereich.in-spalte .luzzy-name { font-size: 20px; }
+.luzzy-bereich.in-spalte .untertitel, .luzzy-bereich.in-spalte .unter-knoepfe { display: none; }
+.ck-bot-balken .ck-titel, .ck-bot-fuss .ck-titel { white-space: nowrap; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; }
