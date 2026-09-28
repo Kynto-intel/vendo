@@ -183,6 +183,8 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
   Gateway neu starten, Nach Update suchen, Nur Fehler). **Jeden** kannst du löschen (✕ beim Drüberfahren), eigene mit
   Name und Befehl speichern, „Standard wiederherstellen“ holt gelöschte Standardbefehle zurück. Befehle, die etwas
   stoppen, neu starten, löschen oder aktualisieren (⚠), fragen vorher nach.
+  Gespeichert in einer eigenen Datei: `daten	erminal-befehle.json` (lokal, nicht im Git-Projekt, in „Jarves-OS sichern“
+  enthalten). Von Hand bearbeiten geht auch – dabei Jarves-OS geschlossen lassen.
 - Das Terminal bedienst nur du – Luzzy und die Crew haben darauf keinen Zugriff.
 
 **Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):

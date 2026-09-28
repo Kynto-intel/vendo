@@ -1590,14 +1590,8 @@ cockpitEinrichten({
   zentraleSichtbar: () => aktuelleAnsicht === 'zentrale'
 })
 
-// Terminal-Bereich (siehe terminal.js): PowerShell mit gespeicherten Hermes-Befehlen
-terminalEinrichten({
-  einstellungen: () => einstellungen,
-  speichern: async (teil) => {
-    Object.assign(einstellungen, teil)
-    await api.einstellungen.speichern(teil)
-  }
-})
+// Terminal-Bereich (siehe terminal.js): echte PowerShell, „Meine Befehle“ in daten/terminal-befehle.json
+terminalEinrichten()
 
 // Kosten-Wächter im System-Tab, warnt bei 80 % / 100 % des Budgets (siehe kosten.js)
 kostenEinrichten({

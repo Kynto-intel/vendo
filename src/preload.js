@@ -145,6 +145,8 @@ contextBridge.exposeInMainWorld('jarves', {
     befehl: (text) => ipcRenderer.invoke('terminal:befehl', text),
     neu: () => ipcRenderer.invoke('terminal:neu'),
     fenster: () => ipcRenderer.invoke('terminal:fenster'),
+    befehle: () => ipcRenderer.invoke('terminal:befehle'),
+    befehleSpeichern: (liste) => ipcRenderer.invoke('terminal:befehleSpeichern', liste),
     beiDaten: abonnieren('terminal:daten'),
     beiEnde: abonnieren('terminal:ende')
   },

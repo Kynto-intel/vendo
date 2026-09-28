@@ -196,6 +196,8 @@ ipcMain.on('terminal:groesse', (_e, cols, rows) => terminal.groesseSetzen(cols, 
 ipcMain.handle('terminal:befehl', (_e, text) => terminal.befehl(String(text || '').slice(0, 4000), senden))
 ipcMain.handle('terminal:neu', () => terminal.beenden())
 ipcMain.handle('terminal:fenster', () => terminal.inFenster())
+ipcMain.handle('terminal:befehle', () => terminal.befehleLaden())
+ipcMain.handle('terminal:befehleSpeichern', (_e, liste) => terminal.befehleSpeichern(liste))
 app.on('will-quit', () => terminal.beenden())
 // Gespräche mit einem bestimmten Titel finden (auch versteckte wie Luzzys „Bot Chat“, die /api/sessions weglässt)
 ipcMain.handle('hermes:sitzungenMitTitel', async (_e, titel, profil) => {

@@ -20,12 +20,16 @@ const STANDARD = [
 // Macht etwas kaputt, wenn man sich verklickt: vorher fragen
 const RISKANT = /\b(?:uninstall|delete|remove|rm|purge|prune|reset|stop|restart|pause|import|update(?![^\n]*--check))\b|Remove-Item|\bdel\b|\brmdir\b|Format-|Stop-Process|shutdown/i
 
-let h = { einstellungen: () => ({}), speichern: async () => {} }
+let gespeichert = null // aus daten/terminal-befehle.json (null: noch keine Datei → Standardbefehle)
 let term = null
 let fit = null
 let gestartet = false
 
-const liste = () => h.einstellungen()?.terminalBefehle ?? STANDARD
+const liste = () => gespeichert ?? STANDARD
+async function listeSpeichern(neu) {
+  gespeichert = await window.jarves.terminal.befehleSpeichern(neu)
+  listeZeichnen()
+}
 const fehlertext = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 function listeZeichnen() {
@@ -77,8 +81,7 @@ export function terminalLaden() {
   })
 }
 
-export function terminalEinrichten(helfer) {
-  h = { ...h, ...helfer }
+export function terminalEinrichten() {
   term = new Terminal({
     fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--mono').trim() || 'Consolas, monospace',
     fontSize: 13,
@@ -138,16 +141,19 @@ export function terminalEinrichten(helfer) {
   })
   $('term-fenster').addEventListener('click', () => window.jarves.terminal.fenster())
 
-  // Meine Befehle: ausführen, löschen, speichern, Standard wiederherstellen
+  // Meine Befehle: aus der eigenen Datei laden, dann ausführen, löschen, speichern, Standard wiederherstellen
   listeZeichnen()
+  window.jarves.terminal.befehle().then((l) => {
+    gespeichert = Array.isArray(l) ? l : null
+    listeZeichnen()
+  }).catch(() => {})
   $('term-liste').addEventListener('click', async (e) => {
     const weg = e.target.closest('[data-weg]')
     const l = liste()
     if (weg) {
       const b = l[Number(weg.dataset.weg)]
       if (!b || !(await bestaetigen(`„${b.name}“ aus deinen Befehlen löschen?`, { titel: 'Befehl löschen', ja: 'Löschen', gefahr: true }))) return
-      await h.speichern({ terminalBefehle: l.filter((_, i) => i !== Number(weg.dataset.weg)) })
-      return listeZeichnen()
+      return listeSpeichern(l.filter((_, i) => i !== Number(weg.dataset.weg)))
     }
     const k = e.target.closest('[data-nr]')
     if (k && l[Number(k.dataset.nr)]) ausfuehren(l[Number(k.dataset.nr)])
@@ -158,15 +164,13 @@ export function terminalEinrichten(helfer) {
     const befehl = f.befehl.value.trim()
     if (!befehl) return f.befehl.focus()
     const name = f.name.value.trim() || befehl.slice(0, 40)
-    await h.speichern({ terminalBefehle: [...liste(), { name, befehl }].slice(-40) })
+    await listeSpeichern([...liste(), { name, befehl }])
     f.reset()
-    listeZeichnen()
   })
   $('term-standard').addEventListener('click', async () => {
     const l = liste()
     const fehlen = STANDARD.filter((s) => !l.some((b) => b.befehl === s.befehl))
     if (!fehlen.length) return
-    await h.speichern({ terminalBefehle: [...l, ...fehlen] })
-    listeZeichnen()
+    await listeSpeichern([...l, ...fehlen])
   })
 }
