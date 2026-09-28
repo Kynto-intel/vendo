@@ -19,7 +19,7 @@ function zeigen() {
   const menue = $('gespraech-menue')
   menue.innerHTML = `${stand.liste
     .map((g) => `<div class="gm-eintrag${g.name === stand.aktiv ? ' aktiv' : ''}" data-name="${maskieren(g.name)}" tabindex="0">
-        <span>${maskieren(g.name)}</span>${g.name === stand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Chat endgültig löschen">🗑</button>'}
+        <span>${maskieren(g.name)}</span>${g.name === stand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Chat endgültig löschen" aria-label="Chat löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9zm4 2v8h1.5v-8H10zm3.5 0v8H15v-8h-1.5z"/></svg></button>'}
       </div>`)
     .join('')}
     <form class="gm-neu" id="gm-neu"><input maxlength="40" placeholder="Neuer Chat, z. B. Shop …" autocomplete="off" /><button class="knopf-flach" type="submit">+</button></form>`

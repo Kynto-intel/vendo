@@ -1116,3 +1116,9 @@ body.datei-drueber .datei-ablage { display: grid; }
 
 /* Gesprächs-Karte rechts gibt es nicht mehr (Luzzys Chat im Crew-Tab, Strg+K) */
 #vorschau { display: none !important; }
+
+/* Mülleimer zum Löschen eines Chats (statt 🗑, das die Schrift nicht kann) */
+.gm-weg { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; background: none; border: 1px solid transparent; border-radius: 7px; cursor: pointer; opacity: 1; }
+.gm-weg svg { width: 15px; height: 15px; fill: var(--text-leise); }
+.gm-weg:hover { border-color: rgba(200, 88, 78, 0.5); background: rgba(200, 88, 78, 0.12); }
+.gm-weg:hover svg { fill: var(--rot-hell, #e07a70); }

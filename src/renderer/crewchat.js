@@ -204,7 +204,7 @@ function chatAuswahlZeichnen() {
   $('crew-thema-name').textContent = chatStand.aktiv
   $('crew-thema-menue').innerHTML = `${chatStand.liste
     .map((c) => `<div class="gm-eintrag${c.name === chatStand.aktiv ? ' aktiv' : ''}" data-name="${maskieren(c.name)}" tabindex="0">
-        <span>${maskieren(c.name)}</span>${c.name === chatStand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Chat endgültig löschen">🗑</button>'}
+        <span>${maskieren(c.name)}</span>${c.name === chatStand.aktiv ? '<small>offen</small>' : '<button class="gm-weg" type="button" title="Chat endgültig löschen" aria-label="Chat löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9zm4 2v8h1.5v-8H10zm3.5 0v8H15v-8h-1.5z"/></svg></button>'}
       </div>`)
     .join('')}
     <form class="gm-neu"><input maxlength="40" placeholder="Neuer Chat, z. B. Herbst-Kollektion …" autocomplete="off" /><button class="knopf-flach" type="submit">+</button></form>`
