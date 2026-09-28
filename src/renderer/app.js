@@ -23,6 +23,7 @@ import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
+import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -1415,6 +1416,9 @@ meldungenEinrichten({
 })
 api.waechter.beiMeldung(meldungNeu)
 
+// Shopify-Token im System-Tab erneuern (siehe shopifyzugang.js)
+shopifyZugangEinrichten({ melden: meldungNeu })
+
 // Datei oder Bild an Luzzy (siehe anhaenge.js)
 anhaengeEinrichten({ api, melden: (satz) => untertitelZeigen(satz, { fertig: true }) })
 
@@ -1461,6 +1465,7 @@ const QUELLEN = { shopify: ['shopify-status', 'Shopify'], mail: ['mail-status', 
 const verbindungStand = {} // quelle → { ok, text }, auch für die Startsequenz
 function verbindungZeigen({ quelle, ok, text }) {
   verbindungStand[quelle] = { ok, text }
+  if (quelle === 'shopify') shopifyZugangStatus({ ok, text })
   const [id, name] = QUELLEN[quelle] || []
   if (!id) return
   const el = $(id)

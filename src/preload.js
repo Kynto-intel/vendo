@@ -65,6 +65,10 @@ contextBridge.exposeInMainWorld('jarves', {
     verbindungen: () => ipcRenderer.invoke('waechter:verbindungen'),
     pruefen: () => ipcRenderer.invoke('waechter:pruefen')
   },
+  shopify: {
+    stellen: () => ipcRenderer.invoke('shopify:stellen'),
+    tokenEintragen: (token) => ipcRenderer.invoke('shopify:tokenEintragen', token)
+  },
   wissen: {
     vault: () => ipcRenderer.invoke('wissen:vault'),
     suchen: (anfrage) => ipcRenderer.invoke('wissen:suchen', anfrage),

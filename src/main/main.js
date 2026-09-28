@@ -145,6 +145,14 @@ waechter.on('problem', (p) => senden('waechter:problem', p))
 waechter.on('verbindung', (v) => senden('waechter:verbindung', v))
 ipcMain.handle('waechter:verbindungen', () => waechter.verbindungen)
 ipcMain.handle('waechter:pruefen', () => waechter.pruefen())
+// Shopify-Token erneuern: prüfen, überall in Hermes eintragen, dann den Wächter neu prüfen lassen. Der Token geht nie zurück.
+const shopifyToken = require('./shopifytoken')
+ipcMain.handle('shopify:stellen', () => shopifyToken.stellen().length)
+ipcMain.handle('shopify:tokenEintragen', async (_e, token) => {
+  const ergebnis = await shopifyToken.eintragen(String(token || '').slice(0, 200))
+  waechter.pruefen().catch(() => {})
+  return ergebnis
+})
 
 // ── Hermes → Oberfläche ──
 hermes.on('status', (s) => {

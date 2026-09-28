@@ -207,6 +207,18 @@
           </header>
           <div class="system-raster">
             <section class="karte hud"><h3>Hermes</h3><div id="system-hermes"><div class="leise">Lade …</div></div></section>
+            <section class="karte hud shopify-zugang">
+              <h3>Shopify-Zugang</h3>
+              <div class="sz-status" id="shopify-zugang-status"><span class="punkt-klein"></span><span>Wird geprüft …</span></div>
+              <form id="shopify-token-form" autocomplete="off">
+                <label class="leise klein" for="shopify-token-feld">Neuer Token (Admin-API, beginnt mit „shpat_“)</label>
+                <div class="sz-zeile">
+                  <input id="shopify-token-feld" type="password" placeholder="shpat_…" spellcheck="false" autocomplete="off" />
+                  <button class="knopf-gold" type="submit">Prüfen &amp; eintragen</button>
+                </div>
+                <div class="leise klein" id="shopify-token-hinweis">Jarves-OS prüft den Token bei Shopify und trägt ihn dann überall in Hermes ein (Hermes und alle Bots, config.yaml und .env). Vorher wird jede Datei gesichert.</div>
+              </form>
+            </section>
             <section class="karte hud"><h3>PC</h3><div id="system-pc"><div class="leise">Lade …</div></div></section>
             <section class="karte hud"><h3>Lokale Modelle (Ollama)</h3><div id="system-ollama"><div class="leise">Lade …</div></div></section>
             <section class="karte hud"><h3>Luzzy · Nutzung 30 Tage</h3><div id="system-kosten"><div class="leise">Lade …</div></div></section>
