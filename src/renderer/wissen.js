@@ -3,6 +3,7 @@
 
 import { markdownZuHtml } from './markdown.js'
 import { vorWann } from './ansichten.js'
+import { hinweis } from './fenster.js'
 
 const api = window.jarves
 const $ = (id) => document.getElementById(id)
@@ -71,7 +72,7 @@ function leserErstellen(el) {
     if (!knopf || !aktuell) return
     const art = knopf.dataset.leser
     if (art === 'vorlesen') helfer.vorlesen(aktuell.text)
-    if (art === 'oeffnen') api.datei.oeffnen(aktuell.pfad).catch((err) => alert(err.message))
+    if (art === 'oeffnen') api.datei.oeffnen(aktuell.pfad).catch((err) => hinweis(err.message, { titel: 'Öffnen' }))
     if (art === 'zeigen') api.datei.zeigen(aktuell.pfad)
     if (art === 'aufdecken') {
       el.querySelector('.leser-inhalt')?.classList.remove('verdeckt')
@@ -262,7 +263,7 @@ export async function dateienLaden() {
 }
 document.addEventListener('click', (e) => {
   const oeffnen = e.target.closest('[data-oeffnen]')
-  if (oeffnen) api.datei.oeffnen(oeffnen.dataset.oeffnen).catch((err) => alert(err.message))
+  if (oeffnen) api.datei.oeffnen(oeffnen.dataset.oeffnen).catch((err) => hinweis(err.message, { titel: 'Öffnen' }))
   const zeigen = e.target.closest('[data-zeigen]')
   if (zeigen) api.datei.zeigen(zeigen.dataset.zeigen)
 })

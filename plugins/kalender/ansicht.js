@@ -232,7 +232,7 @@ export async function starten(ctx) {
     if (k === 'abbrechen') formVerbergen()
     if (k === 'loeschen' && bearbeitet) {
       const t = daten.termine.find((x) => x.id === bearbeitet)
-      if (t && confirm(`Termin „${t.titel}“ löschen?`)) {
+      if (t && (await ctx.bestaetigen(`Termin „${t.titel}“ löschen?`, { titel: 'Termin löschen', ja: 'Löschen', gefahr: true }))) {
         const weg = bearbeitet
         formVerbergen()
         await aendern((d) => {

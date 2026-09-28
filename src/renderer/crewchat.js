@@ -8,6 +8,7 @@
 
 import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewProfile, botName, LUZZY } from './ansichten.js'
+import { bestaetigen } from './fenster.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -243,7 +244,7 @@ function chatAuswahlEinrichten() {
     const name = eintrag.dataset.name
     if (e.target.closest('.gm-weg')) {
       e.stopPropagation()
-      if (!confirm(`Chat „${name}“ mit ${botVon(profil()).name} endgültig löschen? Das lässt sich nicht rückgängig machen.`)) return
+      if (!(await bestaetigen(`Chat „${name}“ mit ${botVon(profil()).name} endgültig löschen? Das lässt sich nicht rückgängig machen.`, { titel: 'Chat löschen', ja: 'Löschen', gefahr: true }))) return
       try {
         chatStand = await h.api.botChats.loeschen(profil(), name)
         chatAuswahlZeichnen()

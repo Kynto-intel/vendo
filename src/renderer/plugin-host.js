@@ -3,6 +3,7 @@
 // und ein ctx-Objekt mit Werkzeugen. Siehe plugins/README.md.
 
 import { markdownZuHtml } from './markdown.js'
+import { bestaetigen, hinweis } from './fenster.js'
 
 const api = window.jarves
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -124,7 +125,10 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       // Ist Luzzy frei (verbunden, antwortet gerade nicht)?
       bereit: () => (bereit ? bereit() : true),
       maskieren,
-      markdownZuHtml
+      markdownZuHtml,
+      // Rückfrage/Hinweis im Jarves-Design: await ctx.bestaetigen(text, { titel, ja, gefahr }) · ctx.hinweis(text)
+      bestaetigen,
+      hinweis
     }
 
     let rueckgabe = {}

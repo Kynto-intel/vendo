@@ -1,5 +1,6 @@
 // Bereiche der Zentrale: Crew, Jobs, Kanban, System. Alle Daten kommen live aus Hermes.
 
+import { bestaetigen, hinweis } from './fenster.js'
 const api = window.jarves
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const $ = (id) => document.getElementById(id)
@@ -296,12 +297,12 @@ document.addEventListener('click', async (e) => {
   const knopf = e.target.closest('[data-job]')
   if (!knopf) return
   const art = knopf.dataset.job
-  if (art === 'loeschen' && !confirm(`Job „${knopf.dataset.name}“ wirklich löschen?`)) return
+  if (art === 'loeschen' && !(await bestaetigen(`Job „${knopf.dataset.name}“ wirklich löschen?`, { titel: 'Job löschen', ja: 'Löschen', gefahr: true }))) return
   knopf.disabled = true
   try {
     await api.hermes.aktion(`job-${art}`, { id: knopf.dataset.id, profil: knopf.dataset.profil })
   } catch (err) {
-    alert(`Hat nicht geklappt: ${err.message}`)
+    hinweis(`Hat nicht geklappt: ${err.message}`, { titel: 'Job' })
   }
   jobsLaden()
 })

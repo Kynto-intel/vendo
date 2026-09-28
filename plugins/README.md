@@ -55,6 +55,8 @@ export async function starten(ctx) {
 | `ctx.luzzy(text, { anzeige, vorlesen, ansichtWechseln })` | schickt Luzzy einen Auftrag in der Zentrale; `anzeige` = was im Gespräch erscheint |
 | `ctx.kontext(() => text)` | Text, den andere Plugins abfragen können (z. B. Termine für Routinen) |
 | `ctx.kontextVon(id)` | Kontext eines anderen Plugins holen, z. B. `ctx.kontextVon('kalender')` |
+| `await ctx.bestaetigen(text, { titel, ja, gefahr })` | Rückfrage im Jarves-Design (statt `confirm`), liefert true/false |
+| `ctx.hinweis(text, { titel })` | Hinweisfenster im Jarves-Design (statt `alert`) |
 | `ctx.begruessung(() => satz)` | Kurzer Satz für Luzzys Begrüßung beim Start (z. B. Termine heute, Wetter) |
 | `ctx.kontextFuer(text)` | Kontext aller Plugins, deren Stichwörter im Text vorkommen (siehe unten) |
 | `ctx.eingabeFilter(fn)` | Eingaben abfangen: `fn(text)` gibt `{ text, anzeige, vorlesen }` oder `null` zurück |

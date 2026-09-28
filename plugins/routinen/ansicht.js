@@ -250,12 +250,12 @@ export async function starten(ctx) {
     if (aktion === 'schliessen') return editorZeigen(null)
     if (aktion === 'ausfuehren') {
       const r = { ...formLesen(), id: gewaehlt }
-      if (!r.prompt) return alert('Bitte erst einen Prompt eintragen.')
+      if (!r.prompt) return ctx.hinweis('Bitte erst einen Prompt eintragen.', { titel: 'Routine' })
       return ausfuehren({ ...r, name: r.name || 'Routine' })
     }
     if (aktion === 'loeschen') {
       const r = daten.routinen.find((x) => x.id === gewaehlt)
-      if (r && confirm(`Routine „${r.name}“ löschen?`)) {
+      if (r && (await ctx.bestaetigen(`Routine „${r.name}“ löschen?`, { titel: 'Routine löschen', ja: 'Löschen', gefahr: true }))) {
         daten.routinen = daten.routinen.filter((x) => x.id !== gewaehlt)
         editorZeigen(null)
         await speichern()
@@ -277,10 +277,10 @@ export async function starten(ctx) {
   ctx.element.addEventListener('submit', async (e) => {
     e.preventDefault()
     const neu = { ...formLesen(), id: gewaehlt }
-    if (!neu.name || !neu.prompt) return alert('Name und Prompt brauchen einen Inhalt.')
+    if (!neu.name || !neu.prompt) return ctx.hinweis('Name und Prompt brauchen einen Inhalt.', { titel: 'Routine' })
     // Auslösewort darf nicht doppelt vergeben sein
     const doppelt = neu.ausloeser.find((w) => daten.routinen.some((r) => r.id !== neu.id && (r.ausloeser || []).some((x) => normalisieren(x) === normalisieren(w))))
-    if (doppelt) return alert(`Das Auslösewort „${doppelt}“ gehört schon zu einer anderen Routine.`)
+    if (doppelt) return ctx.hinweis(`Das Auslösewort „${doppelt}“ gehört schon zu einer anderen Routine.`, { titel: 'Routine' })
     const index = daten.routinen.findIndex((r) => r.id === neu.id)
     if (index >= 0) daten.routinen[index] = neu
     else daten.routinen.push(neu)

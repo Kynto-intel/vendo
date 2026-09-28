@@ -2,6 +2,8 @@
 // Hermes-Unterhaltung, Luzzy behält pro Thema den Faden. Auswahl oben im Gesprächsfenster oder per Stimme:
 //   „Neues Gespräch Shop“ · „Wechsel zum Gespräch Privat“ · „Welche Gespräche gibt es?“
 
+import { bestaetigen } from './fenster.js'
+
 const api = window.jarves
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -86,7 +88,7 @@ export function gespraecheEinrichten(helfer) {
     try {
       if (e.target.closest('.gm-weg')) {
         e.stopPropagation()
-        if (!confirm(`Chat „${name}“ mit Luzzy endgültig löschen? Das lässt sich nicht rückgängig machen.`)) return
+        if (!(await bestaetigen(`Chat „${name}“ mit Luzzy endgültig löschen? Das lässt sich nicht rückgängig machen.`, { titel: 'Chat löschen', ja: 'Löschen', gefahr: true }))) return
         stand = await api.gespraeche.loeschen(name)
         return zeigen()
       }
