@@ -84,7 +84,7 @@ const vorleser = vorleserErstellen({
     // „Hey Luzzy“ oder einfach Reinreden unterbricht sie (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
     const unterbrechen = einstellungen?.sprache?.unterbrechen !== false
     mikrofon.wakeSetzen(wakeAktiv && unterbrechen)
-    if (unterbrechen) reinredenStarten()
+    if (unterbrechen && !musikAktiv()) reinredenStarten() // Musik würde Luzzy sonst unterbrechen
     zustandZeigen()
   },
   beiEnde: () => {
@@ -214,6 +214,12 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
       untertitelZeigen('Hab dich nicht verstanden. Nochmal?', { fertig: true })
       return
     }
+    // Nur Musik oder typische Erkennungs-Fehler (z. B. „♪“, „Untertitel im Auftrag des ZDF“): nicht an Luzzy
+    if (nurMusik(text)) {
+      if (weiterSprechen()) return
+      untertitelZeigen('Da war wohl nur Musik. Sag einfach nochmal „Hey Luzzy“.', { fertig: true })
+      return
+    }
     if (unterbrechung) {
       // Felix hat wirklich etwas gesagt: Luzzy hört auf, eine laufende Antwort wird abgebrochen
       vorleser.stoppen()
@@ -243,9 +249,39 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
   }
 }
 
+// ── Musik erkennen: läuft auf dem PC Musik/Video (Windows-Mediensteuerung), zählt sie nicht als Sprache ──
+let musikSpielt = false
+const musikAktiv = () => musikSpielt && einstellungen?.sprache?.musikErkennen !== false
+api.musik?.status().then((s) => (musikSpielt = Boolean(s))).catch(() => {})
+api.musik?.beiAenderung((s) => (musikSpielt = Boolean(s)))
+// „Hey Luzzy“ während Musik läuft: Musik anhalten (Medientaste), zuhören, danach von selbst weiter
+let musikVonJarvesAngehalten = false
+async function musikKurzAnhalten() {
+  if (!musikAktiv()) return
+  await api.pc.aktion({ art: 'taste', taste: 'abspielen' }).catch(() => {})
+  musikVonJarvesAngehalten = true
+  await new Promise((r) => setTimeout(r, 350)) // kurz warten, bis es still ist
+}
+setInterval(() => {
+  // Fertig mit Zuhören, Antworten und Vorlesen: angehaltene Musik wieder starten
+  if (!musikVonJarvesAngehalten || spricht || hoert || versteht || beschaeftigt || sprichtGerade) return (musikRuheSeit = 0)
+  if (Date.now() - (musikRuheSeit ||= Date.now()) < 1500) return
+  musikVonJarvesAngehalten = false
+  musikRuheSeit = 0
+  if (!musikSpielt) api.pc.aktion({ art: 'taste', taste: 'abspielen' }).catch(() => {})
+}, 500)
+let musikRuheSeit = 0
+// Nur Musik oder bekannte Fehlerkennungen der Spracherkennung (sie „hört“ bei Musik gern Untertitel-Sätze)
+const NUR_MUSIK = [/[♪♫🎵🎶]/u, /^\W*[\[(]?\s*(musik|music|gesang|singing|applaus|applause|instrumental|lachen)\s*[\])]?\W*$/i, /untertitel(ung)?\s+(im auftrag|von|der|des)/i, /(vielen dank|danke)\s+(fürs|für's|für das)\s+zuschauen/i, /copyright|amara\.org|swr|zdf\s+\d{4}/i]
+function nurMusik(text) {
+  const t = String(text || '').trim()
+  return t.length < 2 || NUR_MUSIK.some((m) => m.test(t))
+}
+
 // Nach Luzzys Antwort kurz weiter zuhören, wenn die Frage gesprochen war (Gesprächsmodus)
 function weiterZuhoeren() {
   if (!letzteEingabeGesprochen || !einstellungen?.sprache?.weiterZuhoeren) return
+  if (musikAktiv()) return (letzteEingabeGesprochen = false) // läuft Musik, würde sie sonst mitgeschrieben
   letzteEingabeGesprochen = false
   setTimeout(() => {
     if (!beschaeftigt && !spricht && !hoert) sprechenStarten({ ohneSpracheNach: 8000, leise: false })
@@ -1218,8 +1254,8 @@ api.hermes.beiEreignis((ev) => {
       break
     }
     case 'wake.detected':
-      // "Hey Luzzy" gehört: zuhören
-      sprechenStarten()
+      // "Hey Luzzy" gehört: zuhören (läuft Musik, pausiert sie kurz und läuft danach weiter)
+      musikKurzAnhalten().then(() => sprechenStarten())
       break
     case 'error':
       systemNachricht(p.message || 'Fehler in Hermes.')
@@ -1581,6 +1617,7 @@ function formularFuellen() {
   $('e-auto-senden').checked = einstellungen.sprache.automatischSenden
   $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
   $('e-unterbrechen').checked = einstellungen.sprache.unterbrechen !== false
+  $('e-musik').checked = einstellungen.sprache.musikErkennen !== false
   const m = einstellungen.meldungen
   $('e-m-vorlesen').checked = m.vorlesen
   $('e-m-ton').checked = m.ton !== false
@@ -1627,7 +1664,8 @@ function formularLesen() {
       aktivierungswort: $('e-wake').checked,
       automatischSenden: $('e-auto-senden').checked,
       weiterZuhoeren: $('e-weiter').checked,
-      unterbrechen: $('e-unterbrechen').checked
+      unterbrechen: $('e-unterbrechen').checked,
+      musikErkennen: $('e-musik').checked
     },
     animationen: {
       reaktor: $('e-anim-reaktor').checked,

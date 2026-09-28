@@ -65,6 +65,10 @@ contextBridge.exposeInMainWorld('jarves', {
     verbindungen: () => ipcRenderer.invoke('waechter:verbindungen'),
     pruefen: () => ipcRenderer.invoke('waechter:pruefen')
   },
+  musik: {
+    status: () => ipcRenderer.invoke('musik:status'),
+    beiAenderung: (fn) => ipcRenderer.on('musik:status', (_e, spielt) => fn(spielt))
+  },
   shopify: {
     stellen: () => ipcRenderer.invoke('shopify:stellen'),
     tokenEintragen: (token) => ipcRenderer.invoke('shopify:tokenEintragen', token)

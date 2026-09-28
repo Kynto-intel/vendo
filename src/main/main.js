@@ -163,6 +163,14 @@ hermes.on('status', (s) => {
 })
 hermes.on('ereignis', (e) => senden('hermes:ereignis', e))
 hermes.on('freigabe', (f) => senden('hermes:freigabe', f))
+// Läuft Musik/Video auf dem PC? (Windows-Mediensteuerung, nur lesen) → Oberfläche, damit Musik nicht als Sprache zählt
+let musikSpielt = false
+const musikStopp = require('./musik').musikBeobachten((spielt) => {
+  musikSpielt = spielt
+  senden('musik:status', spielt)
+})
+app.on('will-quit', () => musikStopp())
+ipcMain.handle('musik:status', () => musikSpielt)
 // Testmodus: JARVES_TEST_FREIGABE=1 spielt nach 9 s eine Freigabe-Anfrage vor (Hermes führt dabei nichts aus)
 if (process.env.JARVES_TEST_FREIGABE) setTimeout(() => hermes.emit('freigabe', { id: 'test-freigabe', kanal: 'zentrale', befehl: 'Remove-Item C:/Temp/alt -Recurse', beschreibung: 'Den Ordner C:/Temp/alt mit allen Dateien löschen', werkzeug: 'terminal', auswahl: ['once', 'session', 'always', 'deny'] }), 9000)
 const letzterVerlauf = {} // pro Kanal (zentrale, crew)
