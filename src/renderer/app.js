@@ -1463,9 +1463,27 @@ $('bereiche').addEventListener('click', (e) => {
   const knopf = e.target.closest('[data-bereich]')
   if (knopf && !knopf.disabled) ansichtZeigen(knopf.dataset.bereich)
 })
+// „Aktualisieren“-Knöpfe: sichtbar zeigen, dass neu geladen wird (sonst sieht man bei gleichen Daten nichts)
+async function neuLadenMitRueckmeldung(knopf) {
+  const bereich = knopf.dataset.neuLaden
+  const text = knopf.textContent
+  knopf.disabled = true
+  knopf.textContent = 'Lädt …'
+  let ok = true
+  try {
+    await Promise.all([LADEN[bereich]?.(), bereich === 'crew' ? crewBotsLaden() : null]) // Crew: auch neue/umbenannte Bots
+  } catch {
+    ok = false
+  }
+  knopf.textContent = ok ? '✓ Aktualisiert' : 'Hat nicht geklappt'
+  setTimeout(() => {
+    knopf.textContent = text
+    knopf.disabled = false
+  }, 1500)
+}
 document.addEventListener('click', (e) => {
   const knopf = e.target.closest('[data-neu-laden]')
-  if (knopf) LADEN[knopf.dataset.neuLaden]?.()
+  if (knopf && !knopf.disabled) neuLadenMitRueckmeldung(knopf)
   const oeffnen = e.target.closest('[data-bereich-oeffnen]')
   if (oeffnen) ansichtZeigen(oeffnen.dataset.bereichOeffnen)
 })
