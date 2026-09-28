@@ -127,6 +127,7 @@ export async function crewLaden() {
       </article>`
     })
     .join('')
+  document.dispatchEvent(new Event('crew-karten-gezeichnet')) // Arbeitsbühne: Live-Zeile wieder drauf
 }
 
 // Kurzübersicht in der rechten Spalte

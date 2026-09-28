@@ -177,8 +177,9 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 37. 🆕 **„Luzzy, was siehst du?“** (Killer) – Auf Befehl schaut Luzzy auf den Bildschirm (ein Bild, nur wenn Felix
     es sagt, nie heimlich) und hilft bei dem, was gerade offen ist: Fehlermeldung, Shopify-Seite, Design.
     Braucht ein Modell, das Bilder versteht.
-38. **Crew-Arbeitsbühne** (Killer) – Man sieht live, wie die Bots zusammenarbeiten: wer gerade was macht,
-    Zwischenergebnisse, wer wem etwas übergibt. Wie ein kleines Team auf dem Bildschirm.
+38. ✅ **Crew-Arbeitsbühne** (Killer, gebaut 28.09.2026) – Man sieht live, wie die Bots zusammenarbeiten: wer gerade was macht,
+    wer an wen übergibt. Crew-Tab, Reiter „🎬 Arbeitsbühne“: Kette Luzzy → Kira → Lira → Milla mit wanderndem Brief,
+    Ablauf des Auftrags (Klick: Auftrag und Antwort), Bot-Karten oben leuchten live. Liest nur die Bot Chats mit.
 39. 🆕 **Eigene Luzzy-Stimme, lokal** (Extra) – Eine unverwechselbare eigene Stimme über ein lokales Sprachmodell
     auf dem PC: läuft ohne Internet und ohne Microsoft-Dienst, klingt nur nach Luzzy.
 
