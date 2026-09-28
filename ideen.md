@@ -175,8 +175,6 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     Sicherheit: Testlauf-Pflicht vor dem Einbauen (eigenes Fenster, haupt.js in eigenem Prozess, Hänger nach 10 s erkannt)
     und Notbremse (startet Jarves-OS mit einem neuen Plugin nicht richtig, wird es beim nächsten Start abgeschaltet).
     Selbst ein Plugin (`plugins\werkstatt\`), in Hermes wurde nichts geändert.
-35. **Produktideen-Schmiede** (Killer) – Recherche-Bot sucht Trends (Wikinger, Norse, Runen, Serien wie Vikings),
-    Schreib-Bot macht Text und Namen, daraus wird ein fertiger Produktentwurf zum Absegnen.
 36. **Social-Planer** (Plugin) – Kalender für Instagram- und Facebook-Posts: Entwürfe von Schreib-Bot, Bild dazu,
     geplantes Datum. Veröffentlicht wird nur nach Felix' Ja (Luzzy-Regel bleibt).
 37. ✅ **„Luzzy, was siehst du?“** (Killer, gebaut 28.09.2026) – Auf Befehl schaut Luzzy auf den Bildschirm (ein Bild, nur wenn Felix
