@@ -7,6 +7,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: jarves-datei:; media-src 'self' blob: jarves-datei:; frame-src jarves-datei:; connect-src 'self'"
     />
     <title>Jarves-OS</title>
+    <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body class="intro-an" data-ansicht="zentrale">
@@ -223,25 +224,25 @@
               <header class="term-kopf">
                 <span class="term-punkte"><i></i><i></i><i></i></span>
                 <span class="term-titel">PowerShell</span>
-                <span class="term-ordner" id="term-ordner"></span>
+                <span class="term-ordner leise klein">Strg+C kopiert markierten Text, sonst bricht es ab · Strg+V fügt ein</span>
                 <span class="term-knoepfe">
-                  <button class="knopf-mini" id="term-fenster" type="button" title="Befehl (oder leere Konsole) in einem eigenen Fenster öffnen – für interaktive Programme wie hermes chat">⧉ Fenster</button>
                   <button class="knopf-mini" id="term-leeren" type="button" title="Ausgabe leeren">Leeren</button>
-                  <button class="knopf-mini gefahr" id="term-stopp" type="button" title="Laufenden Befehl abbrechen" hidden>■ Stopp</button>
+                  <button class="knopf-mini" id="term-neu-start" type="button" title="Konsole beenden und neu starten">↻ Neu</button>
+                  <button class="knopf-mini" id="term-fenster" type="button" title="Eine normale PowerShell in einem eigenen Fenster öffnen">⧉ Fenster</button>
                 </span>
               </header>
-              <pre class="term-ausgabe" id="term-ausgabe"></pre>
-              <form class="term-eingabe" id="term-form">
-                <span class="term-prompt" id="term-prompt">PS&gt;</span>
-                <input id="term-feld" type="text" autocomplete="off" spellcheck="false" placeholder="Befehl eingeben, z. B. hermes status" />
-              </form>
-              <div class="term-fuss leise klein">Enter führt aus · ↑ ↓ frühere Befehle · während ein Befehl läuft, geht Enter als Antwort an ihn (z. B. „j“) · Strg+C stoppt</div>
+              <div class="term-xterm" id="term-xterm"></div>
             </section>
             <aside class="term-seite">
-              <section class="term-karte hud"><div class="term-karte-kopf"><h3>Hermes-Befehle</h3><span class="leise klein">Klick führt aus</span></div><div id="term-hermes"></div></section>
-              <section class="term-karte hud"><div class="term-karte-kopf"><h3>Eigene Befehle</h3><button class="knopf-mini" id="term-speichern" type="button" title="Den Befehl aus dem Eingabefeld speichern">＋ Speichern</button></div>
-                <form class="term-neu" id="term-neu" hidden><input name="name" placeholder="Name, z. B. Shop-Log" maxlength="40" /><button class="knopf-gold" type="submit">OK</button></form>
-                <div id="term-eigene"></div>
+              <section class="term-karte hud">
+                <div class="term-karte-kopf"><h3>Meine Befehle</h3><span class="leise klein">Klick führt aus</span></div>
+                <div id="term-liste"></div>
+                <form class="term-neu" id="term-neu">
+                  <input name="name" placeholder="Name, z. B. Shop-Log" maxlength="40" autocomplete="off" />
+                  <input name="befehl" placeholder="Befehl, z. B. hermes cron list" maxlength="400" autocomplete="off" spellcheck="false" />
+                  <button class="knopf-gold" type="submit">＋ Speichern</button>
+                </form>
+                <button class="knopf-mini term-standard" id="term-standard" type="button" title="Die 5 Standardbefehle wieder dazunehmen">Standard wiederherstellen</button>
               </section>
             </aside>
           </div>

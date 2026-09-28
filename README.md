@@ -173,16 +173,16 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 
 **Terminal** (System → Terminal):
 
-- Eine **PowerShell** direkt in Jarves-OS: Befehl tippen, Enter, die Ausgabe läuft live mit. `cd` wird gemerkt, ↑ ↓ holt
-  frühere Befehle, „cls“ leert. `hermes …` geht ohne Pfad.
-- **Rückfragen** eines Befehls (z. B. „Fortfahren? [j/n]“) beantwortest du im selben Feld; **Stopp** oder Strg+C bricht ab.
-- **Hermes-Befehle zum Anklicken:** Status, Version & Updates, Einstellungen prüfen, Nutzung · **Gateway** Status,
-  starten, stoppen, neu starten (über das Standard-Profil, dem der Gateway gehört) · **Notbremse** (`hermes pause` /
-  `resume`) · Profile, Gespräche, Jobs, Skills · Protokolle (alle, nur Fehler, Gateway) · Update suchen, aktualisieren,
-  Sicherung. Befehle mit ⚠ fragen vorher nach, ebenso getippte Befehle, die etwas stoppen, löschen oder verändern.
-- **Eigene Befehle:** Befehl ins Feld tippen, „＋ Speichern“, Namen geben – liegt dann rechts zum Anklicken.
-- Programme mit eigenem Menü (`hermes chat`, `model`, `setup`, `update` …) öffnen sich in einem **eigenen
-  Konsolenfenster**; „⧉ Fenster“ öffnet jederzeit eine normale PowerShell im aktuellen Ordner.
+- Eine **echte PowerShell-Konsole** direkt in Jarves-OS, gebaut mit den Standard-Bausteinen **xterm.js** (Anzeige) und
+  **node-pty** (Konsole) – wie das Terminal in VS Code. Farben, Tab-Vervollständigung, Pfeiltasten, Strg+C laufen wie
+  gewohnt; auch interaktive Programme (`hermes chat`, `hermes model`, `hermes setup`) laufen direkt darin.
+  `hermes …` geht ohne Pfad. Die Konsole läuft weiter, wenn du den Bereich wechselst.
+- **Strg+C** kopiert markierten Text (sonst bricht es den laufenden Befehl ab), **Strg+V** fügt ein.
+  „↻ Neu“ startet die Konsole neu, „⧉ Fenster“ öffnet eine normale PowerShell daneben.
+- **Meine Befehle** (rechts): eine Liste zum Anklicken. Am Anfang 5 Standardbefehle (Hermes-Status, Gateway-Status,
+  Gateway neu starten, Nach Update suchen, Nur Fehler). **Jeden** kannst du löschen (✕ beim Drüberfahren), eigene mit
+  Name und Befehl speichern, „Standard wiederherstellen“ holt gelöschte Standardbefehle zurück. Befehle, die etwas
+  stoppen, neu starten, löschen oder aktualisieren (⚠), fragen vorher nach.
 - Das Terminal bedienst nur du – Luzzy und die Crew haben darauf keinen Zugriff.
 
 **Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):
@@ -509,7 +509,7 @@ Neue Wünsche am einfachsten als Plugin über die [Werkstatt](#plugins) bauen la
 
 ## Aufbau (für Entwickler)
 
-Electron 38, reines JavaScript ohne Build. Einzige Abhängigkeit: `ws`.
+Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbindung), `node-pty`, `@xterm/xterm` und `@xterm/addon-fit` (Terminal; node-pty bringt fertige Windows-Dateien mit, nichts muss kompiliert werden).
 
 | Ordner / Datei | Inhalt |
 |---|---|

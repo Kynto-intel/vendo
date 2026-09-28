@@ -139,12 +139,13 @@ contextBridge.exposeInMainWorld('jarves', {
     bildschirmAufnehmen: () => ipcRenderer.invoke('bildschirm:aufnehmen')
   },
   terminal: {
-    ausfuehren: (befehl) => ipcRenderer.invoke('terminal:ausfuehren', befehl),
-    eingeben: (text) => ipcRenderer.invoke('terminal:eingeben', text),
-    stoppen: () => ipcRenderer.invoke('terminal:stoppen'),
-    fenster: (befehl) => ipcRenderer.invoke('terminal:fenster', befehl),
-    stand: () => ipcRenderer.invoke('terminal:stand'),
-    beiAusgabe: abonnieren('terminal:ausgabe'),
+    starten: (cols, rows) => ipcRenderer.invoke('terminal:starten', cols, rows),
+    schreiben: (text) => ipcRenderer.send('terminal:schreiben', text),
+    groesse: (cols, rows) => ipcRenderer.send('terminal:groesse', cols, rows),
+    befehl: (text) => ipcRenderer.invoke('terminal:befehl', text),
+    neu: () => ipcRenderer.invoke('terminal:neu'),
+    fenster: () => ipcRenderer.invoke('terminal:fenster'),
+    beiDaten: abonnieren('terminal:daten'),
     beiEnde: abonnieren('terminal:ende')
   },
   start: {
