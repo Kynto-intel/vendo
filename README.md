@@ -30,7 +30,7 @@ Postfach), danach begrüßt Luzzy dich mit Bestellungen, Mails, Terminen und Wet
 | Taste | Wirkung |
 |---|---|
 | **Strg+Leertaste** / **„Hey Luzzy“** | Sprechen (auch im Hintergrund) |
-| **Strg+Umschalt+H** / Klick auf „Mikrofon“ oben | Freihändig an/aus: aus = Luzzy hört nur auf Knopfdruck (Headset, Anrufe) |
+| **Strg+Umschalt+H** / Klick auf „Mikrofon“ oben | Freihändig an/aus: aus = Luzzy hört nur auf Knopfdruck (Headset, Anrufe). Im Crew-Bereich hört sie automatisch nur auf Knopfdruck |
 | **Strg+K** | Luzzys Chat öffnen/schließen (im Crew-Tab) |
 | **Strg+P** | Befehlspalette: alle Befehle, Tastenkürzel und Sprachbefehle |
 | **Strg+Umschalt+L** | Zwischenablage an Luzzy (aus jedem Programm) |

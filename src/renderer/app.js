@@ -64,8 +64,12 @@ let versteht = false // Hermes schreibt das Gesprochene gerade mit
 let letzteEingabeGesprochen = false
 let wakeAktiv = false
 let wakeGrund = '' // warum „Hey Luzzy“ nicht zuhört (siehe wakeEinrichten)
-// Freihändig (Standard): „Hey Luzzy“, Reinreden, Weiter-Zuhören. Aus: nur auf Knopfdruck (Headset, Anrufe)
-const freihaendig = () => einstellungen?.sprache?.freihaendig !== false
+// Freihändig (Standard): „Hey Luzzy“, Reinreden, Weiter-Zuhören. Aus: nur auf Knopfdruck (Headset, Anrufe).
+// Im Crew-Bereich (Felix schreibt mit Kira & Co.) hört Luzzy automatisch nur auf Knopfdruck (abschaltbar).
+let crewOffen = false
+const freihaendigEingestellt = () => einstellungen?.sprache?.freihaendig !== false
+const crewStill = () => crewOffen && einstellungen?.sprache?.crewStill !== false
+const freihaendig = () => freihaendigEingestellt() && !crewStill()
 
 const reaktor = reaktorErstellen($('reaktor-rahmen'))
 const welle = welleErstellen($('welle'))
@@ -123,13 +127,14 @@ const mikrofon = mikrofonErstellen({
 
 function mikrofonStatusZeigen(z, text) {
   const el = $('mikrofon-status')
-  const anzeige = z === 'bereit' && !freihaendig() ? 'knopf' : z === 'bereit' && wakeAktiv ? 'wake' : z
+  const anzeige = z === 'bereit' && crewStill() && freihaendigEingestellt() ? 'crew' : z === 'bereit' && !freihaendig() ? 'knopf' : z === 'bereit' && wakeAktiv ? 'wake' : z
   el.dataset.zustand = anzeige
   const texte = {
     aus: 'Mikrofon …',
     bereit: 'Mikrofon bereit',
     wake: 'Hört auf „Hey Luzzy“',
     knopf: 'Mikrofon: nur auf Knopfdruck',
+    crew: 'Mikrofon: im Crew-Bereich nur auf Knopfdruck',
     'nimmt-auf': 'Nimmt auf',
     'kein-mikrofon': 'Kein Mikrofon',
     verweigert: 'Mikrofon verweigert'
@@ -332,8 +337,22 @@ async function freihaendigSetzen(an, { sagen = true } = {}) {
   aktivitaetMelden(satz)
   if (sagen) untertitelZeigen(satz, { fertig: true })
 }
-$('mikrofon-status').addEventListener('click', () => freihaendigSetzen(!freihaendig()))
-api.sprache.beiFreihaendig(() => freihaendigSetzen(!freihaendig()))
+// Umschalten: im Crew-Bereich (dort ist Luzzy still) heißt das „hier doch mithören“, sonst freihändig an/aus
+async function hoerModusUmschalten() {
+  if (crewStill() && freihaendigEingestellt()) {
+    einstellungen = await api.einstellungen.speichern({ sprache: { ...einstellungen.sprache, crewStill: false } })
+    hoerModusAnwenden()
+    return untertitelZeigen('Okay, ich höre jetzt auch im Crew-Bereich zu. Zurückstellen: Einstellungen, Sprechen.', { fertig: true })
+  }
+  return freihaendigSetzen(!freihaendigEingestellt())
+}
+function hoerModusAnwenden() {
+  reinredenAus()
+  wakeEinrichten()
+  mikrofonStatusZeigen(mikrofon.zustand())
+}
+$('mikrofon-status').addEventListener('click', hoerModusUmschalten)
+api.sprache.beiFreihaendig(hoerModusUmschalten)
 // Mikrofon eingesteckt: automatisch aufnehmen
 navigator.mediaDevices.addEventListener('devicechange', () => {
   if (['kein-mikrofon', 'aus'].includes(mikrofon.zustand())) wakeEinrichten()
@@ -734,7 +753,7 @@ const SPRACHBEFEHLE = [
 const TASTENKUERZEL = [
   ['Befehlspalette', 'Strg+P', () => {}],
   ['Sprechen (auch im Hintergrund)', 'Strg+Leertaste', () => sprechenStarten()],
-  ['Freihändig an/aus („Hey Luzzy“ oder nur auf Knopfdruck, z. B. mit Headset)', 'Strg+Umschalt+H', () => freihaendigSetzen(!freihaendig())],
+  ['Freihändig an/aus („Hey Luzzy“ oder nur auf Knopfdruck, z. B. mit Headset)', 'Strg+Umschalt+H', () => hoerModusUmschalten()],
   ['Zwischenablage an Luzzy (aus jedem Programm)', 'Strg+Umschalt+L', () => ablageOeffnen()],
   ['Gespräch öffnen/schließen', 'Strg+K', () => panelSetzen(panelGeschlossen())],
   ['Linke Leiste ein/aus (oder Klick aufs Logo)', 'Strg+B', () => leisteUmschalten('links')],
@@ -1405,6 +1424,11 @@ let crewGeoeffnet = false
 
 function ansichtZeigen(id) {
   aktuelleAnsicht = id
+  // Crew-Bereich: Luzzy hört nicht mit (Felix schreibt dort mit den Bots), beim Verlassen wieder wie eingestellt
+  if (crewOffen !== (id === 'crew')) {
+    crewOffen = id === 'crew'
+    hoerModusAnwenden()
+  }
   // Zuletzt offenen Bereich merken (nicht im Testmodus), damit er beim nächsten Start wieder aufgeht
   if (einstellungen && einstellungen.letzteAnsicht !== id && !new URLSearchParams(location.search).has('stumm')) {
     einstellungen.letzteAnsicht = id
@@ -1636,6 +1660,7 @@ function formularFuellen() {
   $('e-hoehe').value = zahl(einstellungen.hoehe)
   $('e-vorlesen').checked = einstellungen.vorlesen
   $('e-freihaendig').checked = einstellungen.sprache.freihaendig !== false
+  $('e-crewstill').checked = einstellungen.sprache.crewStill !== false
   $('e-wake').checked = einstellungen.sprache.aktivierungswort
   $('e-auto-senden').checked = einstellungen.sprache.automatischSenden
   $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
@@ -1685,6 +1710,7 @@ function formularLesen() {
     },
     sprache: {
       freihaendig: $('e-freihaendig').checked,
+      crewStill: $('e-crewstill').checked,
       aktivierungswort: $('e-wake').checked,
       automatischSenden: $('e-auto-senden').checked,
       weiterZuhoeren: $('e-weiter').checked,
