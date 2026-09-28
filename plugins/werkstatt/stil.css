@@ -44,6 +44,13 @@
 .ws-bremse { padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--rot); border-radius: var(--radius); font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
 .ws-bremse-plugin { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; }
 .ws-eingebaut { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 12px; margin-bottom: 8px; border: 1px solid var(--gruen); border-radius: var(--radius); font-size: 13px; }
+/* Eingebaute Plugins: eingeklappt, Klick auf die Überschrift klappt auf */
+.ws-installiert > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.ws-installiert > summary::-webkit-details-marker { display: none; }
+.ws-installiert > summary::before { content: '▸'; color: var(--gold); font-size: 12px; transition: rotate 0.15s; }
+.ws-installiert[open] > summary::before { rotate: 90deg; }
+.ws-installiert[open] > summary { margin-bottom: 6px; }
+.ws-reparieren { white-space: nowrap; }
 .ws-plugin { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--linie, var(--rahmen)); }
 .ws-plugin:last-child { border-bottom: 0; }
 .ws-plugin .ws-aendern { grid-column: 1 / -1; }

@@ -60,7 +60,7 @@ function entwuerfe() {
     .map((e) => {
       const ordner = path.join(WERKSTATT, e.name)
       const m = manifestVon(ordner)
-      const dateien = fs.readdirSync(ordner)
+      const dateien = fs.readdirSync(ordner).filter((d) => !d.startsWith('.'))
       const geaendert = Math.max(fs.statSync(ordner).mtimeMs, ...dateien.map((d) => fs.statSync(path.join(ordner, d)).mtimeMs))
       return { id: e.name, name: m?.name || e.name, beschreibung: m?.beschreibung || '', fertig: Boolean(m) && dateien.includes('ansicht.js'), ersetzt: fs.existsSync(path.join(PLUGINS, e.name)), geaendert, dateien }
     })
@@ -116,6 +116,7 @@ function pruefen(idRoh, { ordnerBasis = WERKSTATT } = {}) {
   if (!fs.existsSync(ordner)) return { id, fehler: ['Den Entwurf gibt es nicht (mehr).'], rechte, internet: [], stufe: 'fehler', dateien: [] }
   const dateien = []
   for (const e of fs.readdirSync(ordner, { withFileTypes: true })) {
+    if (e.name.startsWith('.')) continue // z. B. .testbericht.json (Bericht des Testlaufs für Luzzy)
     if (e.isDirectory()) {
       fehler.push(`Unterordner „${e.name}“ ist nicht vorgesehen.`)
       continue
@@ -193,7 +194,7 @@ function einbauen(idRoh) {
     daten = lesen(path.join(ziel, 'daten.json'))
     fs.rmSync(ziel, { recursive: true, force: true })
   }
-  fs.cpSync(quelle, ziel, { recursive: true })
+  fs.cpSync(quelle, ziel, { recursive: true, filter: (q) => !path.basename(q).startsWith('.') }) // ohne .testbericht.json
   if (daten != null) fs.writeFileSync(path.join(ziel, 'daten.json'), daten, 'utf8') // Felix' Daten behalten
   fs.rmSync(quelle, { recursive: true, force: true })
   testErgebnisse.delete(id)
@@ -239,7 +240,7 @@ async function entfernen(idRoh) {
 const testErgebnisse = new Map() // id → { ok, gestartet, fehler, stand }
 let test = null // { id, fenster, kind, offen: Map(nr → { fertig, fehler, uhr }), nr, info }
 
-const standVon = (ordner) => Math.max(0, ...fs.readdirSync(ordner).map((d) => fs.statSync(path.join(ordner, d)).mtimeMs))
+const standVon = (ordner) => Math.max(0, ...fs.readdirSync(ordner).filter((d) => !d.startsWith('.')).map((d) => fs.statSync(path.join(ordner, d)).mtimeMs))
 const dateiUrl = (datei) => require('node:url').pathToFileURL(datei).href
 
 function testBeenden() {
@@ -379,7 +380,14 @@ function testKanaeleEinrichten() {
   ipcMain.on('werkstatt-test:bericht', (e, b) => {
     const t = vomTest(e)
     if (!t) return
-    testErgebnisse.set(t.id, { ok: Boolean(b?.ok), gestartet: Boolean(b?.gestartet), fehler: Array.isArray(b?.fehler) ? b.fehler.slice(0, 20).map(String) : [], stand: t.stand })
+    const ergebnis = { ok: Boolean(b?.ok), gestartet: Boolean(b?.gestartet), fehler: Array.isArray(b?.fehler) ? b.fehler.slice(0, 20).map(String) : [], stand: t.stand }
+    testErgebnisse.set(t.id, ergebnis)
+    // Für Luzzy: Bericht des Testlaufs in den Entwurf legen (sie liest ihn beim Reparieren)
+    try {
+      fs.writeFileSync(path.join(WERKSTATT, t.id, '.testbericht.json'), JSON.stringify({ zeit: new Date().toISOString(), ok: ergebnis.ok, gestartet: ergebnis.gestartet, fehler: ergebnis.fehler }, null, 2), 'utf8')
+    } catch {
+      // Entwurf gerade weg: egal
+    }
   })
 }
 
@@ -414,3 +422,6 @@ module.exports = (ctx) => {
   ctx.bereitstellen('entfernen', entfernen)
   ctx.bereitstellen('neuStarten', neuStarten)
 }
+// Für das Prüfprogramm (pruefen-cli.js), mit dem Luzzy ihre Entwürfe selbst prüft
+module.exports.pruefen = pruefen
+module.exports.WERKSTATT = WERKSTATT

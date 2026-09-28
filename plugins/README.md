@@ -102,8 +102,11 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 | `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Jarves-OS\Meilensteine.md`) |
 | `werkstatt` | Plugin-Werkstatt: Luzzy baut neue Plugins in `jarves-os\werkstatt\<id>\`, Jarves-OS prüft (Aufbau, `node --check`, Rechte wie Programme starten, Dateien, Internet, Zugangsdaten) und kopiert sie erst nach Felix' Ja nach `plugins\` (altes Plugin nach `backup\`, `daten.json` bleibt) |
 
-**Plugin von Luzzy bauen lassen:** In der Werkstatt beschreiben oder „Bau mir ein Plugin für …“ sagen. Luzzy liest diese
-Anleitung selbst; Entwürfe liegen in `werkstatt\` (nicht im Git-Projekt), bis Felix sie einbaut.
+**Plugin von Luzzy bauen lassen:** In der Werkstatt beschreiben oder „Bau mir ein Plugin für …“ sagen. Luzzy nutzt dafür
+ihren Hermes-Skill `jarves-plugin-werkstatt` (Profil donnerwolf, `skills\productivity\`), prüft sich mit
+`node plugins\werkstatt\pruefen-cli.js <id>` selbst und bessert nach, bis keine Fehler mehr kommen. Felix' Testlauf legt
+seinen Bericht als `.testbericht.json` in den Entwurf; „🔧 Luzzy soll die Fehler beheben“ schickt ihr die Fehler.
+Entwürfe liegen in `werkstatt\` (nicht im Git-Projekt), bis Felix sie nach bestandenem Testlauf einbaut.
 
 ## Stichwörter: Daten automatisch an Luzzy
 

@@ -19,21 +19,28 @@ export async function starten(ctx) {
   const berichte = new Map() // id → Prüfbericht
   let zuletztEingebaut = null
 
-  // ── Aufträge an Luzzy ──
+  // ── Aufträge an Luzzy (Details stehen in ihrem Hermes-Skill „jarves-plugin-werkstatt“) ──
+  const PRUEFEN = `node "${PLUGINS}\\werkstatt\\pruefen-cli.js"`
+  const regeln = (id) => `Nutze dafür deinen Skill jarves-plugin-werkstatt (Aufbau, ctx-Werkzeuge, Design, Regeln). Falls du ihn nicht findest: Anleitung ${PLUGINS}\\README.md, Vorbild ${PLUGINS}\\aufgaben\\.
+Das ist Felix' Freigabe für neue oder geänderte Dateien, aber nur im Ordner ${WERKSTATT}\\${id}\\ . Nichts in ${PLUGINS}\\ schreiben, nichts anderes ändern – Jarves-OS prüft das Plugin, Felix testet es und baut es erst danach ein.
+Prüf dich selbst, bevor du fertig meldest, und behebe alles, bis keine FEHLER mehr kommen:
+${PRUEFEN} ${id}`
   const auftragNeu = (id, wunsch) => `[Plugin-Werkstatt] Felix möchte ein neues Plugin für Jarves-OS: „${wunsch}“
 
-Bau es bitte als Dateien im Ordner ${WERKSTATT}\\${id}\\ . Felix hat das gerade in Jarves-OS beauftragt – das ist seine Freigabe für neue Dateien, aber nur in genau diesem Ordner.
-So gehst du vor:
-1. Lies die Anleitung ${PLUGINS}\\README.md und nimm ${PLUGINS}\\aufgaben\\ als Vorbild (plugin.json, ansicht.js, stil.css). Braucht das Plugin Daten aus dem Internet, schau dir zusätzlich ${PLUGINS}\\wetter\\haupt.js an.
-2. Pflicht: plugin.json mit "id": "${id}", Name, "version": "1.0.0", Beschreibung und "bereich": { "name": … }; ansicht.js mit export async function starten(ctx). Optional stil.css und – nur wenn wirklich nötig, z. B. für Internet – haupt.js.
-3. Alles auf Deutsch, Design wie die anderen Plugins: CSS-Variablen (--gold, --gold-hell, --flaeche, --rahmen, --text, --text-leise, --radius) und Klassen mit einem eigenen kurzen Präfix. Rückfragen mit ctx.bestaetigen, Hinweise mit ctx.hinweis (nie confirm/alert), speichern nur mit ctx.daten.
-4. Kein Zugriff auf Zugangsdaten, Hermes-Einstellungen oder fremde Dateien, keine Programme starten.
-5. Schreib nichts in ${PLUGINS}\\ und ändere nichts anderes: Jarves-OS prüft das Plugin und baut es erst nach Felix' Ja ein.
-Zum Schluss in 2–3 Sätzen: was das Plugin kann und wie man es bedient.`
-  const auftragAendern = (id, wunsch) => `[Plugin-Werkstatt] Ändere bitte das Plugin im Ordner ${WERKSTATT}\\${id}\\ : „${wunsch}“
+Bau es als Dateien im Ordner ${WERKSTATT}\\${id}\\ (plugin.json mit "id": "${id}", ansicht.js, optional stil.css, haupt.js nur wenn nötig).
+${regeln(id)}
+Zum Schluss in 2–3 Sätzen: was das Plugin kann, wie man es bedient, und dass Felix jetzt den Testlauf starten soll.`
+  const auftragAendern = (id, wunsch) => `[Plugin-Werkstatt] Ändere das Plugin im Ordner ${WERKSTATT}\\${id}\\ : „${wunsch}“
 
-Das ist Felix' Freigabe, Dateien in genau diesem Ordner zu ändern oder anzulegen, nirgends sonst. Lies zuerst die vorhandenen Dateien dort und die Anleitung ${PLUGINS}\\README.md. Regeln wie immer: Deutsch, Design über die CSS-Variablen, ctx.bestaetigen/ctx.hinweis statt confirm/alert, speichern nur mit ctx.daten, keine Zugangsdaten, keine Programme starten, nichts in ${PLUGINS}\\ schreiben.
-Zum Schluss kurz, was sich geändert hat.`
+Lies zuerst alle vorhandenen Dateien dort.
+${regeln(id)}
+Zum Schluss kurz, was sich geändert hat, und dass Felix neu testen soll.`
+  const auftragReparieren = (id, fehler) => `[Plugin-Werkstatt] Im Plugin im Ordner ${WERKSTATT}\\${id}\\ gibt es Fehler. Finde die Ursache und behebe sie:
+${fehler.map((f) => `- ${f}`).join('\n')}
+
+Lies dazu die Dateien dort (und .testbericht.json mit dem letzten Testlauf von Felix).
+${regeln(id)}
+Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix neu testen soll.`
 
   async function bauen(wunsch) {
     wunsch = String(wunsch || '').trim()
@@ -49,6 +56,17 @@ Zum Schluss kurz, was sich geändert hat.`
     if (wunsch.length < 3) return
     if (!ctx.bereit()) return ctx.hinweis('Luzzy ist gerade beschäftigt oder nicht verbunden. Gleich nochmal versuchen.', { titel: 'Werkstatt' })
     await ctx.luzzy(auftragAendern(id, wunsch), { anzeige: `🛠 Werkstatt – ${id} ändern: ${wunsch}`, ansichtWechseln: false })
+    berichte.delete(id)
+    await laden()
+  }
+  // Luzzy behebt die Fehler selbst (aus der Prüfung und aus Felix' Testlauf)
+  async function reparieren(id) {
+    if (!ctx.bereit()) return ctx.hinweis('Luzzy ist gerade beschäftigt oder nicht verbunden. Gleich nochmal versuchen.', { titel: 'Werkstatt' })
+    const b = berichte.get(id) || (await ctx.aufrufen('pruefen', id))
+    const t = await ctx.aufrufen('testErgebnis', id)
+    const fehler = [...(b?.fehler || []), ...(t && !t.ok && !t.veraltet ? (t.fehler.length ? t.fehler.map((f) => `Testlauf: ${f}`) : ['Testlauf: Das Plugin ist nicht gestartet.']) : [])]
+    if (!fehler.length) return ctx.hinweis('Gerade sind keine Fehler bekannt. Mach erst einen Testlauf.', { titel: 'Werkstatt' })
+    await ctx.luzzy(auftragReparieren(id, fehler), { anzeige: `🔧 Werkstatt – Fehler in ${id} beheben (${fehler.length})`, ansichtWechseln: false })
     berichte.delete(id)
     await laden()
   }
@@ -68,10 +86,10 @@ Zum Schluss kurz, was sich geändert hat.`
         <h3>In der Werkstatt</h3>
         <div data-entwuerfe></div>
       </section>
-      <section class="hud ws-installiert">
-        <h3>Eingebaute Plugins</h3>
+      <details class="hud ws-installiert" data-liste>
+        <summary><h3>Eingebaute Plugins</h3><span class="leise klein" data-anzahl></span></summary>
         <div data-installiert></div>
-      </section>
+      </details>
     </div>`
   const $ = (sel) => ctx.element.querySelector(sel)
 
@@ -86,7 +104,7 @@ Zum Schluss kurz, was sich geändert hat.`
     if (t.laeuft && !t.gestartet && !t.fehler.length) return '<div class="ws-test ws-test-offen">🧪 Testlauf läuft … (Fenster ist offen)</div>'
     if (t.veraltet) return '<div class="ws-test ws-test-offen">🧪 Luzzy hat seit dem Test etwas geändert. Bitte nochmal testen.</div>'
     if (t.ok) return `<div class="ws-test ws-test-ok">🧪 Testlauf: ✓ läuft ohne Fehler${t.laeuft ? ' (Fenster noch offen)' : ''}</div>`
-    return `<div class="ws-test ws-test-fehler">🧪 Testlauf: ✗ ${t.fehler.length ? `${t.fehler.length} Fehler` : 'nicht gestartet'}${t.fehler.length ? `<ul>${t.fehler.slice(0, 4).map((f) => `<li>${m(f)}</li>`).join('')}</ul>` : ''}Tipp: „Nochmal ändern …“ und Luzzy den Fehler nennen.</div>`
+    return `<div class="ws-test ws-test-fehler">🧪 Testlauf: ✗ ${t.fehler.length ? `${t.fehler.length} Fehler` : 'nicht gestartet'}${t.fehler.length ? `<ul>${t.fehler.slice(0, 4).map((f) => `<li>${m(f)}</li>`).join('')}</ul>` : ''}Klick auf „🔧 Luzzy soll die Fehler beheben“ – sie bekommt die Fehler gleich mit.</div>`
   }
 
   async function laden() {
@@ -105,6 +123,8 @@ Zum Schluss kurz, was sich geändert hat.`
         if (!e.fertig) return `<article class="ws-karte ws-baut"><div class="ws-kopf"><b>${m(e.name)}</b><span class="ws-marke">⏳ Luzzy baut noch …</span></div><div class="leise klein">${e.dateien.length ? `Bisher: ${m(e.dateien.join(', '))}` : 'Noch keine Dateien.'}</div><div class="ws-knoepfe"><button class="knopf-flach gefahr" data-verwerfen="${m(e.id)}" type="button">Verwerfen</button></div></article>`
         const b = berichte.get(e.id)
         const [titel, erklaerung] = STUFE[b.stufe]
+        const t = tests.get(e.id)
+        const hatFehler = b.stufe === 'fehler' || (t && !t.ok && !t.veraltet && !(t.laeuft && !t.gestartet && !t.fehler.length))
         return `<article class="ws-karte ws-stufe-${b.stufe}">
           <div class="ws-kopf"><b>${m(b.name)}</b>${b.ersetzt ? '<span class="ws-marke">Änderung eines eingebauten Plugins</span>' : '<span class="ws-marke">Neu</span>'}<span class="ws-stufe">${titel}</span></div>
           ${b.beschreibung ? `<div class="ws-text">${m(b.beschreibung)}</div>` : ''}
@@ -112,6 +132,7 @@ Zum Schluss kurz, was sich geändert hat.`
           ${rechteHtml(b)}
           ${b.stufe === 'fehler' ? '' : testHtml(e, tests.get(e.id))}
           <div class="ws-knoepfe">
+            ${hatFehler ? `<button class="knopf-gold ws-reparieren" data-reparieren="${m(e.id)}" type="button">🔧 Luzzy soll die Fehler beheben</button>` : ''}
             <button class="knopf-flach ws-test-knopf" data-testen="${m(e.id)}" type="button" ${b.stufe === 'fehler' ? 'disabled' : ''}>🧪 Testlauf starten</button>
             <button class="knopf-gold" data-einbauen="${m(e.id)}" type="button" ${b.stufe === 'fehler' || !tests.get(e.id)?.ok || tests.get(e.id)?.veraltet ? 'disabled title="Erst den Testlauf ohne Fehler bestehen"' : ''}>Ja, einbauen</button>
             <button class="knopf-flach" data-aendern-form="${m(e.id)}" type="button">Nochmal ändern …</button>
@@ -123,6 +144,7 @@ Zum Schluss kurz, was sich geändert hat.`
         </article>`
       }).join('')
       : '<div class="leise">Gerade nichts in Arbeit. Bestell oben ein neues Plugin oder lass unten ein vorhandenes ändern.</div>')
+    $('[data-anzahl]').textContent = `(${installierte.length})`
     $('[data-installiert]').innerHTML = installierte.map((p) => `
       <div class="ws-plugin">
         <div><b>${m(p.name)}</b> <span class="leise klein">${m(p.version)}</span><div class="leise klein">${m(p.beschreibung)}</div></div>
@@ -154,6 +176,7 @@ Zum Schluss kurz, was sich geändert hat.`
     if (!k) return
     try {
       if (k.dataset.neustart != null) return ctx.aufrufen('neuStarten')
+      if (k.dataset.reparieren) return reparieren(k.dataset.reparieren)
       if (k.dataset.testen) {
         await ctx.aufrufen('testStarten', k.dataset.testen)
         return laden()

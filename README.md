@@ -306,7 +306,7 @@ Je ein Ordner in `plugins\<id>\` – eigener Bereich links, optional eine Karte 
 | **Fokus** | Pomodoro-Timer mit Hintergrundklang; in der Fokuszeit stört Luzzy nicht |
 | **Wetter** | Jetzt und 7 Tage für deinen Ort (Open-Meteo, kostenlos, ohne Konto; übertragen wird nur der Ort) |
 | **Meilensteine** | Bestellungen insgesamt, der nächste Meilenstein und alle erreichten (Liste auch im Vault) |
-| **Werkstatt** | Neue Plugins in eigenen Worten bestellen („Bau mir ein Plugin für …“): Luzzy baut sie in `werkstatt\`, Jarves-OS prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht), eingebaut wird erst nach deinem Ja (altes Plugin gesichert, deine Daten bleiben). **Vorher Pflicht: Testlauf** in einem eigenen Fenster (Plugin wie echt ausprobieren; Daten nur simuliert, Hintergrundteil in einem eigenen Prozess – Absturz oder Aufhängen betrifft nur den Test). **Notbremse:** Startet Jarves-OS nach dem Einbauen nicht richtig, wird das neue Plugin beim nächsten Start automatisch abgeschaltet. Auch eingebaute Plugins ändern lassen oder entfernen; danach Jarves-OS neu starten (Knopf) |
+| **Werkstatt** | Neue Plugins in eigenen Worten bestellen („Bau mir ein Plugin für …“): Luzzy baut sie in `werkstatt\`, Jarves-OS prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht), eingebaut wird erst nach deinem Ja (altes Plugin gesichert, deine Daten bleiben). **Vorher Pflicht: Testlauf** in einem eigenen Fenster (Plugin wie echt ausprobieren; Daten nur simuliert, Hintergrundteil in einem eigenen Prozess – Absturz oder Aufhängen betrifft nur den Test). **Notbremse:** Startet Jarves-OS nach dem Einbauen nicht richtig, wird das neue Plugin beim nächsten Start automatisch abgeschaltet. **Luzzy repariert selbst:** Sie baut mit ihrem Hermes-Skill `jarves-plugin-werkstatt`, prüft sich mit dem Prüfprogramm und liest die Fehler aus deinem Testlauf; „🔧 Luzzy soll die Fehler beheben“ schickt sie ihr. Auch eingebaute Plugins ändern lassen oder entfernen; danach Jarves-OS neu starten (Knopf) |
 
 Plugin-Daten (`plugins\*\daten.json`) bleiben lokal und gehören nicht ins Git-Projekt.
 
@@ -328,6 +328,7 @@ Knopf „Einstellungen“ unten links. Gespeichert in `daten\einstellungen.json`
 | Wo | Was |
 |---|---|
 | `profiles\donnerwolf\config.yaml` | Spracherkennung Deutsch, Aktivierungswort „hey luzzy“ |
+| `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) |
 | `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`) |
 | `config.yaml` / `.env` (Hermes und Profile) | Shopify-Token – nur über System → Shopify-Zugang |
 
