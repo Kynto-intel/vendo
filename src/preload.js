@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('jarves', {
     crewOeffnen: () => ipcRenderer.invoke('hermes:crewOeffnen'),
     botOeffnen: (kanal) => ipcRenderer.invoke('hermes:botOeffnen', kanal),
     kanalNeuLaden: (kanal) => ipcRenderer.invoke('hermes:kanalNeuLaden', kanal),
+    sitzungenMitTitel: (titel, profil) => ipcRenderer.invoke('hermes:sitzungenMitTitel', titel, profil),
     botBild: (profil) => ipcRenderer.invoke('crew:bild', profil),
     lesen: (pfad) => ipcRenderer.invoke('hermes:lesen', pfad),
     aktion: (art, daten) => ipcRenderer.invoke('hermes:aktion', art, daten),

@@ -155,7 +155,12 @@ async function sitzungFinden(profil) {
   const s = sitzung[profil]
   if (s && Date.now() - s.zeit < 60000) return s.id
   const d = await api.hermes.lesen(`/api/sessions?profile=${encodeURIComponent(profil)}&order=recent&limit=30`).catch(() => null)
-  const bc = (d?.sessions || []).find((x) => String(x.title || '').trim().toLowerCase() === BOT_CHAT)
+  let bc = (d?.sessions || []).find((x) => String(x.title || '').trim().toLowerCase() === BOT_CHAT)
+  // Hermes versteckt den Bot Chat (hidden) und lässt ihn in /api/sessions weg: dann über den Titel suchen
+  if (!bc) {
+    const t = (await api.hermes.sitzungenMitTitel('Bot Chat', profil).catch(() => []))[0]
+    if (t) bc = { id: t.id, last_active: t.zuletzt }
+  }
   sitzung[profil] = { id: bc ? bc.resolved_id || bc.id : null, zeit: Date.now(), aktiv: zeitMs(bc?.last_active || bc?.updated_at) }
   return sitzung[profil].id
 }

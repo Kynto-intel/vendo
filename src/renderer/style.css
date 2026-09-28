@@ -1291,3 +1291,100 @@ body.datei-drueber .datei-ablage { display: grid; }
 .bf-form textarea { flex: 1; min-width: 0; resize: none; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 8px 10px; font: inherit; font-size: 13px; color: var(--text); outline: none; max-height: 120px; }
 .bf-form textarea:focus { border-color: var(--gold); }
 .bf-senden { padding: 8px 14px; }
+
+/* ── Cockpit in der Zentrale (cockpit.js) ── */
+.ansicht-zentrale.mit-cockpit { justify-content: flex-start; overflow-y: auto; padding-top: 50px; gap: 14px; }
+.ansicht-zentrale.mit-cockpit .reaktor-rahmen { width: min(170px, 20vh); height: min(170px, 20vh); }
+/* Eingabe bleibt immer unten sichtbar, der Rest darüber scrollt */
+.ansicht-zentrale.mit-cockpit { padding-bottom: 0; }
+.ansicht-zentrale.mit-cockpit .befehl { margin-top: auto; position: sticky; bottom: 14px; z-index: 5; box-shadow: 0 -18px 30px 6px var(--mitte, #131315); }
+.ansicht-zentrale.mit-cockpit .luzzy-bereich { gap: 4px; }
+.ansicht-zentrale.mit-cockpit .luzzy-name { font-size: 22px; }
+.cockpit { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 12px; flex: none; }
+.cockpit[hidden] { display: none; }
+.ck-titel { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-leise); }
+
+/* Instrumente */
+.ck-instrumente { position: relative; display: grid; grid-template-columns: 1fr 200px 1fr; grid-template-areas: "links mitte rechts" "leiste leiste leiste"; gap: 12px 16px; padding: 14px; border: 1px solid var(--rahmen); border-radius: calc(var(--radius) * 2); background: radial-gradient(ellipse 60% 90% at 50% 40%, rgba(201, 161, 74, 0.07), transparent 70%), linear-gradient(180deg, #121214, #0c0c0e); overflow: hidden; }
+.ck-fluegel { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border: 1px solid var(--rahmen); background: linear-gradient(135deg, rgba(201, 161, 74, 0.1), rgba(201, 161, 74, 0.02) 60%); min-width: 0; }
+.ck-fluegel.links { grid-area: links; border-radius: calc(var(--radius) * 2) 8px 8px calc(var(--radius) * 2); clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%); padding-right: 12%; }
+.ck-fluegel.rechts { grid-area: rechts; align-items: flex-end; text-align: right; border-radius: 8px calc(var(--radius) * 2) calc(var(--radius) * 2) 8px; clip-path: polygon(0 0, 100% 0, 100% 100%, 8% 100%); padding-left: 12%; background: linear-gradient(225deg, rgba(201, 161, 74, 0.1), rgba(201, 161, 74, 0.02) 60%); }
+.ck-gross { font-size: clamp(26px, 3.4vw, 40px); font-weight: 300; color: var(--text); line-height: 1.05; letter-spacing: -0.01em; }
+.ck-fluegel small { font-size: 11px; color: var(--text-leise); }
+.ck-linie { width: min(160px, 100%); height: 34px; margin-top: 6px; overflow: visible; }
+.ck-linie polyline { fill: none; stroke: var(--gold); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.ck-linie line.leer { stroke: var(--rahmen); stroke-dasharray: 3 4; }
+.ck-mitte { grid-area: mitte; position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.ck-kreis { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ck-kreis .aussen { fill: none; stroke: var(--rahmen); stroke-width: 1; }
+.ck-kreis .punkte { fill: none; stroke: var(--gold); stroke-width: 2; stroke-dasharray: 1 4; stroke-linecap: round; opacity: 0.8; }
+.anim-reaktor .ck-kreis .punkte { animation: ck-drehen 60s linear infinite; transform-origin: 50% 50%; }
+@keyframes ck-drehen { to { transform: rotate(360deg); } }
+.ck-zahl { position: relative; font-size: 40px; font-weight: 300; color: var(--text); line-height: 1; }
+.ck-mitte .ck-titel { position: relative; font-size: 8.5px; }
+.ck-status { position: relative; margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--rahmen); border-radius: 999px; background: rgba(12, 12, 14, 0.85); font-size: 10.5px; color: var(--text); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-status i, .ck-punkt { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--gruen); box-shadow: 0 0 6px var(--gruen); display: inline-block; }
+.ck-status.eingeschraenkt i, .ck-punkt.eingeschraenkt { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+.ck-status.gestoert i, .ck-punkt.gestoert { background: var(--rot); box-shadow: 0 0 6px var(--rot); }
+.ck-leiste { grid-area: leiste; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rahmen); border-radius: var(--radius); background: rgba(12, 12, 14, 0.6); }
+.ck-zelle { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ck-zelle + .ck-zelle { border-left: 1px solid var(--rahmen); }
+.ck-zelle-kopf { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); }
+.ck-zelle-kopf b { font-weight: 500; color: var(--text); letter-spacing: 0.02em; text-transform: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ck-balken { height: 3px; border-radius: 2px; background: var(--rahmen); overflow: hidden; }
+.ck-balken > div { height: 100%; background: linear-gradient(90deg, var(--gold-dunkel), var(--gold)); }
+.ck-balken.voll > div { background: var(--rot); }
+
+/* Agenten-Orchestrierung */
+.ck-orchester { padding: 12px 14px 14px; border: 1px solid var(--rahmen); border-radius: calc(var(--radius) * 2); background: var(--flaeche); }
+.ck-orchester-kopf { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.ck-link { background: none; border: 0; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-hell); }
+.ck-chef { margin: 0 auto; width: min(320px, 100%); display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--rahmen); border-radius: calc(var(--radius) * 2); background: var(--eingabe); cursor: pointer; box-sizing: border-box; }
+.ck-chef:hover { border-color: var(--gold-dunkel); }
+.ck-chef-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ck-chef-text b { font-size: 13.5px; }
+.ck-chef-text small, .ck-chef-zahl small { font-size: 10.5px; color: var(--text-leise); }
+.ck-chef-zahl { display: flex; flex-direction: column; align-items: flex-end; }
+.ck-chef-zahl b { font-size: 18px; font-weight: 300; }
+.ck-chef-zahl small { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+.ck-avatar { flex: none; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; border: 2px solid var(--gold-dunkel); background: var(--flaeche); color: var(--gold-hell); font-weight: 600; }
+.ck-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ck-avatar.aktiv { border-color: var(--gold); box-shadow: 0 0 12px -2px var(--gold); }
+.ck-verbinder { display: block; width: 100%; height: 26px; overflow: visible; }
+.ck-verbinder path { fill: none; stroke: var(--gold-dunkel); stroke-width: 1.2; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.ck-bots { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; }
+.ck-bot { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--rahmen); border-radius: calc(var(--radius) * 2); background: radial-gradient(circle at 100% 0, rgba(201, 161, 74, 0.1), transparent 45%), var(--eingabe); cursor: pointer; min-width: 0; }
+.ck-bot:hover { border-color: var(--gold-dunkel); }
+.ck-bot.aktiv { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-dunkel), 0 0 18px -6px var(--gold); }
+.ck-bot-kopf { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.ck-bot-kopf > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ck-bot-kopf b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-bot-kopf small { font-size: 10.5px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-bot.aktiv .ck-bot-kopf small { color: var(--gold-hell); }
+.ck-nr { align-self: flex-start; font-family: var(--mono); font-size: 10px; color: var(--text-leise); }
+.ck-bot-mitte { display: flex; align-items: center; gap: 12px; }
+.ck-ring-box { position: relative; flex: none; width: 42px; height: 42px; display: grid; place-items: center; }
+.ck-ring { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ck-ring .spur { fill: none; stroke: var(--rahmen); stroke-width: 3; }
+.ck-ring .wert { fill: none; stroke: var(--gold); stroke-width: 3; stroke-linecap: round; }
+.ck-ring-zahl { position: relative; font-size: 10px; color: var(--text); }
+.ck-bot-balken { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ck-bot-balken b { font-size: 16px; font-weight: 400; line-height: 1; }
+.ck-bot-fuss { display: flex; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--rahmen); }
+.ck-bot-fuss > div { display: flex; flex-direction: column; gap: 2px; }
+.ck-bot-fuss > div:last-child { align-items: flex-end; }
+.ck-bot-fuss b { font-size: 14px; font-weight: 400; }
+
+/* Schmale Mitte: Flügel ohne Schräge, Systemleiste 2 × 2, Bots in zwei Spalten */
+@container mitte (max-width: 760px) {
+  .ck-instrumente { grid-template-columns: 1fr 150px 1fr; }
+  .ck-fluegel { padding: 12px; }
+  .ck-fluegel.links, .ck-fluegel.rechts { clip-path: none; padding-left: 12px; padding-right: 12px; }
+  .ck-zahl { font-size: 30px; }
+  .ck-leiste { grid-template-columns: repeat(2, 1fr); }
+  .ck-zelle:nth-child(3) { border-left: 0; }
+  .ck-zelle:nth-child(n + 3) { border-top: 1px solid var(--rahmen); }
+  .ck-bots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ck-verbinder { display: none; }
+  .ck-chef { margin-bottom: 10px; }
+}

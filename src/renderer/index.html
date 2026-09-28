@@ -67,6 +67,8 @@
         <ul class="suche-liste hud" id="suche-liste" hidden></ul>
         <!-- Zentrale: Luzzy -->
         <section class="ansicht ansicht-zentrale" data-ansicht="zentrale">
+          <!-- Cockpit (src/renderer/cockpit.js): Instrumente und Agenten-Orchestrierung, abschaltbar unter Einstellungen → Aussehen -->
+          <section class="cockpit" id="cockpit"></section>
           <section class="luzzy-bereich">
             <div class="reaktor-rahmen" id="reaktor-rahmen"></div>
             <div class="luzzy-name">LUZZY</div>
@@ -465,6 +467,7 @@
             <label class="haken"><input id="e-anim-scanlinie" type="checkbox" /> Scanlinie</label>
             <label class="haken"><input id="e-anim-hintergrund" type="checkbox" /> Hintergrund-Raster</label>
             <label class="haken"><input id="e-tageszeit" type="checkbox" /> Farben nach Tageszeit (morgens heller, abends wärmer)</label>
+            <label class="haken"><input id="e-cockpit" type="checkbox" /> Cockpit in der Zentrale (Instrumente und Agenten-Orchestrierung)</label>
             <label class="haken"><input id="e-start-intro" type="checkbox" /> Startsequenz beim Öffnen</label>
             <label class="haken"><input id="e-start-gruss" type="checkbox" /> Luzzy begrüßt mich beim Start</label>
           </fieldset>

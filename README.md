@@ -143,7 +143,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 
 | Gruppe | Bereich | Was er kann |
 |---|---|---|
-| **Luzzy** | **Zentrale** | Reaktor (bewegt sich mit Luzzys Stimme), Untertitel, Gespräch, Schnellbefehle, Eingabe. 📌 an jeder Antwort merkt sie im Vault |
+| **Luzzy** | **Zentrale** | **Cockpit** (siehe unten), Reaktor (bewegt sich mit Luzzys Stimme), Untertitel, Schnellbefehle, Eingabe. 📌 an jeder Antwort merkt sie im Vault |
 | | **Crew** | Bot-Karten, Normaler Chat, Bot Mode, Arbeitsbühne (siehe unten) |
 | **Automation** | **Jobs** | Hermes-Jobs ansehen, ausführen, pausieren, löschen (mit Rückfrage) |
 | | **Kanban** | Hermes-Kanban-Board |
@@ -152,6 +152,19 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 | **Wissen** | **Wissen** | Der Obsidian-Vault (`Documents\Donnerwolf`) zum Lesen, mit Morgenbericht |
 | | **Bibliothek** · **Entscheidungen** · **Dateien** | Nachschlagen, offene Entscheidungen, Dokumente – nur lesend |
 | **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Kosten-Wächter**, **Shopify-Zugang**, **Selbsttest** |
+
+**Cockpit in der Zentrale** – auf einen Blick sehen, was los ist (abschaltbar: Einstellungen → Aussehen):
+
+- **Instrumente:** Erfolgsquote der Agenten (mit Verlauf der letzten 14 Tage) · **Mission Control** mit der Zahl der
+  Aufträge der letzten 30 Tage und dem Systemstatus · Ø Bearbeitungszeit (vom Auftrag bis zur fertigen Antwort) ·
+  darunter Systemstatus, CPU, RAM und Festplatte.
+- **Agenten-Orchestrierung:** Luzzy als Chefin oben (mit „arbeiten gerade“), darunter die 4 aktivsten Bots mit Anteil
+  an den Aufträgen der letzten 24 Stunden, Ø Antwortzeit und Sitzungen. Ein Bot, der gerade arbeitet, leuchtet gold.
+  Klick auf einen Bot öffnet das kleine Chat-Fenster.
+- **So wird gerechnet** (Hermes selbst führt keine Erfolgsquote): Ein Auftrag ist jede Nachricht an einen Agenten – von
+  dir oder von einem anderen Bot. Erfolgreich, wenn danach eine fertige Antwort kommt; gescheitert, wenn keine kommt.
+  Ein gescheiterter Auftrag in den letzten 24 Stunden oder ein nicht erreichbarer Dienst setzt den Status auf
+  „Eingeschränkt“, ohne Hermes auf „Gestört“. Jarves-OS rechnet nur, solange die Zentrale zu sehen ist.
 
 **Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):
 

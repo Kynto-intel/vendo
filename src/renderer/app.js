@@ -27,6 +27,7 @@ import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.j
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
 import { kostenEinrichten } from './kosten.js'
+import { cockpitEinrichten, cockpitAnzeigen, cockpitAnstossen } from './cockpit.js'
 import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, notizOeffnen, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
@@ -1233,6 +1234,7 @@ $('griff').addEventListener('pointerdown', (e) => {
 // ── Hermes-Ereignisse ──
 api.hermes.beiEreignis((ev) => {
   if (ev.type === 'request.cancel') return freigabeZurueckgezogen(ev.payload?.id) // Hermes hat eine Rückfrage zurückgezogen
+  if (ev.type === 'message.start' || ev.type === 'message.complete') cockpitAnstossen() // Cockpit: Aufträge und „arbeitet“ neu rechnen
   if (ev.kanal && ev.kanal !== 'zentrale') return crewEreignis(ev) // Crew-Tab: Luzzys Bot Chat und die Bot-Gespräche
   const p = ev.payload || {}
   switch (ev.type) {
@@ -1576,6 +1578,15 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
+// Cockpit in der Zentrale (siehe cockpit.js): Instrumente oben, Luzzy und die aktivsten Bots darunter
+cockpitEinrichten({
+  api,
+  verbunden: () => verbunden,
+  botFenster: botFensterOeffnen,
+  crewOeffnen: () => ansichtZeigen('crew'),
+  zentraleSichtbar: () => aktuelleAnsicht === 'zentrale'
+})
+
 // Kosten-Wächter im System-Tab, warnt bei 80 % / 100 % des Budgets (siehe kosten.js)
 kostenEinrichten({
   api,
@@ -1759,6 +1770,7 @@ function animationenAnwenden() {
   document.body.classList.toggle('anim-welle', a.welle)
   document.body.classList.toggle('anim-scanlinie', a.scanlinie)
   document.body.classList.toggle('anim-hintergrund', a.hintergrund)
+  cockpitAnzeigen(einstellungen.cockpit !== false)
 }
 
 function formularFuellen() {
@@ -1786,6 +1798,7 @@ function formularFuellen() {
   mikrofonStatusZeigen(mikrofon.zustand())
   for (const k of ['reaktor', 'welle', 'scanlinie', 'hintergrund']) $(`e-anim-${k}`).checked = einstellungen.animationen[k]
   $('e-tageszeit').checked = einstellungen.tageszeitFarben !== false
+  $('e-cockpit').checked = einstellungen.cockpit !== false
   $('e-start-intro').checked = einstellungen.start?.intro !== false
   $('e-start-gruss').checked = einstellungen.start?.begruessung !== false
   reglerAnzeigen()
@@ -1836,7 +1849,8 @@ function formularLesen() {
       begruessung: $('e-start-gruss').checked
     },
     karten: kartenFormularLesen() ?? einstellungen.karten,
-    tageszeitFarben: $('e-tageszeit').checked
+    tageszeitFarben: $('e-tageszeit').checked,
+    cockpit: $('e-cockpit').checked
   }
 }
 
@@ -2051,6 +2065,7 @@ async function start() {
   const s = await api.hermes.status()
   if (s.zustand === 'bereit') crewBotsLaden().catch(() => {}) // Namen der Bots für „Kira, …“
   if (s.zustand === 'bereit') buehneStarten().catch(() => {}) // Karte „Crew live“ rechts mitlesen lassen
+  if (s.zustand === 'bereit') cockpitAnstossen() // Cockpit: gleich mit den Zahlen loslegen
   if (s.zustand === 'bereit') verlaufZeigen((await api.hermes.verlaufHolen('zentrale'))?.verlauf)
   statusZeigen({ zustand: s.zustand, text: s.text })
   breiteSetzen(einstellungen.panel?.breite || 460)

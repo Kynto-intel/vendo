@@ -188,6 +188,12 @@ ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
 ipcMain.handle('hermes:botOeffnen', (_e, kanal) => hermes.botOeffnen(String(kanal || '')))
+// Gespräche mit einem bestimmten Titel finden (auch versteckte wie Luzzys „Bot Chat“, die /api/sessions weglässt)
+ipcMain.handle('hermes:sitzungenMitTitel', async (_e, titel, profil) => {
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(String(profil))) throw new Error('Unbekanntes Profil.')
+  const r = await hermes.rpc('session.list', { title: String(titel || '').slice(0, 120), profile: String(profil) })
+  return (r?.sessions || []).map((s) => ({ id: s.resolved_id || s.id, titel: s.title, zuletzt: s.last_active || s.last_activity_at || s.started_at }))
+})
 ipcMain.handle('hermes:kanalNeuLaden', (_e, kanal) => hermes.kanalNeuLaden(String(kanal || '')))
 // Bild eines Bots: hermes\profiles\<profil>\assets\avatar.(png|jpg|jpeg|webp) als data:-Adresse (nur lesen)
 ipcMain.handle('crew:bild', (_e, profil) => {
