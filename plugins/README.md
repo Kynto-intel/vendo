@@ -100,6 +100,10 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 | `aufgaben` | To-do-Liste mit Fälligkeit („Neue Aufgabe: … bis Freitag“, „Erledigt: …“), Erinnerung über Luzzy-Meldung, Begrüßung, Kontext für Luzzy, Karte „Aufgaben“ (anfangs aus, Einstellungen → Rechte Spalte) |
 | `fokus` | Pomodoro-Timer (Fokus, Pause, lange Pause) mit Hintergrundklang (Rauschen, Regen), in der Fokuszeit „Nicht stören“; „Fokus 50 Minuten“, „Fokus beenden“ |
 | `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Jarves-OS\Meilensteine.md`) |
+| `werkstatt` | Plugin-Werkstatt: Luzzy baut neue Plugins in `jarves-os\werkstatt\<id>\`, Jarves-OS prüft (Aufbau, `node --check`, Rechte wie Programme starten, Dateien, Internet, Zugangsdaten) und kopiert sie erst nach Felix' Ja nach `plugins\` (altes Plugin nach `backup\`, `daten.json` bleibt) |
+
+**Plugin von Luzzy bauen lassen:** In der Werkstatt beschreiben oder „Bau mir ein Plugin für …“ sagen. Luzzy liest diese
+Anleitung selbst; Entwürfe liegen in `werkstatt\` (nicht im Git-Projekt), bis Felix sie einbaut.
 
 ## Stichwörter: Daten automatisch an Luzzy
 

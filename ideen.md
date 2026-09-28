@@ -167,9 +167,12 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
 
 ### ⚡⚡⚡ Groß: mehrere Tage, eher ein eigenes Projekt (6 Ideen)
 
-34. 🆕 **Plugin-Werkstatt** (Killer) – Felix beschreibt in eigenen Worten, was er braucht („ein Plugin für meine
-    Stoffvorräte“). Code-Bot baut es im Plugin-Ordner, Felix sieht eine Vorschau, aktiv wird es erst nach seinem Ja.
-    Jarves baut sich selbst weiter.
+34. ✅ **Plugin-Werkstatt** (Killer, gebaut 28.09.2026) – Felix beschreibt in eigenen Worten, was er braucht („Bau mir ein
+    Plugin für meine Stoffvorräte“). **Luzzy** baut es in `jarves-os\werkstatt\<id>\` (nie direkt in plugins\), Jarves-OS
+    prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht) und baut es erst nach Felix' Ja ein
+    (altes Plugin wird gesichert, daten.json bleibt). „Nochmal ändern“, „Code ansehen“, „Verwerfen“; eingebaute Plugins
+    ändern lassen oder entfernen. Plugins dürfen alles, was sie brauchen (auch haupt.js), mit deutlicher Warnung.
+    Selbst ein Plugin (`plugins\werkstatt\`), in Hermes wurde nichts geändert.
 35. **Produktideen-Schmiede** (Killer) – Recherche-Bot sucht Trends (Wikinger, Norse, Runen, Serien wie Vikings),
     Schreib-Bot macht Text und Namen, daraus wird ein fertiger Produktentwurf zum Absegnen.
 36. **Social-Planer** (Plugin) – Kalender für Instagram- und Facebook-Posts: Entwürfe von Schreib-Bot, Bild dazu,

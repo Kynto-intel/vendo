@@ -1,0 +1,7 @@
+{
+  "id": "werkstatt",
+  "name": "Werkstatt",
+  "version": "1.0.0",
+  "beschreibung": "Neue Plugins in eigenen Worten bestellen: Luzzy baut sie, Jarves-OS prüft sie, eingebaut wird erst nach deinem Ja. Auch vorhandene Plugins ändern lassen.",
+  "bereich": { "name": "Werkstatt" }
+}

@@ -306,6 +306,7 @@ Je ein Ordner in `plugins\<id>\` – eigener Bereich links, optional eine Karte 
 | **Fokus** | Pomodoro-Timer mit Hintergrundklang; in der Fokuszeit stört Luzzy nicht |
 | **Wetter** | Jetzt und 7 Tage für deinen Ort (Open-Meteo, kostenlos, ohne Konto; übertragen wird nur der Ort) |
 | **Meilensteine** | Bestellungen insgesamt, der nächste Meilenstein und alle erreichten (Liste auch im Vault) |
+| **Werkstatt** | Neue Plugins in eigenen Worten bestellen („Bau mir ein Plugin für …“): Luzzy baut sie in `werkstatt\`, Jarves-OS prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht), eingebaut wird erst nach deinem Ja (altes Plugin gesichert, deine Daten bleiben). Auch eingebaute Plugins ändern lassen oder entfernen; danach Jarves-OS neu starten (Knopf) |
 
 Plugin-Daten (`plugins\*\daten.json`) bleiben lokal und gehören nicht ins Git-Projekt.
 
