@@ -162,6 +162,7 @@ function zeichnen() {
   for (const k of $('crew-modus').querySelectorAll('[data-modus]')) k.classList.toggle('an', k.dataset.modus === modus)
   $('crew-bots').hidden = true // Bot-Auswahl läuft über die Karten oben (der gewählte Bot ist dort hervorgehoben)
   kartenMarkieren()
+  werZeigen() // Kopf links: Bild, Name, Rolle des gewählten Bots
   if (modus === 'buehne') {
     $('crew-chat-hinweis').textContent = 'Live: wer gerade woran arbeitet und was die Bots einander übergeben. Klick auf eine Zeile zeigt alles.'
     return
@@ -471,3 +472,55 @@ function botFensterEinrichten() {
     wechseln()
   })
 }
+
+// ── Neuer Aufbau (links Chat, rechts Bots): Kopf mit dem gewählten Bot, „Bot finden …“, Netzwerk-Karte ──
+const werBilder = {}
+function werZeigen() {
+  const bildEl = $('crew-wer-bild')
+  if (!bildEl) return
+  if (modus === 'buehne') {
+    bildEl.textContent = '🎬'
+    $('crew-wer-name').textContent = 'Arbeitsbühne'
+    $('crew-wer-rolle').textContent = 'Live sehen, wie die Crew zusammenarbeitet'
+    return
+  }
+  const bot = botVon(gewaehlt[modus])
+  $('crew-wer-name').textContent = bot.name || 'Crew'
+  $('crew-wer-rolle').textContent = [bot.rolle, modus === 'botchat' ? 'Bot Mode' : 'Normaler Chat'].filter(Boolean).join(' · ')
+  const profil = bot.profil
+  const zeigen = () => (werBilder[profil] ? (bildEl.innerHTML = `<img src="${werBilder[profil]}" alt="" />`) : (bildEl.textContent = (bot.name || '?').charAt(0)))
+  zeigen()
+  if (profil && !(profil in werBilder)) {
+    werBilder[profil] = ''
+    h.api?.hermes.botBild(profil).then((b) => {
+      werBilder[profil] = b?.bild || ''
+      if (botVon(gewaehlt[modus]).profil === profil && modus !== 'buehne') zeigen()
+    }).catch(() => {})
+  }
+}
+
+// Bot-Liste rechts filtern (die Karten werden regelmäßig neu gezeichnet: danach Filter wieder anwenden)
+function crewFiltern() {
+  const text = String($('crew-finden')?.value || '').trim().toLowerCase()
+  for (const k of document.querySelectorAll('#crew-karten article.bot[data-profil]')) {
+    k.hidden = Boolean(text) && !k.textContent.toLowerCase().includes(text) && !k.dataset.profil.includes(text)
+  }
+}
+
+// Netzwerk-Karte unten rechts: wie viele Bots, wie viele arbeiten gerade
+function netzZeigen() {
+  const el = $('crew-netz')
+  if (!el) return
+  const karten = document.querySelectorAll('#crew-karten article.bot[data-profil]')
+  const aktiv = document.querySelectorAll('#crew-karten article.bot.live-aktiv').length
+  el.innerHTML = `<span class="ck-titel">Crew-Netzwerk</span><b>${karten.length} ${karten.length === 1 ? 'Agent' : 'Agenten'}. Ein Team.</b><small>${aktiv ? `● ${aktiv} ${aktiv === 1 ? 'arbeitet' : 'arbeiten'} gerade` : 'Alle bereit'}</small>`
+}
+
+document.addEventListener('crew-karten-gezeichnet', () => {
+  crewFiltern()
+  netzZeigen()
+})
+document.addEventListener('input', (e) => e.target.id === 'crew-finden' && crewFiltern())
+// Live-Zustand der Karten (gold = arbeitet) ändert sich zwischendurch: Netzwerk-Karte mitziehen
+const netzBeobachter = new MutationObserver(() => netzZeigen())
+if (document.getElementById('crew-karten')) netzBeobachter.observe(document.getElementById('crew-karten'), { subtree: true, attributes: true, attributeFilter: ['class'] })

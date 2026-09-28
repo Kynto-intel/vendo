@@ -97,12 +97,14 @@
 
         <!-- Crew: Luzzy als Chefin, Aufträge laufen über ihren Bot Chat -->
         <section class="ansicht ansicht-seite" data-ansicht="crew" hidden>
-          <header class="seiten-kopf">
-            <div><h2>Crew</h2><p class="leise">Luzzy verteilt Aufträge an ihre Bots und berichtet dir. Neue Hermes-Profile erscheinen hier von selbst.</p></div>
-            <button class="knopf-flach" data-neu-laden="crew" type="button">Aktualisieren</button>
-          </header>
-          <div class="crew-raster" id="crew-karten"><div class="leise">Lade …</div></div>
+          <!-- Links der Chat, rechts die Bots (Klick wählt den Bot; Zahnrad: Modell). Technik unverändert: crewchat.js, buehne.js -->
+          <div class="crew-layout">
           <section class="crew-chat hud">
+            <div class="crew-wer">
+              <span class="crew-wer-bild" id="crew-wer-bild"></span>
+              <div class="crew-wer-text"><b id="crew-wer-name">Crew</b><small id="crew-wer-rolle"></small></div>
+              <button class="knopf-flach crew-neu-laden" data-neu-laden="crew" type="button" title="Bots und den offenen Chat neu aus Hermes holen">Aktualisieren</button>
+            </div>
             <header class="crew-chat-kopf">
               <div class="crew-modus" id="crew-modus" role="tablist">
                 <button data-modus="normal" type="button" title="Direkt mit einem Bot sprechen, ohne Bot Mode">💬 Normaler Chat</button>
@@ -125,6 +127,13 @@
               <button class="knopf-gold senden" type="submit">Senden</button>
             </form>
           </section>
+          <aside class="crew-seite">
+            <div class="crew-seite-kopf"><span class="ck-titel">Deine Crew</span><b>Direkter Draht zu jedem Bot</b></div>
+            <input class="crew-finden" id="crew-finden" type="search" placeholder="Bot finden …" autocomplete="off" spellcheck="false" />
+            <div class="crew-raster" id="crew-karten"><div class="leise">Lade …</div></div>
+            <div class="crew-netz" id="crew-netz"></div>
+          </aside>
+          </div>
         </section>
 
         <!-- Jobs: geplante Hermes-Jobs -->

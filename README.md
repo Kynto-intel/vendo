@@ -199,7 +199,10 @@ Luzzy ist die Chefin, die Crew sind die übrigen Hermes-Profile (alle außer `de
 **Kira** (Trend-Scout) → **Lira** (Design-Konzept) → **Milla** (Listing-Texte für Shopify). Neue Profile erscheinen
 automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
 
-- **Bot-Karten oben:** Bild, Name, Rolle, zuletzt aktiv (Details wie Modell, Tokens und Kosten der letzten 30 Tage
+- **Aufbau wie ein Messenger:** links der Chat (oben Bild, Name und Rolle des gewählten Bots, die Reiter und
+  „Aktualisieren“), rechts die Bots als Liste mit „Bot finden …“ und der Karte „Crew-Netzwerk“ (wie viele arbeiten).
+  Im sehr schmalen Fenster rutscht die Bot-Liste als Leiste über den Chat.
+- **Bot-Karten rechts:** Bild, Name, Rolle, zuletzt aktiv (Details wie Modell, Tokens und Kosten der letzten 30 Tage
   im Tooltip). Klick auf eine Karte öffnet den Chat mit diesem Bot, die gewählte Karte ist hervorgehoben.
 - **💬 Normaler Chat:** direkt mit Luzzy, Kira, Lira oder Milla, ohne Bot Mode. Pro Bot mehrere Chats
   (anlegen, wechseln, mit dem Papierkorb-Symbol löschen über „Allgemein ▾“). Luzzys normaler Chat ist das Gespräch der Zentrale.
