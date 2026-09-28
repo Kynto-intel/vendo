@@ -141,6 +141,8 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
     }
     bereiche.push({ id: bereichId, name: m.bereich?.name || m.name, laden: rueckgabe.laden, takt: rueckgabe.takt })
   }
+  // Notbremse: Läuft Jarves-OS 15 Sekunden nach dem Laden aller Plugins noch, gelten frisch eingebaute als bewährt
+  setTimeout(() => api.plugins.startOk?.().catch(() => {}), 15000)
   return bereiche
 }
 

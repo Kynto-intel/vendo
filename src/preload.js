@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('jarves', {
     datenLaden: (id) => ipcRenderer.invoke('plugins:datenLaden', id),
     datenSpeichern: (id, daten) => ipcRenderer.invoke('plugins:datenSpeichern', id, daten),
     beobachten: (id) => ipcRenderer.invoke('plugins:beobachten', id),
+    startOk: () => ipcRenderer.invoke('plugins:startOk'),
     beiAenderung: (fn) => ipcRenderer.on('plugins:geaendert', (_e, id) => fn(id)),
     aufrufen: (id, name, ...argumente) => ipcRenderer.invoke('plugins:aufrufen', id, name, argumente)
   },

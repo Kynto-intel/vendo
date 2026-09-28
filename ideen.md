@@ -172,6 +172,8 @@ Innerhalb jeder Stufe steht das Einfachste oben. In Klammern die Art:
     prüft Aufbau, Syntax und Rechte (✓ Sicher · ⚠ Braucht Rechte · ⛔ Vorsicht) und baut es erst nach Felix' Ja ein
     (altes Plugin wird gesichert, daten.json bleibt). „Nochmal ändern“, „Code ansehen“, „Verwerfen“; eingebaute Plugins
     ändern lassen oder entfernen. Plugins dürfen alles, was sie brauchen (auch haupt.js), mit deutlicher Warnung.
+    Sicherheit: Testlauf-Pflicht vor dem Einbauen (eigenes Fenster, haupt.js in eigenem Prozess, Hänger nach 10 s erkannt)
+    und Notbremse (startet Jarves-OS mit einem neuen Plugin nicht richtig, wird es beim nächsten Start abgeschaltet).
     Selbst ein Plugin (`plugins\werkstatt\`), in Hermes wurde nichts geändert.
 35. **Produktideen-Schmiede** (Killer) – Recherche-Bot sucht Trends (Wikinger, Norse, Runen, Serien wie Vikings),
     Schreib-Bot macht Text und Namen, daraus wird ein fertiger Produktentwurf zum Absegnen.

@@ -80,10 +80,27 @@ Zum Schluss kurz, was sich geändert hat.`
     return liste.length ? `<ul class="ws-rechte">${liste.map((r) => `<li class="ws-${r.stufe}">${m(r.text)}</li>`).join('')}</ul>` : ''
   }
 
+  // Testlauf-Zeile einer Entwurfs-Karte
+  function testHtml(e, t) {
+    if (!t) return '<div class="ws-test ws-test-offen">🧪 Noch nicht getestet. Vor dem Einbauen einmal den Testlauf machen.</div>'
+    if (t.laeuft && !t.gestartet && !t.fehler.length) return '<div class="ws-test ws-test-offen">🧪 Testlauf läuft … (Fenster ist offen)</div>'
+    if (t.veraltet) return '<div class="ws-test ws-test-offen">🧪 Luzzy hat seit dem Test etwas geändert. Bitte nochmal testen.</div>'
+    if (t.ok) return `<div class="ws-test ws-test-ok">🧪 Testlauf: ✓ läuft ohne Fehler${t.laeuft ? ' (Fenster noch offen)' : ''}</div>`
+    return `<div class="ws-test ws-test-fehler">🧪 Testlauf: ✗ ${t.fehler.length ? `${t.fehler.length} Fehler` : 'nicht gestartet'}${t.fehler.length ? `<ul>${t.fehler.slice(0, 4).map((f) => `<li>${m(f)}</li>`).join('')}</ul>` : ''}Tipp: „Nochmal ändern …“ und Luzzy den Fehler nennen.</div>`
+  }
+
   async function laden() {
-    const [entwuerfe, installierte] = await Promise.all([ctx.aufrufen('entwuerfe'), ctx.aufrufen('installierte')])
+    // Felix tippt gerade eine Änderung: nicht neu zeichnen, sonst wäre der Text weg
+    if (ctx.element.querySelector('.ws-aendern:not([hidden])')) return
+    const [entwuerfe, alleInstallierten, bremse] = await Promise.all([ctx.aufrufen('entwuerfe'), ctx.aufrufen('installierte'), ctx.aufrufen('notbremse')])
+    const installierte = alleInstallierten.filter((p) => !p.eigen) // die Werkstatt selbst nicht auflisten
     for (const e of entwuerfe) if (e.fertig && (!berichte.has(e.id) || berichte.get(e.id).stand !== e.geaendert)) berichte.set(e.id, { ...(await ctx.aufrufen('pruefen', e.id)), stand: e.geaendert })
-    $('[data-entwuerfe]').innerHTML = (zuletztEingebaut ? `<div class="ws-eingebaut">✓ „${m(zuletztEingebaut)}“ ist eingebaut. Damit es erscheint, Jarves-OS einmal neu starten. <button class="knopf-gold" data-neustart type="button">Jetzt neu starten</button></div>` : '') + (entwuerfe.length
+    const tests = new Map()
+    for (const e of entwuerfe) if (e.fertig) tests.set(e.id, await ctx.aufrufen('testErgebnis', e.id))
+    const bremsHinweis = bremse.aus.length
+      ? `<div class="ws-bremse">⚠ Die Notbremse hat ${bremse.aus.length === 1 ? 'ein Plugin' : `${bremse.aus.length} Plugins`} abgeschaltet, weil Jarves-OS damit nicht richtig gestartet ist: ${bremse.aus.map((id) => `<span class="ws-bremse-plugin"><b>${m(id)}</b> <button class="knopf-flach" data-einschalten="${m(id)}" type="button">Wieder einschalten</button></span>`).join(' ')}<div class="leise klein">Besser erst „Ändern lassen“ und Luzzy den Fehler beheben lassen. Nach dem Einschalten Jarves-OS neu starten.</div></div>`
+      : ''
+    $('[data-entwuerfe]').innerHTML = bremsHinweis + (zuletztEingebaut ? `<div class="ws-eingebaut">✓ „${m(zuletztEingebaut)}“ ist eingebaut. Damit es erscheint, Jarves-OS einmal neu starten. <button class="knopf-gold" data-neustart type="button">Jetzt neu starten</button></div>` : '') + (entwuerfe.length
       ? entwuerfe.map((e) => {
         if (!e.fertig) return `<article class="ws-karte ws-baut"><div class="ws-kopf"><b>${m(e.name)}</b><span class="ws-marke">⏳ Luzzy baut noch …</span></div><div class="leise klein">${e.dateien.length ? `Bisher: ${m(e.dateien.join(', '))}` : 'Noch keine Dateien.'}</div><div class="ws-knoepfe"><button class="knopf-flach gefahr" data-verwerfen="${m(e.id)}" type="button">Verwerfen</button></div></article>`
         const b = berichte.get(e.id)
@@ -93,8 +110,10 @@ Zum Schluss kurz, was sich geändert hat.`
           ${b.beschreibung ? `<div class="ws-text">${m(b.beschreibung)}</div>` : ''}
           <div class="leise klein">${m(erklaerung)}</div>
           ${rechteHtml(b)}
+          ${b.stufe === 'fehler' ? '' : testHtml(e, tests.get(e.id))}
           <div class="ws-knoepfe">
-            <button class="knopf-gold" data-einbauen="${m(e.id)}" type="button" ${b.stufe === 'fehler' ? 'disabled' : ''}>Ja, einbauen</button>
+            <button class="knopf-flach ws-test-knopf" data-testen="${m(e.id)}" type="button" ${b.stufe === 'fehler' ? 'disabled' : ''}>🧪 Testlauf starten</button>
+            <button class="knopf-gold" data-einbauen="${m(e.id)}" type="button" ${b.stufe === 'fehler' || !tests.get(e.id)?.ok || tests.get(e.id)?.veraltet ? 'disabled title="Erst den Testlauf ohne Fehler bestehen"' : ''}>Ja, einbauen</button>
             <button class="knopf-flach" data-aendern-form="${m(e.id)}" type="button">Nochmal ändern …</button>
             <button class="knopf-flach" data-code="${m(e.id)}" type="button">${offenerCode === e.id ? 'Code zuklappen' : 'Code ansehen'}</button>
             <button class="knopf-flach gefahr" data-verwerfen="${m(e.id)}" type="button">Verwerfen</button>
@@ -135,6 +154,15 @@ Zum Schluss kurz, was sich geändert hat.`
     if (!k) return
     try {
       if (k.dataset.neustart != null) return ctx.aufrufen('neuStarten')
+      if (k.dataset.testen) {
+        await ctx.aufrufen('testStarten', k.dataset.testen)
+        return laden()
+      }
+      if (k.dataset.einschalten) {
+        await ctx.aufrufen('wiederEinschalten', k.dataset.einschalten)
+        zuletztEingebaut = k.dataset.einschalten
+        return laden()
+      }
       if (k.dataset.code) {
         offenerCode = offenerCode === k.dataset.code ? null : k.dataset.code
         return laden()
@@ -205,6 +233,10 @@ Zum Schluss kurz, was sich geändert hat.`
     return id ? true : 'Das hat gerade nicht geklappt. Versuch es gleich nochmal.'
   })
 
+  // Notbremse hat gerade etwas abgeschaltet: melden
+  const bremse = await ctx.aufrufen('notbremse')
+  if (bremse.jetzt.length) ctx.melden({ art: 'hinweis', titel: 'Plugin abgeschaltet', text: `Felix, ich habe beim Start ${bremse.jetzt.length === 1 ? 'ein neues Plugin' : 'neue Plugins'} abgeschaltet, weil Jarves-OS damit beim letzten Mal nicht richtig gestartet ist. Schau in die Werkstatt.`, anzeige: `${bremse.jetzt.join(', ')} – Details in der Werkstatt` })
+
   await laden()
-  return { laden, takt: 5000 }
+  return { laden, takt: 3000 }
 }

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' 'unsafe-inline' file:; img-src 'self' data: file:; connect-src 'none'" />
+    <title>Testlauf</title>
+    <link rel="stylesheet" href="../../src/renderer/style.css" />
+    <link rel="stylesheet" href="test.css" />
+  </head>
+  <body class="testlauf">
+    <header class="tl-kopf">
+      <div><span class="tl-marke">🧪 Testlauf</span> <b id="tl-name">…</b></div>
+      <div class="tl-status" id="tl-status">Startet …</div>
+      <div class="tl-hinweis">Alles hier ist nur ein Test: Daten werden nicht gespeichert, nichts geht an Luzzy oder in den Vault.</div>
+    </header>
+    <div class="tl-raster">
+      <section class="ansicht ansicht-seite plugin-ansicht" id="tl-bereich">
+        <header class="seiten-kopf">
+          <div><h2 id="tl-titel">…</h2><p class="leise" id="tl-beschreibung"></p></div>
+          <div class="seiten-knoepfe plugin-knoepfe" id="tl-kopfknoepfe"></div>
+        </header>
+        <div class="plugin-inhalt" id="tl-inhalt"></div>
+      </section>
+      <aside class="tl-seite">
+        <div class="tl-karten" id="tl-karten"><div class="leise klein">Karten rechts (falls das Plugin welche hat)</div></div>
+        <section class="karte hud tl-befehl">
+          <h3>Befehl testen</h3>
+          <form id="tl-befehl-form"><input id="tl-befehl" placeholder="Satz wie gesprochen, z. B. „Merk dir …“" autocomplete="off" /><button class="knopf-flach" type="submit">Testen</button></form>
+          <div class="schnellbefehle" id="tl-knoepfe"></div>
+        </section>
+      </aside>
+    </div>
+    <section class="tl-protokoll">
+      <div class="tl-protokoll-kopf"><h3>Protokoll</h3><span class="leise klein">Fehler erscheinen rot. Fenster schließen = Test beendet.</span></div>
+      <div id="tl-log"></div>
+    </section>
+    <script type="module" src="test.js"></script>
+  </body>
+</html>

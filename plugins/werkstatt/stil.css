@@ -35,6 +35,14 @@
 .ws-code details { margin-top: 4px; }
 .ws-code summary { cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--gold-hell); }
 .ws-code pre { margin: 4px 0 0; max-height: 320px; overflow: auto; background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 8px 10px; font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--text-leise); user-select: text; white-space: pre; }
+.ws-test { font-size: 12px; padding: 6px 9px; border-radius: var(--radius); border: 1px dashed var(--rahmen); }
+.ws-test ul { margin: 4px 0; padding-left: 18px; }
+.ws-test-ok { border-color: var(--gruen); color: var(--gruen); }
+.ws-test-fehler { border-color: var(--rot); color: var(--rot-hell, #e07a70); }
+.ws-test-offen { color: var(--gold-hell); border-color: var(--gold-dunkel); }
+.ws-test-knopf { border-color: var(--gold-dunkel); }
+.ws-bremse { padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--rot); border-radius: var(--radius); font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.ws-bremse-plugin { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; }
 .ws-eingebaut { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 12px; margin-bottom: 8px; border: 1px solid var(--gruen); border-radius: var(--radius); font-size: 13px; }
 .ws-plugin { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--linie, var(--rahmen)); }
 .ws-plugin:last-child { border-bottom: 0; }

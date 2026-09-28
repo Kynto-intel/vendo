@@ -17,6 +17,60 @@ const GUELTIGE_ID = /^[a-z0-9][a-z0-9-]{1,40}$/
 
 const geladen = new Map() // id → { manifest, funktionen }
 
+// ── Notbremse: frisch eingebaute Plugins (Werkstatt) stehen in daten/plugin-start.json unter „neu“. Beim Start wird
+// „laeuft“ gesetzt; meldet die Oberfläche nach dem Start „alles gut“ (startOk), gelten die neuen als bewährt.
+// Kam der letzte Start nie so weit (Absturz, Aufhängen), werden die neuen Plugins diesmal abgeschaltet („aus“).
+const START_DATEI = path.join(__dirname, '..', '..', 'daten', 'plugin-start.json')
+let startGeprueft = false
+let abgeschaltet = [] // in diesem Start durch die Notbremse abgeschaltet
+function startZustand() {
+  try {
+    const z = JSON.parse(fs.readFileSync(START_DATEI, 'utf8'))
+    return { laeuft: Boolean(z.laeuft), neu: Array.isArray(z.neu) ? z.neu : [], aus: Array.isArray(z.aus) ? z.aus : [] }
+  } catch {
+    return { laeuft: false, neu: [], aus: [] }
+  }
+}
+function startZustandSpeichern(z) {
+  fs.mkdirSync(path.dirname(START_DATEI), { recursive: true })
+  fs.writeFileSync(START_DATEI, JSON.stringify(z, null, 2), 'utf8')
+}
+function startPruefen() {
+  if (startGeprueft) return startZustand()
+  startGeprueft = true
+  const z = startZustand()
+  if (z.laeuft && z.neu.length) {
+    abgeschaltet = [...z.neu]
+    z.aus = [...new Set([...z.aus, ...z.neu])]
+    z.neu = []
+    console.warn(`Notbremse: Jarves-OS ist beim letzten Mal nicht richtig gestartet. Abgeschaltet: ${abgeschaltet.join(', ')}`)
+  }
+  z.laeuft = true
+  startZustandSpeichern(z)
+  return z
+}
+function startOk() {
+  const z = startZustand()
+  z.laeuft = false
+  z.neu = []
+  startZustandSpeichern(z)
+  return true
+}
+function neuMerken(id) {
+  const z = startZustand()
+  z.neu = [...new Set([...z.neu, id])]
+  z.aus = z.aus.filter((x) => x !== id)
+  startZustandSpeichern(z)
+}
+function wiederEinschalten(id) {
+  const z = startZustand()
+  z.aus = z.aus.filter((x) => x !== id)
+  z.neu = [...new Set([...z.neu, id])] // beim nächsten Start wieder unter Beobachtung
+  startZustandSpeichern(z)
+  return true
+}
+const notbremse = () => ({ jetzt: abgeschaltet, aus: startZustand().aus })
+
 function datenPfad(id) {
   return path.join(ORDNER, id, 'daten.json')
 }
@@ -42,6 +96,7 @@ function datenSpeichern(id, daten) {
 }
 
 function alleLaden() {
+  const start = startPruefen()
   geladen.clear()
   let eintraege = []
   try {
@@ -63,6 +118,7 @@ function alleLaden() {
       continue
     }
     if (manifest.aktiv === false) continue
+    if (start.aus.includes(manifest.id)) continue // Notbremse: abgeschaltet (in der Werkstatt wieder einschalten)
     const eintrag = {
       manifest: {
         id: manifest.id,
@@ -116,4 +172,4 @@ function beobachten(id, beiAenderung) {
   return true
 }
 
-module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten }
+module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, notbremse }

@@ -361,6 +361,7 @@ ipcMain.handle('plugins:liste', () => plugins.alleLaden())
 ipcMain.handle('plugins:datenLaden', (_e, id) => plugins.datenLaden(String(id)))
 ipcMain.handle('plugins:datenSpeichern', (_e, id, daten) => plugins.datenSpeichern(String(id), daten))
 ipcMain.handle('plugins:beobachten', (_e, id) => plugins.beobachten(String(id), (pid) => fenster?.webContents.send('plugins:geaendert', pid)))
+ipcMain.handle('plugins:startOk', () => plugins.startOk()) // Notbremse: Start hat geklappt
 ipcMain.handle('plugins:aufrufen', (_e, id, name, argumente) => plugins.aufrufen(String(id), String(name), Array.isArray(argumente) ? argumente : []))
 
 // Wissen (nur lesen, nur im Donnerwolf-Ordner)
