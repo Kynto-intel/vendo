@@ -1113,3 +1113,6 @@ body.datei-drueber .datei-ablage { display: grid; }
 .crew-chat #luzzy-form[hidden], .crew-chat #crew-form[hidden] { display: none; }
 .gm-weg { font-size: 12px; opacity: 0.7; }
 .gm-weg:hover { opacity: 1; }
+
+/* Gesprächs-Karte rechts gibt es nicht mehr (Luzzys Chat im Crew-Tab, Strg+K) */
+#vorschau { display: none !important; }
