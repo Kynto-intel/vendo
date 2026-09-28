@@ -28,7 +28,7 @@ export function fuersVorlesen(text, { kuerzen = true } = {}) {
   return s
 }
 
-// Edge liefert MP3 (Tempo schon eingerechnet), Pocket TTS liefert WAV: dort das Tempo beim Abspielen setzen
+// Pocket TTS liefert WAV: das Tempo gilt über die Abspielgeschwindigkeit (Tonhöhe bleibt gleich)
 function tonQuelle(bytes, optionen) {
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
   const wav = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 // "RIFF"

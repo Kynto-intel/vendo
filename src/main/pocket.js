@@ -1,4 +1,4 @@
-// Pocket TTS (Kyutai): Luzzys lokale Stimme. Läuft komplett auf Felix' PC, kein Text geht ins Internet.
+// Pocket TTS (Kyutai): Luzzys Stimme. Läuft komplett auf Felix' PC, kein Text geht ins Internet.
 // Jarves-OS startet dafür `uvx pocket-tts serve --language german` im Hintergrund (nur auf 127.0.0.1)
 // und beendet ihn beim Schließen wieder. Eigene Stimme: eine kurze, saubere Aufnahme (WAV, 10 bis 30 s),
 // nur von jemandem, der zugestimmt hat. Nichts davon ändert Hermes.
@@ -8,6 +8,28 @@ const fs = require('node:fs')
 const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
+
+// Weibliche Stimmen von Pocket TTS. Das deutsche Modell hat für jede eine fertige Stimmprobe (Embedding), sie sprechen
+// also alle Deutsch. Die Sprecherinnen stammen aus anderen Sprachen, ein leichter Akzent ist möglich.
+const STIMMEN = [
+  { id: 'alba', name: 'Alba' },
+  { id: 'anna', name: 'Anna' },
+  { id: 'azelma', name: 'Azelma' },
+  { id: 'caro_davy', name: 'Caro' },
+  { id: 'cosette', name: 'Cosette' },
+  { id: 'eponine', name: 'Eponine' },
+  { id: 'estelle', name: 'Estelle' },
+  { id: 'eve', name: 'Eve' },
+  { id: 'fantine', name: 'Fantine' },
+  { id: 'jane', name: 'Jane' },
+  { id: 'lola', name: 'Lola' },
+  { id: 'mary', name: 'Mary' },
+  { id: 'vera', name: 'Vera' }
+].map((s) => ({ ...s, herkunft: 'lokal' }))
+const EIGEN = { id: 'eigen', name: 'Eigene Stimme', herkunft: 'Aufnahme' }
+const STANDARD_STIMME = 'alba'
+// Alte Einstellungen (Edge-Stimmen, „pocket“ = Jürgen) auf eine gültige Stimme bringen
+const stimmeGueltig = (id) => (id === 'pocket-eigen' ? 'eigen' : id === 'eigen' || STIMMEN.some((s) => s.id === id) ? id : STANDARD_STIMME)
 
 const TEST = process.env.JARVES_TEST_POCKET // Testmodus: Adresse eines schon laufenden Servers, z. B. http://127.0.0.1:8765
 const START_ZEIT = 10 * 60 * 1000 // erster Start lädt Programm und Modell herunter, das dauert
@@ -67,7 +89,7 @@ function starten(datei) {
     const port = await freierPort()
     const url = `http://127.0.0.1:${port}`
     const argumente = ['pocket-tts', 'serve', '--language', 'german', '--host', '127.0.0.1', '--port', String(port)]
-    if (stimme) argumente.push('--default-voice', stimme)
+    argumente.push('--default-voice', stimme || STANDARD_STIMME)
     // PYTHONUTF8: sonst scheitert Pocket TTS unter Windows beim Lesen seiner deutschen Einstellungsdatei (cp1252)
     const p = spawn(uvxPfad(), argumente, {
       env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
@@ -143,10 +165,13 @@ function wavReparieren(buf) {
   return buf
 }
 
-async function sprechen(text, { datei } = {}) {
-  const url = await starten(datei)
+// stimme: eine aus STIMMEN oder 'eigen' (dann spricht die Aufnahme, mit der der Server gestartet wurde)
+async function sprechen(text, { stimme = STANDARD_STIMME, datei } = {}) {
+  stimme = stimmeGueltig(stimme)
+  const url = await starten(stimme === 'eigen' ? datei : '')
   const form = new FormData()
   form.append('text', text)
+  if (stimme !== 'eigen' || !stimmDatei(datei)) form.append('voice_url', stimme === 'eigen' ? STANDARD_STIMME : stimme)
   const r = await fetch(`${url}/tts`, { method: 'POST', body: form, signal: AbortSignal.timeout(120000) })
   if (!r.ok) throw new Error(`Pocket TTS meldet ${r.status}.`)
   const buf = Buffer.from(await r.arrayBuffer())
@@ -155,10 +180,10 @@ async function sprechen(text, { datei } = {}) {
 }
 
 function zustand() {
-  if (adresse) return { zustand: 'bereit', text: stimmeGestartet ? `läuft (eigene Stimme: ${path.basename(stimmeGestartet)})` : 'läuft (Stimme Jürgen)' }
+  if (adresse) return { zustand: 'bereit', text: stimmeGestartet ? `läuft (eigene Stimme: ${path.basename(stimmeGestartet)})` : 'läuft' }
   if (startet) return { zustand: 'startet', text: 'startet … (beim ersten Mal lädt es das Modell, das kann ein paar Minuten dauern)' }
   if (letzterFehler) return { zustand: 'fehler', text: letzterFehler }
   return { zustand: 'aus', text: 'aus' }
 }
 
-module.exports = { starten, stoppen, sprechen, zustand, bereit: () => !!adresse, stimmDatei }
+module.exports = { starten, stoppen, sprechen, zustand, bereit: () => !!adresse, stimmDatei, STIMMEN, EIGEN, stimmeGueltig }

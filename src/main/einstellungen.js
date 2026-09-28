@@ -3,13 +3,13 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { stimmeGueltig } = require('./pocket')
 
 const DATEI = path.join(__dirname, '..', '..', 'daten', 'einstellungen.json')
 
 const STANDARD = {
-  stimme: 'de-AT-IngridNeural',
+  stimme: 'alba', // Pocket TTS, lokal
   tempo: '+0%',
-  hoehe: '+0Hz',
   vorlesen: true,
   animationen: { reaktor: true, scanlinie: true, welle: true, hintergrund: true },
   start: { intro: true, begruessung: true },
@@ -26,6 +26,7 @@ function laden() {
     return {
       ...STANDARD,
       ...gespeichert,
+      stimme: stimmeGueltig(gespeichert.stimme), // alte Edge-Stimmen und „Jürgen“ werden zu Alba
       animationen: { ...STANDARD.animationen, ...(gespeichert.animationen || {}) },
       start: { ...STANDARD.start, ...(gespeichert.start || {}) },
       panel: { ...STANDARD.panel, ...(gespeichert.panel || {}) },
