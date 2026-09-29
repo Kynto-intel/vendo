@@ -663,7 +663,8 @@ function luzzyHilfeEinrichten() {
   $('nb-prompt').addEventListener('click', (e) => {
     const k = e.target.closest('[data-kopieren]')
     if (!k) return
-    navigator.clipboard.writeText(promptBloecke[Number(k.dataset.kopieren)] || '').then(() => {
+    // Zwischenablage über Electron (navigator.clipboard ist in Jarves-OS nicht freigegeben)
+    h.api.zwischenablage.schreiben(promptBloecke[Number(k.dataset.kopieren)] || '').then(() => {
       k.textContent = '✓ Kopiert'
       setTimeout(() => (k.textContent = 'Prompt kopieren'), 1500)
     }).catch(() => {})

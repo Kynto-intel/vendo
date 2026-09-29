@@ -105,12 +105,12 @@ export function terminalEinrichten() {
     if (e.type !== 'keydown' || !e.ctrlKey || e.altKey) return true
     const taste = e.key.toLowerCase()
     if (taste === 'c' && term.hasSelection()) {
-      navigator.clipboard.writeText(term.getSelection()).catch(() => {})
+      window.jarves.zwischenablage.schreiben(term.getSelection()).catch(() => {}) // über Electron, navigator.clipboard ist gesperrt
       term.clearSelection()
       return false
     }
     if (taste === 'v') {
-      navigator.clipboard.readText().then((t) => t && window.jarves.terminal.schreiben(t)).catch(() => {})
+      window.jarves.zwischenablage.lesen().then((t) => t && window.jarves.terminal.schreiben(t)).catch(() => {})
       return false
     }
     // Strg+F, Strg+P usw. gehören Jarves-OS (Suche, Befehlspalette), nicht der Konsole
