@@ -109,14 +109,11 @@ async function luzzyHilft(art, d, hermes) {
   let instructions
   let input
   if (art === 'soul') {
-    const kira = path.join(HERMES_HOME, 'profiles', 'kira-trend-scout-bot', 'SOUL.md')
-    const vorbild = fs.existsSync(kira) ? fs.readFileSync(kira, 'utf8').slice(0, 6000) : ''
+    // Nur die Anleitung aus dem Skill (kein Vorbild-SOUL mehr: die alten SOULs sind im Großbuchstaben-Stil geschrieben,
+    // den die Anleitung ab Version 3 bewusst vermeidet)
     instructions = `Du bist Luzzy, Felix' rechte Hand bei Donnerwolf. Schreib die SOUL.md für einen neuen Crew-Bot nach dieser Anleitung:
 
-${skillTeil(1)}
-
-Vorbild (Kiras SOUL, nur für Aufbau und Ton, nicht den Inhalt übernehmen):
-${vorbild}`
+${skillTeil(1)}`
     input = `Neuer Bot:
 - Name: ${name}
 - Rolle: ${rolle || '(noch offen)'}

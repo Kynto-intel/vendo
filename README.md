@@ -437,7 +437,7 @@ nicht anfasst. Am Hermes-Programm (`hermes-agent\`) wurde nie etwas geändert.
 | `profiles\donnerwolf\config.yaml` | Spracherkennung an, Deutsch (`stt.enabled`, `stt.language: de`, Modell `base`) | `config.yaml.vor-jarves-os-20260926-0207.bak` |
 | `profiles\donnerwolf\config.yaml` | Aktivierungswort (`wake_word`: provider sherpa, phrase „hey luzzy“, capture client, surface tui, sensitivity 0.45) | `config.yaml.vor-jarves-os-phase2-*.bak` |
 | `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) | – (neu) |
-| `profiles\donnerwolf\skills\productivity\jarves-bot-erstellen\` | Skill: wie Luzzy passgenaue Bot-SOULs schreibt (Bot-Arten, echte Werkzeuge und Skills, Crew-Lanes, Prüfliste) und Avatar-Prompts im Crew-Stil | `SKILL.md.vor-v2.bak` |
+| `profiles\donnerwolf\skills\productivity\jarves-bot-erstellen\` | Skill: wie Luzzy passgenaue Bot-SOULs schreibt (nach Hermes-Doku und Prompt-Leitfäden: Identität statt Handbuch, Gründe statt Großbuchstaben, Bot-Arten mit echten Werkzeugen, Verhalten bei Unklarheit, zwei Beispiele, Prüfliste) und Avatar-Prompts im Crew-Stil | `SKILL.md.vor-v2.bak`, `SKILL.md.vor-v3.bak` |
 | `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`: neu, ändern, löschen, suchen, liste; meldet Überschneidungen) | – (neu) |
 | `config.yaml` / `.env` (Hermes und Profile) | Shopify-Token – nur über System → Shopify-Zugang | automatisch bei jedem Eintragen |
 
