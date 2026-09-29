@@ -542,8 +542,8 @@ async function neuerBotOeffnen() {
   f.aufgaben.rows = 5
   $('nb-id').textContent = 'Profil: –'
   $('nb-anlegen').disabled = false
-  // Vorlage: am besten ein Crew-Bot (nicht Luzzy), damit Modell und Skills passen
-  const vorlagen = [...bots.filter((b) => b.profil !== LUZZY), ...bots.filter((b) => b.profil === LUZZY)]
+  // Vorlage für Modell, Zugänge und Skills: Standard Luzzy (hat Shopify, Postfach und alle Skills)
+  const vorlagen = [...bots.filter((b) => b.profil === LUZZY), ...bots.filter((b) => b.profil !== LUZZY)]
   $('nb-vorlage').innerHTML = vorlagen.map((b) => `<option value="${maskieren(b.profil)}">${maskieren(b.name)}${b.rolle ? ` (${maskieren(b.rolle)})` : ''}</option>`).join('')
   d.showModal()
   f.name.focus()
@@ -602,8 +602,10 @@ function nbDaten() {
 const fehlerText = (err) => String(err?.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 // Luzzys Antwort mit Codeblöcken: jeden Block mit eigenem „Kopieren“-Knopf zeigen
+let promptBloecke = [] // der reine Prompt-Text je Codeblock (das kopiert der Knopf)
 function promptZeigen(text) {
   const el = $('nb-prompt')
+  promptBloecke = []
   const teile = []
   let rest = text
   const block = /```[a-z]*\n?([\s\S]*?)```/g
@@ -612,7 +614,8 @@ function promptZeigen(text) {
   while ((m = block.exec(text))) {
     const davor = text.slice(zuletzt, m.index).replace(/\*\*/g, '').trim()
     if (davor) teile.push(`<div class="nb-prompt-text">${maskieren(davor)}</div>`)
-    teile.push(`<div class="nb-prompt-block"><pre>${maskieren(m[1].trim())}</pre><button class="knopf-mini" type="button" data-kopieren="${teile.length}">Kopieren</button></div>`)
+    promptBloecke.push(m[1].trim())
+    teile.push(`<div class="nb-prompt-block"><pre>${maskieren(m[1].trim())}</pre><button class="knopf-gold" type="button" data-kopieren="${promptBloecke.length - 1}">Prompt kopieren</button></div>`)
     zuletzt = block.lastIndex
   }
   rest = text.slice(zuletzt).replace(/\*\*/g, '').trim()
@@ -660,9 +663,9 @@ function luzzyHilfeEinrichten() {
   $('nb-prompt').addEventListener('click', (e) => {
     const k = e.target.closest('[data-kopieren]')
     if (!k) return
-    navigator.clipboard.writeText(k.previousElementSibling.textContent).then(() => {
+    navigator.clipboard.writeText(promptBloecke[Number(k.dataset.kopieren)] || '').then(() => {
       k.textContent = '✓ Kopiert'
-      setTimeout(() => (k.textContent = 'Kopieren'), 1500)
+      setTimeout(() => (k.textContent = 'Prompt kopieren'), 1500)
     }).catch(() => {})
   })
 }

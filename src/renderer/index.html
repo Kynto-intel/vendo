@@ -374,8 +374,11 @@
         <textarea name="aufgaben" rows="5" maxlength="20000" placeholder="z. B. schreibt Captions und Hashtags im Donnerwolf-Stil, bekommt Aufträge von Luzzy, veröffentlicht nichts selbst"></textarea>
         <div class="nb-feldkopf"><span>Bild <small class="leise">Prompt im gleichen Stil wie Kira, Lira und Milla</small></span><button class="knopf-flach nb-luzzy" id="nb-prompt-knopf" type="button">🎨 Bild-Prompt von Luzzy</button></div>
         <div class="nb-prompt" id="nb-prompt" hidden></div>
-        <label>Einstellungen übernehmen von <select name="vorlage" id="nb-vorlage"></select></label>
-        <small class="leise">Modell, Zugänge (z. B. Shopify) und Skills kommen vom gewählten Bot – Messenger-Kanäle wie Telegram nicht. Hermes nimmt den neuen Bot automatisch ins Crew-Team auf.</small>
+        <details class="nb-erweitert">
+          <summary>Erweitert</summary>
+          <label>Einstellungen übernehmen von <select name="vorlage" id="nb-vorlage"></select></label>
+          <small class="leise">Ein neuer Bot braucht ein Modell, Zugänge (Shopify, Postfach) und Skills. Die kommen vom gewählten Bot, Messenger-Kanäle wie Telegram nicht. Standard ist Luzzy, weil sie alle Zugänge hat.</small>
+        </details>
         <div class="nb-status" id="nb-status"></div>
         <div class="nb-knoepfe"><button class="knopf-flach" id="nb-abbrechen" type="button">Abbrechen</button><button class="knopf-gold" id="nb-anlegen" type="submit">Bot anlegen</button></div>
       </form>
