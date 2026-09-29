@@ -433,6 +433,7 @@ nicht anfasst. Am Hermes-Programm (`hermes-agent\`) wurde nie etwas geändert.
 
 | Wo | Was | Sicherung |
 |---|---|---|
+| `profiles\donnerwolf\SOUL.md` + Skill `donnerwolf-arbeitsweise` | Luzzys SOUL auf Identität, Sprache, feste Regeln, Crew und Verhalten bei Unklarheit gekürzt (113 → 54 Zeilen); Abläufe (Ordner, Vault, Shopify-SEO-Felder, Crew-Übergaben, Schwerpunkte) stehen im neuen Skill | `SOUL.md.vor-neu-20260929.bak` |
 | `profiles\<bot>\SOUL.md` (Kira, Lira, Milla, Freya) | Am 29.09.2026 nach den Regeln aus `jarves-bot-erstellen` überarbeitet (gleicher Inhalt, ruhiger Ton mit Gründen, Zusammenarbeit mit Profil-IDs, „Wenn etwas unklar ist“, Beispiele); bei Luzzy nur Freya und der Schutz vor fremden Anweisungen ergänzt | je `SOUL.md.vor-neu-20260929.bak` |
 | `profiles\<neuer-bot>\` | Bots, die du mit „＋ Neuer Bot“ anlegst (`hermes profile create`, `SOUL.md`, `assets\avatar.png`) | – (neu) |
 | `profiles\donnerwolf\config.yaml` | Spracherkennung an, Deutsch (`stt.enabled`, `stt.language: de`, Modell `base`) | `config.yaml.vor-jarves-os-20260926-0207.bak` |
