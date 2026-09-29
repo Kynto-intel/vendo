@@ -351,14 +351,14 @@ class Hermes extends EventEmitter {
     }
   }
 
-  rpc(methode, parameter = {}) {
+  rpc(methode, parameter = {}, { timeout = RPC_TIMEOUT } = {}) {
     return new Promise((fertig, fehler) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return fehler(new Error('Keine Verbindung zu Hermes.'))
       const id = this.naechsteId++
       const uhr = setTimeout(() => {
         this.offen.delete(id)
         fehler(new Error(`Hermes antwortet nicht (${methode}).`))
-      }, RPC_TIMEOUT)
+      }, timeout)
       this.offen.set(id, {
         uhr,
         fertig: (d) => (d.error ? fehler(new Error(d.error.message || 'Hermes-Fehler')) : fertig(d.result))

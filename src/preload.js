@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('jarves', {
     botBild: (profil) => ipcRenderer.invoke('crew:bild', profil),
     botAnlegen: (daten) => ipcRenderer.invoke('crew:botAnlegen', daten),
     profilId: (name, rolle) => ipcRenderer.invoke('crew:profilId', name, rolle),
+    luzzyHilft: (art, daten) => ipcRenderer.invoke('crew:luzzyHilft', art, daten),
     bildWaehlen: () => ipcRenderer.invoke('crew:bildWaehlen'),
     lesen: (pfad) => ipcRenderer.invoke('hermes:lesen', pfad),
     aktion: (art, daten) => ipcRenderer.invoke('hermes:aktion', art, daten),

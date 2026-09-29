@@ -114,6 +114,7 @@ export function crewChatEinrichten(helfer) {
   chatAuswahlEinrichten()
   botFensterEinrichten()
   neuerBotEinrichten()
+  luzzyHilfeEinrichten()
   buehneEinrichten({
     sichtbar: () => h.crewSichtbar() && !document.hidden,
     buehneOffen: () => modus === 'buehne' && h.crewSichtbar(),
@@ -536,6 +537,9 @@ async function neuerBotOeffnen() {
   nbBild = null
   $('nb-bild').innerHTML = '<span>＋ Bild</span>'
   $('nb-status').textContent = ''
+  $('nb-prompt').hidden = true
+  $('nb-prompt').innerHTML = ''
+  f.aufgaben.rows = 5
   $('nb-id').textContent = 'Profil: –'
   $('nb-anlegen').disabled = false
   // Vorlage: am besten ein Crew-Bot (nicht Luzzy), damit Modell und Skills passen
@@ -571,6 +575,8 @@ function neuerBotEinrichten() {
     try {
       const r = await h.api.hermes.botAnlegen({
         name: f.name.value, rolle: f.rolle.value, beschreibung: f.beschreibung.value, aufgaben: f.aufgaben.value,
+        // Beginnt mit „Du bist …“: das ist eine fertige SOUL (von Luzzy oder selbst geschrieben) und wird genau so gespeichert
+        soulKomplett: /^\s*Du bist\b/.test(f.aufgaben.value) && f.aufgaben.value.trim().length > 200,
         vorlage: f.vorlage.value, bild: nbBild, andere: bots.map((b) => ({ profil: b.profil, name: b.name, rolle: b.rolle }))
       })
       $('neuer-bot').close()
@@ -584,5 +590,79 @@ function neuerBotEinrichten() {
       $('nb-status').textContent = `Hat nicht geklappt: ${String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`
       $('nb-anlegen').disabled = false
     }
+  })
+}
+
+// ── Luzzy hilft beim neuen Bot: SOUL.md schreiben, Bild-Prompt im Stil von Kira, Lira und Milla ──
+// (Anleitung: ihr Hermes-Skill jarves-bot-erstellen; läuft als einmalige Anfrage, nicht in ihrem Chat)
+function nbDaten() {
+  const f = $('neuer-bot-form')
+  return { name: f.name.value, rolle: f.rolle.value, beschreibung: f.beschreibung.value, aufgaben: f.aufgaben.value, andere: bots.map((b) => ({ profil: b.profil, name: b.name, rolle: b.rolle })) }
+}
+const fehlerText = (err) => String(err?.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+
+// Luzzys Antwort mit Codeblöcken: jeden Block mit eigenem „Kopieren“-Knopf zeigen
+function promptZeigen(text) {
+  const el = $('nb-prompt')
+  const teile = []
+  let rest = text
+  const block = /```[a-z]*\n?([\s\S]*?)```/g
+  let m
+  let zuletzt = 0
+  while ((m = block.exec(text))) {
+    const davor = text.slice(zuletzt, m.index).replace(/\*\*/g, '').trim()
+    if (davor) teile.push(`<div class="nb-prompt-text">${maskieren(davor)}</div>`)
+    teile.push(`<div class="nb-prompt-block"><pre>${maskieren(m[1].trim())}</pre><button class="knopf-mini" type="button" data-kopieren="${teile.length}">Kopieren</button></div>`)
+    zuletzt = block.lastIndex
+  }
+  rest = text.slice(zuletzt).replace(/\*\*/g, '').trim()
+  if (rest) teile.push(`<div class="nb-prompt-text">${maskieren(rest)}</div>`)
+  el.innerHTML = teile.join('')
+  el.hidden = false
+}
+
+function luzzyHilfeEinrichten() {
+  const f = $('neuer-bot-form')
+  if (!f || !$('nb-soul')) return
+  $('nb-soul').addEventListener('click', async () => {
+    if (!f.name.value.trim()) return ($('nb-status').textContent = 'Bitte erst den Namen eintragen.')
+    const knopf = $('nb-soul')
+    knopf.disabled = true
+    knopf.textContent = '✨ Luzzy schreibt …'
+    $('nb-status').textContent = 'Luzzy schreibt die SOUL.md. Das dauert meist 20 bis 60 Sekunden.'
+    try {
+      const soul = await h.api.hermes.luzzyHilft('soul', nbDaten())
+      f.aufgaben.value = soul
+      f.aufgaben.rows = 14
+      $('nb-status').textContent = '✓ Luzzy hat die SOUL.md geschrieben. Lies drüber und ändere, was nicht passt – gespeichert wird sie genau so.'
+    } catch (err) {
+      $('nb-status').textContent = `Luzzy konnte die SOUL nicht schreiben: ${fehlerText(err)}`
+    } finally {
+      knopf.disabled = false
+      knopf.textContent = '✨ Luzzy schreibt die SOUL'
+    }
+  })
+  $('nb-prompt-knopf').addEventListener('click', async () => {
+    if (!f.name.value.trim()) return ($('nb-status').textContent = 'Bitte erst den Namen eintragen.')
+    const knopf = $('nb-prompt-knopf')
+    knopf.disabled = true
+    knopf.textContent = '🎨 Luzzy überlegt …'
+    try {
+      promptZeigen(await h.api.hermes.luzzyHilft('bild', nbDaten()))
+      $('nb-status').textContent = 'Prompt kopieren, Bild erzeugen, dann oben links mit „＋ Bild“ auswählen.'
+    } catch (err) {
+      $('nb-status').textContent = `Luzzy konnte keinen Prompt schreiben: ${fehlerText(err)}`
+    } finally {
+      knopf.disabled = false
+      knopf.textContent = '🎨 Bild-Prompt von Luzzy'
+    }
+  })
+  $('nb-prompt').addEventListener('click', (e) => {
+    const k = e.target.closest('[data-kopieren]')
+    if (!k) return
+    navigator.clipboard.writeText(k.previousElementSibling.textContent).then(() => {
+      k.textContent = '✓ Kopiert'
+      setTimeout(() => (k.textContent = 'Kopieren'), 1500)
+    }).catch(() => {})
   })
 }

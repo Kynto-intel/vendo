@@ -370,8 +370,10 @@
         </div>
         <label>Wofür ist er da? <small class="leise">1–2 Sätze, daran erkennt Luzzy, wann sie ihn fragt</small>
           <textarea name="beschreibung" rows="2" maxlength="400" placeholder="z. B. Schreibt Instagram- und Facebook-Posts für Donnerwolf."></textarea></label>
-        <label>Aufgaben und Charakter <small class="leise">kommt in seine SOUL.md, später jederzeit änderbar</small>
-          <textarea name="aufgaben" rows="5" maxlength="8000" placeholder="z. B. Du schreibst Captions und Hashtags im Donnerwolf-Stil (Wikinger, Wolf, direkt, mit Humor). Du veröffentlichst nichts selbst."></textarea></label>
+        <div class="nb-feldkopf"><span>SOUL.md <small class="leise">Charakter und Aufgaben – Stichworte reichen, Luzzy schreibt daraus die ganze SOUL</small></span><button class="knopf-flach nb-luzzy" id="nb-soul" type="button">✨ Luzzy schreibt die SOUL</button></div>
+        <textarea name="aufgaben" rows="5" maxlength="20000" placeholder="z. B. schreibt Captions und Hashtags im Donnerwolf-Stil, bekommt Aufträge von Luzzy, veröffentlicht nichts selbst"></textarea>
+        <div class="nb-feldkopf"><span>Bild <small class="leise">Prompt im gleichen Stil wie Kira, Lira und Milla</small></span><button class="knopf-flach nb-luzzy" id="nb-prompt-knopf" type="button">🎨 Bild-Prompt von Luzzy</button></div>
+        <div class="nb-prompt" id="nb-prompt" hidden></div>
         <label>Einstellungen übernehmen von <select name="vorlage" id="nb-vorlage"></select></label>
         <small class="leise">Modell, Zugänge (z. B. Shopify) und Skills kommen vom gewählten Bot – Messenger-Kanäle wie Telegram nicht. Hermes nimmt den neuen Bot automatisch ins Crew-Team auf.</small>
         <div class="nb-status" id="nb-status"></div>

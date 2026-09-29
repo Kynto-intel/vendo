@@ -241,6 +241,12 @@ automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
   Zugänge und Skills eines bestehenden Bots, ohne Messenger-Kanäle). Angelegt wird mit Hermes' eigenem Befehl
   `hermes profile create` – update-fest, am Hermes-Programm ändert sich nichts. Hermes nimmt jeden Bot automatisch ins
   Crew-Team auf; danach öffnet sich gleich der Chat mit ihm.
+  **Luzzy hilft:** „✨ Luzzy schreibt die SOUL“ macht aus Name, Rolle und Stichworten die komplette SOUL.md (Aufbau wie
+  bei Kira: Rolle, harte Grenzen, andere Bots, Arbeitsweise, Übergabe-Format, Stil) – sie wird genau so gespeichert.
+  „🎨 Bild-Prompt von Luzzy“ liefert Prompt und Negativ-Prompt im Stil von Kira, Lira und Milla (gesichtsloser
+  schwarzer Helm, Gold, nordische Muster, eigenes Erkennungszeichen), mit Kopier-Knöpfen. Beides läuft als einmalige
+  Anfrage an Luzzys Modell und landet nicht in ihrem Chat. Die Anleitung dafür ist ihr Skill `jarves-bot-erstellen` –
+  im Chat klappt es also genauso („Gib mir einen Bildprompt für Freya“).
 - **Modell ändern:** Zahnrad auf der Bot-Karte. Liste mit Suche, Anbieter zum Ein- und Ausklappen.
 - **Im Crew-Bereich hört Luzzy nicht von selbst mit** (z. B. Musik im Headset). Sprechen geht dort mit Strg+Leertaste.
 - **Freigaben:** Bei riskanten Befehlen erscheint eine Karte (Einmal erlauben · Für dieses Gespräch · Ablehnen) und

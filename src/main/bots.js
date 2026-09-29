@@ -46,7 +46,7 @@ ${andere.map((b) => `- **${b.name}**${b.rolle ? ` (${b.rolle})` : ''} – Profil
 `
 }
 
-async function botAnlegen({ name, rolle, beschreibung, aufgaben, vorlage, bild, andere = [] }) {
+async function botAnlegen({ name, rolle, beschreibung, aufgaben, soulKomplett = false, vorlage, bild, andere = [] }) {
   name = String(name || '').trim().slice(0, 40)
   rolle = String(rolle || '').trim().slice(0, 40)
   if (!name) throw new Error('Bitte einen Namen eintragen.')
@@ -66,7 +66,11 @@ async function botAnlegen({ name, rolle, beschreibung, aufgaben, vorlage, bild, 
   if (!fs.existsSync(ordner)) throw new Error('Hermes hat den Bot nicht angelegt.')
 
   // Charakter und Aufgaben (ersetzt die von der Vorlage kopierte SOUL.md)
-  fs.writeFileSync(path.join(ordner, 'SOUL.md'), seele({ name, rolle, aufgaben, andere: andere.filter((b) => b && PROFIL.test(b.profil)) }), 'utf8')
+  // Von Luzzy komplett geschrieben (oder von Felix): so übernehmen; sonst aus der Vorlage bauen
+  const soul = soulKomplett && String(aufgaben || '').trim().length > 200
+    ? `${String(aufgaben).trim()}\n`
+    : seele({ name, rolle, aufgaben, andere: andere.filter((b) => b && PROFIL.test(b.profil)) })
+  fs.writeFileSync(path.join(ordner, 'SOUL.md'), soul, 'utf8')
 
   // Bild (optional): als PNG nach assets\avatar.png, höchstens 512 px
   if (bild) {
@@ -82,4 +86,61 @@ async function botAnlegen({ name, rolle, beschreibung, aufgaben, vorlage, bild, 
   return { id, name, rolle }
 }
 
-module.exports = { botAnlegen, profilId }
+// ── Luzzy hilft: SOUL.md schreiben oder Bild-Prompt für den Avatar (ihr Skill jarves-bot-erstellen ist die Anleitung) ──
+// Läuft als einmalige Anfrage an Luzzys Modell (llm.oneshot): nichts davon landet in ihrem Chat.
+const SKILL = path.join(HERMES_HOME, 'profiles', 'donnerwolf', 'skills', 'productivity', 'jarves-bot-erstellen', 'SKILL.md')
+
+function skillTeil(teil) {
+  const text = fs.existsSync(SKILL) ? fs.readFileSync(SKILL, 'utf8') : ''
+  const a = text.indexOf('## Teil 1')
+  const b = text.indexOf('## Teil 2')
+  if (a < 0 || b < 0) throw new Error('Luzzys Skill „jarves-bot-erstellen“ fehlt.')
+  return teil === 1 ? text.slice(a, b) : text.slice(b)
+}
+
+async function luzzyHilft(art, d, hermes) {
+  const name = String(d?.name || '').trim().slice(0, 40)
+  const rolle = String(d?.rolle || '').trim().slice(0, 40)
+  if (!name) throw new Error('Bitte erst einen Namen eintragen.')
+  const beschreibung = String(d?.beschreibung || '').trim().slice(0, 400)
+  const notizen = String(d?.aufgaben || '').trim().slice(0, 4000)
+  const andere = (Array.isArray(d?.andere) ? d.andere : []).filter((b) => b && PROFIL.test(b.profil)).slice(0, 20)
+  if (!hermes.sessionId) await hermes.luzzyOeffnen()
+  let instructions
+  let input
+  if (art === 'soul') {
+    const kira = path.join(HERMES_HOME, 'profiles', 'kira-trend-scout-bot', 'SOUL.md')
+    const vorbild = fs.existsSync(kira) ? fs.readFileSync(kira, 'utf8').slice(0, 6000) : ''
+    instructions = `Du bist Luzzy, Felix' rechte Hand bei Donnerwolf. Schreib die SOUL.md für einen neuen Crew-Bot nach dieser Anleitung:
+
+${skillTeil(1)}
+
+Vorbild (Kiras SOUL, nur für Aufbau und Ton, nicht den Inhalt übernehmen):
+${vorbild}`
+    input = `Neuer Bot:
+- Name: ${name}
+- Rolle: ${rolle || '(noch offen)'}
+- Profil-ID: ${profilId(name, rolle)}
+- Wofür er da ist: ${beschreibung || '(nicht angegeben)'}
+- Felix' Notizen: ${notizen || '(keine)'}
+- Andere Bots: ${andere.map((b) => `${b.name}${b.rolle ? ` (${b.rolle})` : ''} = ${b.profil}`).join('; ')}
+
+Gib nur die fertige SOUL.md aus.`
+  } else {
+    instructions = `Du bist Luzzy, Felix' rechte Hand bei Donnerwolf. Schreib den Bild-Prompt für den Avatar eines neuen Crew-Bots nach dieser Anleitung:
+
+${skillTeil(2)}`
+    input = `Neuer Bot:
+- Name: ${name}
+- Rolle: ${rolle || '(noch offen)'}
+- Wofür er da ist: ${beschreibung || '(nicht angegeben)'}
+- Notizen: ${notizen.slice(0, 1500) || '(keine)'}`
+  }
+  const r = await hermes.rpc('llm.oneshot', { session_id: hermes.sessionId, instructions, input, max_tokens: art === 'soul' ? 4000 : 1200, temperature: 0.6 }, { timeout: 240000 }) // eine ganze SOUL braucht länger als die üblichen 60 s
+  let text = String(r?.text || '').trim()
+  if (!text) throw new Error('Luzzy hat nichts zurückgegeben. Nochmal versuchen.')
+  if (art === 'soul') text = text.replace(/^```[a-z]*\n/i, '').replace(/\n```\s*$/, '').trim() // Codeblock drumherum weg
+  return text
+}
+
+module.exports = { botAnlegen, profilId, luzzyHilft }

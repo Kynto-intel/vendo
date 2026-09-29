@@ -210,10 +210,12 @@ ipcMain.handle('hermes:kanalNeuLaden', (_e, kanal) => hermes.kanalNeuLaden(Strin
 const bots = require('./bots')
 ipcMain.handle('crew:botAnlegen', async (_e, daten) => {
   const d = daten && typeof daten === 'object' ? daten : {}
-  const r = await bots.botAnlegen({ name: d.name, rolle: d.rolle, beschreibung: d.beschreibung, aufgaben: String(d.aufgaben || '').slice(0, 8000), vorlage: d.vorlage, bild: d.bild, andere: Array.isArray(d.andere) ? d.andere.slice(0, 30) : [] })
+  const r = await bots.botAnlegen({ name: d.name, rolle: d.rolle, beschreibung: d.beschreibung, aufgaben: String(d.aufgaben || '').slice(0, 20000), soulKomplett: Boolean(d.soulKomplett), vorlage: d.vorlage, bild: d.bild, andere: Array.isArray(d.andere) ? d.andere.slice(0, 30) : [] })
   hermes.rest('/api/profiles').catch(() => {}) // Hermes die neue Liste gleich einlesen lassen
   return r
 })
+// Luzzy schreibt die SOUL.md oder den Bild-Prompt für einen neuen Bot (einmalige Anfrage, nicht in ihrem Chat)
+ipcMain.handle('crew:luzzyHilft', (_e, art, daten) => bots.luzzyHilft(art === 'bild' ? 'bild' : 'soul', daten && typeof daten === 'object' ? daten : {}, hermes))
 ipcMain.handle('crew:profilId', (_e, name, rolle) => bots.profilId(name, rolle))
 ipcMain.handle('crew:bildWaehlen', async () => {
   const r = await dialog.showOpenDialog(fenster, { title: 'Bild für den neuen Bot', properties: ['openFile'], filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })
