@@ -587,15 +587,17 @@ Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbind
 | `src/main/notfall.js` · `musik.js` · `wissen.js` | Ollama-Notbetrieb · Musik-Erkennung · Vault lesen |
 | `src/main/vaultschreiben.js` · `shopifytoken.js` · `plugins.js` · `einstellungen.js` | Vault schreiben (eng begrenzt) · Shopify-Token · Plugin-Host · Einstellungen |
 | `src/preload.js` · `src/mini-preload.js` | Sichere Brücke `window.jarves` zur Oberfläche |
-| `src/renderer/` | Oberfläche (ES-Module): `app.js` (Zentrale, Befehle), `vorlesen.js`, `mikrofon.js`, `crewchat.js`, `buehne.js`, `ansichten.js`, `dateiansicht.js`, `pcsteuerung.js`, `gespraeche.js`, `diktat.js`, `meldungen.js`, `timer.js`, `palette.js`, `selbsttest.js`, `mini.js` … |
+| `src/renderer/` | Oberfläche (ES-Module): `app.js` (Zentrale, Luzzy, Verdrahtung der Teile), `vorlesen.js`, `mikrofon.js`, `crewchat.js`, `buehne.js`, `ansichten.js`, `dateiansicht.js`, `pcsteuerung.js`, `gespraeche.js`, `diktat.js`, `meldungen.js`, `timer.js`, `palette.js`, `selbsttest.js`, `mini.js` … |
+| `src/renderer/rahmen/` | Alles, was das Fenster selbst betrifft, aus `app.js` ausgelagert: `design.js` (Designs, Tageszeit-Farben, Windows-Knöpfe), `einstellungsfenster.js` (Einstellungs-Dialog), `befehlsliste.js` (Befehle der Palette Strg+P), `navigation.js` (Bereiche links, Bereich wechseln). Jede Datei wird in `app.js` mit `…Einrichten({ … })` angebunden |
+| `designs/` | Ein Design pro Datei (siehe Einstellungen) |
 | `plugins/` | Plugins (siehe oben) |
 | `plugins/werkstatt/` | Werkstatt: Prüfung, Testlauf-Fenster (`test.html`, `test-runner.js`), Prüfprogramm für Luzzy (`pruefen-cli.js`) |
 | `werkstatt/` | Plugin-Entwürfe, an denen Luzzy baut (nicht in Git) |
 | `scripts/backup.js` | Sicherung |
 | `daten/` | Einstellungen, Dateiindex, Datei-Sicherungen, Notbremse (`plugin-start.json`) – nicht in Git |
 
-**Design:** Donnerwolf Gold auf Anthrazit, alle Farben zentral in `src/renderer/style.css` unter `:root`
-(Mitte `#131315`, Seitenspalten `#0E0E10`, Karten `#19191C`, Eingaben `#101012`, Rahmen `#26262A`, Gold `#C9A14A`,
+**Design:** Standard ist Donnerwolf Gold auf Anthrazit (weitere Designs im Ordner `designs/`), die Grundwerte stehen in
+`src/renderer/style.css` unter `:root` (Mitte `#131315`, Seitenspalten `#0E0E10`, Karten `#19191C`, Eingaben `#101012`, Rahmen `#26262A`, Gold `#C9A14A`,
 helles Gold `#E3BE6C`, Text `#ECE6DA`, leiser Text `#8C877E`). Karten mit runden Ecken und weichem Schatten, Gold nur
 als Akzent, Monospace für Status und Zahlen. Reaktor mit drehenden Ringen, Sprach-Welle, Scanlinie – alles abschaltbar.
 Plugins nutzen dieselben Variablen und Klassen (`hud`, `knopf-gold`, `knopf-flach`, `leise`).
