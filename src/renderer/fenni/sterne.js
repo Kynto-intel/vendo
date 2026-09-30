@@ -56,10 +56,14 @@ export function sterneErstellen(canvas) {
     })
   }
 
+  // Nur bei echter Größenänderung neu verteilen (das Fenster wächst für Meldungen, diese Ebene bleibt gleich groß)
   function groesseAnpassen() {
     const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.round(canvas.clientWidth * dpr)
-    canvas.height = Math.round(canvas.clientHeight * dpr)
+    const breite = Math.round(canvas.clientWidth * dpr)
+    const hoehe = Math.round(canvas.clientHeight * dpr)
+    if (breite === canvas.width && hoehe === canvas.height && punkte.length) return
+    canvas.width = breite
+    canvas.height = hoehe
     punkteVerteilen(canvas.clientWidth, canvas.clientHeight)
   }
   farbenNeu()

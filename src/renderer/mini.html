@@ -6,40 +6,98 @@
   <title>Luzzy</title>
   <style>
     :root { --akzent-rgb: 201, 161, 74; --akzent-hell-rgb: 227, 190, 108; --grund-rgb: 14, 14, 16; --text-rgb: 236, 230, 218; } /* Farben des Designs, setzt mini.js */
-    /* Mini-Modus: kleine Leiste oben mittig mit Fenni, dem kleinen Wolf (fenni/fenni.js) */
-    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+    /* Mini-Modus: eine Insel, die aus der oberen Bildschirmkante kommt. Mitte: Fenni, der kleine Wolf (fenni/).
+       Links: Uhr und Wetter. Rechts: was Luzzy sagt, sonst nächster Termin und offene Aufgaben.
+       Unten klappt bei einer neuen Meldung eine zweite Zeile auf (das Fenster wird dafür kurz höher, main.js). */
+    :root { --hoehe: 64px; --meldung: 44px; --schulter: 14px; --flaeche: rgba(var(--grund-rgb), 0.96); }
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .insel { position: absolute; inset: 0; --rand: rgba(var(--akzent-rgb), 0.35); animation: herab 420ms cubic-bezier(0.2, 0.9, 0.3, 1.12) both; }
+    .insel:hover { --rand: rgba(var(--akzent-rgb), 0.8); }
+    .insel[data-zustand='schaut'] { --rand: rgba(255, 255, 255, 0.85); } /* schaut auf den Bildschirm (nur auf Befehl) */
+    /* kommt aus der Bildschirmkante herunter */
+    @keyframes herab { from { transform: translateY(-100%); } to { transform: none; } }
+    /* Schultern: geschwungener Übergang von der Bildschirmkante in die Insel */
+    .schulter { position: absolute; top: 0; width: var(--schulter); height: var(--schulter); pointer-events: none; }
+    .schulter.links { left: 0; background: radial-gradient(circle at 0 100%, transparent calc(var(--schulter) - 1px), var(--rand) calc(var(--schulter) - 1px), var(--rand) var(--schulter), var(--flaeche) var(--schulter)); }
+    .schulter.rechts { right: 0; background: radial-gradient(circle at 100% 100%, transparent calc(var(--schulter) - 1px), var(--rand) calc(var(--schulter) - 1px), var(--rand) var(--schulter), var(--flaeche) var(--schulter)); }
     .pille {
-      box-sizing: border-box; height: 100%; position: relative; border-radius: 999px; cursor: pointer; overflow: hidden;
-      background: rgba(var(--grund-rgb), 0.92); border: 1px solid rgba(var(--akzent-rgb), 0.35);
-      transition: border-color 200ms;
+      box-sizing: border-box; position: absolute; top: 0; left: var(--schulter); right: var(--schulter); height: var(--hoehe);
+      border-radius: 0 0 26px 26px; border: 1px solid var(--rand); border-top: 0; background: var(--flaeche);
+      overflow: hidden; cursor: pointer; transition: height 320ms cubic-bezier(0.2, 0.9, 0.3, 1);
     }
-    /* Einschalten wie eine alte Röhre: heller Strich in der Mitte, der aufklappt (das Fenster entsteht bei jedem Mini-Modus neu) */
-    .pille { animation: roehreAn 600ms ease-out both; }
+    .pille.offen { height: calc(var(--hoehe) + var(--meldung)); }
+    /* Obere Zeile: schaltet sich nach dem Herunterkommen ein wie eine alte Röhre (heller Strich, der aufklappt) */
+    .oben { position: absolute; top: 0; left: 0; right: 0; height: var(--hoehe); animation: roehreAn 600ms 320ms ease-out both; }
     @keyframes roehreAn {
-      0% { transform: scale(0.25, 0.04); filter: brightness(2.6); }
-      35% { transform: scale(1, 0.04); filter: brightness(2.6); }
+      0% { transform: scale(0.25, 0.04); filter: brightness(2.6); opacity: 0.6; }
+      35% { transform: scale(1, 0.04); filter: brightness(2.6); opacity: 1; }
       70% { transform: scale(1, 1.05); filter: brightness(1.4); }
       100% { transform: none; filter: none; }
     }
-    @media (prefers-reduced-motion: reduce) { .pille { animation: none; } }
-    .pille:hover { border-color: rgba(var(--akzent-rgb), 0.8); }
-    /* schaut auf den Bildschirm (nur auf Befehl): heller Rand, deutlich sichtbar */
-    .pille[data-zustand='schaut'] { border-color: rgba(255, 255, 255, 0.85); }
     /* Zwei Ebenen: Lichtpunkte und Schein (fenni/sterne.js) unter Fenni (fenni/fenni.js) */
     #sterne, #fenni { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    .seite {
+      position: absolute; top: 0; bottom: 4px; display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0;
+      pointer-events: none; color: rgba(var(--text-rgb), 0.92); text-shadow: 0 1px 3px rgba(var(--grund-rgb), 0.95);
+    }
+    .seite.links { left: 30px; right: calc(50% + 50px); align-items: flex-start; }
+    .seite.rechts { left: calc(50% + 50px); right: 30px; align-items: flex-end; text-align: right; }
+    .seite > div { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .uhr { font-size: 17px; font-weight: 600; letter-spacing: 0.5px; font-variant-numeric: tabular-nums; color: rgb(var(--akzent-hell-rgb)); }
+    .zeile { font-size: 12.5px; }
+    .klein { font-size: 11px; color: rgba(var(--text-rgb), 0.62); }
+    .klein:empty { display: none; }
+    /* Luzzys Worte: zwei Zeilen, das Ende ihres Satzes */
+    .seite.rechts.worte .zeile { white-space: normal; font-size: 11.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .seite.rechts.worte .klein { display: none; }
+    .seite .zeile, .seite .klein { transition: opacity 180ms; }
     .gross {
-      position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 0; padding: 0;
-      border-radius: 50%; background: rgba(var(--akzent-rgb), 0.15); color: rgb(var(--akzent-hell-rgb)); font-size: 11px; line-height: 20px; cursor: pointer;
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 0; padding: 0;
+      border-radius: 50%; background: rgba(var(--akzent-rgb), 0.15); color: rgb(var(--akzent-hell-rgb)); font-size: 10px; line-height: 18px; cursor: pointer;
       opacity: 0; transition: opacity 150ms;
     }
-    .pille:hover .gross { opacity: 1; }
+    .insel:hover .gross { opacity: 1; }
+    /* Meldung (neue Bestellung, Mail …): zweite Zeile unter Fenni */
+    .meldung {
+      position: absolute; top: var(--hoehe); left: 0; right: 0; height: var(--meldung); box-sizing: border-box; padding: 0 26px 6px;
+      display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(var(--akzent-rgb), 0.18);
+      opacity: 0; transition: opacity 180ms;
+    }
+    .pille.offen .meldung { opacity: 1; transition-delay: 140ms; }
+    .meldung-symbol {
+      flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
+      background: rgba(var(--akzent-rgb), 0.18); color: rgb(var(--akzent-hell-rgb)); font-family: 'Segoe UI Symbol', 'Segoe UI', sans-serif;
+    }
+    .meldung-text { min-width: 0; display: flex; flex-direction: column; }
+    .meldung-text b, .meldung-text span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meldung-text b { font-size: 12.5px; font-weight: 600; color: rgba(var(--text-rgb), 0.95); }
+    .meldung-text span { font-size: 11px; color: rgba(var(--text-rgb), 0.62); }
+    @media (prefers-reduced-motion: reduce) { .insel, .oben { animation: none; } .pille { transition: none; } }
   </style>
 </head>
 <body>
-  <div class="pille" id="pille" data-zustand="bereit" title="Luzzy · Klick: sprechen · Doppelklick: großes Fenster · Rechtsklick: Fenni anstupsen">
-    <canvas id="sterne" aria-hidden="true"></canvas>
-    <canvas id="fenni" aria-label="Fenni, der kleine Wolf"></canvas>
-    <button class="gross" id="gross" type="button" title="Großes Fenster">⤢</button>
+  <div class="insel" id="insel" data-zustand="bereit">
+    <div class="schulter links"></div>
+    <div class="schulter rechts"></div>
+    <div class="pille" id="pille" title="Luzzy · Klick: sprechen · Doppelklick: großes Fenster · Rechtsklick: Fenni anstupsen · Maus über Fenni hin und her: streicheln">
+      <div class="oben">
+        <canvas id="sterne" aria-hidden="true"></canvas>
+        <canvas id="fenni" aria-label="Fenni, der kleine Wolf"></canvas>
+        <div class="seite links">
+          <div class="uhr" id="uhr"></div>
+          <div class="klein" id="wetter"></div>
+        </div>
+        <div class="seite rechts" id="rechts">
+          <div class="zeile" id="rechts-oben"></div>
+          <div class="klein" id="rechts-unten"></div>
+        </div>
+        <button class="gross" id="gross" type="button" title="Großes Fenster">⤢</button>
+      </div>
+      <div class="meldung" id="meldung">
+        <span class="meldung-symbol" id="meldung-symbol"></span>
+        <div class="meldung-text"><b id="meldung-titel"></b><span id="meldung-zeile"></span></div>
+      </div>
+    </div>
   </div>
   <script type="module" src="mini.js"></script>
 </body>

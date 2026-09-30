@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinweis: 'ⓘ', termin: '◷', timer: '⏱', aufgabe: '☐', meilenstein: '★', kosten: '$' }
 
-let h = { vorlesen: () => {}, istBeschaeftigt: () => false, einstellungen: () => ({}) }
+let h = { vorlesen: () => {}, istBeschaeftigt: () => false, einstellungen: () => ({}), beiNeu: () => {} }
 const liste = []
 const warteschlange = [] // { art, text } – text leer, wenn nur der Ton kommen soll
 let spielt = false
@@ -68,7 +68,9 @@ export function meldungNeu(m) {
   zeigen()
   if (m.still) return // nur in die Liste (z. B. abgelaufener Timer, den Luzzy schon selbst ansagt)
   if (gesammelt) return gesammelt.push(m)
-  if (inRuhezeit(e) || h.einstellungen()?.nichtStoerenBis > Date.now()) return // Ruhezeit oder „Nicht stören“
+  if (h.einstellungen()?.nichtStoerenBis > Date.now()) return // „Nicht stören“: nur in die Liste
+  h.beiNeu(m) // Mini-Insel zeigt sie (auch in der Ruhezeit, dort nur ohne Ton und Vorlesen)
+  if (inRuhezeit(e)) return
   const text = m.art !== 'hinweis' && e.vorlesen !== false ? m.text : ''
   if (text || e.ton !== false) warteschlange.push({ art: m.art, text })
 }

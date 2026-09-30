@@ -7,6 +7,7 @@ import { mikrofonErstellen } from './mikrofon.js'
 
 import { crewLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
+import { miniInfoEinrichten } from './miniinfo.js'
 import { freigabenEinrichten, freigabeAusText, freigabeOffen, freigabeZurueckgezogen, freigabenLeeren, jaKnoepfeAnhaengen, jaKnoepfeEntfernen } from './freigaben.js'
 import { tonSpielen } from './toene.js'
 import './auswahl.js' // eigene Auswahlfenster für Datum und Uhrzeit (statt der Windows-Fenster)
@@ -369,6 +370,7 @@ function zustand() {
 // Mini-Modus (Leiste oben mittig, siehe mini.html): bekommt Zustand und Pegel, solange sie offen ist
 let miniAn = false
 let miniLetzterPegel = 0
+const miniInfo = miniInfoEinrichten({ api }) // Wetter, Termin, Aufgaben, Luzzys Worte und Meldungen für die Insel
 function miniSenden(pegel) {
   if (!miniAn) return
   if (pegel !== undefined) {
@@ -377,10 +379,16 @@ function miniSenden(pegel) {
     miniLetzterPegel = jetzt
   }
   const z = zustand()
-  api.fenster.miniZustand({ zustand: z, titel: z === 'bereit' && wakeAktiv ? 'Hört auf „Hey Luzzy“' : ZUSTAND_TEXT[z], ...(pegel !== undefined ? { pegel } : {}) })
+  api.fenster.miniZustand({
+    zustand: z,
+    titel: z === 'bereit' && wakeAktiv ? 'Hört auf „Hey Luzzy“' : ZUSTAND_TEXT[z],
+    werkzeug: beschaeftigt && werkzeug ? werkzeug.replace(/_/g, ' ') : '',
+    ...(pegel !== undefined ? { pegel } : {})
+  })
 }
 api.fenster.beiMini((an) => {
   miniAn = Boolean(an)
+  miniInfo.an(miniAn)
   if (miniAn) setTimeout(() => miniSenden(), 300) // die Leiste braucht einen Moment zum Laden
 })
 {
@@ -418,6 +426,7 @@ function klartext(text) {
 function untertitelZeigen(text, { fertig = false } = {}) {
   const el = $('untertitel')
   const kurz = klartext(text)
+  miniInfo.worte(kurz) // auch rechts in der Mini-Insel
   if (!kurz) return (el.textContent = '')
   const zuLang = kurz.length > 320
   const sichtbar = fertig ? kurz.slice(0, 320) : kurz.slice(-320)
@@ -1285,7 +1294,8 @@ setInterval(uhrZeigen, 1000)
 meldungenEinrichten({
   vorlesen: (text) => vorleser.sprechen(text, stimmOptionen()),
   istBeschaeftigt: () => !verbunden || beschaeftigt || spricht || hoert || versteht || sprichtGerade,
-  einstellungen: () => einstellungen
+  einstellungen: () => einstellungen,
+  beiNeu: (m) => miniInfo.meldung(m) // Mini-Insel klappt kurz auf
 })
 api.waechter.beiMeldung(meldungNeu)
 

@@ -17,6 +17,8 @@ export function fenniFarben(stil = getComputedStyle(document.documentElement)) {
     auge: '#1a1408',
     augeWeiss: '#fffaf0',
     maul: '#7a3a2a',
+    zunge: '#e8828a', // beim Hecheln
+    zungeLinie: 'rgba(150, 50, 60, 0.55)',
     wange: 'rgba(214, 120, 90, 0.28)',
     effekt: rgba(hell, 0.85)
   }

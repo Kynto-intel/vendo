@@ -702,10 +702,12 @@ ipcMain.handle('system:werte', () => {
   }
 })
 
-// ── Mini-Modus: schmale Leiste fest oben mittig, immer im Vordergrund; das große Fenster geht in die Taskleiste ──
+// ── Mini-Modus: Insel fest oben mittig an der Bildschirmkante, immer im Vordergrund; das große Fenster geht in die Taskleiste ──
 // Mikrofon, „Hey Luzzy“ und Stimme laufen weiter im großen Fenster (backgroundThrottling: false),
 // es schickt der Leiste nur, was Luzzy gerade tut.
-const MINI = { breite: 340, hoehe: 72, abstand: 8 } // Platz für Fenni, den kleinen Wolf (renderer/fenni/)
+// Platz für Fenni (renderer/fenni/), Uhr/Wetter links, Luzzys Worte rechts; meldung: so viel höher, solange eine Meldung
+// aufgeklappt ist (sonst bliebe unter der Insel ein unsichtbarer Streifen, der Klicks auf Browser-Tabs schluckt)
+const MINI = { breite: 480, hoehe: 64, meldung: 44 }
 let mini = null
 // Fennis Augen folgen der Maus auf dem ganzen Bildschirm: Mausposition relativ zur Mitte der Leiste, ~25-mal pro
 // Sekunde und nur, solange der Mini-Modus an ist und sich die Maus bewegt
@@ -714,7 +716,7 @@ setInterval(() => {
   if (!mini || mini.isDestroyed() || !mini.isVisible()) return
   const maus = screen.getCursorScreenPoint()
   const b = mini.getBounds()
-  const blick = { x: Math.round(maus.x - (b.x + b.width / 2)), y: Math.round(maus.y - (b.y + b.height / 2)) }
+  const blick = { x: Math.round(maus.x - (b.x + b.width / 2)), y: Math.round(maus.y - (b.y + MINI.hoehe / 2)) }
   const schluessel = `${blick.x},${blick.y}`
   if (schluessel === letzterBlick) return
   letzterBlick = schluessel
@@ -742,7 +744,7 @@ function miniSetzen(an, { schliessen = false } = {}) {
       width: MINI.breite,
       height: MINI.hoehe,
       x: Math.round(workArea.x + (workArea.width - MINI.breite) / 2),
-      y: workArea.y + MINI.abstand,
+      y: workArea.y, // direkt an der oberen Kante: die Insel kommt aus dem Bildschirm
       frame: false,
       transparent: true,
       resizable: false,
@@ -795,6 +797,12 @@ ipcMain.on('mini:zustand', (_e, daten) => {
 })
 ipcMain.on('mini:sprechen', () => senden('mikrofon:umschalten'))
 ipcMain.on('mini:gross', () => miniSetzen(false))
+// Meldung auf- und zuklappen: das Fenster wächst nach unten mit (mini.js)
+ipcMain.on('mini:hoehe', (_e, offen) => {
+  if (!mini || mini.isDestroyed()) return
+  const b = mini.getBounds()
+  mini.setBounds({ ...b, height: MINI.hoehe + (offen ? MINI.meldung : 0) })
+})
 
 // ── Start ──
 app.whenReady().then(() => {

@@ -43,8 +43,9 @@ export function kopfZeichnen(g, { heben = 0, klapp = 0 }, f) {
   g.fill()
 }
 
-// Nase und Maul. offen 0…1: beim Sprechen (aus dem Stimmpegel), sonst das kleine „w“
-export function maulZeichnen(g, { offen = 0, spricht = false }, f) {
+// Nase und Maul. offen 0…1: beim Sprechen (aus dem Stimmpegel), sonst das kleine „w“.
+// hecheln: Maul offen, Zunge hängt raus und wippt (zunge -1…1 aus fenni.js)
+export function maulZeichnen(g, { offen = 0, spricht = false, hecheln = false, zunge = 0 }, f) {
   g.beginPath()
   g.moveTo(-5, 6)
   g.quadraticCurveTo(0, 4, 5, 6)
@@ -58,6 +59,34 @@ export function maulZeichnen(g, { offen = 0, spricht = false }, f) {
     g.ellipse(0, 15 + hoehe / 2, 4.5, hoehe / 1.6 + 1, 0, 0, Math.PI * 2)
     g.fillStyle = f.maul
     g.fill()
+    return
+  }
+  if (hecheln) {
+    // offenes Maul (breites „D“ nach unten)
+    g.beginPath()
+    g.moveTo(-6.5, 12)
+    g.quadraticCurveTo(0, 10.5, 6.5, 12)
+    g.quadraticCurveTo(6, 19, 0, 19.5)
+    g.quadraticCurveTo(-6, 19, -6.5, 12)
+    g.fillStyle = f.maul
+    g.fill()
+    // Zunge: hängt über die Unterlippe, wippt mit dem Atem
+    const lang = 27 + zunge * 1.6
+    g.beginPath()
+    g.moveTo(-4.2, 15)
+    g.lineTo(-4.2, lang - 3.5)
+    g.quadraticCurveTo(-4.2, lang + 0.5, 0, lang + 0.5)
+    g.quadraticCurveTo(4.2, lang + 0.5, 4.2, lang - 3.5)
+    g.lineTo(4.2, 15)
+    g.closePath()
+    g.fillStyle = f.zunge
+    g.fill()
+    g.strokeStyle = f.zungeLinie
+    g.lineWidth = 0.9
+    g.beginPath()
+    g.moveTo(0, 16)
+    g.lineTo(0, lang - 2.5)
+    g.stroke()
     return
   }
   g.strokeStyle = f.auge
