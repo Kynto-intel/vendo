@@ -389,7 +389,9 @@ Löschen geht nur mit Rückfrage.
 ## Mini-Modus
 
 Eine kleine schwarze **Insel, die oben in der Bildschirmmitte aus der Kante kommt** (ohne Rahmen, mit geschwungenem
-Übergang, so sieht sie aus wie ein Teil des Bildschirms), immer im Vordergrund. So kannst du jederzeit mit Luzzy reden,
+Übergang, so sieht sie aus wie ein Teil des Bildschirms), **immer ganz vorne**, egal was offen ist (auch vor anderen
+Fenstern, die „immer im Vordergrund“ sind: sie holt sich jede Sekunde den obersten Platz zurück, ohne den Fokus zu nehmen;
+nur Spiele im exklusiven Vollbild zeichnen darüber). So kannst du jederzeit mit Luzzy reden,
 ohne dass Jarves-OS Platz braucht.
 
 **Sie stört nicht:** Nach 4 Sekunden ohne Maus und ohne Luzzy verschwindet sie nach oben, und Klicks gehen dann durch

@@ -741,6 +741,14 @@ setInterval(() => {
   letzterBlick = schluessel
   mini.webContents.send('mini:blick', blick)
 }, 40)
+// Immer ganz vorne, egal was offen ist: Windows schiebt andere Fenster, die auch „immer im Vordergrund“ sind
+// (z. B. Photoshop-Paletten, Videoplayer, Screenshot-Werkzeuge), sonst darüber. Deshalb jede Sekunde wieder nach
+// ganz oben, ohne den Fokus zu nehmen (moveTop aktiviert das Fenster nicht).
+setInterval(() => {
+  if (!mini || mini.isDestroyed() || !mini.isVisible()) return
+  mini.setAlwaysOnTop(true, 'screen-saver')
+  mini.moveTop()
+}, 1000)
 function miniSetzen(an, { schliessen = false } = {}) {
   if (!fenster || fenster.isDestroyed()) an = false
   if (!an) {
