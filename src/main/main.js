@@ -832,6 +832,10 @@ app.whenReady().then(() => {
 function skriptFuerTest() {
   const code = process.env.JARVES_TEST_JS
   if (!code) return
+  // Fehler aus der Oberfläche (auch beim Laden der Module) im Terminal zeigen, damit ein Test sie sieht
+  fenster.webContents.on('console-message', (e) => {
+    if (e.level === 'error') console.log('TEST-KONSOLE:', String(e.message).slice(0, 300), e.sourceId ? `(${path.basename(e.sourceId)}:${e.lineNumber})` : '')
+  })
   setTimeout(async () => {
     try {
       const ergebnis = await fenster.webContents.executeJavaScript(code, true)
