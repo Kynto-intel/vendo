@@ -5,7 +5,7 @@ import { markdownZuHtml } from './markdown.js'
 import { vorleserErstellen, satzStueck } from './vorlesen.js'
 import { mikrofonErstellen } from './mikrofon.js'
 
-import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from './ansichten.js'
+import { crewLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
 import { freigabenEinrichten, freigabeAusText, freigabeOffen, freigabeZurueckgezogen, freigabenLeeren, jaKnoepfeAnhaengen, jaKnoepfeEntfernen } from './freigaben.js'
 import { tonSpielen } from './toene.js'
@@ -26,32 +26,20 @@ import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegrues
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 import { sendeKnopfSetzen } from './sendeknopf.js'
 import { befehlslisteEinrichten } from './rahmen/befehlsliste.js'
+import { navigationEinrichten, BEREICHE, ansichtZeigen, bereicheZeigen, offeneAnsicht, bereichLaedt, pluginBereicheHinzufuegen } from './rahmen/navigation.js'
 import { designEinrichten, designAnwenden, tageszeitAnwenden, titelfarbeSetzen } from './rahmen/design.js'
 import { einstellungsfensterEinrichten } from './rahmen/einstellungsfenster.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
 import { kostenEinrichten } from './kosten.js'
 import { cockpitEinrichten, cockpitAnzeigen, cockpitAnstossen } from './cockpit.js'
-import { terminalEinrichten, terminalLaden } from './terminal.js'
-import { crewChatEinrichten, crewBotsLaden, wechseln as crewWechseln, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, crewSichtbarGeworden, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
+import { terminalEinrichten } from './terminal.js'
+import { crewChatEinrichten, crewBotsLaden, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
-import { wissenEinrichten, notizOeffnen, wissenLaden, bibliothekLaden, entscheidungenLaden, dateienLaden, morgenberichtLaden } from './wissen.js'
+import { wissenEinrichten, notizOeffnen, morgenberichtLaden } from './wissen.js'
 
 const $ = (id) => document.getElementById(id)
 const api = window.jarves
-
-const BEREICHE = [
-  { id: 'zentrale', name: 'Zentrale', aktiv: true },
-  { id: 'crew', name: 'Crew', aktiv: true },
-  { id: 'jobs', name: 'Jobs', aktiv: true },
-  { id: 'kanban', name: 'Kanban', aktiv: true },
-  { id: 'bibliothek', name: 'Bibliothek', aktiv: true },
-  { id: 'entscheidungen', name: 'Entscheidungen', aktiv: true },
-  { id: 'wissen', name: 'Wissen', aktiv: true },
-  { id: 'dateien', name: 'Dateien', aktiv: true },
-  { id: 'system', name: 'System', aktiv: true },
-  { id: 'terminal', name: 'Terminal', aktiv: true }
-]
 
 const ZUSTAND_TEXT = {
   bereit: 'Bereit',
@@ -77,9 +65,8 @@ let wakeAktiv = false
 let wakeGrund = '' // warum „Hey Luzzy“ nicht zuhört (siehe wakeEinrichten)
 // Freihändig (Standard): „Hey Luzzy“, Reinreden, Weiter-Zuhören. Aus: nur auf Knopfdruck (Headset, Anrufe).
 // Im Crew-Bereich (Felix schreibt mit Kira & Co.) hört Luzzy automatisch nur auf Knopfdruck (abschaltbar).
-let crewOffen = false
 const freihaendigEingestellt = () => einstellungen?.sprache?.freihaendig !== false
-const crewStill = () => crewOffen && einstellungen?.sprache?.crewStill !== false
+const crewStill = () => offeneAnsicht() === 'crew' && einstellungen?.sprache?.crewStill !== false
 const freihaendig = () => freihaendigEingestellt() && !crewStill()
 
 const reaktor = reaktorErstellen($('reaktor-rahmen'))
@@ -1040,7 +1027,7 @@ for (const form of document.querySelectorAll('.eingabe-form')) {
 // Das Gespräch mit Luzzy steht nicht mehr rechts angedockt, sondern im Crew-Tab (Normaler Chat → Luzzy).
 // „Öffnen“ (Gesprächs-Karte rechts, Strg+K, Klick auf den Untertitel) springt dorthin, „Schließen“ zurück zur Zentrale.
 const panel = $('gespraech-panel')
-const panelGeschlossen = () => !(aktuelleAnsicht === 'crew' && crewKanal() === 'zentrale')
+const panelGeschlossen = () => !(offeneAnsicht() === 'crew' && crewKanal() === 'zentrale')
 
 function panelSetzen(offen) {
   panel.hidden = true
@@ -1240,9 +1227,9 @@ function statusZeigen({ zustand: z, text }) {
     zustandZeigen()
     infoLaden()
     wakeEinrichten()
-    if (aktuelleAnsicht !== 'crew') crewLaden()
+    if (offeneAnsicht() !== 'crew') crewLaden()
     // Beim Start wiederhergestellter Bereich: jetzt mit Verbindung richtig laden (Crew-Chat öffnen usw.)
-    if (aktuelleAnsicht !== 'zentrale') ansichtZeigen(aktuelleAnsicht)
+    if (offeneAnsicht() !== 'zentrale') ansichtZeigen(offeneAnsicht())
     testNachrichtSenden()
   }
 }
@@ -1259,129 +1246,19 @@ async function infoLaden() {
   }
 }
 
-// ── Bereiche links: nach Gruppen, mit Symbol (Linien-Grafiken, 24er Raster) ──
-const SYMBOLE = {
-  zentrale: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
-  crew: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 13.6c2.6.2 4.5 2.1 4.5 4.9"/>',
-  jobs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
-  kanban: '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/>',
-  bibliothek: '<path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="M9 7h6"/>',
-  entscheidungen: '<path d="M12 3v18M5 7h14"/><path d="M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/><path d="M8 21h8"/>',
-  wissen: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>',
-  dateien: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-  terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/>',
-  system: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
-  'plugin-aufgaben': '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M8 12l3 3 5-6"/>',
-  'plugin-fokus': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
-  'plugin-gedanken': '<path d="M4 20l1.2-4A8 8 0 1 1 8 18.8z"/><path d="M9 10h6M9 13.5h4"/>',
-  'plugin-kalender': '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  'plugin-meilensteine': '<path d="M12 3l2.6 5.5 6 .8-4.4 4.2 1.1 6L12 16.6 6.7 19.5l1.1-6-4.4-4.2 6-.8z"/>',
-  'plugin-routinen': '<path d="M4 12a8 8 0 0 1 14-5.3L20 9"/><path d="M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L4 15"/><path d="M4 20v-5h5"/>',
-  'plugin-wetter': '<circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M2 8h1.5M3.8 3.8l1 1M12.2 3.8l-1 1"/><path d="M7 20h10a4 4 0 0 0 0-8 5 5 0 0 0-9.6 1.6A3.3 3.3 0 0 0 7 20z"/>'
-}
-const SYMBOL_PLUGIN = '<path d="M9 3h6v4a2 2 0 1 0 4 0h2v6h-3a2 2 0 1 0 0 4h3v4H3V9h4a2 2 0 1 0 0-4H3V3z"/>'
-const GRUPPEN = [
-  ['Luzzy', ['zentrale', 'crew']],
-  ['Automation', ['jobs', 'kanban', 'plugin-routinen']],
-  ['Werkzeuge', ['plugin-aufgaben', 'plugin-kalender', 'plugin-fokus', 'plugin-gedanken', 'plugin-wetter', 'plugin-meilensteine']],
-  ['Wissen', ['wissen', 'bibliothek', 'entscheidungen', 'dateien']],
-  ['System', ['system', 'terminal']]
-]
-const symbol = (id) => `<svg viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[id] || SYMBOL_PLUGIN}</svg>`
-function bereicheZeigen() {
-  const knopf = (b) =>
-    `<button class="bereich${b.id === aktuelleAnsicht ? ' gewaehlt' : ''}" data-bereich="${b.id}" type="button" title="${b.name}" ${b.aktiv ? '' : 'disabled'}>${symbol(b.id)}<span>${b.name}</span></button>`
-  const vergeben = new Set(GRUPPEN.flatMap(([, ids]) => ids))
-  const gruppen = GRUPPEN.map(([name, ids]) => {
-    let liste = ids.map((id) => BEREICHE.find((b) => b.id === id)).filter(Boolean)
-    // Neue Plugins ohne feste Gruppe landen bei den Werkzeugen
-    if (name === 'Werkzeuge') liste = liste.concat(BEREICHE.filter((b) => !vergeben.has(b.id)))
-    return liste.length ? `<div class="bereich-gruppe">${name}</div>${liste.map(knopf).join('')}` : ''
-  })
-  $('bereiche').innerHTML = gruppen.join('')
-}
-
-// ── Bereiche wechseln; offene Bereiche aktualisieren sich regelmäßig ──
-const LADEN = {
-  crew: crewLaden, jobs: jobsLaden, kanban: kanbanLaden, system: systemLaden, terminal: terminalLaden,
-  bibliothek: bibliothekLaden, entscheidungen: entscheidungenLaden, wissen: wissenLaden, dateien: dateienLaden
-}
-const TAKT = { terminal: 600000, crew: 15000, jobs: 20000, kanban: 15000, system: 5000, bibliothek: 30000, entscheidungen: 30000, wissen: 60000, dateien: 30000 }
-let aktuelleAnsicht = 'zentrale'
-let taktUhr = 0
-let crewGeoeffnet = false
-
-function ansichtZeigen(id) {
-  aktuelleAnsicht = id
-  // Crew-Bereich: Luzzy hört nicht mit (Felix schreibt dort mit den Bots), beim Verlassen wieder wie eingestellt
-  if (crewOffen !== (id === 'crew')) {
-    crewOffen = id === 'crew'
-    if (crewOffen) setTimeout(crewSichtbarGeworden, 0) // Arbeitsbühne & Live-Karten mitlesen, solange Crew offen ist
-    hoerModusAnwenden()
+// Navigation (Bereiche links, Bereich wechseln, Aktualisieren): rahmen/navigation.js
+navigationEinrichten({
+  einstellungen: () => einstellungen,
+  verbunden: () => verbunden,
+  hoerModusAnwenden: () => hoerModusAnwenden(),
+  // „Aktualisieren“ im Crew-Tab: offenen Chat neu aus Hermes holen (z. B. nach Löschen in der Hermes-App)
+  chatNeuLaden: async () => {
+    if (crewKanal() === 'zentrale' && (beschaeftigt || aktuelleAntwort)) throw new Error('Antwort läuft noch')
+    gezeigterVerlauf = ''
+    await aktuellenChatNeuLaden()
   }
-  // Zuletzt offenen Bereich merken (nicht im Testmodus), damit er beim nächsten Start wieder aufgeht
-  if (einstellungen && einstellungen.letzteAnsicht !== id && !new URLSearchParams(location.search).has('stumm')) {
-    einstellungen.letzteAnsicht = id
-    api.einstellungen.speichern({ letzteAnsicht: id })
-  }
-  document.body.dataset.ansicht = id // Zentrale: Gespräch rechts ohne eigene Eingabe (siehe style.css)
-  for (const el of document.querySelectorAll('.ansicht')) el.hidden = el.dataset.ansicht !== id
-  bereicheZeigen()
-  clearInterval(taktUhr)
-  if (LADEN[id]) {
-    LADEN[id]()
-    taktUhr = setInterval(() => verbunden && LADEN[id](), TAKT[id])
-  }
-  if (id === 'crew' && !crewGeoeffnet && verbunden) {
-    crewGeoeffnet = true
-    crewBotsLaden().then(() => crewWechseln()).then(() => {
-      // nur Testmodus: ?crewtest=<Nachricht> schickt sie einmal in den Crew-Chat
-      const test = new URLSearchParams(location.search).get('crewtest')
-      if (!test) return
-      $('crew-form').querySelector('textarea').value = test
-      $('crew-form').requestSubmit()
-    }).catch((e) => {
-      crewGeoeffnet = false
-      console.warn('Crew:', e.message)
-    })
-  }
-  if (id === 'zentrale') document.querySelector('.befehl .eingabe-text')?.focus()
-}
-
-$('bereiche').addEventListener('click', (e) => {
-  const knopf = e.target.closest('[data-bereich]')
-  if (knopf && !knopf.disabled) ansichtZeigen(knopf.dataset.bereich)
 })
-// „Aktualisieren“-Knöpfe: sichtbar zeigen, dass neu geladen wird (sonst sieht man bei gleichen Daten nichts)
-async function neuLadenMitRueckmeldung(knopf) {
-  const bereich = knopf.dataset.neuLaden
-  const text = knopf.textContent
-  knopf.disabled = true
-  knopf.textContent = 'Lädt …'
-  let ok = true
-  try {
-    await Promise.all([LADEN[bereich]?.(), bereich === 'crew' ? crewBotsLaden() : null]) // Crew: auch neue/umbenannte Bots
-    if (bereich === 'crew') {
-      // Offenen Chat neu aus Hermes holen (z. B. nach Löschen in der Hermes-App); nicht während einer Antwort
-      if (crewKanal() === 'zentrale' && (beschaeftigt || aktuelleAntwort)) throw new Error('Antwort läuft noch')
-      gezeigterVerlauf = ''
-      await aktuellenChatNeuLaden()
-    }
-  } catch {
-    ok = false
-  }
-  knopf.textContent = ok ? '✓ Aktualisiert' : 'Hat nicht geklappt'
-  setTimeout(() => {
-    knopf.textContent = text
-    knopf.disabled = false
-  }, 1500)
-}
-document.addEventListener('click', (e) => {
-  const knopf = e.target.closest('[data-neu-laden]')
-  if (knopf && !knopf.disabled) neuLadenMitRueckmeldung(knopf)
-  const oeffnen = e.target.closest('[data-bereich-oeffnen]')
-  if (oeffnen) ansichtZeigen(oeffnen.dataset.bereichOeffnen)
-})
+
 // Wissen-Bereiche: Vorlesen, Bereich wechseln, Auftrag an Luzzy
 wissenEinrichten({
   vorlesen: (text) => vorleser.sprechen(text, stimmOptionen()),
@@ -1444,7 +1321,7 @@ cockpitEinrichten({
   verbunden: () => verbunden,
   botFenster: botFensterOeffnen,
   crewOeffnen: () => ansichtZeigen('crew'),
-  zentraleSichtbar: () => aktuelleAnsicht === 'zentrale'
+  zentraleSichtbar: () => offeneAnsicht() === 'zentrale'
 })
 
 // Terminal-Bereich (siehe terminal.js): echte PowerShell, „Meine Befehle“ in daten/terminal-befehle.json
@@ -1529,13 +1406,13 @@ for (const [quelle, [id, name]] of Object.entries(QUELLEN)) {
 // Schnellbefehle über der Eingabe kommen aus dem Routinen-Plugin (plugins/routinen)
 
 // Crew-Übersicht rechts aktuell halten, auch wenn der Crew-Bereich zu ist
-setInterval(() => verbunden && aktuelleAnsicht !== 'crew' && crewLaden(), 30000)
+setInterval(() => verbunden && offeneAnsicht() !== 'crew' && crewLaden(), 30000)
 
 // Gespräche im Crew-Bereich: Normaler Chat mit den Bots und Bot Mode (siehe crewchat.js)
 crewChatEinrichten({
   api,
-  crewSichtbar: () => aktuelleAnsicht === 'crew',
-  crewOeffnen: () => aktuelleAnsicht !== 'crew' && ansichtZeigen('crew'),
+  crewSichtbar: () => offeneAnsicht() === 'crew',
+  crewOeffnen: () => offeneAnsicht() !== 'crew' && ansichtZeigen('crew'),
   aktivitaet: (text, laeuft) => {
     if (laeuft) return aktivitaetMelden(text, true)
     laufendeBeenden()
@@ -1705,7 +1582,7 @@ async function start() {
   timerEinrichten({ gespeichert: einstellungen.timer, speichern: (liste) => api.einstellungen.speichern({ timer: liste }), alarm: timerAlarm })
   nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
-  if (testAnsicht) setTimeout(() => LADEN[testAnsicht] && ansichtZeigen(testAnsicht), 5000)
+  if (testAnsicht) setTimeout(() => bereichLaedt(testAnsicht) && ansichtZeigen(testAnsicht), 5000)
   // Plugins (jarves-os\plugins): eigener Bereich links, Karte rechts
   const pluginBereiche = await pluginsStarten({
     mitte: document.querySelector('.mitte'),
@@ -1723,13 +1600,7 @@ async function start() {
     bereit: () => verbunden && !beschaeftigt && !hoert && !versteht,
     nichtStoeren: (bis) => nichtStoerenSetzen(Number(bis) || 0, { bestaetigen: false })
   })
-  const vorSystem = BEREICHE.findIndex((b) => b.id === 'system')
-  BEREICHE.splice(vorSystem, 0, ...pluginBereiche.map((b) => ({ id: b.id, name: b.name, aktiv: true })))
-  for (const b of pluginBereiche) {
-    if (b.laden) LADEN[b.id] = b.laden
-    TAKT[b.id] = b.takt || 60000
-  }
-  bereicheZeigen()
+  pluginBereicheHinzufuegen(pluginBereiche)
   pluginsBereit(pluginBereiche.length)
   geladenePlugins = pluginBereiche.length
   // Rechte Spalte: eigene Auswahl und Reihenfolge (Einstellungen → Rechte Spalte)
