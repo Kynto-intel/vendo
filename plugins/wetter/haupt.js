@@ -29,7 +29,7 @@ module.exports = (ctx) => {
     }))
   })
 
-  // Vorhersage für Koordinaten: jetzt + 7 Tage (15 Minuten zwischengespeichert)
+  // Vorhersage für Koordinaten: jetzt + 8 Tage (15 Minuten zwischengespeichert)
   ctx.bereitstellen('vorhersage', async (breite, laenge, zeitzone = 'Europe/Berlin') => {
     const schluessel = `${Number(breite).toFixed(3)},${Number(laenge).toFixed(3)}`
     if (puffer.schluessel === schluessel && Date.now() - puffer.zeit < PUFFER_MS) return puffer.daten
@@ -38,8 +38,10 @@ module.exports = (ctx) => {
       longitude: String(laenge),
       current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation,relative_humidity_2m',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,sunrise,sunset,wind_speed_10m_max',
+      // Stundenwerte: Tagesbeschreibung (ansicht.js: tagWetter) und der Verlauf (Temperatur, Niederschlag, Wind)
+      hourly: 'weather_code,temperature_2m,precipitation_probability,wind_speed_10m,wind_direction_10m,relative_humidity_2m,is_day',
       timezone: zeitzone,
-      forecast_days: '7'
+      forecast_days: '8'
     })
     const daten = await holen(`${VORHERSAGE}?${parameter}`)
     puffer = { schluessel, zeit: Date.now(), daten }
