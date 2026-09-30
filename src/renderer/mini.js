@@ -33,7 +33,7 @@ farbenSetzen()
 
 const insel = $('insel')
 const pille = $('pille')
-const sterne = sterneErstellen($('sterne')) // Lichtpunkte und Schein hinter Fenni
+const sterne = sterneErstellen($('sterne'), { fenniX: () => fenni.position() }) // Lichtpunkte und Schein hinter Fenni
 const fenni = fenniErstellen($('fenni'))
 addEventListener('storage', (e) => {
   if (e.key !== 'jarves-design') return
@@ -171,10 +171,27 @@ pille.addEventListener('contextmenu', (e) => {
 let weg = 0
 let letzteBewegung = 0
 pille.addEventListener('mousemove', (e) => {
-  const mitte = pille.clientWidth / 2
-  if (Math.abs(e.offsetX - mitte) > 40 || e.target.id !== 'fenni') return
+  const mitte = pille.clientWidth / 2 + fenni.position() // dort, wo Fenni gerade ist
+  if (Math.abs(e.offsetX - mitte) > 30 || e.target.id !== 'fenni') return
   const jetzt = performance.now()
   weg = weg * Math.exp(-(jetzt - letzteBewegung) / 400) + Math.abs(e.movementX) + Math.abs(e.movementY) * 0.5
   letzteBewegung = jetzt
   if (weg > 110) fenni.streicheln()
 })
+
+// Läuft Fenni über Uhr/Wetter oder den Text rechts, werden diese kurz blass
+const HALB = 26 // halbe Breite von Fenni in Pixeln
+function blassSetzen() {
+  const fx = pille.getBoundingClientRect().left + pille.clientWidth / 2 + fenni.position()
+  for (const [seite, teile] of [[document.querySelector('.seite.links'), ['uhr', 'wetter']], [$('rechts'), ['rechts-oben', 'rechts-unten']]]) {
+    const kanten = teile.map((id) => $(id)).filter((el) => el.textContent).map((el) => {
+      const r = el.getBoundingClientRect()
+      // rechts sind die Texte rechtsbündig: die sichtbare Breite ist die Textbreite, nicht die Zeile
+      return seite.id === 'rechts' ? [r.right - Math.min(r.width, el.scrollWidth), r.right] : [r.left, r.left + Math.min(r.width, el.scrollWidth)]
+    })
+    const links = Math.min(...kanten.map((k) => k[0]))
+    const rechts = Math.max(...kanten.map((k) => k[1]))
+    seite.classList.toggle('blass', kanten.length > 0 && fx + HALB > links && fx - HALB < rechts)
+  }
+}
+setInterval(blassSetzen, 120)

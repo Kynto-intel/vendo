@@ -11,7 +11,8 @@ const AUFTAUCHEN = 3 // Sekunden, bis alle Punkte an ihrem Platz sind
 const zahlen = (text, ersatz) => (String(text || '').trim() || ersatz).split(',').map((z) => Number(z) || 0)
 const sanft = (p) => 1 - Math.pow(1 - p, 3)
 
-export function sterneErstellen(canvas) {
+// fenniX: Funktion, die Fennis Platz liefert (Pixel von der Mitte); der Schein folgt ihm
+export function sterneErstellen(canvas, { fenniX = () => 0 } = {}) {
   const g = canvas.getContext('2d')
   let akzent = [201, 161, 74]
   let punktFarbe = [236, 230, 218]
@@ -20,6 +21,7 @@ export function sterneErstellen(canvas) {
   let punkte = []
   const start = performance.now()
   let letztes = start
+  let scheinX = 0 // folgt Fenni weich
 
   function farbenNeu() {
     const stil = getComputedStyle(document.documentElement)
@@ -85,10 +87,11 @@ export function sterneErstellen(canvas) {
     const stimme = ['hoert', 'spricht'].includes(zustand) ? staerke : 0
     const auftauchen = Math.min(1, t / AUFTAUCHEN)
 
-    // Warmer Schein hinter Fenni (beim Auftauchen und mit der Stimme heller)
+    // Warmer Schein hinter Fenni (beim Auftauchen und mit der Stimme heller), wandert mit ihm mit
+    scheinX += ((Number(fenniX()) || 0) - scheinX) * Math.min(1, dt * 4)
     const schein = 0.16 + (1 - auftauchen) * 0.14 + stimme * 0.18 + (zustand === 'denkt' ? Math.sin(t * 3) * 0.04 : 0)
     const radius = hoehe * (1.05 + stimme * 0.25)
-    const verlauf = g.createRadialGradient(mx, my, 0, mx, my, radius)
+    const verlauf = g.createRadialGradient(mx + scheinX, my, 0, mx + scheinX, my, radius)
     verlauf.addColorStop(0, `rgba(${akzent.join(',')}, ${schein})`)
     verlauf.addColorStop(1, `rgba(${akzent.join(',')}, 0)`)
     g.fillStyle = verlauf

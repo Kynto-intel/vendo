@@ -398,9 +398,13 @@ ohne dass Jarves-OS Platz braucht.
 (z. B. auf Browser-Tabs darunter). Zurück holst du sie, indem du die Maus **ganz an die obere Kante über ihr** schiebst.
 Von selbst taucht sie auf bei einer **Meldung** und solange Luzzy zuhört, nachdenkt oder spricht.
 
-- **Mitte: Fenni**, ein kleiner Wolf (Fenrirs kleiner Bruder), der zeigt, was Luzzy gerade tut: atmet und blinzelt
-  (bereit), spitzt die Ohren (hört zu), schaut nach oben mit Denk-Punkten (denkt nach), bewegt das Maul mit ihrer
-  Stimme (spricht), hüpft vor Freude und hechelt danach (Antwort fertig), schläft (keine Verbindung zu Hermes).
+- **Fenni**, ein kleiner Wolf (Fenrirs kleiner Bruder) mit ganzem Körper im Chibi-Stil (großer Kopf, runder Körper,
+  Pfoten mit rosa Ballen, buschiger Schwanz). Wenn Luzzy nichts tut, sitzt er, steht nach einer Weile auf,
+  **spaziert durch die Insel**, bleibt stehen, schnüffelt und setzt sich woanders wieder hin; läuft er über Uhr oder
+  Termin, werden diese kurz blass, der warme Schein wandert mit ihm. Er zeigt, was Luzzy gerade tut: atmet und
+  blinzelt (bereit), läuft zurück in die Mitte und spitzt die Ohren (hört zu), schaut nach oben mit Denk-Punkten
+  (denkt nach), bewegt das Maul mit ihrer Stimme (spricht), hüpft vor Freude, wedelt und hechelt danach (Antwort
+  fertig), legt sich hin und schläft (keine Verbindung zu Hermes). Bei Meldungen und beim Streicheln wedelt er.
   Ab und zu hechelt er auch von selbst. Seine Augen folgen der Maus über den ganzen Bildschirm, seine Farben kommen
   aus dem Design.
 - **Links:** Uhrzeit, darunter das Wetter aus dem Wetter-Plugin (ohne Wetter: das Datum).
@@ -416,8 +420,9 @@ Von selbst taucht sie auf bei einer **Meldung** und solange Luzzy zuhört, nachd
 **AltGr+L** oder Strg+Umschalt+M: an/aus · **Klick:** sprechen (Fenni hüpft) · **Doppelklick:** großes Fenster ·
 **Rechtsklick:** Fenni anstupsen (dreimal schnell: schwindelig) · **Maus über Fenni hin und her:** streicheln
 (Augen zu, Ohren angelegt, hechelt).
-Technik: `src/renderer/mini.html` + `mini.js` (Insel), `src/renderer/fenni/` (`fenni.js` Steuerung, `koerper.js`,
-`augen.js`, `effekte.js`, `farben.js`, `sterne.js` Hintergrund auf eigener Ebene), nur Canvas, keine Bilder.
+Technik: `src/renderer/mini.html` + `mini.js` (Insel), `src/renderer/fenni/` (`fenni.js` Steuerung, `koerper.js` Kopf,
+`augen.js`, `rumpf.js` Körper in den Haltungen sitzen/seitlich/liegen, `spaziergang.js` wohin er läuft und wann,
+`effekte.js`, `farben.js`, `sterne.js` Hintergrund auf eigener Ebene), nur Canvas, keine Bilder.
 Fenster 480 × 64 Pixel direkt an der oberen Kante; Verstecken und Zurückholen steuert `main.js` (`miniLage`,
 `mini:sichtbar`, versteckt mit `setIgnoreMouseEvents`); für eine Meldung 44 Pixel höher (`mini:hoehe`, sonst bliebe ein
 unsichtbarer Streifen, der Klicks auf Browser-Tabs schluckt). Die Infos sammelt `src/renderer/miniinfo.js` im großen
@@ -624,7 +629,7 @@ Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbind
 | `src/main/vaultschreiben.js` · `shopifytoken.js` · `plugins.js` · `einstellungen.js` | Vault schreiben (eng begrenzt) · Shopify-Token · Plugin-Host · Einstellungen |
 | `src/preload.js` · `src/mini-preload.js` | Sichere Brücke `window.jarves` zur Oberfläche |
 | `src/renderer/` | Oberfläche (ES-Module): `app.js` (Zentrale, Luzzy, Verdrahtung der Teile), `vorlesen.js`, `mikrofon.js`, `crewchat.js`, `buehne.js`, `ansichten.js`, `dateiansicht.js`, `pcsteuerung.js`, `gespraeche.js`, `diktat.js`, `meldungen.js`, `timer.js`, `palette.js`, `selbsttest.js`, `mini.js` … |
-| `src/renderer/fenni/` | Fenni, der kleine Wolf in der Mini-Leiste: `fenni.js` (Zustände, Animation), `koerper.js`, `augen.js`, `effekte.js`, `farben.js`, `sterne.js` (rieselnde Lichtpunkte, Röhren-Zeilen, Auftauchen); Hecheln, Hüpfer beim Klick, Streicheln, Aufhorchen bei Meldungen |
+| `src/renderer/fenni/` | Fenni, der kleine Wolf in der Mini-Leiste: `fenni.js` (Zustände, Animation), `koerper.js` (Kopf), `augen.js`, `rumpf.js` (Körper), `spaziergang.js` (Laufen, Haltungen), `effekte.js`, `farben.js`, `sterne.js` (rieselnde Lichtpunkte, Röhren-Zeilen, Auftauchen); Hecheln, Hüpfer beim Klick, Streicheln, Aufhorchen bei Meldungen |
 | `src/renderer/miniinfo.js` | Infos für die Mini-Insel: Wetter, nächster Termin, offene Aufgaben (aus den Plugins), Luzzys Worte und Meldungen |
 | `src/renderer/rahmen/` | Alles, was das Fenster selbst betrifft, aus `app.js` ausgelagert: `design.js` (Designs, Tageszeit-Farben, Windows-Knöpfe), `einstellungsfenster.js` (Einstellungs-Dialog), `befehlsliste.js` (Befehle der Palette Strg+P), `navigation.js` (Bereiche links, Bereich wechseln). Jede Datei wird in `app.js` mit `…Einrichten({ … })` angebunden |
 | `designs/` | Ein Design pro Datei (siehe Einstellungen) |

@@ -11,6 +11,9 @@ export function fenniFarben(stil = getComputedStyle(document.documentElement)) {
   const hell = zahlen(stil.getPropertyValue('--akzent-hell-rgb'), '227, 190, 108')
   return {
     fell: rgba(hell),
+    fellDunkel: rgba(mischen(hell, akzent, 0.55)), // Hinterbacken, ferne Beine, Schwanz (rumpf.js)
+    ballen: 'rgba(226, 140, 150, 0.95)', // rosa Pfotenballen
+    linie: rgba(mischen(akzent, [0, 0, 0], 0.3), 0.35), // feine Trennlinie zwischen den Vorderbeinen
     dunkel: rgba(akzent), // Ohren
     innen: rgba(mischen(akzent, [0, 0, 0], 0.45)), // Innenseite der Ohren
     schnauze: rgba(mischen(hell, [255, 255, 255], 0.5)),
