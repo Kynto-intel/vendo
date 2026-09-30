@@ -151,8 +151,10 @@ const modellWahlZu = (ausser = null) => {
 document.addEventListener('click', async (e) => {
   const knopf = e.target.closest('.modell-aendern')
   if (!knopf) {
-    // Klick daneben oder auf ✕ schließt die Auswahl
-    if (e.target.closest('[data-modell-zu]') || !e.target.closest('.modell-wahl')) modellWahlZu()
+    // Klick daneben oder auf ✕ schließt die Auswahl. Den Weg des Klicks nehmen, nicht e.target.closest():
+    // Die Liste zeichnet sich beim Klick auf ein Modell neu, das angeklickte Element hängt dann nicht mehr im Fenster.
+    const imFenster = e.composedPath().some((n) => n.classList?.contains('modell-wahl'))
+    if (e.target.closest('[data-modell-zu]') || !imFenster) modellWahlZu()
     return
   }
   const wahl = knopf.nextElementSibling

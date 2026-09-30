@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('jarves', {
     kanalNeuLaden: (kanal) => ipcRenderer.invoke('hermes:kanalNeuLaden', kanal),
     sitzungenMitTitel: (titel, profil) => ipcRenderer.invoke('hermes:sitzungenMitTitel', titel, profil),
     botBild: (profil) => ipcRenderer.invoke('crew:bild', profil),
+    soulLesen: (profil) => ipcRenderer.invoke('crew:soulLesen', profil),
+    soulSpeichern: (profil, text, geaendert) => ipcRenderer.invoke('crew:soulSpeichern', profil, text, geaendert),
     botAnlegen: (daten) => ipcRenderer.invoke('crew:botAnlegen', daten),
     profilId: (name, rolle) => ipcRenderer.invoke('crew:profilId', name, rolle),
     luzzyHilft: (art, daten) => ipcRenderer.invoke('crew:luzzyHilft', art, daten),
@@ -35,8 +37,8 @@ contextBridge.exposeInMainWorld('jarves', {
     beiStatus: abonnieren('hermes:status'),
     beiEreignis: abonnieren('hermes:ereignis'),
     beiFreigabe: abonnieren('hermes:freigabe'),
-    anhang: (pfad) => ipcRenderer.invoke('hermes:anhang', pfad),
-    bild: (base64, name) => ipcRenderer.invoke('hermes:bild', base64, name),
+    anhang: (pfad, kanal) => ipcRenderer.invoke('hermes:anhang', pfad, kanal),
+    bild: (base64, name, kanal) => ipcRenderer.invoke('hermes:bild', base64, name, kanal),
     freigabe: (id, wahl) => ipcRenderer.invoke('hermes:freigabe', id, wahl),
     beiVerlauf: abonnieren('hermes:verlauf'),
     verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal)
@@ -134,7 +136,9 @@ contextBridge.exposeInMainWorld('jarves', {
   },
   fenster: {
     aufmerksamkeit: () => ipcRenderer.invoke('fenster:aufmerksamkeit'),
-    titelfarbe: (farbe) => ipcRenderer.invoke('fenster:titelfarbe', farbe),
+    titelfarbe: () => ipcRenderer.invoke('fenster:titelfarbe'), // Knopf-Farbe oben rechts nachmessen lassen
+    design: (d) => ipcRenderer.invoke('fenster:design', d), // Akzent für die Knopf-Symbole, Schriftgröße (Zoom)
+    designs: () => ipcRenderer.invoke('design:liste'), // alle Designs aus dem Ordner designs/
     andocken: (seite) => ipcRenderer.invoke('fenster:andocken', seite),
     mini: (an) => ipcRenderer.invoke('mini:setzen', an),
     beiMini: abonnieren('mini:geaendert'),

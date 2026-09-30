@@ -3,6 +3,8 @@
 // Teilen sich mehrere Gespräche eine Eingabe (Crew-Tab), reagiert nur das aktive (istAktiv).
 
 import { markdownZuHtml } from './markdown.js'
+import { sendeKnopfSetzen } from './sendeknopf.js'
+import { anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 
 const maskieren = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
@@ -42,9 +44,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
 
   function knopfZeigen() {
     if (!istAktiv()) return
-    knopf.textContent = beschaeftigt ? 'Stopp' : 'Senden'
-    knopf.classList.toggle('stopp', beschaeftigt)
-    knopf.type = beschaeftigt ? 'button' : 'submit'
+    sendeKnopfSetzen(knopf, beschaeftigt, { wer })
   }
 
   function antwortZeichnen() {
@@ -57,14 +57,26 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
   async function abschicken() {
     if (!istAktiv()) return
     const text = feld.value.trim()
-    if (!text || beschaeftigt) return
+    const mitAnhang = anhaengeAnzahl(form) > 0
+    if ((!text && !mitAnhang) || beschaeftigt) return
     feld.value = ''
     feld.style.height = 'auto'
-    await senden(text)
+    if (!mitAnhang) return senden(text)
+    // Anhänge (Büroklammer, hineingezogen, Strg+V) an dieses Gespräch, dann mit der Nachricht abschicken
+    let a
+    try {
+      a = await anhaengeSenden(form, kanal)
+    } catch (e) {
+      feld.value = text
+      return system(`Anhang: ${String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+    }
+    const frage = text || 'Schau dir das an und sag mir kurz, was drin ist.'
+    const liste = a.namen.map((n, i) => `${a.symbole[i]} ${n}`).join('   ')
+    await senden(`${frage}${a.text ? `\n\n${a.text}` : ''}`, `${liste}${text ? `\n${text}` : ''}`)
   }
 
-  async function senden(text) {
-    anzeigen('felix', text)
+  async function senden(text, anzeige = text) {
+    anzeigen('felix', anzeige)
     beschaeftigt = true
     knopfZeigen()
     try {

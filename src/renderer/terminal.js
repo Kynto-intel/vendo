@@ -25,6 +25,18 @@ let term = null
 let fit = null
 let gestartet = false
 
+// Terminal-Farben: Akzent (Cursor, Markierung, Gelb) aus dem Design, der Rest fest
+function terminalFarben() {
+  const css = getComputedStyle(document.documentElement)
+  const wert = (name, ersatz) => css.getPropertyValue(name).trim() || ersatz
+  return {
+    background: '#09090b', foreground: '#d9d4c8', cursor: wert('--gold', '#c9a14a'), cursorAccent: '#09090b',
+    selectionBackground: `rgba(${wert('--akzent-rgb', '201, 161, 74')}, 0.35)`,
+    black: '#1b1b1e', red: '#e07a70', green: '#7fb069', yellow: wert('--gold-hell', '#e3be6c'), blue: '#6fa3d8', magenta: '#c792ea', cyan: '#6fc3c3', white: '#d9d4c8',
+    brightBlack: '#5c5a55', brightRed: '#f08c82', brightGreen: '#95c77f', brightYellow: '#f0cf85', brightBlue: '#8bb8e8', brightMagenta: '#d7a8f5', brightCyan: '#8ad6d6', brightWhite: '#f2ede2'
+  }
+}
+
 const liste = () => gespeichert ?? STANDARD
 async function listeSpeichern(neu) {
   gespeichert = await window.jarves.terminal.befehleSpeichern(neu)
@@ -89,13 +101,10 @@ export function terminalEinrichten() {
     cursorBlink: true,
     scrollback: 5000,
     allowProposedApi: false,
-    theme: {
-      background: '#09090b', foreground: '#d9d4c8', cursor: '#c9a14a', cursorAccent: '#09090b',
-      selectionBackground: 'rgba(201, 161, 74, 0.35)',
-      black: '#1b1b1e', red: '#e07a70', green: '#7fb069', yellow: '#e3be6c', blue: '#6fa3d8', magenta: '#c792ea', cyan: '#6fc3c3', white: '#d9d4c8',
-      brightBlack: '#5c5a55', brightRed: '#f08c82', brightGreen: '#95c77f', brightYellow: '#f0cf85', brightBlue: '#8bb8e8', brightMagenta: '#d7a8f5', brightCyan: '#8ad6d6', brightWhite: '#f2ede2'
-    }
+    theme: terminalFarben()
   })
+  // Design gewechselt (Einstellungen → Aussehen): Cursor und Markierung in der neuen Akzentfarbe
+  document.addEventListener('design-geaendert', () => term && (term.options.theme = terminalFarben()))
   fit = new FitAddon()
   term.loadAddon(fit)
   term.open($('term-xterm'))

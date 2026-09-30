@@ -1,5 +1,21 @@
 // Mini-Modus: zeigt, was Luzzy gerade tut (vom großen Fenster geschickt). Klick: sprechen, Doppelklick: groß.
 
+// Akzentfarbe des Designs (Einstellungen → Aussehen): das große Fenster legt sie beim Speichern in localStorage
+// „jarves-design“ ab (akzentRgb, akzentHellRgb). Ohne Eintrag bleibt das Gold aus mini.html.
+const RGB = /^\d{1,3}, ?\d{1,3}, ?\d{1,3}$/
+function akzentSetzen() {
+  let d = null
+  try {
+    d = JSON.parse(localStorage.getItem('jarves-design') || 'null')
+  } catch {
+    // Standard
+  }
+  if (RGB.test(String(d?.akzentRgb))) document.documentElement.style.setProperty('--akzent-rgb', d.akzentRgb)
+  if (RGB.test(String(d?.akzentHellRgb))) document.documentElement.style.setProperty('--akzent-hell-rgb', d.akzentHellRgb)
+}
+akzentSetzen()
+addEventListener('storage', (e) => e.key === 'jarves-design' && akzentSetzen())
+
 const ANZAHL = 40
 const pille = document.getElementById('pille')
 const balken = []

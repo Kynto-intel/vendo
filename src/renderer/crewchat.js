@@ -10,6 +10,8 @@ import { unterhaltungErstellen } from './unterhaltung.js'
 import { crewProfile, botName, LUZZY } from './ansichten.js'
 import { bestaetigen } from './fenster.js'
 import { buehneEinrichten, buehneStarten, buehneAnstossen } from './buehne.js'
+import { botProfilOeffnen } from './botprofil.js'
+import { sendeKnopfSetzen } from './sendeknopf.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -95,6 +97,11 @@ export const aktuellerKanal = () => {
 
 export function crewChatEinrichten(helfer) {
   h = { ...h, crewSichtbar: () => false, ...helfer }
+  // Klick auf Bild oder Name des Bots im Kopf: Profil-Fenster mit SOUL (lesen und bearbeiten)
+  const wer = document.querySelector('.crew-wer')
+  wer?.addEventListener('click', (e) => {
+    if (e.target.closest('#crew-wer-bild, .crew-wer-text') && wer.dataset.profil) botProfilOeffnen(wer.dataset.profil)
+  })
   // Luzzys Gespräch (früher rechts angedockt) wohnt jetzt im Crew-Tab: Liste, Eingabe und „Allgemein ▾“
   const alt = $('gespraech-panel')
   const wahl = alt?.querySelector('.gespraech-wahl')
@@ -429,8 +436,8 @@ function fensterKnopf() {
   if (!g) return
   const knopf = $('botfenster').querySelector('.bf-senden')
   const laeuft = g.unterhaltung.beschaeftigt()
-  knopf.textContent = laeuft ? 'Stopp' : 'Senden'
-  knopf.classList.toggle('stopp', laeuft)
+  sendeKnopfSetzen(knopf, laeuft, { wer: $('botfenster').querySelector('.bf-name').textContent || 'der Bot' })
+  knopf.type = 'submit' // im Bot-Fenster stoppt auch das Absenden (abschicken bricht ab, solange der Bot antwortet)
 }
 
 function botFensterEinrichten() {
@@ -480,16 +487,20 @@ const werBilder = {}
 function werZeigen() {
   const bildEl = $('crew-wer-bild')
   if (!bildEl) return
+  const wer = bildEl.closest('.crew-wer')
   if (modus === 'buehne') {
     bildEl.textContent = '🎬'
     $('crew-wer-name').textContent = 'Arbeitsbühne'
     $('crew-wer-rolle').textContent = 'Live sehen, wie die Crew zusammenarbeitet'
+    delete wer.dataset.profil
     return
   }
   const bot = botVon(gewaehlt[modus])
   $('crew-wer-name').textContent = bot.name || 'Crew'
   $('crew-wer-rolle').textContent = [bot.rolle, modus === 'botchat' ? 'Bot Mode' : 'Normaler Chat'].filter(Boolean).join(' · ')
   const profil = bot.profil
+  if (profil) wer.dataset.profil = profil // Klick auf Bild oder Name öffnet das Profil-Fenster
+  else delete wer.dataset.profil
   const zeigen = () => (werBilder[profil] ? (bildEl.innerHTML = `<img src="${werBilder[profil]}" alt="" />`) : (bildEl.textContent = (bot.name || '?').charAt(0)))
   zeigen()
   if (profil && !(profil in werBilder)) {

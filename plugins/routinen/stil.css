@@ -34,7 +34,7 @@
 .rt-tag input { display: none; }
 .rt-tag span { display: inline-block; min-width: 34px; text-align: center; padding: 5px 0; border: 1px solid var(--rahmen); font-family: var(--mono); font-size: 11px; color: var(--text-leise); cursor: pointer; }
 .rt-tag input:checked + span { border-color: var(--gold); color: var(--auf-gold); background: var(--gold); }
-.rt-vorschau { border: 1px dashed var(--gold-leise); background: rgba(194, 154, 64, 0.04); padding: 10px 12px; }
+.rt-vorschau { border: 1px dashed var(--gold-leise); background: rgba(var(--akzent-rgb), 0.04); padding: 10px 12px; }
 .rt-vorschau-titel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
 .rt-vorschau pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-leise); max-height: 220px; overflow-y: auto; }
 .rt-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }

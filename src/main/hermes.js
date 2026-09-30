@@ -508,10 +508,17 @@ class Hermes extends EventEmitter {
   // ── Anhänge: Datei oder Bild an Luzzy (Idee 25) ──
   // Hermes legt sie für die nächste Nachricht bereit. Bilder als Bild, PDFs Seite für Seite als Bilder,
   // alles andere als Datei im Arbeitsbereich (dann kommt ein Verweis in den Text).
-  async anhangHinzufuegen(pfad) {
-    if (!this.sessionId) await this.luzzyOeffnen()
+  // Anhänge gehen an das Gespräch des Kanals, in dem Felix gerade schreibt (Zentrale, Crew, ein Bot)
+  async anhangSitzung(kanal) {
+    if (kanal === 'zentrale' && !this.sessionId) await this.luzzyOeffnen()
+    const id = this.sessionIdVon(kanal)
+    if (!id) throw new Error('Dieses Gespräch ist noch nicht offen. Schreib einmal etwas oder wechsle kurz hin und her.')
+    return id
+  }
+
+  async anhangHinzufuegen(pfad, kanal = 'zentrale') {
     const endung = path.extname(pfad).toLowerCase()
-    const session_id = this.sessionId
+    const session_id = await this.anhangSitzung(kanal)
     if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'].includes(endung)) {
       const r = await this.rpc('image.attach', { session_id, path: pfad })
       if (!r?.attached) throw new Error(r?.message || 'Das Bild ließ sich nicht anhängen.')
@@ -528,9 +535,9 @@ class Hermes extends EventEmitter {
   }
 
   // Eingefügtes Bild (Strg+V) ohne Datei auf der Platte
-  async bildHinzufuegen(base64, name = 'bild.png') {
-    if (!this.sessionId) await this.luzzyOeffnen()
-    const r = await this.rpc('image.attach_bytes', { session_id: this.sessionId, content_base64: base64, filename: name })
+  async bildHinzufuegen(base64, name = 'bild.png', kanal = 'zentrale') {
+    const session_id = await this.anhangSitzung(kanal)
+    const r = await this.rpc('image.attach_bytes', { session_id, content_base64: base64, filename: name })
     if (!r?.attached) throw new Error(r?.message || 'Das Bild ließ sich nicht anhängen.')
     return { art: 'bild', name: r.name || name, text: '' }
   }

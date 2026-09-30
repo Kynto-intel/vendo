@@ -1,0 +1,23 @@
+{
+  "name": "Runenwald",
+  "beschreibung": "moosgrün",
+  "reihenfolge": 4,
+  "farben": {
+    "hintergrund": "#111512",
+    "leiste": "#0c0f0d",
+    "flaeche": "#171d18",
+    "flaecheHoch": "#1d251f",
+    "tief": "#090b09",
+    "eingabe": "#0e120f",
+    "rahmen": "#243027",
+    "linie": "#1c241e",
+    "text": "#e5ecdf",
+    "textLeise": "#87927f",
+    "gedimmt": "#515c51",
+    "akzent": "#7fa35a",
+    "akzentHell": "#a9c882",
+    "akzentDunkel": "#34452a",
+    "akzentFlaeche": "#1a2316",
+    "aufAkzent": "#101a08"
+  }
+}

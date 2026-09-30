@@ -1,0 +1,23 @@
+{
+  "name": "Donnerwolf Gold",
+  "beschreibung": "Anthrazit mit Gold (Standard)",
+  "reihenfolge": 1,
+  "farben": {
+    "hintergrund": "#131315",
+    "leiste": "#0e0e10",
+    "flaeche": "#19191c",
+    "flaecheHoch": "#202024",
+    "tief": "#0b0b0c",
+    "eingabe": "#101012",
+    "rahmen": "#26262a",
+    "linie": "#1f1f23",
+    "text": "#ece6da",
+    "textLeise": "#8c877e",
+    "gedimmt": "#5a564f",
+    "akzent": "#c9a14a",
+    "akzentHell": "#e3be6c",
+    "akzentDunkel": "#4a3c1f",
+    "akzentFlaeche": "#221d13",
+    "aufAkzent": "#16130c"
+  }
+}

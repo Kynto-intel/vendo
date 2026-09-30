@@ -1,0 +1,23 @@
+{
+  "name": "Nordlicht",
+  "beschreibung": "eisblau",
+  "reihenfolge": 2,
+  "farben": {
+    "hintergrund": "#0f1418",
+    "leiste": "#0b0f12",
+    "flaeche": "#151c21",
+    "flaecheHoch": "#1b242a",
+    "tief": "#080b0d",
+    "eingabe": "#0c1114",
+    "rahmen": "#223038",
+    "linie": "#1a242a",
+    "text": "#e3eef2",
+    "textLeise": "#82939a",
+    "gedimmt": "#4d5a60",
+    "akzent": "#5fb8c9",
+    "akzentHell": "#8fd6e3",
+    "akzentDunkel": "#1d4550",
+    "akzentFlaeche": "#122228",
+    "aufAkzent": "#07191d"
+  }
+}

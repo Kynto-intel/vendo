@@ -13,6 +13,9 @@ const STANDARD = {
   lautstaerke: 250, // Prozent: Pocket TTS ist von sich aus leise
   vorlesen: true,
   animationen: { reaktor: true, scanlinie: true, welle: true, hintergrund: true },
+  // Aussehen: farbe gold|nordlicht|blutmond|runenwald|eisen · hintergrund normal|tief|hell · ecken kantig|weich ·
+  // schrift klein|normal|gross|sehrgross (Zoom der ganzen App)
+  design: { farbe: 'gold', hintergrund: 'normal', ecken: 'kantig', schrift: 'normal' },
   start: { intro: true, begruessung: true, gateway: true }, // gateway: Hermes-Gateway beim Öffnen mitstarten
   tageszeitFarben: true,
   leisten: { links: true, rechts: true }, // true = aufgeklappt
@@ -29,6 +32,7 @@ function laden() {
       ...gespeichert,
       stimme: stimmeGueltig(gespeichert.stimme), // alte Edge-Stimmen und „Jürgen“ werden zu Alba
       animationen: { ...STANDARD.animationen, ...(gespeichert.animationen || {}) },
+      design: { ...STANDARD.design, ...(gespeichert.design || {}) },
       start: { ...STANDARD.start, ...(gespeichert.start || {}) },
       panel: { ...STANDARD.panel, ...(gespeichert.panel || {}) },
       leisten: { ...STANDARD.leisten, ...(gespeichert.leisten || {}) },

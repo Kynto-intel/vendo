@@ -241,16 +241,23 @@ ipcMain.handle('crew:bild', (_e, profil) => {
   }
   return null
 })
+// Profil-Fenster der Crew: SOUL.md eines Bots lesen und (nur per Klick auf Speichern) bearbeiten, mit Sicherung
+const botProfil = require('./botprofil')
+ipcMain.handle('crew:soulLesen', (_e, profil) => botProfil.lesen(profil))
+ipcMain.handle('crew:soulSpeichern', (_e, profil, text, geaendert) => botProfil.speichern(profil, text, Number(geaendert) || 0))
 // Anhänge: nur echte Dateien, die Felix ausgesucht oder ins Fenster gezogen hat
-ipcMain.handle('hermes:anhang', (_e, pfad) => {
+// Kanal des Gesprächs, an das der Anhang geht: Zentrale, Luzzys Bot Chat oder ein Bot (normal/botchat)
+const ANHANG_KANAL = /^(zentrale|crew|(normal|botchat):[a-z0-9][a-z0-9_-]{0,63})$/
+const anhangKanal = (kanal) => (ANHANG_KANAL.test(String(kanal || 'zentrale')) ? String(kanal || 'zentrale') : 'zentrale')
+ipcMain.handle('hermes:anhang', (_e, pfad, kanal) => {
   const p = String(pfad || '')
   if (!path.isAbsolute(p) || !require('node:fs').statSync(p, { throwIfNoEntry: false })?.isFile()) throw new Error('Datei nicht gefunden.')
-  return hermes.anhangHinzufuegen(p)
+  return hermes.anhangHinzufuegen(p, anhangKanal(kanal))
 })
-ipcMain.handle('hermes:bild', (_e, base64, name) => {
+ipcMain.handle('hermes:bild', (_e, base64, name, kanal) => {
   const b = String(base64 || '')
   if (!b || b.length > 30_000_000) throw new Error('Bild fehlt oder ist zu groß.')
-  return hermes.bildHinzufuegen(b, String(name || 'bild.png').slice(0, 80))
+  return hermes.bildHinzufuegen(b, String(name || 'bild.png').slice(0, 80), anhangKanal(kanal))
 })
 ipcMain.handle('datei:waehlen', async () => {
   const r = await dialog.showOpenDialog(fenster, { title: 'Datei oder Bild für Luzzy', properties: ['openFile', 'multiSelections'] })
@@ -538,16 +545,67 @@ function haelfteKorrigieren() {
 }
 ipcMain.handle('fenster:andocken', (_e, seite) => andocken(['links', 'rechts', 'voll'].includes(seite) ? seite : 'links'))
 
-// Farben nach Tageszeit: Fensterknöpfe oben rechts in der Farbe der rechten Spalte
-ipcMain.handle('fenster:titelfarbe', (_e, farbe) => {
-  if (!/^#[0-9a-f]{6}$/i.test(String(farbe)) || !fenster || fenster.isDestroyed()) return
-  if (process.env.JARVES_TEST_JS) console.log('TEST-TITELFARBE:', farbe) // nur Testmodus
+// Fensterknöpfe oben rechts (Windows zeichnet sie selbst) in der Farbe dessen, was darunter wirklich zu sehen ist:
+// ein kleines Bild vom Streifen unter den Knöpfen, davon der Durchschnitt. So passt es auch mit goldenem Schimmer,
+// Raster, Tageszeit-Farben, eingeklappter rechter Spalte und abgedunkeltem Hintergrund bei offenen Fenstern
+// (die CSS-Hintergrundfarbe allein kennt diese Ebenen nicht). Nachgemessen alle 1,5 s und auf Zuruf der Oberfläche.
+const KNOEPFE = { breite: 138, hoehe: 38 } // drei Windows-Knöpfe à 46 px, Höhe wie titleBarOverlay
+let titelfarbe = '#0e0e10'
+let titelSymbol = '#C9A14A' // Symbolfarbe der Knöpfe = Akzent des Designs (Einstellungen → Aussehen)
+let zoom = 1 // Schriftgröße der App (Einstellungen → Aussehen); die Knopfleiste wächst mit, damit sie zur Seite passt
+let titelMisst = false
+const knopfHoehe = () => Math.round(KNOEPFE.hoehe * zoom)
+function titelleisteSetzen() {
   try {
-    fenster.setTitleBarOverlay({ color: farbe, symbolColor: '#C9A14A', height: 38 })
+    fenster.setTitleBarOverlay({ color: titelfarbe, symbolColor: titelSymbol, height: knopfHoehe() })
   } catch {
     // nicht auf jedem System möglich
   }
+}
+async function titelfarbeMessen() {
+  if (titelMisst || !fenster || fenster.isDestroyed() || !fenster.isVisible() || fenster.isMinimized()) return
+  titelMisst = true
+  try {
+    const [breite] = fenster.getContentSize()
+    const bild = await fenster.webContents.capturePage({ x: Math.max(0, breite - KNOEPFE.breite), y: 0, width: Math.min(KNOEPFE.breite, breite), height: knopfHoehe() })
+    const b = bild.toBitmap() // BGRA
+    const summe = [0, 0, 0]
+    let n = 0
+    for (let i = 0; i + 3 < b.length; i += 16) {
+      summe[0] += b[i + 2]
+      summe[1] += b[i + 1]
+      summe[2] += b[i]
+      n++
+    }
+    if (!n) return
+    const rgb = summe.map((s) => Math.round(s / n))
+    const alt = titelfarbe.match(/[0-9a-f]{2}/gi).map((h) => parseInt(h, 16))
+    if (Math.max(...rgb.map((w, k) => Math.abs(w - alt[k]))) < 3) return // kaum Unterschied: nicht flackern
+    titelfarbe = `#${rgb.map((w) => w.toString(16).padStart(2, '0')).join('')}`
+    if (process.env.JARVES_TEST_JS) console.log('TEST-TITELFARBE:', titelfarbe) // nur Testmodus
+    titelleisteSetzen()
+  } catch {
+    // nicht auf jedem System möglich
+  } finally {
+    titelMisst = false
+  }
+}
+ipcMain.handle('fenster:titelfarbe', () => titelfarbeMessen())
+// Designs: eine Datei pro Design im Ordner designs/ (src/main/designs.js)
+ipcMain.handle('design:liste', () => require('./designs').liste())
+// Design aus den Einstellungen: Akzentfarbe für die Knopf-Symbole, Schriftgröße als Zoom der ganzen App
+ipcMain.handle('fenster:design', (_e, d = {}) => {
+  if (!fenster || fenster.isDestroyed()) return
+  if (/^#[0-9a-f]{6}$/i.test(String(d.akzent))) titelSymbol = d.akzent
+  const z = Number(d.zoom)
+  if (z >= 0.8 && z <= 1.3) {
+    zoom = z
+    fenster.webContents.setZoomFactor(zoom)
+  }
+  titelleisteSetzen()
+  setTimeout(titelfarbeMessen, 400)
 })
+setInterval(titelfarbeMessen, 1500)
 
 // Taskleiste blinken lassen, wenn Jarves-OS im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
 ipcMain.handle('fenster:aufmerksamkeit', () => {
@@ -739,7 +797,7 @@ app.whenReady().then(() => {
   })
   dateisuche.vorbereiten()
   pc.vorbereiten()
-  pcBruecke.starten()
+  if (!process.env.JARVES_TEST_STUMM) pcBruecke.starten() // ein Testlauf übernimmt nie die Brücke des echten Jarves-OS
   // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann (im stummen Testmodus nicht:
   // dort wird nichts vorgelesen, und abgebrochene Testläufe ließen sonst Server zurück)
   if (!process.env.JARVES_TEST_STUMM || process.env.JARVES_TEST_POCKET) pocket.starten(pocketDateiFuer(einstellungen.laden())).catch(() => {})

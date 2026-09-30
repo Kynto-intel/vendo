@@ -1,0 +1,23 @@
+{
+  "name": "Eisen",
+  "beschreibung": "silbern",
+  "reihenfolge": 5,
+  "farben": {
+    "hintergrund": "#141516",
+    "leiste": "#0e0f10",
+    "flaeche": "#1b1c1e",
+    "flaecheHoch": "#232427",
+    "tief": "#0b0b0c",
+    "eingabe": "#111213",
+    "rahmen": "#2a2c2f",
+    "linie": "#212326",
+    "text": "#eceef0",
+    "textLeise": "#8b9096",
+    "gedimmt": "#595c60",
+    "akzent": "#a8b0b8",
+    "akzentHell": "#d3d9de",
+    "akzentDunkel": "#454a4f",
+    "akzentFlaeche": "#1f2226",
+    "aufAkzent": "#15181b"
+  }
+}

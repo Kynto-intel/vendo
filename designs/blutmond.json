@@ -1,0 +1,23 @@
+{
+  "name": "Blutmond",
+  "beschreibung": "dunkelrot",
+  "reihenfolge": 3,
+  "farben": {
+    "hintergrund": "#141011",
+    "leiste": "#0e0b0c",
+    "flaeche": "#1c1516",
+    "flaecheHoch": "#241b1c",
+    "tief": "#0b0808",
+    "eingabe": "#110d0d",
+    "rahmen": "#2e2324",
+    "linie": "#241b1c",
+    "text": "#efe2df",
+    "textLeise": "#968582",
+    "gedimmt": "#5e4f4f",
+    "akzent": "#b5483f",
+    "akzentHell": "#d9776c",
+    "akzentDunkel": "#4f1f1b",
+    "akzentFlaeche": "#261412",
+    "aufAkzent": "#1f0806"
+  }
+}

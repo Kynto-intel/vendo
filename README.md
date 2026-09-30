@@ -137,7 +137,12 @@ und Wetter. Klick oder Esc überspringt das Intro. Fenstergröße, Position und 
   wie im Crew-Tab, ⤢ öffnet ihn groß), **Bereiche** und **Befehle** (wie in der Befehlspalette), **Notizen** aus dem
   Vault, **Dateien** auf dem PC (ohne Programm- und Hermes-Innereien) und ganz unten „Luzzy fragen“.
   ↑ ↓ wählen, Enter öffnet, Esc schließt.
-- **Anhänge:** Datei oder Bild ins Fenster ziehen, 📎-Knopf oder Strg+V – geht mit der nächsten Nachricht an Luzzy.
+- **Anhänge:** Büroklammer links in der Eingabe, Datei ins Fenster ziehen oder Bild mit Strg+V. Geht mit der nächsten
+  Nachricht an das Gespräch, in dem du schreibst: Zentrale und Luzzys Chat an Luzzy, die Crew-Eingabe an den gewählten
+  Bot (Kira, Lira …). Die Kärtchen stehen über der Eingabe, ✕ entfernt eins. Technik: `anhaenge.js`, Hermes hängt sie
+  an die Sitzung des Kanals (`hermes.js: anhangHinzufuegen`).
+- **Senden und Stopp:** runder goldener Knopf rechts, Pfeil = Senden (oder Enter), Quadrat = Stopp, solange die KI
+  antwortet (`sendeknopf.js`).
   Hermes bekommt Bilder als Bild, PDFs Seite für Seite, den Rest als Datei.
 
 ## Die Oberfläche
@@ -253,6 +258,11 @@ automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
   Anfrage an Luzzys Modell und landet nicht in ihrem Chat. Die Anleitung dafür ist ihr Skill `jarves-bot-erstellen` –
   im Chat klappt es also genauso („Gib mir einen Bildprompt für Freya“).
 - **Modell ändern:** Zahnrad auf der Bot-Karte. Liste mit Suche, Anbieter zum Ein- und Ausklappen.
+- **Profil und SOUL:** Klick auf Bild oder Namen des Bots oben im Crew-Chat öffnet sein Profil (Bild, Rolle, Modell,
+  Beschreibung) mit der `SOUL.md`. „Bearbeiten“, dann „Speichern“ oder Strg+S; ungespeicherte Änderungen fragen vor
+  dem Schließen nach. Vor jedem Speichern landet die alte Fassung in `daten\datei-sicherungen\soul\`. Wurde die SOUL
+  inzwischen woanders geändert, wird nicht überschrieben. Hermes nimmt die neue SOUL ab dem nächsten neuen Chat.
+  Technik: `src/main/botprofil.js`, `src/renderer/botprofil.js`.
 - **Im Crew-Bereich hört Luzzy nicht von selbst mit** (z. B. Musik im Headset). Sprechen geht dort mit Strg+Leertaste.
 - **Freigaben:** Bei riskanten Befehlen erscheint eine Karte (Einmal erlauben · Für dieses Gespräch · Ablehnen) und
   Luzzy sagt, worum es geht – einfach „Ja“ oder „Nein“ sagen. Unter Luzzys Ja-Fragen stehen „Ja, mach“ / „Nein“.
@@ -436,9 +446,27 @@ Knopf „Einstellungen“ unten links. Gespeichert in `daten\einstellungen.json`
 | **Stimme** | Stimme (13 Stimmen oder eigene Aufnahme), Tempo, Lautstärke, automatisch vorlesen, Probe hören |
 | **Sprechen** | Freihändig, im Crew-Bereich nicht mithören, „Hey Luzzy“, sofort abschicken, weiter zuhören, Unterbrechen, Musik erkennen, Mikrofon-Status |
 | **Meldungen** | Was gemeldet und vorgelesen wird, Ton, Ruhezeit |
-| **Aussehen** | Animationen (Reaktor, Welle, Scanlinie, Hintergrund), Farben nach Tageszeit |
+| **Aussehen** | **Design:** Farbdesign (Donnerwolf Gold, Nordlicht, Blutmond, Runenwald, Eisen), Hintergrund (Tiefschwarz, Normal, Etwas heller), Ecken (Kantig, Weich), Schriftgröße (Klein bis Sehr groß). Sofort sichtbar, gespeichert mit „Speichern“, Abbrechen stellt das alte Design wieder her. Dazu Animationen (Reaktor, Welle, Scanlinie, Hintergrund), Farben nach Tageszeit (passen sich jedem Design an) |
 | **Rechte Spalte** | Welche Karten sichtbar sind und in welcher Reihenfolge |
 | **Start & Sicherung** | Intro, Begrüßung, Verknüpfung, mit Windows starten, „Jarves-OS sichern“ |
+
+**Neues Design anlegen:** Jedes Design ist eine eigene Datei im Ordner `designs\` (z. B. `designs\nordlicht.json`).
+Eine vorhandene Datei kopieren, umbenennen (der Dateiname ist die ID: Kleinbuchstaben, Ziffern, Bindestrich), `name`,
+`beschreibung`, `reihenfolge` und die Farben ändern, Jarves-OS neu starten: Das Design steht dann in den Einstellungen.
+Sonst muss nichts geändert werden.
+
+| Farbe in der Datei | Wofür |
+|---|---|
+| `hintergrund`, `leiste`, `flaeche`, `flaecheHoch`, `tief`, `eingabe` | Mitte, Seitenspalten, Karten, Karten beim Drüberfahren, eingelassene Flächen, Eingabefelder |
+| `rahmen`, `linie` | Ränder, Trennlinien |
+| `text`, `textLeise`, `gedimmt` | Schrift, leise Schrift, Abgeschaltetes |
+| `akzent`, `akzentHell` | Akzentfarbe (Knöpfe, Überschriften, Reaktor) und ihre helle Variante |
+| `akzentDunkel`, `akzentFlaeche`, `aufAkzent` | Akzent-Ränder, Akzent-Flächen (eigene Nachricht), Schrift auf dem Akzent |
+
+Alle Farben als `#rrggbb`. Fehlt eine oder ist sie falsch geschrieben, gilt der Wert aus `gold.json`; eine kaputte
+Datei wird übersprungen (Hinweis im Terminal). Technik: `src/main/designs.js` liest den Ordner, `app.js` (`designsLaden`)
+macht daraus CSS-Regeln `:root[data-design='<id>']` und die Knöpfe. Alle Farben der App (auch Plugins, Reaktor, Terminal,
+Mini-Fenster, Windows-Knöpfe) hängen an diesen Werten; „gold“ in CSS-Variablennamen heißt „Akzentfarbe“.
 
 ## Was in Hermes eingerichtet ist (update-fest)
 

@@ -2,12 +2,18 @@
 // Zustände: bereit | denkt | antwortet | spricht | getrennt
 
 const NS = 'http://www.w3.org/2000/svg'
-const GOLD = '#C9A14A'
-const GOLD_HELL = '#E3BE6C'
+// Akzentfarbe des Designs (Einstellungen → Aussehen). SVG-Attribute kennen keine CSS-Variablen, deshalb gehen
+// Farben mit var(…) als Stil statt als Attribut an das Element (siehe element).
+const GOLD = 'var(--gold)'
+const GOLD_HELL = 'var(--gold-hell)'
+const FARBE = new Set(['fill', 'stroke', 'stop-color'])
 
 function element(name, attribute = {}, eltern) {
   const el = document.createElementNS(NS, name)
-  for (const [k, v] of Object.entries(attribute)) el.setAttribute(k, v)
+  for (const [k, v] of Object.entries(attribute)) {
+    if (FARBE.has(k) && String(v).startsWith('var(')) el.style.setProperty(k, v)
+    else el.setAttribute(k, v)
+  }
   if (eltern) eltern.appendChild(el)
   return el
 }
@@ -16,7 +22,7 @@ export function reaktorErstellen(behaelter) {
   const svg = element('svg', { class: 'reaktor', viewBox: '0 0 200 200', 'data-zustand': 'getrennt', 'aria-hidden': 'true' })
   const defs = element('defs', {}, svg)
   const verlauf = element('radialGradient', { id: 'kern-verlauf' }, defs)
-  element('stop', { offset: '0%', 'stop-color': '#fff6dc' }, verlauf)
+  element('stop', { offset: '0%', 'stop-color': 'var(--reaktor-kern)' }, verlauf)
   element('stop', { offset: '35%', 'stop-color': GOLD_HELL }, verlauf)
   element('stop', { offset: '70%', 'stop-color': GOLD, 'stop-opacity': '0.55' }, verlauf)
   element('stop', { offset: '100%', 'stop-color': GOLD, 'stop-opacity': '0' }, verlauf)
@@ -34,7 +40,7 @@ export function reaktorErstellen(behaelter) {
   ring('r5', 50, GOLD_HELL, 0.55, 1, '4 3')
   element('circle', { cx: 100, cy: 100, r: 40, fill: 'none', stroke: GOLD, 'stroke-opacity': 0.25, 'stroke-width': 1 }, svg)
   element('circle', { class: 'r kern', cx: 100, cy: 100, r: 36, fill: 'url(#kern-verlauf)' }, svg)
-  element('circle', { cx: 100, cy: 100, r: 11, fill: '#fff6dc', 'fill-opacity': 0.9 }, svg)
+  element('circle', { cx: 100, cy: 100, r: 11, fill: 'var(--reaktor-kern)', 'fill-opacity': 0.9 }, svg)
 
   behaelter.replaceChildren(svg)
   return {

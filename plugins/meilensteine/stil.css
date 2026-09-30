@@ -1,7 +1,7 @@
 /* Meilensteine-Plugin (Klassen mit ms-) */
 .ms-raster { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; align-items: start; }
 .ms-kopf { padding: 30px 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
-.ms-zahl { font-family: var(--mono); font-size: 72px; font-weight: 700; color: var(--gold-hell); text-shadow: 0 0 22px rgba(217, 178, 95, 0.35); line-height: 1; }
+.ms-zahl { font-family: var(--mono); font-size: 72px; font-weight: 700; color: var(--gold-hell); text-shadow: 0 0 22px rgba(var(--akzent-hell-rgb), 0.35); line-height: 1; }
 .ms-unter { font-size: 13px; color: var(--text-leise); }
 .ms-naechster { margin-top: 18px; font-size: 14px; }
 .ms-naechster b { color: var(--gold-hell); }
