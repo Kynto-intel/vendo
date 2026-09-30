@@ -50,6 +50,13 @@ export function spaziergangErstellen() {
         if (Math.abs(x) > 1.5 && (ziel !== 0 || tempo < TEMPO.zurueck)) losgehen(0, TEMPO.zurueck)
         if (ziel === null && haltung !== 'sitzen') wechsel('sitzen')
       }
+      // gestreichelt, frisst, heult …: stehen bleiben (nur beim Bummeln, nicht auf dem Weg zurück zur Mitte)
+      if (still && ziel !== null && !aktiv) {
+        ziel = null
+        wechsel('stehen')
+        danach = 'sitzen'
+        bis = zufall(1, 2)
+      }
       if (ziel !== null) {
         // erst kurz aufstehen, dann laufen
         if (haltung === 'sitzen' || haltung === 'schnueffeln') wechsel('stehen')
@@ -91,6 +98,13 @@ export function spaziergangErstellen() {
           bis = 0.4
         }
       }
+    },
+    // sofort hinsetzen, wo er gerade ist (Fressen, Heulen)
+    hinsetzen() {
+      if (haltung === 'liegen') return
+      ziel = null
+      wechsel('sitzen')
+      bis = zufall(6, 12)
     },
     lage: () => ({ x, richtung, haltung, seit, phase })
   }

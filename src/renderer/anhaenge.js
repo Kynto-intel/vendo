@@ -120,6 +120,12 @@ function zeichnen(form) {
     .join('')
 }
 
+// Dateien, die auf Fenni in der Mini-Insel gezogen wurden: an diese Eingabe (die, in die auch Gesprochenes kommt)
+export function anhaengeDazu(form, pfade) {
+  for (const pfad of pfade) hinzufuegen(form, { name: pfad.split(/[\\/]/).pop(), pfad })
+  return ablage(form).liste.length
+}
+
 export const anhaengeAnzahl = (form) => (form && ablagen.has(form) ? ablagen.get(form).liste.length : 0)
 
 // Alle Anhänge dieser Eingabe an Hermes geben, an das Gespräch von „kanal“. Liefert { namen, symbole, text }

@@ -24,7 +24,7 @@ import { kartenEinrichten, kartenAnwenden } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
-import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
+import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden, anhaengeDazu } from './anhaenge.js'
 import { sendeKnopfSetzen } from './sendeknopf.js'
 import { befehlslisteEinrichten } from './rahmen/befehlsliste.js'
 import { navigationEinrichten, BEREICHE, ansichtZeigen, bereicheZeigen, offeneAnsicht, bereichLaedt, pluginBereicheHinzufuegen } from './rahmen/navigation.js'
@@ -192,6 +192,7 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
     }
     if (!leise) piep(true)
     hoert = true
+    luzzyFragt = false
     zustandZeigen()
     if (diktat) untertitelZeigen('Diktat läuft. Sprich ganz normal, auch länger. Fertig: kurz Pause machen oder aufs Mikrofon klicken.', { fertig: true })
     // Diktat: Denkpausen bis 3,5 Sekunden, höchstens 5 Minuten
@@ -370,6 +371,7 @@ function zustand() {
 // Mini-Modus (Leiste oben mittig, siehe mini.html): bekommt Zustand und Pegel, solange sie offen ist
 let miniAn = false
 let miniLetzterPegel = 0
+let luzzyFragt = false // Luzzys letzte Antwort endet mit einer Frage (bis Felix antwortet): Fenni legt den Kopf schief
 const miniInfo = miniInfoEinrichten({ api }) // Wetter, Termin, Aufgaben, Luzzys Worte und Meldungen für die Insel
 function miniSenden(pegel) {
   if (!miniAn) return
@@ -383,9 +385,18 @@ function miniSenden(pegel) {
     zustand: z,
     titel: z === 'bereit' && wakeAktiv ? 'Hört auf „Hey Luzzy“' : ZUSTAND_TEXT[z],
     werkzeug: beschaeftigt && werkzeug ? werkzeug.replace(/_/g, ' ') : '',
+    frage: luzzyFragt || freigabeOffen(),
+    freigabe: freigabeOffen(), // solange sie auf dein Ja wartet, bleibt die Insel sichtbar
     ...(pegel !== undefined ? { pegel } : {})
   })
 }
+// Dateien auf Fenni gezogen: als Anhang an die Eingabe, in die auch Gesprochenes kommt (geht mit der nächsten Nachricht mit)
+api.fenster.beiMiniDateien?.((pfade) => {
+  if (!Array.isArray(pfade) || !pfade.length) return
+  anhaengeDazu(document.querySelector('.befehl'), pfade)
+  const was = pfade.length === 1 ? pfade[0].split(/[\\/]/).pop() : `${pfade.length} Dateien`
+  untertitelZeigen(`${was} ist angekommen. Klick auf Fenni und sag, was ich damit machen soll.`, { fertig: true })
+})
 api.fenster.beiMini((an) => {
   miniAn = Boolean(an)
   miniInfo.an(miniAn)
@@ -840,6 +851,7 @@ async function abschicken(feld, { gesprochen = false } = {}) {
   const form = feld.closest('form')
   if (!text && !anhaengeAnzahl(form)) return
   losgelegt = true
+  luzzyFragt = false
   // Mit Anhang (Datei oder Bild): direkt an Luzzy, keine lokalen Befehle
   if (anhaengeAnzahl(form)) {
     if (!verbunden) return systemNachricht('Anhänge gehen nur, wenn Hermes verbunden ist.')
@@ -1130,6 +1142,7 @@ api.hermes.beiEreignis((ev) => {
     case 'message.complete': {
       const text = typeof p.text === 'string' && p.text ? p.text : aktuelleAntwort?.roh || ''
       untertitelZeigen(text, { fertig: true })
+      luzzyFragt = /\?[\s"'»«“”)\]]*$/.test(klartext(text))
       if (aktuelleAntwort) {
         aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
         aktuelleAntwort.el.roh = text
@@ -1381,6 +1394,7 @@ freigabenEinrichten({
     if (einstellungen?.sprache?.weiterZuhoeren && !spricht && !hoert) sprechenStarten({ ohneSpracheNach: 8000 })
   },
   melden: meldungNeu,
+  geaendert: () => miniSenden(),
   luzzy: (text) => {
     const feld = document.querySelector('.befehl .eingabe-text')
     feld.value = text

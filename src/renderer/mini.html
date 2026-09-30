@@ -12,6 +12,8 @@
     /* Ganz schwarz und ohne Rahmen: so ist der Übergang in die Bildschirmkante nicht zu sehen */
     :root { --hoehe: 64px; --meldung: 44px; --schulter: 14px; --flaeche: #000; }
     html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; font-family: 'Segoe UI', system-ui, sans-serif; }
+    /* Fenni guckt kopfüber über die Kante, solange die Insel versteckt ist (fenni/gucken.js) */
+    #gucken { position: absolute; top: 0; left: 0; width: 100%; height: 34px; pointer-events: none; }
     .insel { position: absolute; inset: 0; animation: herab 420ms cubic-bezier(0.2, 0.9, 0.3, 1.12) both; transition: transform 380ms cubic-bezier(0.4, 0, 0.2, 1); }
     .insel.da { animation: none; } /* nach dem ersten Herunterkommen, damit .weg greift */
     /* versteckt: nach oben aus dem Bild (main.js lässt dann alle Klicks durch; Maus an die obere Kante holt sie zurück) */
@@ -30,6 +32,8 @@
     /* schaut auf den Bildschirm (nur auf Befehl): heller Rand, deutlich sichtbar */
     .insel[data-zustand='schaut'] .pille { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85); }
     .pille.offen { height: calc(var(--hoehe) + var(--meldung)); }
+    /* Datei wird über die Insel gezogen: zarter Schein im Akzent */
+    .pille.futter { box-shadow: inset 0 0 18px rgba(var(--akzent-rgb), 0.45); }
     /* Obere Zeile: schaltet sich nach dem Herunterkommen ein wie eine alte Röhre (heller Strich, der aufklappt) */
     .oben { position: absolute; top: 0; left: 0; right: 0; height: var(--hoehe); animation: roehreAn 600ms 320ms ease-out both; }
     @keyframes roehreAn {
@@ -82,6 +86,7 @@
   </style>
 </head>
 <body>
+  <canvas id="gucken" aria-hidden="true"></canvas>
   <div class="insel" id="insel" data-zustand="bereit">
     <div class="schulter links"></div>
     <div class="schulter rechts"></div>

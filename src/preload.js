@@ -142,6 +142,7 @@ contextBridge.exposeInMainWorld('jarves', {
     andocken: (seite) => ipcRenderer.invoke('fenster:andocken', seite),
     mini: (an) => ipcRenderer.invoke('mini:setzen', an),
     beiMini: abonnieren('mini:geaendert'),
+    beiMiniDateien: abonnieren('mini:dateien'), // auf Fenni gezogene Dateien (Pfade)
     miniZustand: (daten) => ipcRenderer.send('mini:zustand', daten),
     bildschirmAufnehmen: () => ipcRenderer.invoke('bildschirm:aufnehmen')
   },

@@ -715,7 +715,7 @@ let mini = null
 const MINI_WEG_NACH = 4000 // ms ohne Maus und ohne Luzzy, dann verschwindet sie
 const MINI_KANTE = 4 // Pixel an der oberen Kante, die sie zurückholen
 const MINI_AKTIV = ['hoert', 'versteht', 'denkt', 'antwortet', 'spricht', 'schaut']
-const miniLage = { sichtbar: true, zuletzt: 0, luzzy: 'bereit', meldung: false }
+const miniLage = { sichtbar: true, zuletzt: 0, luzzy: 'bereit', meldung: false, freigabe: false } // freigabe: Luzzy wartet auf dein Ja
 function miniSichtbar(an) {
   if (!mini || mini.isDestroyed() || miniLage.sichtbar === an) return
   miniLage.sichtbar = an
@@ -731,7 +731,7 @@ setInterval(() => {
   const maus = screen.getCursorScreenPoint()
   const b = mini.getBounds()
   const ueberX = maus.x >= b.x && maus.x < b.x + b.width
-  const halten = (ueberX && maus.y >= b.y && maus.y < b.y + b.height) || miniLage.meldung || MINI_AKTIV.includes(miniLage.luzzy)
+  const halten = (ueberX && maus.y >= b.y && maus.y < b.y + b.height) || miniLage.meldung || miniLage.freigabe || MINI_AKTIV.includes(miniLage.luzzy)
   if (!miniLage.sichtbar && ueberX && maus.y <= b.y + MINI_KANTE) miniSichtbar(true)
   else if (miniLage.sichtbar && halten) miniLage.zuletzt = Date.now()
   else if (miniLage.sichtbar && Date.now() - miniLage.zuletzt > MINI_WEG_NACH) miniSichtbar(false)
@@ -788,7 +788,7 @@ function miniSetzen(an, { schliessen = false } = {}) {
       webPreferences: { preload: path.join(__dirname, '..', 'mini-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
     })
     mini.setAlwaysOnTop(true, 'screen-saver')
-    Object.assign(miniLage, { sichtbar: true, zuletzt: Date.now(), luzzy: 'bereit', meldung: false })
+    Object.assign(miniLage, { sichtbar: true, zuletzt: Date.now(), luzzy: 'bereit', meldung: false, freigabe: false })
     mini.loadFile(path.join(__dirname, '..', 'renderer', 'mini.html'))
     mini.once('ready-to-show', () => mini?.showInactive())
     const dieses = mini
@@ -823,11 +823,18 @@ ipcMain.handle('bildschirm:aufnehmen', async () => {
 ipcMain.on('mini:zustand', (_e, daten) => {
   if (!mini || mini.isDestroyed()) return
   if (daten?.zustand) miniLage.luzzy = daten.zustand
-  if (daten?.meldung || MINI_AKTIV.includes(daten?.zustand)) miniSichtbar(true) // taucht auf
+  if (daten?.freigabe !== undefined) miniLage.freigabe = Boolean(daten.freigabe)
+  if (daten?.meldung || daten?.freigabe || MINI_AKTIV.includes(daten?.zustand)) miniSichtbar(true) // taucht auf
   mini.webContents.send('mini:zustand', daten)
 })
 ipcMain.on('mini:sprechen', () => senden('mikrofon:umschalten'))
 ipcMain.on('mini:gross', () => miniSetzen(false))
+// Dateien auf Fenni gezogen (nur Pfade): das große Fenster hängt sie an Luzzys nächste Nachricht
+ipcMain.on('mini:dateien', (_e, pfade) => {
+  if (!Array.isArray(pfade)) return
+  const liste = pfade.filter((x) => typeof x === 'string' && path.isAbsolute(x)).slice(0, 10)
+  if (liste.length) senden('mini:dateien', liste)
+})
 // Meldung auf- und zuklappen: das Fenster wächst nach unten mit (mini.js)
 ipcMain.on('mini:hoehe', (_e, offen) => {
   if (!mini || mini.isDestroyed()) return

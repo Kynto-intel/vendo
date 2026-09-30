@@ -1,5 +1,5 @@
 // Kleine Effekte neben Fenni (in Fenni-Einheiten, x/y = Punkt rechts neben dem Kopf):
-// Schallwellen beim Zuhören, Denk-Punkte, „z z“ beim Schlafen, Sterne beim Schwindel.
+// Schallwellen beim Zuhören, Denk-Punkte, „z z“ beim Schlafen, Sterne beim Schwindel, Fragezeichen, Heul-Noten.
 
 // Zuhören: drei Bögen wandern nach außen, lauter = kräftiger
 export function schallwellen(g, x, y, t, staerke, f) {
@@ -52,6 +52,31 @@ export function schwindelSterne(g, x, y, t, f) {
     g.beginPath()
     g.arc(x + Math.cos(a) * 30, y + Math.sin(a) * 6, 2.4, 0, Math.PI * 2)
     g.fill()
+  }
+  g.restore()
+}
+
+// Luzzy fragt etwas oder wartet auf dein Ja: ein Fragezeichen, das sanft wippt
+export function fragezeichen(g, x, y, t, f) {
+  g.save()
+  g.fillStyle = f.effekt
+  g.globalAlpha = 0.75 + Math.sin(t * 3) * 0.2
+  g.font = 'bold 20px "Segoe UI", sans-serif'
+  g.textAlign = 'center'
+  g.fillText('?', x, y + Math.sin(t * 2.4) * 2)
+  g.restore()
+}
+
+// Heulen: kleine Noten steigen schräg nach oben und verblassen (p = 0…1 Fortschritt des Heulens)
+export function heulNoten(g, x, y, t, p, f) {
+  g.save()
+  g.fillStyle = f.effekt
+  g.font = 'bold 15px "Segoe UI Symbol", "Segoe UI", sans-serif'
+  g.textAlign = 'center'
+  for (let i = 0; i < 3; i++) {
+    const q = (t * 0.7 + i / 3) % 1
+    g.globalAlpha = Math.sin(q * Math.PI) * Math.min(1, (1 - p) * 4)
+    g.fillText(i % 2 ? '♫' : '♪', x + q * 18 + Math.sin(q * 9 + i) * 3, y - q * 18)
   }
   g.restore()
 }

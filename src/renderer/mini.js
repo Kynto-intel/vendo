@@ -6,6 +6,7 @@
 
 import { fenniErstellen } from './fenni/fenni.js'
 import { sterneErstellen } from './fenni/sterne.js'
+import { guckenErstellen } from './fenni/gucken.js'
 
 const $ = (id) => document.getElementById(id)
 const MELDUNG_ZEIT = 9000 // so lange bleibt eine Meldung offen
@@ -35,11 +36,13 @@ const insel = $('insel')
 const pille = $('pille')
 const sterne = sterneErstellen($('sterne'), { fenniX: () => fenni.position() }) // Lichtpunkte und Schein hinter Fenni
 const fenni = fenniErstellen($('fenni'))
+const gucken = guckenErstellen($('gucken'), { x: () => fenni.position() }) // guckt über die Kante, wenn die Insel weg ist
 addEventListener('storage', (e) => {
   if (e.key !== 'jarves-design') return
   farbenSetzen()
   fenni.farbenNeu()
   sterne.farbenNeu()
+  gucken.farbenNeu()
 })
 
 // ── Links: Uhr, darunter Wetter (oder das Datum, solange kein Wetter da ist) ──
@@ -94,7 +97,8 @@ function meldungZeigen(m) {
   clearTimeout(meldungUhr)
   window.mini.hoehe?.(true) // Fenster zuerst höher, dann klappt die Insel sichtbar auf
   requestAnimationFrame(() => requestAnimationFrame(() => pille.classList.add('offen')))
-  fenni.aufhorchen()
+  if (m.art === 'meilenstein') fenni.heulen() // besonderer Erfolg: er heult wie ein Wolf
+  else fenni.aufhorchen()
   meldungUhr = setTimeout(meldungSchliessen, MELDUNG_ZEIT)
 }
 function meldungSchliessen() {
@@ -119,6 +123,7 @@ window.mini.beiZustand((daten = {}) => {
     worteBis = worte ? Date.now() + WORTE_ZEIT : 0
   }
   if (daten.werkzeug !== undefined) werkzeug = String(daten.werkzeug || '')
+  if (daten.frage !== undefined) fenni.frage(daten.frage) // Luzzy fragt / wartet auf dein Ja: Kopf schief
   if (daten.meldung) meldungZeigen(daten.meldung)
   if (pegel !== undefined) {
     fenni.pegel(pegel)
@@ -144,9 +149,13 @@ insel.addEventListener('animationend', (e) => e.animationName === 'herab' && ins
 window.mini.beiSichtbar?.((an) => {
   insel.classList.add('da')
   insel.classList.toggle('weg', !an)
+  gucken.an(!an)
 })
 // Augen folgen der Maus (das Hauptprogramm meldet ihre Position, solange der Mini-Modus an ist)
-window.mini.beiBlick?.(({ x, y } = {}) => fenni.blick(Number(x) || 0, Number(y) || 0))
+window.mini.beiBlick?.(({ x, y } = {}) => {
+  fenni.blick(Number(x) || 0, Number(y) || 0)
+  gucken.blick(Number(x) || 0, Number(y) || 0)
+})
 
 // ── Maus ──
 // Einfacher Klick: Fenni hüpft sofort, das Sprechen startet, wenn kein Doppelklick folgt. Klick auf eine Meldung: großes Fenster
@@ -195,3 +204,35 @@ function blassSetzen() {
   }
 }
 setInterval(blassSetzen, 120)
+
+// Datei auf Fenni ziehen: er reißt das Maul auf, beim Loslassen frisst er sie und Luzzy bekommt sie als Anhang
+let zieht = 0
+const hatDateien = (e) => [...(e.dataTransfer?.types || [])].includes('Files')
+addEventListener('dragenter', (e) => {
+  if (!hatDateien(e)) return
+  if (zieht++ === 0) {
+    fenni.hungrig(true)
+    pille.classList.add('futter')
+  }
+})
+addEventListener('dragleave', (e) => {
+  if (!hatDateien(e) || --zieht > 0) return
+  zieht = 0
+  fenni.hungrig(false)
+  pille.classList.remove('futter')
+})
+addEventListener('dragover', (e) => {
+  if (!hatDateien(e)) return
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'copy'
+})
+addEventListener('drop', (e) => {
+  if (!hatDateien(e)) return
+  e.preventDefault()
+  zieht = 0
+  pille.classList.remove('futter')
+  if (!e.dataTransfer.files.length) return fenni.hungrig(false)
+  fenni.fressen()
+  const pfade = [...e.dataTransfer.files].map((d) => window.mini.pfadVon?.(d)).filter(Boolean)
+  if (pfade.length) window.mini.dateienGeben(pfade)
+})

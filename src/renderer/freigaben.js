@@ -16,7 +16,7 @@ const NEIN = /^(?:nein|nö|ne|nee|nope|stopp|stop|halt|abbrechen|ablehnen|lieber
 // Fragt Luzzy nach Felix' Ja? (Antwort endet mit einer Frage in dieser Art)
 const JA_FRAGE = /(soll ich|darf ich|freigabe|dein ja|gibst du|einverstanden|bestätig|okay so|ok so|passt das|so übernehmen|so anlegen|so eintragen|so speichern|so ändern|so abschicken|so senden|so posten|so veröffentlichen|veröffentlich|live (?:stellen|schalten)|freigeben|umsetzen\?|machen\?|loslegen\?)/i
 
-let h = { api: null, vorlesen: () => {}, zuhoeren: () => {}, melden: () => {}, luzzy: () => {} }
+let h = { api: null, vorlesen: () => {}, zuhoeren: () => {}, melden: () => {}, luzzy: () => {}, geaendert: () => {} }
 const offen = [] // { id, kanal, befehl, beschreibung, auswahl }
 
 function ohneLuzzy(text) {
@@ -58,6 +58,7 @@ function kuerzen(text, max) {
 }
 
 function zeichnen() {
+  h.geaendert() // z. B. Fenni in der Mini-Insel: Kopf schief, solange eine Freigabe offen ist
   const el = $('freigaben')
   el.hidden = !offen.length
   el.innerHTML = offen

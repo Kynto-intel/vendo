@@ -6,11 +6,13 @@
 // klick() (kleiner Hüpfer mit großen Augen), streicheln() (Maus über ihm hin und her: Augen zu, hechelt),
 // aufhorchen() (Ohren hoch, schaut nach unten auf eine Meldung), blick(dx, dy) (Augen folgen der Maus, Abstand in
 // Bildschirm-Pixeln zur Mitte der Leiste). Wenn er bereit ist, hechelt er ab und zu von selbst.
+// frage(an) legt den Kopf schief (Luzzy fragt etwas oder wartet auf dein Ja), hungrig(an) reißt das Maul auf (Datei wird
+// über ihn gezogen), fressen() kaut die Datei, heulen() heult wie ein Wolf (Meilenstein erreicht).
 // Nur Canvas, keine Bilder. Teile: koerper.js (Kopf), augen.js, rumpf.js (Körper), spaziergang.js, effekte.js, farben.js.
 
 import { kopfZeichnen, maulZeichnen } from './koerper.js'
 import { augeZeichnen } from './augen.js'
-import { schallwellen, denkpunkte, schlafZ, schwindelSterne } from './effekte.js'
+import { schallwellen, denkpunkte, schlafZ, schwindelSterne, fragezeichen, heulNoten } from './effekte.js'
 import { fenniFarben } from './farben.js'
 import { sitzenZeichnen, seitlichZeichnen, liegenZeichnen } from './rumpf.js'
 import { spaziergangErstellen } from './spaziergang.js'
@@ -22,6 +24,8 @@ const KLICK = 0.55 // Sekunden Hüpfer nach einem Klick
 const HECHELN_NACH_FREUDE = 3 // Sekunden
 const hechelPause = () => 35 + Math.random() * 50 // Sekunden bis zum nächsten Hecheln von selbst
 const KOPF = 0.72 // Kopfgröße am Körper
+const KAUEN = 1.2 // Sekunden kauen nach dem Fressen
+const HEULEN = 3.4 // Sekunden heulen
 const RAND = 46 // Pixel, die er beim Spazieren vom Rand der Insel wegbleibt (runde Ecken unten)
 const WECHSEL = 0.22 // Sekunden „Plopp“, wenn er sich hinsetzt oder aufsteht
 
@@ -38,6 +42,10 @@ export function fenniErstellen(canvas) {
   let senken = 0 // 0…1, Kopf unten zum Schnüffeln
   let ansicht = 'vorne' // vorne (sitzt), seite (steht, läuft, schnüffelt), liegen
   let wechselZeit = -99
+  let fragt = false
+  let hungrig = false
+  let kauenBis = -99
+  let heulSeit = -99
   let blinzeln = 0
   let naechstesBlinzeln = 2
   let stupsZeit = -99
@@ -97,11 +105,14 @@ export function fenniErstellen(canvas) {
       hechelnBis = t + 2.5 + Math.random() * 2
       naechstesHecheln = hechelPause()
     }
-    const hechelt = zustand === 'bereit' && !gestupst && !schwindelig && (t < hechelnBis || streichelt)
+    const kaut = t < kauenBis
+    const heult = t - heulSeit < HEULEN
+    const schief = fragt && zustand === 'bereit' && !heult && !kaut
+    const hechelt = zustand === 'bereit' && !gestupst && !schwindelig && !hungrig && !kaut && !heult && (t < hechelnBis || streichelt)
 
     // Größe: Fenni ist sitzend ~88 Fenni-Einheiten hoch (Pfoten bis Ohrspitzen), passend zur Inselhöhe
     const s = hoehe / 90
-    gang.weiter(dt, { zustand, grenze: Math.max(0, breite / 2 - RAND), still: streichelt || schwindelig || gestupst || freude < FREUDE_SPRUNG })
+    gang.weiter(dt, { zustand, grenze: Math.max(0, breite / 2 - RAND), still: streichelt || schwindelig || gestupst || freude < FREUDE_SPRUNG || hungrig || kaut || heult })
     const lage = gang.lage()
     lauf += ((lage.haltung === 'laufen' ? 1 : 0) - lauf) * Math.min(1, dt * 10)
     senken += ((lage.haltung === 'schnueffeln' ? 1 : 0) - senken) * Math.min(1, dt * 6)
@@ -116,7 +127,7 @@ export function fenniErstellen(canvas) {
     ziel.x = lage.haltung === 'laufen' ? lage.richtung * 0.9 : ((maus.x - lage.x) / lange) * k
     ziel.y = lage.haltung === 'laufen' ? 0.1 : lage.haltung === 'schnueffeln' ? 0.9 : (maus.y / lange) * k
     // Schwanz: wedelt beim Streicheln, bei Meldungen und vor Freude, sonst schwingt er leicht
-    const wedeln = streichelt || horcht || freude < FREUDE_AUGEN + 1 ? Math.sin(t * 16) : Math.sin(t * 2) * 0.15
+    const wedeln = streichelt || horcht || hungrig || kaut || freude < FREUDE_AUGEN + 1 ? Math.sin(t * 16) : Math.sin(t * 2) * 0.15
 
     const x = breite / 2 + lage.x
     let y = hoehe - 1.5 // Boden
@@ -140,6 +151,11 @@ export function fenniErstellen(canvas) {
       sy -= q * 0.12
     }
     if (schwindelig) dreh = Math.sin(t * 9) * 0.1
+    if (kaut) {
+      sy -= Math.abs(Math.sin(t * 16)) * 0.05
+      sx += Math.abs(Math.sin(t * 16)) * 0.03
+    }
+    if (heult) sy += Math.sin(Math.min(1, (t - heulSeit) / 0.4) * Math.PI / 2) * 0.05 // streckt sich
 
     // Körper (um den Boden unter ihm wippen, quetschen, drehen)
     g.save()
@@ -161,9 +177,11 @@ export function fenniErstellen(canvas) {
     g.translate(kopf.x, kopf.y)
     g.scale(KOPF, KOPF)
     if (ansicht === 'seite') g.rotate(lage.richtung * senken * 0.18)
+    if (schief) g.rotate(0.24 + Math.sin(t * 1.5) * 0.04) // Kopf schief: „Hm?“
+    if (heult) g.translate(0, -4) // Schnauze nach oben
     kopfZeichnen(g, {
-      heben: zustand === 'hoert' || horcht || klick < KLICK ? 1 : 0,
-      klapp: gestupst || schwindelig ? 0.6 : zustand === 'schlaeft' ? 0.25 : streichelt ? 0.35 + Math.sin(t * 6) * 0.05 : 0
+      heben: zustand === 'hoert' || horcht || hungrig || schief || klick < KLICK ? 1 : 0,
+      klapp: gestupst || schwindelig ? 0.6 : zustand === 'schlaeft' ? 0.25 : heult ? 0.3 : streichelt ? 0.35 + Math.sin(t * 6) * 0.05 : 0
     }, farben)
     let art = 'offen'
     if (zustand === 'schlaeft') art = 'zu'
@@ -171,11 +189,16 @@ export function fenniErstellen(canvas) {
     if (freude < FREUDE_AUGEN || streichelt) art = 'froh'
     if (gestupst) art = 'genervt'
     if (schwindelig) art = 'spirale'
-    const augen = { art, groesse: zustand === 'hoert' || zustand === 'schaut' || horcht || klick < KLICK ? 1.15 : 1, blick: horcht ? { x: 0.2, y: 0.9 } : blick, blinzeln: blinzeln > 0, t }
+    if (hungrig) art = 'gross'
+    if (kaut) art = 'froh'
+    if (heult) art = 'zu'
+    const augen = { art, groesse: zustand === 'hoert' || zustand === 'schaut' || horcht || hungrig || klick < KLICK ? 1.15 : 1, blick: horcht ? { x: 0.2, y: 0.9 } : blick, blinzeln: blinzeln > 0, t }
     augeZeichnen(g, -13, -5, augen, farben)
     augeZeichnen(g, 13, -5, augen, farben)
     const offen = Math.min(1, staerke * 1.6 + Math.abs(Math.sin(t * 11)) * 0.15)
-    maulZeichnen(g, { spricht: zustand === 'spricht', offen, hecheln: hechelt, zunge: Math.sin(t * 14) }, farben)
+    // Maul: weit auf (hungrig), kauen, heulen (rund mit Vibrato), sprechen oder hecheln
+    const maulOffen = hungrig ? 1 : kaut ? Math.abs(Math.sin(t * 16)) * 0.8 : heult ? 0.6 + Math.sin(t * 30) * 0.08 : offen
+    maulZeichnen(g, { spricht: zustand === 'spricht' || hungrig || kaut || heult, offen: maulOffen, hecheln: hechelt, zunge: Math.sin(t * 14) }, farben)
     g.restore()
 
     // Effekte neben dem Kopf (drehen und wippen nicht mit)
@@ -186,6 +209,8 @@ export function fenniErstellen(canvas) {
     if (zustand === 'denkt') denkpunkte(g, 34, -30, t, farben)
     if (zustand === 'schlaeft') schlafZ(g, 30, -22, t, farben)
     if (schwindelig) schwindelSterne(g, 0, -36, t, farben)
+    if (schief) fragezeichen(g, 32, 4, t, farben) // neben dem Kopf (darüber ist die Bildschirmkante)
+    if (heult) heulNoten(g, 26, 2, t, (t - heulSeit) / HEULEN, farben)
     g.restore()
     requestAnimationFrame(bild)
   }
@@ -233,6 +258,27 @@ export function fenniErstellen(canvas) {
     // Neue Meldung: Ohren hoch, schaut nach unten auf die Sprechblase
     aufhorchen(sekunden = 2.5) {
       horchBis = (performance.now() - start) / 1000 + sekunden
+    },
+    // Luzzy fragt etwas oder wartet auf dein Ja: Kopf schief, Fragezeichen
+    frage(an) {
+      fragt = Boolean(an)
+    },
+    // Eine Datei wird über die Insel gezogen: er setzt sich und reißt das Maul auf
+    hungrig(an) {
+      hungrig = Boolean(an)
+      if (hungrig) gang.hinsetzen()
+    },
+    // Datei losgelassen: kauen, danach freut er sich
+    fressen() {
+      hungrig = false
+      gang.hinsetzen()
+      kauenBis = (performance.now() - start) / 1000 + KAUEN
+      setTimeout(() => this.freuen(), KAUEN * 1000)
+    },
+    // Meilenstein: setzt sich und heult wie ein Wolf
+    heulen() {
+      gang.hinsetzen()
+      heulSeit = (performance.now() - start) / 1000
     },
     // Stimmstärke 0…1 (für den Hintergrund, fenni/sterne.js)
     stimme: () => staerke,

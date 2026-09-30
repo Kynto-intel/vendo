@@ -405,6 +405,14 @@ Von selbst taucht sie auf bei einer **Meldung** und solange Luzzy zuhört, nachd
   blinzelt (bereit), läuft zurück in die Mitte und spitzt die Ohren (hört zu), schaut nach oben mit Denk-Punkten
   (denkt nach), bewegt das Maul mit ihrer Stimme (spricht), hüpft vor Freude, wedelt und hechelt danach (Antwort
   fertig), legt sich hin und schläft (keine Verbindung zu Hermes). Bei Meldungen und beim Streicheln wedelt er.
+  Endet Luzzys Antwort mit einer Frage oder wartet sie auf deine Freigabe, **legt er den Kopf schief** (mit „?“);
+  bei einer Freigabe bleibt die Insel sichtbar, bis du antwortest. Bei einem **Meilenstein** (z. B. 1.000. Bestellung,
+  Bereich Meilensteine) **heult er wie ein Wolf**.
+- **Datei auf Fenni ziehen:** Er reißt das Maul auf, beim Loslassen frisst er sie. Die Datei hängt dann an Luzzys
+  nächster Nachricht (wie die Büroklammer); Klick auf Fenni und sag, was sie damit machen soll. Ist die Insel versteckt,
+  erst mit der Datei an die obere Kante, dann kommt sie.
+- **Versteckt:** Ab und zu guckt Fenni kopfüber über die obere Bildschirmkante, erst die Ohren, dann die Augen, schaut
+  zur Maus und verschwindet wieder (Klicks gehen weiter durch).
   Ab und zu hechelt er auch von selbst. Seine Augen folgen der Maus über den ganzen Bildschirm, seine Farben kommen
   aus dem Design.
 - **Links:** Uhrzeit, darunter das Wetter aus dem Wetter-Plugin (ohne Wetter: das Datum).
@@ -421,7 +429,7 @@ Von selbst taucht sie auf bei einer **Meldung** und solange Luzzy zuhört, nachd
 **Rechtsklick:** Fenni anstupsen (dreimal schnell: schwindelig) · **Maus über Fenni hin und her:** streicheln
 (Augen zu, Ohren angelegt, hechelt).
 Technik: `src/renderer/mini.html` + `mini.js` (Insel), `src/renderer/fenni/` (`fenni.js` Steuerung, `koerper.js` Kopf,
-`augen.js`, `rumpf.js` Körper in den Haltungen sitzen/seitlich/liegen, `spaziergang.js` wohin er läuft und wann,
+`augen.js`, `rumpf.js` Körper in den Haltungen sitzen/seitlich/liegen, `spaziergang.js` wohin er läuft und wann, `gucken.js` Gucken über die Kante,
 `effekte.js`, `farben.js`, `sterne.js` Hintergrund auf eigener Ebene), nur Canvas, keine Bilder.
 Fenster 480 × 64 Pixel direkt an der oberen Kante; Verstecken und Zurückholen steuert `main.js` (`miniLage`,
 `mini:sichtbar`, versteckt mit `setIgnoreMouseEvents`); für eine Meldung 44 Pixel höher (`mini:hoehe`, sonst bliebe ein
@@ -629,7 +637,7 @@ Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbind
 | `src/main/vaultschreiben.js` · `shopifytoken.js` · `plugins.js` · `einstellungen.js` | Vault schreiben (eng begrenzt) · Shopify-Token · Plugin-Host · Einstellungen |
 | `src/preload.js` · `src/mini-preload.js` | Sichere Brücke `window.jarves` zur Oberfläche |
 | `src/renderer/` | Oberfläche (ES-Module): `app.js` (Zentrale, Luzzy, Verdrahtung der Teile), `vorlesen.js`, `mikrofon.js`, `crewchat.js`, `buehne.js`, `ansichten.js`, `dateiansicht.js`, `pcsteuerung.js`, `gespraeche.js`, `diktat.js`, `meldungen.js`, `timer.js`, `palette.js`, `selbsttest.js`, `mini.js` … |
-| `src/renderer/fenni/` | Fenni, der kleine Wolf in der Mini-Leiste: `fenni.js` (Zustände, Animation), `koerper.js` (Kopf), `augen.js`, `rumpf.js` (Körper), `spaziergang.js` (Laufen, Haltungen), `effekte.js`, `farben.js`, `sterne.js` (rieselnde Lichtpunkte, Röhren-Zeilen, Auftauchen); Hecheln, Hüpfer beim Klick, Streicheln, Aufhorchen bei Meldungen |
+| `src/renderer/fenni/` | Fenni, der kleine Wolf in der Mini-Leiste: `fenni.js` (Zustände, Animation), `koerper.js` (Kopf), `augen.js`, `rumpf.js` (Körper), `spaziergang.js` (Laufen, Haltungen), `gucken.js` (guckt über die Kante), `effekte.js`, `farben.js`, `sterne.js` (rieselnde Lichtpunkte, Röhren-Zeilen, Auftauchen); Hecheln, Hüpfer beim Klick, Streicheln, Aufhorchen bei Meldungen, Kopf schief bei Fragen, Heulen bei Meilensteinen, Dateien fressen |
 | `src/renderer/miniinfo.js` | Infos für die Mini-Insel: Wetter, nächster Termin, offene Aufgaben (aus den Plugins), Luzzys Worte und Meldungen |
 | `src/renderer/rahmen/` | Alles, was das Fenster selbst betrifft, aus `app.js` ausgelagert: `design.js` (Designs, Tageszeit-Farben, Windows-Knöpfe), `einstellungsfenster.js` (Einstellungs-Dialog), `befehlsliste.js` (Befehle der Palette Strg+P), `navigation.js` (Bereiche links, Bereich wechseln). Jede Datei wird in `app.js` mit `…Einrichten({ … })` angebunden |
 | `designs/` | Ein Design pro Datei (siehe Einstellungen) |
