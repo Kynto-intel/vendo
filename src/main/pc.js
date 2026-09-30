@@ -1,6 +1,6 @@
-// PC-Steuerung per Stimme (#30): Programme starten (alles aus dem Startmenü, auch Store-Apps wie Netflix),
-// Webseiten und Suchen im Browser, Lautstärke und Musik, Ordner öffnen, PC sperren.
-// Die Oberfläche schickt nur fertige, einfache Aktionen; hier wird jede geprüft. Nie: beliebige Befehle,
+// PC-Steuerung: Programme starten (alles aus dem Startmenü, auch Store-Apps wie Netflix), Webseiten im Browser,
+// Lautstärke und Musik, Ordner öffnen, PC sperren. Aufrufer: die Sofortbefehle der Oberfläche (pcsteuerung.js) und
+// Luzzys Werkzeug pc_steuern über pcbruecke.js. Hier wird jede Aktion geprüft. Nie: beliebige Befehle,
 // Programme per Pfad, Herunterfahren, Schließen. Testmodus JARVES_TEST_PC=1: nur protokollieren, nichts ausführen.
 
 const { execFile } = require('node:child_process')
@@ -162,4 +162,4 @@ function vorbereiten() {
   setTimeout(() => programmListe().catch(() => {}), 8000)
 }
 
-module.exports = { aktion, programmFinden, vorbereiten }
+module.exports = { aktion, vorbereiten }

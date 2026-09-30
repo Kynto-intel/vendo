@@ -728,9 +728,9 @@ const SPRACHBEFEHLE = [
   ['Wechsel zum Gespräch …', 'auch oben im Gesprächsfenster auswählen', 'thema chat gespräch wechseln'],
   ['Welche Gespräche gibt es?', '', 'themen gespräche liste'],
   ['Öffne … (Programm)', 'alles aus dem Startmenü, z. B. „Öffne Photoshop“, „Starte Spotify“', 'programm app starten öffnen pc'],
-  ['Öffne den Browser und geh auf Netflix und such …', 'auch YouTube, Google, Amazon, Spotify, eBay, Etsy, Wikipedia, Twitch, Maps …', 'browser internet webseite netflix youtube suchen'],
-  ['Such auf YouTube nach …', 'oder „Spiel … auf YouTube“', 'youtube video musik suchen'],
-  ['Öffne Chrome und geh auf … .de', 'bestimmter Browser, bestimmte Seite', 'chrome firefox edge adresse'],
+  ['Öffne den Browser und geh auf Netflix und such …', 'Luzzy versteht es und öffnet die Seite (Werkzeug pc_steuern), auch YouTube, Google, Amazon, Etsy …', 'browser internet webseite netflix youtube suchen'],
+  ['Such auf YouTube nach …', 'oder „Spiel … auf YouTube“; macht Luzzy', 'youtube video musik suchen'],
+  ['Öffne … in Chrome', 'Link oder Seite in einem bestimmten Browser; macht Luzzy', 'chrome firefox edge adresse link'],
   ['Lauter / Leiser', 'auch „viel lauter“, „Lautstärke auf 30 Prozent“, „Ton aus“', 'lautstärke ton stumm'],
   ['Nächstes Lied / Musik Pause', 'auch „vorheriges Lied“, „Musik weiter“', 'musik lied song pause'],
   ['Öffne Downloads', 'auch Desktop, Dokumente, Bilder, Musik, Videos, Donnerwolf', 'ordner explorer'],
@@ -911,8 +911,8 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   // Ist gerade eine Datei offen: „Luzzy, ändere …“ ändert die Datei (live im Text, gespeichert wird nur per Klick)
   const aenderung = aenderungsBefehl(text)
   if (aenderung) return dateiAntworten(aenderung, { gesprochen }), true
-  // PC-Steuerung, die sicher erkannt ist (Webseiten, Suchen, Lautstärke, Ordner, Sperren); Programme weiter unten,
-  // weil erst nachgesehen werden muss, ob es sie gibt
+  // PC-Sofortbefehle (Lautstärke, Musik, Ordner, Sperren); Programme weiter unten, weil erst nachgesehen werden muss,
+  // ob es sie gibt. Browser, Seiten und Suchen macht Luzzy selbst (Werkzeug pc_steuern).
   const pcSicher = pcBefehlErkennen(text)
   if (pcSicher && pcSicher.art !== 'programm') return dateiAntworten(pcAusfuehren(pcSicher, { bereichOeffnen }), { gesprochen }), true
   if (istWiederholen(text)) return wiederholen({ gesprochen }), true
@@ -1023,7 +1023,7 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     if (pluginAntwort.antwort) lokalAntworten(pluginAntwort.antwort, { gesprochen })
     return
   }
-  // PC-Steuerung: Programme, Browser/Seiten/Suche, Lautstärke, Ordner (#30). Findet sich nichts, weiter unten.
+  // PC-Sofortbefehl „Öffne <Programm>“: nur wenn es das Programm gibt, sonst weiter unten (am Ende an Luzzy).
   const pcPlan = pcBefehlErkennen(text)
   if (pcPlan?.art === 'programm') {
     const satz = await pcAusfuehren(pcPlan, { bereichOeffnen }).catch((e) => `Das hat nicht geklappt: ${String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
@@ -1807,6 +1807,7 @@ function formularFuellen() {
   $('e-cockpit').checked = einstellungen.cockpit !== false
   $('e-start-intro').checked = einstellungen.start?.intro !== false
   $('e-start-gruss').checked = einstellungen.start?.begruessung !== false
+  $('e-start-gateway').checked = einstellungen.start?.gateway !== false
   reglerAnzeigen()
 }
 
@@ -1852,7 +1853,8 @@ function formularLesen() {
     },
     start: {
       intro: $('e-start-intro').checked,
-      begruessung: $('e-start-gruss').checked
+      begruessung: $('e-start-gruss').checked,
+      gateway: $('e-start-gateway').checked
     },
     karten: kartenFormularLesen() ?? einstellungen.karten,
     tageszeitFarben: $('e-tageszeit').checked,

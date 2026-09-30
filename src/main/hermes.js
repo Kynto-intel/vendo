@@ -367,7 +367,26 @@ class Hermes extends EventEmitter {
     })
   }
 
+  // Anfragen von vor dem Verbinden (z. B. die Crew-Liste beim Start, während Hermes noch hochfährt) warten auf den Zugang
+  verbindungAbwarten(frist = START_TIMEOUT) {
+    if (this.port && this.token) return Promise.resolve()
+    return new Promise((fertig, fehler) => {
+      const pruefen = () => {
+        if (!this.port || !this.token) return
+        clearTimeout(uhr)
+        this.off('status', pruefen)
+        fertig()
+      }
+      const uhr = setTimeout(() => {
+        this.off('status', pruefen)
+        fehler(new Error('Hermes ist noch nicht verbunden.'))
+      }, frist)
+      this.on('status', pruefen)
+    })
+  }
+
   async rest(pfad, optionen = {}) {
+    await this.verbindungAbwarten()
     const antwort = await fetch(`http://127.0.0.1:${this.port}${pfad}`, {
       method: optionen.method || 'GET',
       headers: { 'X-Hermes-Session-Token': this.token, 'Content-Type': 'application/json' },

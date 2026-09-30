@@ -157,9 +157,16 @@ ipcMain.handle('shopify:tokenEintragen', async (_e, token) => {
 })
 
 // ── Hermes → Oberfläche ──
+// Hermes-Gateway (Telegram & Co.) einmal pro Start mit hochfahren, sobald Hermes bereit ist (Einstellung start.gateway)
+let gatewayGeprueft = false
 hermes.on('status', (s) => {
   senden('hermes:status', s)
   if (s.zustand === 'bereit') waechter.starten()
+  if (s.zustand === 'bereit' && !gatewayGeprueft && !process.env.JARVES_TEST_STUMM && einstellungen.laden().start?.gateway !== false) {
+    gatewayGeprueft = true
+    // Nur ASCII ausgeben: die PowerShell-Konsole zeigt Umlaute und Hermes' Häkchen sonst verstümmelt an
+    require('./gateway').starten().then((g) => console.log(`Hermes-Gateway: ${g.ok ? 'laeuft' : 'Start fehlgeschlagen'} (${g.text.replace(/[^\x20-\x7e]/g, '').trim()})`))
+  }
 })
 hermes.on('ereignis', (e) => senden('hermes:ereignis', e))
 hermes.on('freigabe', (f) => senden('hermes:freigabe', f))
@@ -425,9 +432,11 @@ ipcMain.handle('datei:zeigen', (_e, rel) => shell.showItemInFolder(wissen.sicher
 ipcMain.handle('datei:suchen', (_e, anfrage) => dateisuche.suchen(String(anfrage || '').slice(0, 200)))
 ipcMain.handle('datei:inhalt', (_e, id) => dateisuche.inhalt(id))
 ipcMain.handle('datei:stand', () => dateisuche.stand())
-// PC-Steuerung per Stimme: nur einfache, geprüfte Aktionen (Programm aus dem Startmenü, Webseite, Taste, Ordner, Sperren)
+// PC-Sofortbefehle der Oberfläche: nur einfache, geprüfte Aktionen (Programm aus dem Startmenü, Taste, Ordner, Sperren)
 ipcMain.handle('pc:aktion', (_e, aktion) => pc.aktion(aktion && typeof aktion === 'object' ? aktion : {}))
-ipcMain.handle('pc:programm', async (_e, name) => (await pc.programmFinden(String(name || '').slice(0, 80)))?.name || null)
+// Luzzys Werkzeug pc_steuern (Hermes-Plugin jarves-pc) kommt über diese lokale Brücke an
+const pcBruecke = require('./pcbruecke')
+app.on('will-quit', () => pcBruecke.beenden())
 // Bearbeiten: speichern nur auf Felix' Klick (die Oberfläche ruft das nur vom Speichern-Knopf aus), immer mit Sicherung
 ipcMain.handle('datei:speichern', (_e, id, text, geaendert) => dateisuche.speichern(id, text, Number(geaendert) || 0))
 ipcMain.handle('datei:rueckgaengig', (_e, id) => dateisuche.rueckgaengig(id))
@@ -730,6 +739,7 @@ app.whenReady().then(() => {
   })
   dateisuche.vorbereiten()
   pc.vorbereiten()
+  pcBruecke.starten()
   // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann (im stummen Testmodus nicht:
   // dort wird nichts vorgelesen, und abgebrochene Testläufe ließen sonst Server zurück)
   if (!process.env.JARVES_TEST_STUMM || process.env.JARVES_TEST_POCKET) pocket.starten(pocketDateiFuer(einstellungen.laden())).catch(() => {})

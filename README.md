@@ -97,6 +97,11 @@ npm start
 Oder ohne Terminal: **Einstellungen → Start & Sicherung → „Verknüpfung auf dem Desktop anlegen“** (dort auch
 „Mit Windows starten“). Hermes muss nicht vorher laufen: Jarves-OS dockt an ein laufendes Hermes an oder startet es selbst.
 
+Sobald Hermes bereit ist, startet Jarves-OS auch den **Hermes-Gateway** (Telegram & Co., ein Gateway für alle
+Profile) mit Hermes' eigenem Befehl `hermes -p default gateway start` (`src/main/gateway.js`). Läuft er schon,
+passiert nichts. Er läuft losgelöst weiter, auch wenn Jarves-OS geschlossen wird; stoppen mit
+`hermes -p default gateway stop`. Abschalten: **Einstellungen → Hermes-Gateway beim Start mitstarten**.
+
 Beim Start fährt die **Donnerwolf-Startsequenz** hoch (Systemcheck: Hermes, Luzzy, Stimme, Plugins, Shopify,
 Postfach), danach begrüßt Luzzy dich passend zur Tageszeit mit Bestellungen über Nacht, Mails, Terminen, Aufgaben
 und Wetter. Klick oder Esc überspringt das Intro. Fenstergröße, Position und der zuletzt offene Bereich werden gemerkt.
@@ -298,7 +303,7 @@ Alles andere geht an Luzzy. Die komplette Liste steht auch in der Befehlspalette
 | Gespräche | „Neues Gespräch Shop“, „Wechsel zum Gespräch Privat“, „Welche Gespräche gibt es?“ |
 | Dateien | „Such die Datei Thor-Hoodie und öffne sie“, „Öffne die Preisliste“, „Zeig mir das Bild Logo“, „die zweite“ |
 | Datei ändern | (Datei offen) „Ändere den Preis auf 39 Euro“, „Kürze den zweiten Absatz“, „Übersetze das ins Englische“ |
-| PC-Steuerung | „Öffne Photoshop“, „Öffne Netflix und such Terminator“, „Spiel Metallica auf YouTube“, „Lauter“, „Lautstärke auf 30 Prozent“, „Nächstes Lied“, „Musik Pause“, „Öffne Downloads“, „Sperr den PC“ |
+| PC-Steuerung | Sofort: „Öffne Photoshop“, „Lauter“, „Lautstärke auf 30 Prozent“, „Nächstes Lied“, „Musik Pause“, „Öffne Downloads“, „Sperr den PC“. Über Luzzy: „Öffne Netflix und such Terminator“, „Spiel Metallica auf YouTube“, „Mach mir den Link in Chrome auf“ |
 | Diktat | „Diktat“ (lange Aufnahme), „Diktat: …“, „Schreib eine Mail an Jana, dass …“ |
 | Ideen & Notizen | „Neue Idee: …“ (in den Vault), „Merk dir: Stoffproben bestellen“ |
 | Aufgaben | „Neue Aufgabe: Etiketten bestellen bis Freitag“, „Erledigt: Etiketten“, „Was muss ich heute noch?“ |
@@ -328,19 +333,30 @@ Browser- und Windows-Anmeldedaten.
 
 ## PC-Steuerung
 
-Luzzy öffnet Programme und Seiten und steuert Ton und Musik – ohne KI, direkt und sofort:
+Zwei Stufen:
 
-- **Programme:** alles aus dem Startmenü, auch Store-Apps („Öffne Photoshop“, „Starte Spotify“).
-- **Browser und Seiten:** „Öffne den Browser und geh auf Netflix und such Terminator“, „Öffne Chrome und geh auf
-  chefkoch.de“. Suche direkt auf YouTube, Netflix, Google, Google Maps, Amazon, Prime Video, Spotify, Wikipedia,
-  eBay, Etsy, Twitch, Pinterest, TikTok, Instagram, Facebook; dazu Disney+, Shopify-Admin, Gmail.
-  Gibt es die Seite als App (Netflix, Spotify …), öffnet Jarves-OS die App.
+**1. Sofortbefehle (ohne KI, sofort).** Nur wenn der **ganze Satz** genau der Befehl ist
+(`src/renderer/pcsteuerung.js`):
+
 - **Ton und Musik:** lauter/leiser (auch „viel“, „etwas“), „Lautstärke auf 30 Prozent“, „Ton aus“, „Nächstes Lied“,
   „Vorheriges Lied“, „Musik Pause/weiter“.
 - **Ordner:** Desktop, Downloads, Dokumente, Bilder, Musik, Videos, Donnerwolf, Jarves-OS.
 - **PC sperren.**
+- **Programme:** „Öffne Photoshop“, „Starte Spotify“, „Mach Discord auf“ (höchstens 4 Wörter, ohne Adresse, ohne
+  „und“). Nur wenn es das Programm im Startmenü gibt, sonst geht der Satz an Luzzy.
 
-**Nie:** beliebige Befehle, Herunterfahren, Programme schließen, Programme über einen Pfad starten.
+**2. Alles andere versteht Luzzy** und steuert den PC selbst mit ihrem Werkzeug `pc_steuern`: Seiten und Links
+öffnen („Mach mir den Link mal auf“, „Öffne das in Chrome“), auf YouTube, Google, Amazon, Etsy … suchen (sie baut die
+Such-Adresse selbst), Programme, Lautstärke, Musik, Ordner, PC sperren. Schickst du ihr einen Link zum Anschauen
+(„https://… schau mal da rein“), liest sie ihn und öffnet ihn **nicht** am PC. Dauert 1 bis 3 Sekunden.
+
+So läuft Stufe 2: Hermes-Plugin `jarves-pc` (in Luzzys Profil) → lokale Brücke in Jarves-OS
+(`src/main/pcbruecke.js`, nur 127.0.0.1 mit Zufallsschlüssel, Zugang in `%APPDATA%\jarves-os\pc-bruecke.json`,
+solange Jarves-OS läuft) → `src/main/pc.js`, das jede Aktion prüft. Ist Jarves-OS zu, sagt Luzzy das. Aus Telegram
+und anderen Messengern geht es nie (das Plugin prüft die Herkunft, bei Telegram ist es zusätzlich ausgeblendet).
+
+**Nie:** beliebige Befehle, Herunterfahren, Programme schließen, Programme über einen Pfad starten, andere Adressen
+als http/https.
 
 ## Mehrere Gespräche
 
@@ -390,8 +406,8 @@ Hermes neu – ohne Neustart. Der Token wird nie angezeigt, geloggt oder gespeic
 Ist Hermes nicht erreichbar oder scheitert eine Antwort an Internet oder Cloud-Modell, antwortet Luzzy **lokal über
 Ollama** (kleinstes vorhandene Modell, z. B. `gemma4:12b`; Jarves-OS startet Ollama selbst). Sie kennt Datum,
 Uhrzeit, Termine, Aufgaben und Notizen; Shop, Mails und Internet gehen dann nicht, das sagt sie ehrlich.
-Solche Antworten sind mit **„🛟 Notbetrieb“** markiert. Timer, Notizen, Aufgaben, PC-Steuerung, Dateisuche und
-Luzzys Stimme laufen ohnehin ohne Internet.
+Solche Antworten sind mit **„🛟 Notbetrieb“** markiert. Timer, Notizen, Aufgaben, PC-Sofortbefehle, Dateisuche und
+Luzzys Stimme laufen ohnehin ohne Internet (Seiten, Suchen und Links öffnen geht nur mit Luzzy über Hermes).
 
 ## Plugins
 
@@ -443,6 +459,7 @@ nicht anfasst. Am Hermes-Programm (`hermes-agent\`) wurde nie etwas geändert.
 | `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) | – (neu) |
 | `profiles\donnerwolf\skills\productivity\jarves-bot-erstellen\` | Skill: wie Luzzy passgenaue Bot-SOULs schreibt (nach Hermes-Doku und Prompt-Leitfäden: Identität statt Handbuch, Gründe statt Großbuchstaben, Bot-Arten mit echten Werkzeugen, Verhalten bei Unklarheit, zwei Beispiele, Prüfliste) und Avatar-Prompts im Crew-Stil | `SKILL.md.vor-v2.bak`, `SKILL.md.vor-v3.bak` |
 | `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`: neu, ändern, löschen, suchen, liste; meldet Überschneidungen) | – (neu) |
+| `profiles\donnerwolf\plugins\jarves-pc\` + `config.yaml` | Plugin für Luzzys Werkzeug `pc_steuern` (PC-Steuerung Stufe 2, siehe dort). Eingeschaltet mit `hermes -p donnerwolf plugins enable jarves-pc`, für Telegram ausgeblendet mit `hermes -p donnerwolf tools disable --platform telegram jarves_pc` (Hermes schreibt die Telegram-Liste dabei aus, die Werkzeuge bleiben dieselben) | `config.yaml.vor-jarves-pc-20260930.bak` |
 | `config.yaml` / `.env` (Hermes und Profile) | Shopify-Token – nur über System → Shopify-Zugang | automatisch bei jedem Eintragen |
 
 `surface: tui` sorgt dafür, dass nur Jarves-OS das Aktivierungswort bekommt, nicht die Hermes-App.

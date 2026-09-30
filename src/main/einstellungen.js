@@ -13,7 +13,7 @@ const STANDARD = {
   lautstaerke: 250, // Prozent: Pocket TTS ist von sich aus leise
   vorlesen: true,
   animationen: { reaktor: true, scanlinie: true, welle: true, hintergrund: true },
-  start: { intro: true, begruessung: true },
+  start: { intro: true, begruessung: true, gateway: true }, // gateway: Hermes-Gateway beim Öffnen mitstarten
   tageszeitFarben: true,
   leisten: { links: true, rechts: true }, // true = aufgeklappt
   panel: { offen: false, breite: 460 },
