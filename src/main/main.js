@@ -709,6 +709,20 @@ ipcMain.handle('system:werte', () => {
 // aufgeklappt ist (sonst bliebe unter der Insel ein unsichtbarer Streifen, der Klicks auf Browser-Tabs schluckt)
 const MINI = { breite: 480, hoehe: 64, meldung: 44 }
 let mini = null
+// Die Insel versteckt sich nach oben, wenn nichts los ist, damit sie nicht stört. Sie kommt wieder, wenn die Maus an die
+// obere Kante über ihr geht, bei einer Meldung und solange Luzzy zuhört, nachdenkt oder spricht. Versteckt lässt das
+// Fenster alle Klicks durch (setIgnoreMouseEvents), die Insel selbst schiebt mini.html nach oben.
+const MINI_WEG_NACH = 4000 // ms ohne Maus und ohne Luzzy, dann verschwindet sie
+const MINI_KANTE = 4 // Pixel an der oberen Kante, die sie zurückholen
+const MINI_AKTIV = ['hoert', 'versteht', 'denkt', 'antwortet', 'spricht', 'schaut']
+const miniLage = { sichtbar: true, zuletzt: 0, luzzy: 'bereit', meldung: false }
+function miniSichtbar(an) {
+  if (!mini || mini.isDestroyed() || miniLage.sichtbar === an) return
+  miniLage.sichtbar = an
+  miniLage.zuletzt = Date.now()
+  mini.setIgnoreMouseEvents(!an)
+  mini.webContents.send('mini:sichtbar', an)
+}
 // Fennis Augen folgen der Maus auf dem ganzen Bildschirm: Mausposition relativ zur Mitte der Leiste, ~25-mal pro
 // Sekunde und nur, solange der Mini-Modus an ist und sich die Maus bewegt
 let letzterBlick = ''
@@ -716,6 +730,11 @@ setInterval(() => {
   if (!mini || mini.isDestroyed() || !mini.isVisible()) return
   const maus = screen.getCursorScreenPoint()
   const b = mini.getBounds()
+  const ueberX = maus.x >= b.x && maus.x < b.x + b.width
+  const halten = (ueberX && maus.y >= b.y && maus.y < b.y + b.height) || miniLage.meldung || MINI_AKTIV.includes(miniLage.luzzy)
+  if (!miniLage.sichtbar && ueberX && maus.y <= b.y + MINI_KANTE) miniSichtbar(true)
+  else if (miniLage.sichtbar && halten) miniLage.zuletzt = Date.now()
+  else if (miniLage.sichtbar && Date.now() - miniLage.zuletzt > MINI_WEG_NACH) miniSichtbar(false)
   const blick = { x: Math.round(maus.x - (b.x + b.width / 2)), y: Math.round(maus.y - (b.y + MINI.hoehe / 2)) }
   const schluessel = `${blick.x},${blick.y}`
   if (schluessel === letzterBlick) return
@@ -761,6 +780,7 @@ function miniSetzen(an, { schliessen = false } = {}) {
       webPreferences: { preload: path.join(__dirname, '..', 'mini-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
     })
     mini.setAlwaysOnTop(true, 'screen-saver')
+    Object.assign(miniLage, { sichtbar: true, zuletzt: Date.now(), luzzy: 'bereit', meldung: false })
     mini.loadFile(path.join(__dirname, '..', 'renderer', 'mini.html'))
     mini.once('ready-to-show', () => mini?.showInactive())
     const dieses = mini
@@ -793,13 +813,18 @@ ipcMain.handle('bildschirm:aufnehmen', async () => {
   }
 })
 ipcMain.on('mini:zustand', (_e, daten) => {
-  if (mini && !mini.isDestroyed()) mini.webContents.send('mini:zustand', daten)
+  if (!mini || mini.isDestroyed()) return
+  if (daten?.zustand) miniLage.luzzy = daten.zustand
+  if (daten?.meldung || MINI_AKTIV.includes(daten?.zustand)) miniSichtbar(true) // taucht auf
+  mini.webContents.send('mini:zustand', daten)
 })
 ipcMain.on('mini:sprechen', () => senden('mikrofon:umschalten'))
 ipcMain.on('mini:gross', () => miniSetzen(false))
 // Meldung auf- und zuklappen: das Fenster wächst nach unten mit (mini.js)
 ipcMain.on('mini:hoehe', (_e, offen) => {
   if (!mini || mini.isDestroyed()) return
+  miniLage.meldung = Boolean(offen)
+  miniLage.zuletzt = Date.now()
   const b = mini.getBounds()
   mini.setBounds({ ...b, height: MINI.hoehe + (offen ? MINI.meldung : 0) })
 })

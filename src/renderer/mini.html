@@ -9,22 +9,26 @@
     /* Mini-Modus: eine Insel, die aus der oberen Bildschirmkante kommt. Mitte: Fenni, der kleine Wolf (fenni/).
        Links: Uhr und Wetter. Rechts: was Luzzy sagt, sonst nächster Termin und offene Aufgaben.
        Unten klappt bei einer neuen Meldung eine zweite Zeile auf (das Fenster wird dafür kurz höher, main.js). */
-    :root { --hoehe: 64px; --meldung: 44px; --schulter: 14px; --flaeche: rgba(var(--grund-rgb), 0.96); }
+    /* Ganz schwarz und ohne Rahmen: so ist der Übergang in die Bildschirmkante nicht zu sehen */
+    :root { --hoehe: 64px; --meldung: 44px; --schulter: 14px; --flaeche: #000; }
     html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; font-family: 'Segoe UI', system-ui, sans-serif; }
-    .insel { position: absolute; inset: 0; --rand: rgba(var(--akzent-rgb), 0.35); animation: herab 420ms cubic-bezier(0.2, 0.9, 0.3, 1.12) both; }
-    .insel:hover { --rand: rgba(var(--akzent-rgb), 0.8); }
-    .insel[data-zustand='schaut'] { --rand: rgba(255, 255, 255, 0.85); } /* schaut auf den Bildschirm (nur auf Befehl) */
+    .insel { position: absolute; inset: 0; animation: herab 420ms cubic-bezier(0.2, 0.9, 0.3, 1.12) both; transition: transform 380ms cubic-bezier(0.4, 0, 0.2, 1); }
+    .insel.da { animation: none; } /* nach dem ersten Herunterkommen, damit .weg greift */
+    /* versteckt: nach oben aus dem Bild (main.js lässt dann alle Klicks durch; Maus an die obere Kante holt sie zurück) */
+    .insel.weg { transform: translateY(-110%); }
     /* kommt aus der Bildschirmkante herunter */
     @keyframes herab { from { transform: translateY(-100%); } to { transform: none; } }
     /* Schultern: geschwungener Übergang von der Bildschirmkante in die Insel */
     .schulter { position: absolute; top: 0; width: var(--schulter); height: var(--schulter); pointer-events: none; }
-    .schulter.links { left: 0; background: radial-gradient(circle at 0 100%, transparent calc(var(--schulter) - 1px), var(--rand) calc(var(--schulter) - 1px), var(--rand) var(--schulter), var(--flaeche) var(--schulter)); }
-    .schulter.rechts { right: 0; background: radial-gradient(circle at 100% 100%, transparent calc(var(--schulter) - 1px), var(--rand) calc(var(--schulter) - 1px), var(--rand) var(--schulter), var(--flaeche) var(--schulter)); }
+    .schulter.links { left: 0; background: radial-gradient(circle at 0 100%, transparent calc(var(--schulter) - 0.6px), var(--flaeche) var(--schulter)); }
+    .schulter.rechts { right: 0; background: radial-gradient(circle at 100% 100%, transparent calc(var(--schulter) - 0.6px), var(--flaeche) var(--schulter)); }
     .pille {
       box-sizing: border-box; position: absolute; top: 0; left: var(--schulter); right: var(--schulter); height: var(--hoehe);
-      border-radius: 0 0 26px 26px; border: 1px solid var(--rand); border-top: 0; background: var(--flaeche);
-      overflow: hidden; cursor: pointer; transition: height 320ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      border-radius: 0 0 26px 26px; background: var(--flaeche);
+      overflow: hidden; cursor: pointer; transition: height 320ms cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 200ms;
     }
+    /* schaut auf den Bildschirm (nur auf Befehl): heller Rand, deutlich sichtbar */
+    .insel[data-zustand='schaut'] .pille { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85); }
     .pille.offen { height: calc(var(--hoehe) + var(--meldung)); }
     /* Obere Zeile: schaltet sich nach dem Herunterkommen ein wie eine alte Röhre (heller Strich, der aufklappt) */
     .oben { position: absolute; top: 0; left: 0; right: 0; height: var(--hoehe); animation: roehreAn 600ms 320ms ease-out both; }
@@ -38,7 +42,7 @@
     #sterne, #fenni { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
     .seite {
       position: absolute; top: 0; bottom: 4px; display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0;
-      pointer-events: none; color: rgba(var(--text-rgb), 0.92); text-shadow: 0 1px 3px rgba(var(--grund-rgb), 0.95);
+      pointer-events: none; color: rgba(var(--text-rgb), 0.92); text-shadow: 0 1px 3px #000;
     }
     .seite.links { left: 30px; right: calc(50% + 50px); align-items: flex-start; }
     .seite.rechts { left: calc(50% + 50px); right: 30px; align-items: flex-end; text-align: right; }
@@ -56,7 +60,7 @@
       border-radius: 50%; background: rgba(var(--akzent-rgb), 0.15); color: rgb(var(--akzent-hell-rgb)); font-size: 10px; line-height: 18px; cursor: pointer;
       opacity: 0; transition: opacity 150ms;
     }
-    .insel:hover .gross { opacity: 1; }
+    .pille:hover .gross { opacity: 1; }
     /* Meldung (neue Bestellung, Mail …): zweite Zeile unter Fenni */
     .meldung {
       position: absolute; top: var(--hoehe); left: 0; right: 0; height: var(--meldung); box-sizing: border-box; padding: 0 26px 6px;

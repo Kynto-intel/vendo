@@ -1,4 +1,5 @@
-// Mini-Modus: Insel oben an der Bildschirmkante mit Fenni, dem kleinen Wolf (fenni/). Er zeigt, was Luzzy gerade tut
+// Mini-Modus: schwarze Insel oben an der Bildschirmkante mit Fenni, dem kleinen Wolf (fenni/). Sie versteckt sich nach
+// ein paar Sekunden nach oben (main.js). Fenni zeigt, was Luzzy gerade tut
 // (vom großen Fenster geschickt). Links Uhr und Wetter, rechts Luzzys Worte oder nächster Termin und offene Aufgaben
 // (miniinfo.js im großen Fenster), bei einer Meldung klappt unten eine Zeile auf.
 // Klick: sprechen, Doppelklick: großes Fenster, Rechtsklick: Fenni anstupsen, Maus über Fenni hin und her: streicheln.
@@ -137,6 +138,12 @@ window.mini.beiZustand((daten = {}) => {
     sterne.zustand(FENNI[neu] || 'bereit')
   }
   rechtsZeigen()
+})
+// Nach oben weg und wieder da (main.js entscheidet: nichts los → weg; Maus an der oberen Kante, Meldung, Luzzy aktiv → da)
+insel.addEventListener('animationend', (e) => e.animationName === 'herab' && insel.classList.add('da'))
+window.mini.beiSichtbar?.((an) => {
+  insel.classList.add('da')
+  insel.classList.toggle('weg', !an)
 })
 // Augen folgen der Maus (das Hauptprogramm meldet ihre Position, solange der Mini-Modus an ist)
 window.mini.beiBlick?.(({ x, y } = {}) => fenni.blick(Number(x) || 0, Number(y) || 0))

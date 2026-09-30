@@ -388,8 +388,13 @@ Löschen geht nur mit Rückfrage.
 
 ## Mini-Modus
 
-Eine kleine **Insel, die oben in der Bildschirmmitte aus der Kante kommt** (mit geschwungenem Übergang), immer im
-Vordergrund. So kannst du jederzeit mit Luzzy reden, ohne dass Jarves-OS Platz braucht.
+Eine kleine schwarze **Insel, die oben in der Bildschirmmitte aus der Kante kommt** (ohne Rahmen, mit geschwungenem
+Übergang, so sieht sie aus wie ein Teil des Bildschirms), immer im Vordergrund. So kannst du jederzeit mit Luzzy reden,
+ohne dass Jarves-OS Platz braucht.
+
+**Sie stört nicht:** Nach 4 Sekunden ohne Maus und ohne Luzzy verschwindet sie nach oben, und Klicks gehen dann durch
+(z. B. auf Browser-Tabs darunter). Zurück holst du sie, indem du die Maus **ganz an die obere Kante über ihr** schiebst.
+Von selbst taucht sie auf bei einer **Meldung** und solange Luzzy zuhört, nachdenkt oder spricht.
 
 - **Mitte: Fenni**, ein kleiner Wolf (Fenrirs kleiner Bruder), der zeigt, was Luzzy gerade tut: atmet und blinzelt
   (bereit), spitzt die Ohren (hört zu), schaut nach oben mit Denk-Punkten (denkt nach), bewegt das Maul mit ihrer
@@ -411,7 +416,8 @@ Vordergrund. So kannst du jederzeit mit Luzzy reden, ohne dass Jarves-OS Platz b
 (Augen zu, Ohren angelegt, hechelt).
 Technik: `src/renderer/mini.html` + `mini.js` (Insel), `src/renderer/fenni/` (`fenni.js` Steuerung, `koerper.js`,
 `augen.js`, `effekte.js`, `farben.js`, `sterne.js` Hintergrund auf eigener Ebene), nur Canvas, keine Bilder.
-Fenster 480 × 64 Pixel direkt an der oberen Kante, für eine Meldung 44 Pixel höher (`mini:hoehe`, sonst bliebe ein
+Fenster 480 × 64 Pixel direkt an der oberen Kante; Verstecken und Zurückholen steuert `main.js` (`miniLage`,
+`mini:sichtbar`, versteckt mit `setIgnoreMouseEvents`); für eine Meldung 44 Pixel höher (`mini:hoehe`, sonst bliebe ein
 unsichtbarer Streifen, der Klicks auf Browser-Tabs schluckt). Die Infos sammelt `src/renderer/miniinfo.js` im großen
 Fenster (jede Minute und sofort bei Änderungen an Terminen und Aufgaben); die Mausposition schickt `main.js`
 (`mini:blick`), solange der Mini-Modus an ist.
