@@ -19,14 +19,15 @@ import { diktatErkennen, diktatAuftrag, diktatAblegen } from './diktat.js'
 import { pcBefehlErkennen, pcAusfuehren } from './pcsteuerung.js'
 import { gespraecheEinrichten, gespraecheLaden, gespraechBefehl } from './gespraeche.js'
 import { dateiBefehlErkennen, dateiSuchenUndZeigen, trefferNummer, trefferOeffnen, dateiansichtEinrichten, dateiZeigen, istOeffnenWunsch, pfadAusAntwortOeffnen, aenderungsBefehl } from './dateiansicht.js'
-import { kartenEinrichten, kartenAnwenden, kartenFormularFuellen, kartenFormularLesen } from './karten.js'
+import { kartenEinrichten, kartenAnwenden } from './karten.js'
 import { nichtStoerenErkennen, uhrzeitText } from './nichtstoeren.js'
 import { introAbspielen, introAus, begruessungBauen } from './startsequenz.js'
 import { pluginsStarten, pluginEingabe, pluginBefehl, kontextFuer, pluginBegruessung, pluginKontext } from './plugin-host.js'
 import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 import { sendeKnopfSetzen } from './sendeknopf.js'
 import { befehlslisteEinrichten } from './rahmen/befehlsliste.js'
-import { designEinrichten, designAnwenden, tageszeitAnwenden, titelfarbeSetzen, designFormularFuellen, designFormularLesen } from './rahmen/design.js'
+import { designEinrichten, designAnwenden, tageszeitAnwenden, titelfarbeSetzen } from './rahmen/design.js'
+import { einstellungsfensterEinrichten } from './rahmen/einstellungsfenster.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
 import { kostenEinrichten } from './kosten.js'
@@ -1580,26 +1581,19 @@ async function botAnsprechen({ bot, text }, { gesprochen = false } = {}) {
 // ── Einstellungen ──
 const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, lautstaerke: einstellungen.lautstaerke })
 
-// Pocket TTS (#39): Aufnahme wählen, Zustand zeigen
-let pocketDatei = ''
-let pocketUhr = null
-const dateiName = (p) => String(p || '').split(/[\\/]/).pop()
-async function pocketAnzeigen() {
-  const wahl = $('e-stimme').value
-  $('e-pocket').hidden = false
-  $('e-pocket-datei-zeile').hidden = $('e-pocket-hinweis').hidden = wahl !== 'eigen'
-  $('e-pocket-datei').textContent = pocketDatei ? dateiName(pocketDatei) : 'Keine Aufnahme gewählt'
-  clearTimeout(pocketUhr)
-  const z = await api.stimme.pocketZustand().catch(() => ({ zustand: 'fehler', text: 'nicht erreichbar' }))
-  const status = $('e-pocket-status')
-  status.textContent = `Pocket TTS: ${z.text}`
-  status.dataset.zustand = z.zustand
-  if ($('einstellungen').open && z.zustand === 'startet') pocketUhr = setTimeout(pocketAnzeigen, 2000)
-}
-function pocketStarten() {
-  api.stimme.pocketStarten({ stimme: $('e-stimme').value, pocketDatei }).then(pocketAnzeigen, pocketAnzeigen)
-}
-const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
+// Einstellungs-Dialog (Formular, Tabs, Pocket TTS, Sicherung …): rahmen/einstellungsfenster.js
+einstellungsfensterEinrichten({
+  einstellungen: () => einstellungen,
+  einstellungenSetzen: (neu) => (einstellungen = neu),
+  vorleser: () => vorleser,
+  mikrofonStatusZeigen: () => mikrofonStatusZeigen(mikrofon.zustand()),
+  // nach „Speichern“: die neuen Einstellungen auf die App anwenden
+  nachSpeichern: () => {
+    animationenAnwenden()
+    kartenAnwenden(einstellungen.karten)
+    wakeEinrichten()
+  }
+})
 
 // Designs, Tageszeit-Farben, Farbe der Windows-Knöpfe: rahmen/design.js
 
@@ -1613,213 +1607,6 @@ function animationenAnwenden() {
   document.body.classList.toggle('anim-hintergrund', a.hintergrund)
   cockpitAnzeigen(einstellungen.cockpit !== false)
 }
-
-function formularFuellen() {
-  $('e-stimme').value = einstellungen.stimme
-  pocketDatei = einstellungen.pocketDatei || ''
-  pocketAnzeigen()
-  $('e-tempo').value = zahl(einstellungen.tempo)
-  $('e-lautstaerke').value = einstellungen.lautstaerke || 250
-  $('e-vorlesen').checked = einstellungen.vorlesen
-  $('e-freihaendig').checked = einstellungen.sprache.freihaendig !== false
-  $('e-crewstill').checked = einstellungen.sprache.crewStill !== false
-  $('e-wake').checked = einstellungen.sprache.aktivierungswort
-  $('e-auto-senden').checked = einstellungen.sprache.automatischSenden
-  $('e-weiter').checked = einstellungen.sprache.weiterZuhoeren
-  $('e-unterbrechen').checked = einstellungen.sprache.unterbrechen !== false
-  $('e-musik').checked = einstellungen.sprache.musikErkennen !== false
-  const m = einstellungen.meldungen
-  $('e-m-vorlesen').checked = m.vorlesen
-  $('e-m-ton').checked = m.ton !== false
-  kartenFormularFuellen(einstellungen.karten)
-  for (const art of ['bestellung', 'mail', 'job', 'crew']) $(`e-m-${art}`).checked = m[art]
-  $('e-m-meilenstein').checked = m.meilenstein !== false
-  $('e-m-ruhe-von').value = m.ruheVon || ''
-  $('e-m-ruhe-bis').value = m.ruheBis || ''
-  mikrofonStatusZeigen(mikrofon.zustand())
-  for (const k of ['reaktor', 'welle', 'scanlinie', 'hintergrund']) $(`e-anim-${k}`).checked = einstellungen.animationen[k]
-  $('e-tageszeit').checked = einstellungen.tageszeitFarben !== false
-  $('e-cockpit').checked = einstellungen.cockpit !== false
-  $('e-start-intro').checked = einstellungen.start?.intro !== false
-  $('e-start-gruss').checked = einstellungen.start?.begruessung !== false
-  $('e-start-gateway').checked = einstellungen.start?.gateway !== false
-  designFormularFuellen()
-  reglerAnzeigen()
-}
-
-function reglerAnzeigen() {
-  const t = Number($('e-tempo').value)
-  $('e-tempo-wert').textContent = `${t > 0 ? '+' : ''}${t} %`
-  $('e-lautstaerke-wert').textContent = `${$('e-lautstaerke').value} %`
-}
-
-function formularLesen() {
-  const t = Number($('e-tempo').value)
-  return {
-    stimme: $('e-stimme').value,
-    pocketDatei,
-    lautstaerke: Number($('e-lautstaerke').value) || 250,
-    tempo: `${t >= 0 ? '+' : ''}${t}%`,
-    vorlesen: $('e-vorlesen').checked,
-    meldungen: {
-      vorlesen: $('e-m-vorlesen').checked,
-      ton: $('e-m-ton').checked,
-      bestellung: $('e-m-bestellung').checked,
-      mail: $('e-m-mail').checked,
-      job: $('e-m-job').checked,
-      crew: $('e-m-crew').checked,
-      meilenstein: $('e-m-meilenstein').checked,
-      ruheVon: $('e-m-ruhe-von').value,
-      ruheBis: $('e-m-ruhe-bis').value
-    },
-    sprache: {
-      freihaendig: $('e-freihaendig').checked,
-      crewStill: $('e-crewstill').checked,
-      aktivierungswort: $('e-wake').checked,
-      automatischSenden: $('e-auto-senden').checked,
-      weiterZuhoeren: $('e-weiter').checked,
-      unterbrechen: $('e-unterbrechen').checked,
-      musikErkennen: $('e-musik').checked
-    },
-    animationen: {
-      reaktor: $('e-anim-reaktor').checked,
-      welle: $('e-anim-welle').checked,
-      scanlinie: $('e-anim-scanlinie').checked,
-      hintergrund: $('e-anim-hintergrund').checked
-    },
-    start: {
-      intro: $('e-start-intro').checked,
-      begruessung: $('e-start-gruss').checked,
-      gateway: $('e-start-gateway').checked
-    },
-    karten: kartenFormularLesen() ?? einstellungen.karten,
-    design: designFormularLesen(),
-    tageszeitFarben: $('e-tageszeit').checked,
-    cockpit: $('e-cockpit').checked
-  }
-}
-
-$('einstellungen-oeffnen').addEventListener('click', () => {
-  formularFuellen()
-  sicherungStandZeigen()
-  startStandZeigen()
-  einstellungsTab(letzterTab)
-  $('einstellungen').showModal()
-  document.querySelector('.e-tab.gewaehlt')?.focus() // nicht das ✕ (bekäme sonst den Fokusrahmen)
-})
-$('e-tempo').addEventListener('input', reglerAnzeigen)
-$('e-lautstaerke').addEventListener('input', reglerAnzeigen)
-$('e-probe').addEventListener('click', async () => {
-  const f = formularLesen()
-  if (f.stimme === 'eigen' && !pocketDatei) return ($('e-pocket-status').textContent = 'Wähle erst eine Aufnahme für die eigene Stimme.')
-  const knopf = $('e-probe')
-  // Auf Pocket TTS warten, auch beim allerersten Start (lädt dann das Modell)
-  knopf.disabled = true
-  knopf.textContent = 'Luzzy spricht gleich …'
-  pocketStarten()
-  try {
-    await vorleser.sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, lautstaerke: f.lautstaerke, pocketDatei, aufPocketWarten: true })
-  } finally {
-    knopf.disabled = false
-    knopf.textContent = 'Probe hören'
-    pocketAnzeigen()
-  }
-})
-$('e-stimme').addEventListener('change', () => {
-  pocketAnzeigen()
-  pocketStarten()
-})
-$('e-pocket-waehlen').addEventListener('click', async () => {
-  const datei = await api.stimme.pocketDateiWaehlen()
-  if (!datei) return
-  pocketDatei = datei
-  pocketStarten()
-})
-// Einstellungen: Tabs links (der zuletzt offene Tab bleibt gemerkt, solange Jarves-OS läuft)
-let letzterTab = 'stimme'
-function einstellungsTab(id) {
-  letzterTab = id
-  for (const t of document.querySelectorAll('.e-tab')) t.classList.toggle('gewaehlt', t.dataset.eTab === id)
-  for (const seite of document.querySelectorAll('.e-seite')) seite.hidden = seite.dataset.eSeite !== id
-  document.querySelector('.e-inhalt').scrollTop = 0
-}
-document.querySelector('.e-tabs').addEventListener('click', (e) => {
-  const tab = e.target.closest('[data-e-tab]')
-  if (tab) einstellungsTab(tab.dataset.eTab)
-})
-$('e-zu').addEventListener('click', () => $('einstellungen').close('abbrechen'))
-
-// Schneller starten: Desktop-Verknüpfung und Autostart (gilt sofort, nicht erst mit „Speichern“)
-async function startStandZeigen(vorweg = '') {
-  try {
-    const s = await api.start.stand()
-    $('e-verknuepfung').disabled = !s.windows
-    $('e-autostart').disabled = !s.windows
-    $('e-autostart').checked = s.autostart
-    $('e-verknuepfung').textContent = s.verknuepfung ? 'Verknüpfung neu anlegen' : 'Verknüpfung auf dem Desktop anlegen'
-    $('e-start-stand').textContent = s.windows
-      ? `${vorweg}${s.verknuepfung ? 'Verknüpfung liegt auf dem Desktop. ' : ''}Doppelklick auf „Jarves-OS“ startet ohne Terminal, npm start geht weiterhin.`
-      : 'Verknüpfung und Autostart gehen nur unter Windows.'
-  } catch (e) {
-    $('e-start-stand').textContent = e.message
-  }
-}
-$('e-verknuepfung').addEventListener('click', async () => {
-  try {
-    await api.start.verknuepfung()
-    await startStandZeigen('Angelegt. ')
-  } catch (e) {
-    $('e-start-stand').textContent = `Ging nicht: ${e.message}`
-  }
-})
-$('e-autostart').addEventListener('change', async (e) => {
-  try {
-    await api.start.autostart(e.target.checked)
-    await startStandZeigen(e.target.checked ? 'Startet ab jetzt mit Windows. ' : 'Kein Autostart mehr. ')
-  } catch (err) {
-    $('e-start-stand').textContent = `Ging nicht: ${err.message}`
-  }
-})
-
-// Sicherung auf Knopfdruck
-async function sicherungStandZeigen(vorweg = '') {
-  const el = $('e-sicherung-stand')
-  try {
-    const { anzahl, letzte } = await api.sicherung.liste()
-    const wann = letzte ? new Date(letzte.zeit).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : ''
-    el.textContent = vorweg + (letzte ? `Letzte Sicherung: ${wann} Uhr (${anzahl} insgesamt)` : 'Noch keine Sicherung.')
-  } catch (e) {
-    el.textContent = `Sicherungen nicht lesbar: ${e.message}`
-  }
-}
-$('e-sichern').addEventListener('click', async () => {
-  const knopf = $('e-sichern')
-  knopf.disabled = true
-  $('e-sicherung-stand').textContent = 'Sichere …'
-  try {
-    await api.sicherung.anlegen()
-    await sicherungStandZeigen('Gesichert. ')
-  } catch (e) {
-    $('e-sicherung-stand').textContent = `Sicherung fehlgeschlagen: ${e.message}`
-  } finally {
-    knopf.disabled = false
-  }
-})
-$('e-sicherung-ordner').addEventListener('click', () => api.sicherung.ordner())
-
-// Töne für Meldungen probehören
-document.querySelector('.ton-probe').addEventListener('click', (e) => {
-  const knopf = e.target.closest('[data-ton-probe]')
-  if (knopf) tonSpielen(knopf.dataset.tonProbe)
-})
-$('einstellungen').addEventListener('close', async () => {
-  if ($('einstellungen').returnValue !== 'speichern') return designAnwenden() // Vorschau verwerfen: gespeichertes Design
-  einstellungen = await api.einstellungen.speichern(formularLesen())
-  api.stimme.pocketStarten().catch(() => {}) // neue Aufnahme: Pocket TTS damit neu starten
-  animationenAnwenden()
-  kartenAnwenden(einstellungen.karten)
-  wakeEinrichten()
-})
 
 // Testmodus (nur beim Entwickeln): ?test=<Nachricht> schickt sie einmal automatisch, ohne Vorlesen
 const testNachricht = new URLSearchParams(location.search).get('test')
