@@ -1,7 +1,7 @@
 // Mini-Modus: zeigt, was Luzzy gerade tut (vom großen Fenster geschickt). Klick: sprechen, Doppelklick: groß.
 
-// Akzentfarbe des Designs (Einstellungen → Aussehen): das große Fenster legt sie beim Speichern in localStorage
-// „jarves-design“ ab (akzentRgb, akzentHellRgb). Ohne Eintrag bleibt das Gold aus mini.html.
+// Farben des Designs (Einstellungen → Aussehen): das große Fenster legt sie beim Anwenden in localStorage
+// „jarves-design“ ab (akzentRgb, akzentHellRgb, grundRgb, textRgb). Ohne Eintrag bleibt Donnerwolf Gold aus mini.html.
 const RGB = /^\d{1,3}, ?\d{1,3}, ?\d{1,3}$/
 function akzentSetzen() {
   let d = null
@@ -10,8 +10,11 @@ function akzentSetzen() {
   } catch {
     // Standard
   }
-  if (RGB.test(String(d?.akzentRgb))) document.documentElement.style.setProperty('--akzent-rgb', d.akzentRgb)
-  if (RGB.test(String(d?.akzentHellRgb))) document.documentElement.style.setProperty('--akzent-hell-rgb', d.akzentHellRgb)
+  const setzen = (variable, wert) => RGB.test(String(wert)) && document.documentElement.style.setProperty(variable, wert)
+  setzen('--akzent-rgb', d?.akzentRgb)
+  setzen('--akzent-hell-rgb', d?.akzentHellRgb)
+  setzen('--grund-rgb', d?.grundRgb) // Hintergrund der Pille (Seitenspalten-Farbe des Designs)
+  setzen('--text-rgb', d?.textRgb) // Punkte beim Zuhören
 }
 akzentSetzen()
 addEventListener('storage', (e) => e.key === 'jarves-design' && akzentSetzen())

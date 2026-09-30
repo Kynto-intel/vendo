@@ -44,9 +44,12 @@ export function tageszeitAnwenden() {
   const stunde = new Date().getHours()
   const zeit = test || (stunde >= 6 && stunde < 10 ? 'morgen' : stunde >= 10 && stunde < 18 ? 'tag' : stunde >= 18 && stunde < 22 ? 'abend' : 'nacht')
   const aus = h.einstellungen()?.tageszeitFarben === false && !test
+  const vorher = document.documentElement.dataset.tageszeit
   if (aus) delete document.documentElement.dataset.tageszeit
   else document.documentElement.dataset.tageszeit = zeit
   titelfarbeSetzen()
+  // Neue Tageszeit: das Mini-Fenster bekommt die neuen Farben (erst nachdem die Einstellungen geladen sind)
+  if (vorher !== document.documentElement.dataset.tageszeit && h.einstellungen()) designMerken()
 }
 setInterval(tageszeitAnwenden, 60000)
 
@@ -96,15 +99,39 @@ export function designAnwenden(d = h.einstellungen()?.design) {
   api.fenster.design({ akzent, zoom }).catch(() => {})
   document.dispatchEvent(new Event('design-geaendert')) // z. B. Terminal-Farben
   titelfarbeSetzen()
-  if (d === gespeichert) {
+  if (d === gespeichert) designMerken(design)
+}
+
+// Gespeichertes Design für den nächsten Start und fürs Mini-Fenster merken (mini.js liest Akzent, Hintergrund und
+// Schrift hier und hört auf Änderungen). Hintergrund und Schrift gleiten 4 s über (Tageszeit-Übergang in style.css):
+// sofort merken (Design und Akzent stimmen schon) und nach dem Übergang noch einmal mit den fertigen Farben.
+let merkUhr = 0
+function designMerken(design = { ...DESIGN_STANDARD, ...(h.einstellungen()?.design || {}) }) {
+  const schreiben = () => {
     try {
-      // für den nächsten Start und fürs Mini-Fenster (mini.js liest den Akzent hier)
-      const css = getComputedStyle(html)
-      localStorage.setItem('jarves-design', JSON.stringify({ ...design, akzentRgb: css.getPropertyValue('--akzent-rgb').trim(), akzentHellRgb: css.getPropertyValue('--akzent-hell-rgb').trim() }))
+      const css = getComputedStyle(document.documentElement)
+      // Gemischte Farben (color-mix) kommen je nach Browser als color(srgb 0.05 …): ein Pixel malen und auslesen
+      const pinsel = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true })
+      const zahlen = (name) => {
+        pinsel.fillStyle = '#000'
+        pinsel.fillStyle = css.getPropertyValue(name).trim() || '#000'
+        pinsel.fillRect(0, 0, 1, 1)
+        return [...pinsel.getImageData(0, 0, 1, 1).data.slice(0, 3)].join(', ')
+      }
+      localStorage.setItem('jarves-design', JSON.stringify({
+        ...design,
+        akzentRgb: css.getPropertyValue('--akzent-rgb').trim(),
+        akzentHellRgb: css.getPropertyValue('--akzent-hell-rgb').trim(),
+        grundRgb: zahlen('--leiste'),
+        textRgb: zahlen('--text')
+      }))
     } catch {
       // ohne Speicher: dann eben erst nach dem Laden der Einstellungen
     }
   }
+  schreiben()
+  clearTimeout(merkUhr)
+  merkUhr = setTimeout(schreiben, 4300)
 }
 
 // Beim Start sofort das zuletzt gespeicherte Design zeigen (Einstellungen und Design-Dateien kommen erst gleich)

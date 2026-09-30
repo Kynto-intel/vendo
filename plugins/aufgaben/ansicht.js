@@ -117,6 +117,9 @@ export async function starten(ctx) {
     await ctx.daten.speichern(daten)
     zeichnen()
   }
+  // Luzzy (Werkzeug jarves_aufgaben) oder jemand anderes hat die Datei geändert: neu einlesen, bevor hier
+  // etwas mit einem alten Stand darüber gespeichert wird (z. B. der Erinnerungs-Stand)
+  ctx.daten.beiAenderung?.(() => laden())
   const offen = () => daten.aufgaben.filter((a) => !a.erledigt)
   const sortiert = (liste) => [...liste].sort((a, b) => (a.datum || '9999').localeCompare(b.datum || '9999') || (a.zeit || '99').localeCompare(b.zeit || '99') || a.erstellt - b.erstellt)
 

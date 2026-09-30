@@ -266,8 +266,10 @@ automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
 - **Im Crew-Bereich hört Luzzy nicht von selbst mit** (z. B. Musik im Headset). Sprechen geht dort mit Strg+Leertaste.
 - **Freigaben:** Bei riskanten Befehlen erscheint eine Karte (Einmal erlauben · Für dieses Gespräch · Ablehnen) und
   Luzzy sagt, worum es geht – einfach „Ja“ oder „Nein“ sagen. Unter Luzzys Ja-Fragen stehen „Ja, mach“ / „Nein“.
-- **Termine per Sprache:** „Luzzy, trag mir morgen um 10 Zahnarzt ein“ (Hermes-Skill `jarves-kalender`, meldet
-  Überschneidungen; geht in Jarves-OS und der Hermes-App, nicht in Telegram).
+- **Termine und Aufgaben über Luzzy:** „Luzzy, trag mir morgen um 10 Zahnarzt ein“, „Leg mir die Aufgaben an: Stativ
+  aufbauen bis Samstag, Video schneiden bis Sonntag“. Luzzy nutzt dafür die Werkzeuge `jarves_kalender` und
+  `jarves_aufgaben` (Hermes-Plugin `jarves-planer`), der Eintrag erscheint sofort im Kalender bzw. in der Aufgabenliste.
+  Meldet Überschneidungen; ein Datum am Ende des Aufgabentexts („… bis Samstag“) wird als Fälligkeit erkannt.
 - **Luzzy muss nicht suchen:** Bei Fragen zu Wetter, Terminen, Aufgaben und Notizen schickt Jarves-OS die Daten samt
   Datum und Uhrzeit gleich mit.
 
@@ -486,13 +488,15 @@ nicht anfasst. Am Hermes-Programm (`hermes-agent\`) wurde nie etwas geändert.
 | `profiles\donnerwolf\config.yaml` | Aktivierungswort (`wake_word`: provider sherpa, phrase „hey luzzy“, capture client, surface tui, sensitivity 0.45) | `config.yaml.vor-jarves-os-phase2-*.bak` |
 | `profiles\donnerwolf\skills\productivity\jarves-plugin-werkstatt\` | Skill: wie Luzzy Jarves-OS-Plugins baut, prüft und repariert (Werkstatt) | – (neu) |
 | `profiles\donnerwolf\skills\productivity\jarves-bot-erstellen\` | Skill: wie Luzzy passgenaue Bot-SOULs schreibt (nach Hermes-Doku und Prompt-Leitfäden: Identität statt Handbuch, Gründe statt Großbuchstaben, Bot-Arten mit echten Werkzeugen, Verhalten bei Unklarheit, zwei Beispiele, Prüfliste) und Avatar-Prompts im Crew-Stil | `SKILL.md.vor-v2.bak`, `SKILL.md.vor-v3.bak` |
-| `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`: neu, ändern, löschen, suchen, liste; meldet Überschneidungen) | – (neu) |
+| `profiles\donnerwolf\skills\productivity\jarves-kalender\` | Skill, damit Luzzy Termine einträgt (`scripts\termin.py`: neu, ändern, löschen, suchen, liste; meldet Überschneidungen). Seit 01.10.2026 legt `termin.py` die Kalender-Datei selbst an, und der Skill verweist auf das Werkzeug `jarves_kalender` | `termin.py.vor-planer-20261001.bak`, `SKILL.md.vor-planer-20261001.bak` |
+| `profiles\donnerwolf\plugins\jarves-planer\` + `config.yaml` | Plugin mit den Werkzeugen `jarves_kalender` (ruft `termin.py`) und `jarves_aufgaben` (`aufgabe.py`: liste, neu, erledigt, offen, löschen, suchen; schreibt `plugins\aufgaben\daten.json`). Werkzeuge statt Skill + Terminal, weil jedes Modell sie sicher findet. Eingeschaltet mit `hermes -p donnerwolf plugins enable jarves-planer` | `config.yaml.vor-jarves-planer-20261001.bak` |
 | `profiles\donnerwolf\plugins\jarves-pc\` + `config.yaml` | Plugin für Luzzys Werkzeug `pc_steuern` (PC-Steuerung Stufe 2, siehe dort). Eingeschaltet mit `hermes -p donnerwolf plugins enable jarves-pc`, für Telegram ausgeblendet mit `hermes -p donnerwolf tools disable --platform telegram jarves_pc` (Hermes schreibt die Telegram-Liste dabei aus, die Werkzeuge bleiben dieselben) | `config.yaml.vor-jarves-pc-20260930.bak` |
 | `config.yaml` / `.env` (Hermes und Profile) | Shopify-Token – nur über System → Shopify-Zugang | automatisch bei jedem Eintragen |
 
 `surface: tui` sorgt dafür, dass nur Jarves-OS das Aktivierungswort bekommt, nicht die Hermes-App.
-Empfindlichkeit: höher = strenger. Termine per Sprache gehen überall, wo Luzzy das Terminal-Werkzeug hat
-(Jarves-OS, Hermes-App), nicht in Telegram.
+Empfindlichkeit: höher = strenger. Termine und Aufgaben über Luzzy gehen überall, wo sie das Plugin `jarves-planer`
+hat (Jarves-OS, Hermes-App). Sie schreibt direkt in die Dateien der Plugins; ist Jarves-OS offen, erscheint die
+Änderung sofort, sonst beim nächsten Start.
 
 **So spricht Jarves-OS mit Hermes:**
 
