@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('mini', {
   beiZustand: (rueckruf) => ipcRenderer.on('mini:zustand', (_e, daten) => rueckruf(daten)),
+  beiBlick: (rueckruf) => ipcRenderer.on('mini:blick', (_e, daten) => rueckruf(daten)), // Maus relativ zur Leiste (Fennis Augen)
   sprechen: () => ipcRenderer.send('mini:sprechen'),
   gross: () => ipcRenderer.send('mini:gross')
 })

@@ -705,8 +705,21 @@ ipcMain.handle('system:werte', () => {
 // ── Mini-Modus: schmale Leiste fest oben mittig, immer im Vordergrund; das große Fenster geht in die Taskleiste ──
 // Mikrofon, „Hey Luzzy“ und Stimme laufen weiter im großen Fenster (backgroundThrottling: false),
 // es schickt der Leiste nur, was Luzzy gerade tut.
-const MINI = { breite: 340, hoehe: 36, abstand: 8 }
+const MINI = { breite: 260, hoehe: 64, abstand: 8 } // Platz für Fenni, den kleinen Wolf (renderer/fenni/)
 let mini = null
+// Fennis Augen folgen der Maus auf dem ganzen Bildschirm: Mausposition relativ zur Mitte der Leiste, ~25-mal pro
+// Sekunde und nur, solange der Mini-Modus an ist und sich die Maus bewegt
+let letzterBlick = ''
+setInterval(() => {
+  if (!mini || mini.isDestroyed() || !mini.isVisible()) return
+  const maus = screen.getCursorScreenPoint()
+  const b = mini.getBounds()
+  const blick = { x: Math.round(maus.x - (b.x + b.width / 2)), y: Math.round(maus.y - (b.y + b.height / 2)) }
+  const schluessel = `${blick.x},${blick.y}`
+  if (schluessel === letzterBlick) return
+  letzterBlick = schluessel
+  mini.webContents.send('mini:blick', blick)
+}, 40)
 function miniSetzen(an, { schliessen = false } = {}) {
   if (!fenster || fenster.isDestroyed()) an = false
   if (!an) {

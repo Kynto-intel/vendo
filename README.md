@@ -388,9 +388,15 @@ Löschen geht nur mit Rückfrage.
 
 ## Mini-Modus
 
-Eine schmale Leiste **fest oben in der Bildschirmmitte**, immer im Vordergrund, zeigt nur Luzzys Stimme als Balken.
-So kannst du jederzeit mit ihr reden, ohne dass Jarves-OS Platz braucht.
-**AltGr+L** oder Strg+Umschalt+M: an/aus · **Klick:** sprechen · **Doppelklick:** großes Fenster.
+Eine kleine Leiste **fest oben in der Bildschirmmitte**, immer im Vordergrund. Darin wohnt **Fenni**, ein kleiner
+Wolf (Fenrirs kleiner Bruder), der zeigt, was Luzzy gerade tut: atmet und blinzelt (bereit), spitzt die Ohren
+(hört zu), schaut nach oben mit Denk-Punkten (denkt nach), bewegt das Maul mit ihrer Stimme (spricht), hüpft vor
+Freude (Antwort fertig), schläft (keine Verbindung zu Hermes). Seine Augen folgen der Maus über den ganzen Bildschirm,
+seine Farben kommen aus dem Design. So kannst du jederzeit mit Luzzy reden, ohne dass Jarves-OS Platz braucht.
+**AltGr+L** oder Strg+Umschalt+M: an/aus · **Klick:** sprechen · **Doppelklick:** großes Fenster ·
+**Rechtsklick:** Fenni anstupsen (dreimal schnell: schwindelig).
+Technik: `src/renderer/fenni/` (`fenni.js` Steuerung, `koerper.js`, `augen.js`, `effekte.js`, `farben.js`), nur Canvas,
+keine Bilder; die Mausposition schickt `main.js` (`mini:blick`), solange der Mini-Modus an ist.
 
 **„Luzzy, was siehst du?“** (nur im Mini-Modus): Luzzy macht **ein** Bildschirmfoto vom Bildschirm mit der Maus,
 sagt, was sie sieht, und hilft bei dem, was offen ist (Fehlermeldung, Shopify-Seite, Design). Geht nur auf deinen Befehl,
@@ -592,6 +598,7 @@ Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbind
 | `src/main/vaultschreiben.js` · `shopifytoken.js` · `plugins.js` · `einstellungen.js` | Vault schreiben (eng begrenzt) · Shopify-Token · Plugin-Host · Einstellungen |
 | `src/preload.js` · `src/mini-preload.js` | Sichere Brücke `window.jarves` zur Oberfläche |
 | `src/renderer/` | Oberfläche (ES-Module): `app.js` (Zentrale, Luzzy, Verdrahtung der Teile), `vorlesen.js`, `mikrofon.js`, `crewchat.js`, `buehne.js`, `ansichten.js`, `dateiansicht.js`, `pcsteuerung.js`, `gespraeche.js`, `diktat.js`, `meldungen.js`, `timer.js`, `palette.js`, `selbsttest.js`, `mini.js` … |
+| `src/renderer/fenni/` | Fenni, der kleine Wolf in der Mini-Leiste: `fenni.js` (Zustände, Animation), `koerper.js`, `augen.js`, `effekte.js`, `farben.js` |
 | `src/renderer/rahmen/` | Alles, was das Fenster selbst betrifft, aus `app.js` ausgelagert: `design.js` (Designs, Tageszeit-Farben, Windows-Knöpfe), `einstellungsfenster.js` (Einstellungs-Dialog), `befehlsliste.js` (Befehle der Palette Strg+P), `navigation.js` (Bereiche links, Bereich wechseln). Jede Datei wird in `app.js` mit `…Einrichten({ … })` angebunden |
 | `designs/` | Ein Design pro Datei (siehe Einstellungen) |
 | `plugins/` | Plugins (siehe oben) |
