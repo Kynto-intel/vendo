@@ -147,6 +147,8 @@ export function fenniErstellen(canvas) {
     freuen() {
       freudeSeit = (performance.now() - start) / 1000
     },
+    // Stimmstärke 0…1 (für den Hintergrund, fenni/sterne.js)
+    stimme: () => staerke,
     // Design gewechselt: Farben neu mischen
     farbenNeu() {
       farben = fenniFarben()

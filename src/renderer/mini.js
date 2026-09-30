@@ -2,6 +2,7 @@
 // (vom großen Fenster geschickt). Klick: sprechen, Doppelklick: großes Fenster, Rechtsklick: Fenni anstupsen.
 
 import { fenniErstellen } from './fenni/fenni.js'
+import { sterneErstellen } from './fenni/sterne.js'
 
 // Farben des Designs (Einstellungen → Aussehen): das große Fenster legt sie beim Anwenden in localStorage
 // „jarves-design“ ab (akzentRgb, akzentHellRgb, grundRgb, textRgb). Ohne Eintrag bleibt Donnerwolf Gold aus mini.html.
@@ -22,11 +23,13 @@ function farbenSetzen() {
 farbenSetzen()
 
 const pille = document.getElementById('pille')
+const sterne = sterneErstellen(document.getElementById('sterne')) // Lichtpunkte und Schein hinter Fenni
 const fenni = fenniErstellen(document.getElementById('fenni'))
 addEventListener('storage', (e) => {
   if (e.key !== 'jarves-design') return
   farbenSetzen()
   fenni.farbenNeu()
+  sterne.farbenNeu()
 })
 
 // Luzzys Zustand → Fenni. versteht (schreibt Gesprochenes mit) und antwortet (schreibt) = nachdenken
@@ -34,14 +37,21 @@ const FENNI = { bereit: 'bereit', hoert: 'hoert', versteht: 'denkt', denkt: 'den
 let vorher = 'bereit'
 window.mini.beiZustand(({ zustand, pegel, titel } = {}) => {
   if (titel) pille.title = `${titel} · Klick: sprechen · Doppelklick: großes Fenster · Rechtsklick: Fenni anstupsen`
-  if (pegel !== undefined) fenni.pegel(pegel)
+  if (pegel !== undefined) {
+    fenni.pegel(pegel)
+    sterne.staerke(fenni.stimme())
+  }
   if (!zustand || zustand === vorher) return
   // Luzzy ist mit einer Antwort fertig: Fenni freut sich
   if (zustand === 'bereit' && ['antwortet', 'spricht'].includes(vorher)) fenni.freuen()
-  if (!['spricht', 'hoert'].includes(zustand)) fenni.pegel(null)
+  if (!['spricht', 'hoert'].includes(zustand)) {
+    fenni.pegel(null)
+    sterne.staerke(0)
+  }
   vorher = zustand
   pille.dataset.zustand = zustand
   fenni.zustand(FENNI[zustand] || 'bereit')
+  sterne.zustand(FENNI[zustand] || 'bereit')
 })
 // Augen folgen der Maus (das Hauptprogramm meldet ihre Position, solange der Mini-Modus an ist)
 window.mini.beiBlick?.(({ x, y } = {}) => fenni.blick(Number(x) || 0, Number(y) || 0))

@@ -9,14 +9,24 @@
     /* Mini-Modus: kleine Leiste oben mittig mit Fenni, dem kleinen Wolf (fenni/fenni.js) */
     html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
     .pille {
-      box-sizing: border-box; height: 100%; position: relative; border-radius: 999px; cursor: pointer;
+      box-sizing: border-box; height: 100%; position: relative; border-radius: 999px; cursor: pointer; overflow: hidden;
       background: rgba(var(--grund-rgb), 0.92); border: 1px solid rgba(var(--akzent-rgb), 0.35);
       transition: border-color 200ms;
     }
+    /* Einschalten wie eine alte Röhre: heller Strich in der Mitte, der aufklappt (das Fenster entsteht bei jedem Mini-Modus neu) */
+    .pille { animation: roehreAn 600ms ease-out both; }
+    @keyframes roehreAn {
+      0% { transform: scale(0.25, 0.04); filter: brightness(2.6); }
+      35% { transform: scale(1, 0.04); filter: brightness(2.6); }
+      70% { transform: scale(1, 1.05); filter: brightness(1.4); }
+      100% { transform: none; filter: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { .pille { animation: none; } }
     .pille:hover { border-color: rgba(var(--akzent-rgb), 0.8); }
     /* schaut auf den Bildschirm (nur auf Befehl): heller Rand, deutlich sichtbar */
     .pille[data-zustand='schaut'] { border-color: rgba(255, 255, 255, 0.85); }
-    #fenni { display: block; width: 100%; height: 100%; }
+    /* Zwei Ebenen: Lichtpunkte und Schein (fenni/sterne.js) unter Fenni (fenni/fenni.js) */
+    #sterne, #fenni { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
     .gross {
       position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 0; padding: 0;
       border-radius: 50%; background: rgba(var(--akzent-rgb), 0.15); color: rgb(var(--akzent-hell-rgb)); font-size: 11px; line-height: 20px; cursor: pointer;
@@ -27,6 +37,7 @@
 </head>
 <body>
   <div class="pille" id="pille" data-zustand="bereit" title="Luzzy · Klick: sprechen · Doppelklick: großes Fenster · Rechtsklick: Fenni anstupsen">
+    <canvas id="sterne" aria-hidden="true"></canvas>
     <canvas id="fenni" aria-label="Fenni, der kleine Wolf"></canvas>
     <button class="gross" id="gross" type="button" title="Großes Fenster">⤢</button>
   </div>
