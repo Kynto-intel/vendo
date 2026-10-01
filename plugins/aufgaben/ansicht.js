@@ -1,6 +1,8 @@
 // Aufgaben-Plugin: To-do-Liste mit Fälligkeit, Erinnerung über Luzzy-Meldungen, Kontext für Luzzy.
-// Daten in plugins/aufgaben/daten.json: { aufgaben: [{ id, text, datum, zeit, erledigt, erstellt, erledigtAm }] }
+// Daten in plugins/aufgaben/daten.json: { aufgaben: [{ id, text, details, datum, zeit, erledigt, erstellt, erledigtAm }] }
 //   datum "JJJJ-MM-TT" oder "" (ohne Datum), zeit "HH:MM" oder "" (dann Erinnerung morgens um 9)
+//   details: längere Notizen zur Aufgabe (mehrzeilig, Markdown). Klick auf eine Aufgabe klappt sie auf: Details lesen
+//   und bearbeiten. Luzzy schreibt und liest sie mit ihrem Werkzeug jarves_aufgaben (details, aktion aendern/zeigen).
 // Per Sprache oder Tippen (Jarves-OS antwortet selbst, ohne Hermes):
 //   „Neue Aufgabe: Etiketten bestellen bis Freitag“ · „Aufgabe: Max anrufen morgen um 14 Uhr“
 //   „Setz Stoffproben auf meine Liste“ · „Erledigt: Etiketten“ · „Hak Stoffproben ab“ · „Was steht auf meiner Liste?“
@@ -106,6 +108,8 @@ export async function starten(ctx) {
   const m = ctx.maskieren
   let daten = { aufgaben: [], erinnert: {}, review: { erinnern: true, tag: 0, zeit: '19:00', zuletzt: '' } }
   let erledigteZeigen = false
+  let offenId = '' // aufgeklappte Aufgabe (Details sichtbar)
+  let bearbeitenId = '' // Aufgabe, deren Formular gerade offen ist
   let review = null // { seit } solange Jarves-OS auf Felix' Ziele wartet
 
   async function laden() {
@@ -257,7 +261,8 @@ export async function starten(ctx) {
     const liste = sortiert(offen())
     if (!liste.length) return 'Aufgaben aus Jarves-OS: keine offenen.'
     const h = heute()
-    const zeile = (a) => `- ${a.text}${a.datum ? ` (fällig ${wannText(a)}${a.datum < h ? ', ÜBERFÄLLIG' : ''})` : ' (ohne Datum)'}`
+    const kurz = (t) => (t.length > 240 ? `${t.slice(0, 240)} …` : t)
+    const zeile = (a) => `- ${a.text}${a.datum ? ` (fällig ${wannText(a)}${a.datum < h ? ', ÜBERFÄLLIG' : ''})` : ' (ohne Datum)'}${a.details ? `\n  Details: ${kurz(a.details.replace(/\s*\n\s*/g, ' · '))}` : ''}`
     return `Offene Aufgaben aus Jarves-OS (heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}):\n${liste.map(zeile).join('\n')}`
   })
 
@@ -319,15 +324,38 @@ export async function starten(ctx) {
   function gruppe(titel, liste, klasse = '') {
     if (!liste.length) return ''
     return `<section class="af-gruppe ${klasse}"><h3>${titel} <span>${liste.length}</span></h3>${liste
-      .map((a) => `<div class="af-aufgabe${a.erledigt ? ' erledigt' : ''}" data-id="${a.id}">
-        <button class="gd-haken af-haken" data-a="erledigt" type="button" title="${a.erledigt ? 'Wieder offen' : 'Erledigt'}">${a.erledigt ? '✓' : ''}</button>
-        <div class="af-text">${m(a.text)}${a.datum || a.zeit ? `<small>${m(wannText(a))}</small>` : ''}</div>
-        <button class="knopf-mini" data-a="loeschen" type="button" title="Löschen">✕</button>
+      .map((a) => `<div class="af-aufgabe${a.erledigt ? ' erledigt' : ''}${a.id === offenId ? ' offen' : ''}" data-id="${a.id}">
+        <div class="af-zeile" data-a="auf" title="Klicken: Details ${a.id === offenId ? 'zuklappen' : 'zeigen'}">
+          <button class="gd-haken af-haken" data-a="erledigt" type="button" title="${a.erledigt ? 'Wieder offen' : 'Erledigt'}">${a.erledigt ? '✓' : ''}</button>
+          <div class="af-text">${m(a.text)}${a.datum || a.zeit ? `<small>${m(wannText(a))}</small>` : ''}</div>
+          ${a.details ? '<span class="af-merk" title="Hat Details">≡ Details</span>' : ''}
+          <span class="af-pfeil">${a.id === offenId ? '▾' : '▸'}</span>
+          <button class="knopf-mini" data-a="loeschen" type="button" title="Löschen">✕</button>
+        </div>
+        ${a.id === offenId ? detailHtml(a) : ''}
       </div>`)
       .join('')}</section>`
   }
+  // Aufgeklappte Aufgabe: Details lesen (Markdown) oder alles bearbeiten
+  function detailHtml(a) {
+    if (a.id === bearbeitenId) {
+      return `<form class="af-detail af-form" data-form>
+        <input name="text" maxlength="500" required value="${m(a.text)}" title="Aufgabe" autocomplete="off" />
+        <input name="datum" type="date" value="${m(a.datum || '')}" title="Fällig am (optional)" />
+        <input name="zeit" type="time" value="${m(a.zeit || '')}" title="Uhrzeit (optional)" />
+        <textarea name="details" maxlength="6000" placeholder="Details: Notizen, Schritte, Links … (Listen mit „- “ am Zeilenanfang)">${m(a.details || '')}</textarea>
+        <div class="af-detail-knoepfe"><button class="knopf-gold" type="submit">Speichern</button><button class="knopf-flach" data-a="abbrechen" type="button">Abbrechen</button></div>
+      </form>`
+    }
+    return `<div class="af-detail">
+      ${a.details ? `<div class="af-details-text msg-text md">${ctx.markdownZuHtml(a.details)}</div>` : '<div class="leise">Noch keine Details. Schreib selbst welche dazu oder sag Luzzy: „Schreib bei der Aufgabe … die Details dazu.“</div>'}
+      <div class="af-detail-knoepfe"><button class="knopf-flach" data-a="bearbeiten" type="button">${a.details ? 'Bearbeiten' : 'Details schreiben'}</button></div>
+    </div>`
+  }
 
-  function zeichnen() {
+  function zeichnen({ auchBeimBearbeiten = false } = {}) {
+    if (bearbeitenId && !auchBeimBearbeiten && $('[data-form]')) return karteZeichnen() // Getipptes nicht verlieren
+    if (!daten.aufgaben.some((a) => a.id === bearbeitenId)) bearbeitenId = ''
     const h = heute()
     const o = sortiert(offen())
     const html =
@@ -360,12 +388,45 @@ export async function starten(ctx) {
     const id = knopf?.closest('[data-id]')?.dataset.id
     if (!id) return
     const a = daten.aufgaben.find((x) => x.id === id)
+    // Auf- und zuklappen, bearbeiten, abbrechen: nur die Ansicht, nichts speichern
+    if (knopf.dataset.a === 'auf') {
+      if (bearbeitenId === id) return // Formular offen: nicht versehentlich zuklappen
+      offenId = offenId === id ? '' : id
+      bearbeitenId = ''
+      return zeichnen({ auchBeimBearbeiten: true })
+    }
+    if (knopf.dataset.a === 'bearbeiten' || knopf.dataset.a === 'abbrechen') {
+      bearbeitenId = knopf.dataset.a === 'bearbeiten' ? id : ''
+      zeichnen({ auchBeimBearbeiten: true })
+      if (bearbeitenId) $('[data-form] textarea')?.focus()
+      return
+    }
+    if (knopf.dataset.a === 'loeschen' && a?.details && !(await ctx.bestaetigen(`„${a.text}“ mit ihren Details löschen?`, { titel: 'Aufgabe löschen', ja: 'Löschen', gefahr: true }))) return
     if (knopf.dataset.a === 'erledigt' && a) {
       a.erledigt = !a.erledigt
       a.erledigtAm = a.erledigt ? Date.now() : undefined
     } else if (knopf.dataset.a === 'loeschen') {
       daten.aufgaben = daten.aufgaben.filter((x) => x.id !== id)
     }
+    await speichern()
+  })
+  // Formular der aufgeklappten Aufgabe speichern (Text, Datum, Uhrzeit, Details)
+  $('[data-liste]').addEventListener('submit', async (e) => {
+    const form = e.target.closest('[data-form]')
+    if (!form) return
+    e.preventDefault()
+    const a = daten.aufgaben.find((x) => x.id === form.closest('[data-id]')?.dataset.id)
+    bearbeitenId = ''
+    if (!a) return zeichnen()
+    const f = form.elements
+    const text = f.text.value.trim()
+    if (text) a.text = text
+    a.datum = f.datum.value || ''
+    a.zeit = a.datum || f.zeit.value ? f.zeit.value || '' : ''
+    if (a.zeit && !a.datum) a.datum = heute()
+    const details = f.details.value.trim()
+    if (details) a.details = details
+    else delete a.details
     await speichern()
   })
   ctx.kopfKnoepfe.querySelector('[data-review]').addEventListener('click', async () => {
