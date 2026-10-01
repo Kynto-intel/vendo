@@ -133,26 +133,52 @@ export async function bibliothekLaden() {
     .join('')
   const el = $('bibliothek-liste')
   if (!ordner.length) return (el.innerHTML = '<div class="leer-hinweis">Noch kein Ordner gewählt. Klick oben auf „+ Ordner wählen“ und such dir einen Ordner auf deinem PC aus. Er bleibt gespeichert.</div>')
-  el.innerHTML = quellen
-    .filter((q) => q.dokumente.length)
-    .map(
-      (q) => `
-      <div class="gruppe${zu('bibliothek', q.id)}" data-gruppe="${maskieren(q.id)}">
-        <button class="gruppe-kopf" type="button">${maskieren(q.name)} <span>${q.dokumente.length}</span></button>
+  // Jeder Unterordner ist eine eigene Gruppe (auch verschachtelt); Dateien direkt im gewählten Ordner stehen in einer
+  // Gruppe mit dessen Namen. Bei mehreren gewählten Ordnern steht über jedem sein Name.
+  const mitInhalt = quellen.filter((q) => q.dokumente.length)
+  el.innerHTML = mitInhalt
+    .map((q) => {
+      const baum = baumBauen(q.dokumente)
+      const direkt = baum.dokumente.length ? gruppeHtml(q.name, { ordner: new Map(), dokumente: baum.dokumente }, q.id) : ''
+      const unter = ordnerSortiert(baum).map(([name, knoten]) => gruppeHtml(name, knoten, `${q.id}\\${name}`)).join('')
+      return `${mitInhalt.length > 1 ? `<div class="bib-kopf" title="${maskieren(q.ordner)}">📁 ${maskieren(q.name)}</div>` : ''}${direkt}${unter}`
+    })
+    .join('') || '<div class="leise">In den gewählten Ordnern liegen keine Texte (Markdown, Text, HTML).</div>'
+}
+
+// Dokumente eines gewählten Ordners nach Unterordnern ordnen: { ordner: Map(name → Knoten), dokumente: [] }
+function baumBauen(dokumente) {
+  const wurzel = { ordner: new Map(), dokumente: [] }
+  for (const d of dokumente) {
+    let knoten = wurzel
+    for (const teil of String(d.unter || '').split(/[\\/]/).filter(Boolean)) {
+      if (!knoten.ordner.has(teil)) knoten.ordner.set(teil, { ordner: new Map(), dokumente: [] })
+      knoten = knoten.ordner.get(teil)
+    }
+    knoten.dokumente.push(d)
+  }
+  return wurzel
+}
+const ordnerSortiert = (knoten) => [...knoten.ordner].sort((a, b) => a[0].localeCompare(b[0], 'de', { numeric: true }))
+const anzahlIn = (knoten) => knoten.dokumente.length + [...knoten.ordner.values()].reduce((summe, u) => summe + anzahlIn(u), 0)
+// Eine Gruppe: erst ihre Unterordner (wieder Gruppen), dann ihre Dokumente (neueste zuerst)
+function gruppeHtml(name, knoten, id) {
+  return `
+      <div class="gruppe${zu('bibliothek', id)}" data-gruppe="${maskieren(id)}">
+        <button class="gruppe-kopf" type="button">${maskieren(name)} <span>${anzahlIn(knoten)}</span></button>
         <div class="gruppe-inhalt">
-          ${q.dokumente
+          ${ordnerSortiert(knoten).map(([unterName, unter]) => gruppeHtml(unterName, unter, `${id}\\${unterName}`)).join('')}
+          ${knoten.dokumente
             .map(
               (d) => `
             <button class="eintrag" data-pfad="${maskieren(d.pfad)}" type="button" title="${maskieren(d.pfad)}">
               <span class="eintrag-titel">${maskieren(d.name.replace(/\.(md|html?|txt)$/i, ''))}</span>
-              <span class="eintrag-info">${d.unter ? `${maskieren(d.unter)} · ` : ''}${vorWann(d.geaendert)} · ${kb(d.groesse)}</span>
+              <span class="eintrag-info">${vorWann(d.geaendert)} · ${kb(d.groesse)}</span>
             </button>`
             )
             .join('')}
         </div>
       </div>`
-    )
-    .join('') || '<div class="leise">In den gewählten Ordnern liegen keine Texte (Markdown, Text, HTML).</div>'
 }
 $('bibliothek-ordner-neu').addEventListener('click', async () => {
   const liste = await api.wissen.bibliothekOrdnerWaehlen().catch((e) => hinweis(e.message, { titel: 'Bibliothek' }))

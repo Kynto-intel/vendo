@@ -204,7 +204,7 @@ Bibliothek gewählt hast):
   „Heute erstellen“.
 - **Bibliothek:** Texte (Markdown, Text, HTML) aus Ordnern, die du selbst bestimmst, schön formatiert. Oben
   **„+ Ordner wählen“** öffnet das Ordner-Fenster von Windows; der Ordner erscheint als Kärtchen und bleibt gespeichert
-  (`daten/einstellungen.json`, `bibliothek.ordner`). Mehrere Ordner gehen, Unterordner werden mit durchsucht, ✕ am
+  (`daten/einstellungen.json`, `bibliothek.ordner`). Mehrere Ordner gehen. Jeder Unterordner erscheint als eigene aufklappbare Gruppe (auch verschachtelt), ✕ am
   Kärtchen nimmt einen Ordner wieder heraus (die Dateien bleiben). Es gibt keinen fest eingebauten Pfad mehr. Hier
   öffnen sich auch Notizen aus der Suchleiste, aus Notiz-Links und der Morgenbericht („Lesen“). Den Vault durchsuchst
   du über die Suchleiste (Strg+F).

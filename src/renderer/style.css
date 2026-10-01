@@ -558,6 +558,10 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 .bib-chip.fehlt { opacity: 0.6; }
 .bib-chip button { background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.6; padding: 2px 5px; font-size: 11px; }
 .bib-chip button:hover { opacity: 1; color: var(--gold-hell); }
+/* Unterordner in einem Ordner: eingerückt mit feiner Linie; Name eines gewählten Ordners über seinen Gruppen */
+.gruppe-inhalt > .gruppe { margin-left: 9px; padding-left: 5px; border-left: 1px solid var(--linie); }
+.bib-kopf { font-size: 12px; color: var(--gold-hell); padding: 10px 6px 2px; }
+.bib-kopf:first-child { padding-top: 2px; }
 .suche { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 10px; font-size: 12px; width: 240px; outline: none; }
 .suche:focus { border-color: var(--gold); }
 
