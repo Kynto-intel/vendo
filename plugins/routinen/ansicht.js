@@ -1,5 +1,5 @@
 // Routinen-Plugin: Standardaufgaben mit Auslösewort, Prompt, Bausteinen, Ausgabe und Zeitplan.
-// Daten in plugins/routinen/daten.json: { routinen: [...], einstellungen: { ort, newsThemen } }
+// Daten in daten/plugins/routinen.json: { routinen: [...], einstellungen: { ort, newsThemen } }
 
 const TAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const zwei = (n) => String(n).padStart(2, '0')

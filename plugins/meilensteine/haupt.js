@@ -21,7 +21,7 @@ module.exports = (ctx) => {
     return { anzahl: stand.bestellAnzahl ?? null, zeit: stand.bestellAnzahlZeit ?? null, gefeiert }
   })
   // Alle Meilensteine bis n (für die Liste): 10, 25, 50, 100, 250, 500, 750, 1.000, 1.500 …
-  // (liest die Einstellungen frisch: Schrittweite und eigene Ziele aus daten.json)
+  // (liest die Einstellungen frisch: Schrittweite und eigene Ziele aus daten/plugins/meilensteine.json)
   ctx.bereitstellen('liste', (bis) => {
     const e = meilensteinEinstellungen()
     const grenze = Math.max(1000, Number(bis) || 0, ...e.eigene.map((x) => x.anzahl))

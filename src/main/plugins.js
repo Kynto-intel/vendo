@@ -5,7 +5,7 @@
 //   ansicht.js    Oberfläche (ES-Modul): export function starten(ctx) { ... return { laden } }
 //   stil.css      optional: eigenes Design
 //   haupt.js      optional: Hintergrundteil (CommonJS): module.exports = (ctx) => { ctx.bereitstellen('name', fn) }
-//   daten.json    wird von Jarves-OS angelegt: der Speicher des Plugins (ctx.daten)
+//   Speicher      legt Jarves-OS an: daten\plugins\<id>.json (ctx.daten), siehe datenPfad
 //
 // Plugins sind lokaler Code von Felix/Claude, kein Download aus dem Netz.
 
@@ -79,8 +79,27 @@ function vergessen(id) {
 }
 const notbremse = () => ({ jetzt: abgeschaltet, aus: startZustand().aus })
 
+// Speicher eines Plugins: daten\plugins\<id>.json, bei Felix' übrigen Daten (im Backup, nicht im Git-Projekt).
+// Früher lag er als daten.json im Ordner des Plugins: beim ersten Zugriff zieht die Datei einmal um. Auch
+// Startdaten, die ein neues Plugin als daten.json mitbringt, landen so im Datenordner.
+const DATEN_ORDNER = path.join(__dirname, '..', '..', 'daten', 'plugins')
 function datenPfad(id) {
-  return path.join(ORDNER, id, 'daten.json')
+  const neu = path.join(DATEN_ORDNER, `${id}.json`)
+  const alt = path.join(ORDNER, id, 'daten.json')
+  if (!fs.existsSync(neu) && fs.existsSync(alt)) {
+    try {
+      fs.mkdirSync(DATEN_ORDNER, { recursive: true })
+      fs.renameSync(alt, neu)
+    } catch {
+      // Umzug gerade nicht möglich (Datei gesperrt): kopieren, sonst vorerst am alten Platz bleiben
+      try {
+        fs.copyFileSync(alt, neu)
+      } catch {
+        return alt
+      }
+    }
+  }
+  return neu
 }
 
 function datenLaden(id) {
@@ -98,6 +117,7 @@ function datenSpeichern(id, daten) {
   if (text.length > 5_000_000) throw new Error('Plugin-Daten zu groß.')
   // Erst in eine Zwischendatei schreiben, dann umbenennen: so geht bei einem Absturz nichts kaputt
   const ziel = datenPfad(id)
+  fs.mkdirSync(path.dirname(ziel), { recursive: true })
   fs.writeFileSync(`${ziel}.neu`, text, 'utf8')
   fs.renameSync(`${ziel}.neu`, ziel)
   return true
@@ -180,4 +200,4 @@ function beobachten(id, beiAenderung) {
   return true
 }
 
-module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, vergessen, notbremse }
+module.exports = { ORDNER, datenPfad, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, vergessen, notbremse }

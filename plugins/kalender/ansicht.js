@@ -1,5 +1,5 @@
 // Kalender-Plugin für Jarves-OS.
-// Termine liegen in plugins/kalender/daten.json: { termine: [{ id, titel, datum, zeit, dauer, notiz, erinnerung }] }
+// Termine liegen in daten/plugins/kalender.json: { termine: [{ id, titel, datum, zeit, dauer, notiz, erinnerung }] }
 //   datum "JJJJ-MM-TT", zeit "HH:MM" oder "" (ganztägig), dauer in Minuten, erinnerung Minuten vorher (0 = keine)
 // Verbunden mit dem Aufgaben-Plugin (window.__jarvesAufgaben, falls eingeschaltet): offene Aufgaben mit Datum stehen
 // als „☐ …“ an ihrem Tag. Ziehen legt eine Aufgabe auf einen anderen Tag, Klick öffnet sie im Bereich Aufgaben.

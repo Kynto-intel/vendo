@@ -1,7 +1,7 @@
 // Werkstatt, Hintergrundteil: Entwürfe verwalten, prüfen, einbauen.
 // Luzzy baut neue Plugins in jarves-os\werkstatt\<id>\ (nie direkt in plugins\). Jarves-OS prüft sie hier
 // (Aufbau, Syntax, welche Rechte der Code nutzt) und kopiert sie erst nach Felix' Ja nach plugins\<id>\.
-// Ersetzte Plugins werden vorher nach Desktop\jarves-os\backup\ gesichert, ihre daten.json bleibt erhalten.
+// Ersetzte Plugins werden vorher nach Desktop\jarves-os\backup\ gesichert. Felix Daten liegen getrennt in daten/plugins/<id>.json und bleiben.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -174,7 +174,7 @@ function code(idRoh) {
   return aus
 }
 
-// Einbauen: altes Plugin sichern (daten.json bleibt), Entwurf nach plugins\ kopieren, Entwurf entfernen
+// Einbauen: altes Plugin sichern (Felix Daten liegen in daten/plugins/<id>.json und bleiben), Entwurf nach plugins\ kopieren, Entwurf entfernen
 function einbauen(idRoh) {
   const id = idPruefen(idRoh)
   if (EIGENE.has(id)) throw new Error('Die Werkstatt kann sich nicht selbst ersetzen.')
@@ -210,7 +210,7 @@ async function verwerfen(idRoh) {
   return true
 }
 
-// Vorhandenes Plugin zum Ändern in die Werkstatt holen (ohne daten.json, die bleibt beim Plugin)
+// Vorhandenes Plugin zum Ändern in die Werkstatt holen (ohne Daten, die liegen in daten/plugins/<id>.json)
 function zumAendern(idRoh) {
   const id = idPruefen(idRoh)
   if (EIGENE.has(id)) throw new Error('Die Werkstatt kann sich nicht selbst ändern.')
@@ -312,7 +312,8 @@ function testStarten(idRoh) {
   testBeenden()
   const { BrowserWindow } = require('electron')
   const m = manifestVon(ordner)
-  const datenDatei = [path.join(ordner, 'daten.json'), path.join(PLUGINS, id, 'daten.json')].find((d) => fs.existsSync(d))
+  // Testdaten: Startdaten des Entwurfs, sonst Felix' Daten des eingebauten Plugins (daten\plugins\<id>.json)
+  const datenDatei = [path.join(ordner, 'daten.json'), path.join(PLUGINS, '..', 'daten', 'plugins', `${id}.json`), path.join(PLUGINS, id, 'daten.json')].find((d) => fs.existsSync(d))
   let daten = {}
   try {
     daten = datenDatei ? JSON.parse(fs.readFileSync(datenDatei, 'utf8')) : {}

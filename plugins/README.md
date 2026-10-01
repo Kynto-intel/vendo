@@ -12,7 +12,7 @@ plugins/
     ansicht.js          Oberfläche (JavaScript-Modul)
     stil.css            optional: eigenes Design
     haupt.js            optional: Hintergrundteil (Node, z. B. für Dateien oder Internet)
-    daten.json          legt Jarves-OS selbst an: der Speicher des Plugins
+    (Speicher)          legt Jarves-OS selbst an: daten/plugins/mein-plugin.json, nicht im Plugin-Ordner
 ```
 
 ### plugin.json
@@ -48,7 +48,7 @@ export async function starten(ctx) {
 |---|---|
 | `ctx.element` | der Inhaltsbereich des Plugins |
 | `ctx.kopfKnoepfe` | Platz für Knöpfe oben rechts im Bereich |
-| `ctx.daten.laden()` / `ctx.daten.speichern(obj)` | eigener Speicher (daten.json) |
+| `ctx.daten.laden()` / `ctx.daten.speichern(obj)` | eigener Speicher (`daten/plugins/<id>.json`, bei Felix Daten und im Backup) |
 | `ctx.karte(titel)` | Karte in der rechten Spalte, gibt das Inhalts-Element zurück |
 | `ctx.melden({ titel, text, anzeige })` | Meldung: erscheint rechts, Luzzy sagt `text` laut (Ruhezeit beachtet) |
 | `ctx.vorlesen(text)` | Luzzy liest etwas vor |

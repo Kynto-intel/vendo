@@ -1,6 +1,6 @@
 // Wetter-Plugin: Tab mit aktuellem Wetter, 24-Stunden-Verlauf (Temperatur, Niederschlag, Wind) und 8 Tagen,
 // Karte rechts, Wetterdaten für Luzzy. Aufbau wie die Google-Wetterkarte, im Jarves-Look.
-// Ort in plugins/wetter/daten.json: { ort: { name, region, land, breite, laenge, zeitzone } }
+// Ort in daten/plugins/wetter.json: { ort: { name, region, land, breite, laenge, zeitzone } }
 
 // WMO-Wettercodes → Text und Symbol-Art (Symbole: symbolSvg)
 const CODES = {

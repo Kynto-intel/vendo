@@ -1,5 +1,5 @@
 // Aufgaben-Plugin: To-do-Liste mit Fälligkeit, Erinnerung über Luzzy-Meldungen, Kontext für Luzzy.
-// Daten in plugins/aufgaben/daten.json: { aufgaben: [{ id, text, details, datum, zeit, erledigt, erstellt, erledigtAm }] }
+// Daten in daten/plugins/aufgaben.json: { aufgaben: [{ id, text, details, datum, zeit, erledigt, erstellt, erledigtAm }] }
 //   datum "JJJJ-MM-TT" oder "" (ohne Datum), zeit "HH:MM" oder "" (dann Erinnerung morgens um 9)
 //   details: längere Notizen zur Aufgabe (mehrzeilig, Markdown). Klick auf eine Aufgabe klappt sie auf: Details lesen
 //   und bearbeiten. Luzzy schreibt und liest sie mit ihrem Werkzeug jarves_aufgaben (details, aktion aendern/zeigen).

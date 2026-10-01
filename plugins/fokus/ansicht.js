@@ -1,7 +1,7 @@
 // Fokus-Plugin: Pomodoro-Timer (Fokus, kurze Pause, nach 4 Runden lange Pause) mit Hintergrundklang.
 // In der Fokuszeit ist „Nicht stören“ an: Meldungen landen nur in der Liste. Timer und Wecker klingeln trotzdem.
 // Per Sprache: „Fokus“, „Fokus 50 Minuten“, „Pomodoro starten“, „Fokus beenden“, „Fokus pausieren“, „Weiter mit Fokus“.
-// Einstellungen in plugins/fokus/daten.json: { fokus, pause, langePause, runden, klang, lautstaerke }
+// Einstellungen in daten/plugins/fokus.json: { fokus, pause, langePause, runden, klang, lautstaerke }
 
 import { tonSpielen } from '../../src/renderer/toene.js'
 

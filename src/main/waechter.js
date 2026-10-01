@@ -72,11 +72,11 @@ function shopifyZugang() {
 const ungelesenAnzahl = (antwort) => (antwort?.messages || []).length
 
 // Meilensteine bei der Anzahl aller Bestellungen
-// Einstellbar im Bereich Meilensteine (plugins/meilensteine/daten.json): Schrittweite ab 1.000 und eigene Ziele
-const MEILENSTEIN_DATEN = path.join(__dirname, '..', '..', 'plugins', 'meilensteine', 'daten.json')
+// Einstellbar im Bereich Meilensteine (Speicher des Plugins: daten/plugins/meilensteine.json): Schrittweite ab 1.000
+// und eigene Ziele
 function meilensteinEinstellungen() {
   try {
-    const d = JSON.parse(fs.readFileSync(MEILENSTEIN_DATEN, 'utf8'))
+    const d = JSON.parse(fs.readFileSync(require('./plugins').datenPfad('meilensteine'), 'utf8'))
     return {
       schritt: [250, 500, 1000].includes(Number(d.schritt)) ? Number(d.schritt) : 500,
       eigene: (Array.isArray(d.eigene) ? d.eigene : []).filter((e) => Number.isInteger(e?.anzahl) && e.anzahl > 0)

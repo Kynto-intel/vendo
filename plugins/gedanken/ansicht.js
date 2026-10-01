@@ -1,5 +1,5 @@
 // Gedankenspeicher: „Merk dir: Stoffproben bestellen“ (Sprache oder Tippen) oder hier eintippen.
-// Daten in plugins/gedanken/daten.json: { notizen: [{ id, text, zeit, erledigt }] }
+// Daten in daten/plugins/gedanken.json: { notizen: [{ id, text, zeit, erledigt }] }
 // Jede neue Notiz landet zusätzlich im Vault (Jarves-OS\Gedankenspeicher.md). Luzzy kennt die offenen Notizen.
 // „Neue Idee: …“ (Sprach-Diktat): Luzzy macht daraus eine saubere Notiz mit Titel und Schlagworten,
 // die als eigene Datei in Jarves-OS\Ideen\ landet; im Gedankenspeicher steht dann „Idee: <Titel>“.
@@ -56,7 +56,7 @@ export async function starten(ctx) {
   }
   const offen = () => daten.notizen.filter((n) => !n.erledigt)
 
-  // Neue Notiz: in daten.json und im Vault. Gibt Luzzys Bestätigung zurück.
+  // Neue Notiz: im Speicher des Plugins und im Vault. Gibt Luzzys Bestätigung zurück.
   async function merken(text) {
     text = String(text).trim().replace(/[.!]+$/, '')
     if (!text) return null

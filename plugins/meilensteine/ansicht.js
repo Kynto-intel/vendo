@@ -1,7 +1,7 @@
 // Meilensteine-Plugin: Bestellungen insgesamt, nächster Meilenstein mit Fortschritt, Liste aller Meilensteine.
 // Die Zahl zählt der Wächter bei Shopify (bei neuen Bestellungen); gefeiert wird dort, hier wird angezeigt.
 // Erweiterbar: eigene Meilensteine (Zahl + Text, z. B. 1.500 „Neues Lager“) und die Schrittweite ab 1.000.
-// Gespeichert in plugins/meilensteine/daten.json: { schritt: 250|500|1000, eigene: [{ id, anzahl, text }] }
+// Gespeichert in daten/plugins/meilensteine.json: { schritt: 250|500|1000, eigene: [{ id, anzahl, text }] }
 
 const zahl = (n) => Number(n).toLocaleString('de-DE')
 
