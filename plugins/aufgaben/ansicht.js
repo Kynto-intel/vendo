@@ -274,13 +274,15 @@ export async function starten(ctx) {
   })
 
   // ── Für Luzzy: offene Aufgaben (bei „Was muss ich heute noch?“ usw.) ──
+  // Dazu der Hinweis, womit sie einträgt: kleine Modelle weichen sonst auf eine Datei oder ihre eigene Notizliste aus
+  const WERKZEUG = 'Eintragen, ändern, abhaken in dieser Liste: nur mit dem Werkzeug jarves_aufgaben (über tool_call), nie eine Datei schreiben.'
   ctx.kontext(() => {
     const liste = sortiert(offen())
-    if (!liste.length) return 'Aufgaben aus Jarves-OS: keine offenen.'
+    if (!liste.length) return `Aufgaben aus Jarves-OS: keine offenen. ${WERKZEUG}`
     const h = heute()
     const kurz = (t) => (t.length > 240 ? `${t.slice(0, 240)} …` : t)
     const zeile = (a) => `- ${a.text}${a.datum ? ` (fällig ${wannText(a)}${a.datum < h ? ', ÜBERFÄLLIG' : ''})` : ' (ohne Datum)'}${a.details ? `\n  Details: ${kurz(a.details.replace(/\s*\n\s*/g, ' · '))}` : ''}`
-    return `Offene Aufgaben aus Jarves-OS (heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}):\n${liste.map(zeile).join('\n')}`
+    return `Offene Aufgaben aus Jarves-OS (heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}):\n${liste.map(zeile).join('\n')}\n${WERKZEUG}`
   })
 
   // ── Begrüßung: fällige Aufgaben ──

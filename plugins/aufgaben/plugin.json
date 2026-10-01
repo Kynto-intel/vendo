@@ -4,5 +4,5 @@
   "version": "1.0.0",
   "beschreibung": "Deine To-do-Liste mit Fälligkeit. „Neue Aufgabe: Etiketten bestellen bis Freitag“, „Erledigt: Etiketten“. Luzzy erinnert dich und kennt deine offenen Aufgaben.",
   "bereich": { "name": "Aufgaben" },
-  "luzzy": { "stichwoerter": "aufgabe|to-?do|was muss ich|was steht an|erledigen|meine liste|wochenrückblick|wochen-review|woche" }
+  "luzzy": { "stichwoerter": "a[uf]{1,2}gabe|to-?do|was muss ich|was steht an|erledigen|meine liste|wochenrückblick|wochen-review|woche" }
 }
