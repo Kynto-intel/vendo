@@ -184,18 +184,4 @@ async function bibliothek() {
   return quellen
 }
 
-async function dateien() {
-  let oberste = []
-  try {
-    oberste = (await fs.readdir(WURZEL, { withFileTypes: true }))
-      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-      .map((e) => ({ name: e.name, pfad: e.name }))
-  } catch {
-    // nicht lesbar
-  }
-  const alle = await dateienIn(WURZEL, { endungen: null, tief: true, max: 4000 })
-  const neueste = alle.sort((a, b) => b.geaendert - a.geaendert).slice(0, 40)
-  return { wurzel: WURZEL, ordner: oberste, neueste }
-}
-
-module.exports = { WURZEL, VAULT, sicher, lesen, vault, suchen, notizFinden, morgenberichte, entscheidungen, bibliothek, dateien }
+module.exports = { WURZEL, VAULT, sicher, lesen, vault, suchen, notizFinden, morgenberichte, entscheidungen, bibliothek }

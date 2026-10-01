@@ -160,7 +160,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 | | **Routinen** | Auslösewort → Auftrag, mit Zeitplan und Schnellbefehlen |
 | **Werkzeuge** | **Aufgaben** · **Kalender** · **Fokus** · **Gedanken** · **Wetter** · **Meilensteine** | Plugins, siehe [Plugins](#plugins) |
 | **Wissen** | **Wissen** | Der Obsidian-Vault (`Documents\Donnerwolf`) zum Lesen, mit Morgenbericht |
-| | **Bibliothek** · **Entscheidungen** · **Dateien** | Nachschlagen, offene Entscheidungen, Dokumente – nur lesend |
+| | **Bibliothek** · **Entscheidungen** | Nachschlagen, offene Entscheidungen – nur lesend |
 | **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Kosten-Wächter**, **Shopify-Zugang**, **Selbsttest** |
 | | **Terminal** | PowerShell in Jarves-OS mit den gängigen Hermes-Befehlen zum Anklicken und eigenen gespeicherten Befehlen (siehe unten) |
 
@@ -207,7 +207,6 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 - **Bibliothek:** Blog-Recherchen, Entwürfe, fertige Artikel und der Ordner `Donnerwolf\Bibliothek`, schön formatiert.
 - **Entscheidungen:** das Entscheidungs-Tagebuch aus `Donnerwolf-Shop\04_Decision_Log\` mit Filter gilt / überholt /
   Prüfung fällig. Neue Entscheidungen legt Luzzy an.
-- **Dateien:** Donnerwolf-Ordner und zuletzt geänderte Dateien, öffnen im Programm oder Explorer.
 - **Jobs:** Hermes-Jobs aller Profile mit Zeitplan, letztem und nächstem Lauf; ausführen, pausieren, löschen (mit Rückfrage).
 - **Kanban:** Hermes' eigenes Kanban-Board (Tafeln, Spalten, Aufgaben der Agenten).
 - **Kosten-Wächter** (System): was Luzzy und die Crew heute und diesen Monat kosten (in Dollar, wie Hermes rechnet),

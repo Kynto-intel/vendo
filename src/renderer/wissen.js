@@ -8,7 +8,6 @@ import { hinweis } from './fenster.js'
 const api = window.jarves
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-const kb = (b) => (b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(b / 1024))} KB`)
 
 let helfer = { vorlesen: () => {}, ansichtZeigen: () => {}, anLuzzy: () => {} }
 export function wissenEinrichten(h) {
@@ -238,35 +237,6 @@ export async function entscheidungenLaden() {
   $('entscheidungen-anzahl').textContent = entscheidungenCache.length ? `${entscheidungenCache.length}` : ''
   entscheidungenZeigen()
 }
-
-// ── Dateien ──
-export async function dateienLaden() {
-  const d = await api.wissen.dateien().catch(() => null)
-  if (!d) return
-  $('dateien-ordner').innerHTML = d.ordner
-    .map((o) => `<button class="ordner-chip" data-zeigen="${maskieren(o.pfad)}" type="button" title="Im Explorer öffnen">📁 ${maskieren(o.name)}</button>`)
-    .join('')
-  $('dateien-liste').innerHTML = `
-    <table class="tabelle dateien-tabelle"><thead><tr><th>Datei</th><th>Ordner</th><th>Geändert</th><th>Größe</th><th></th></tr></thead><tbody>
-    ${d.neueste
-      .map(
-        (f) => `<tr>
-          <td>${maskieren(f.name)}</td>
-          <td class="leise">${maskieren(f.ordner || '.')}</td>
-          <td>${vorWann(f.geaendert)}</td>
-          <td>${kb(f.groesse)}</td>
-          <td class="rechts"><button class="knopf-mini" data-oeffnen="${maskieren(f.pfad)}" type="button">Öffnen</button><button class="knopf-mini" data-zeigen="${maskieren(f.pfad)}" type="button">Explorer</button></td>
-        </tr>`
-      )
-      .join('')}
-    </tbody></table>`
-}
-document.addEventListener('click', (e) => {
-  const oeffnen = e.target.closest('[data-oeffnen]')
-  if (oeffnen) api.datei.oeffnen(oeffnen.dataset.oeffnen).catch((err) => hinweis(err.message, { titel: 'Öffnen' }))
-  const zeigen = e.target.closest('[data-zeigen]')
-  if (zeigen) api.datei.zeigen(zeigen.dataset.zeigen)
-})
 
 // ── Morgenbericht (Karte rechts) ──
 let letzterBericht = null

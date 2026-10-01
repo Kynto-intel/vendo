@@ -88,8 +88,7 @@ contextBridge.exposeInMainWorld('jarves', {
     notizFinden: (name) => ipcRenderer.invoke('wissen:notizFinden', name),
     morgenberichte: () => ipcRenderer.invoke('wissen:morgenberichte'),
     entscheidungen: () => ipcRenderer.invoke('wissen:entscheidungen'),
-    bibliothek: () => ipcRenderer.invoke('wissen:bibliothek'),
-    dateien: () => ipcRenderer.invoke('wissen:dateien')
+    bibliothek: () => ipcRenderer.invoke('wissen:bibliothek')
   },
   datei: {
     oeffnen: (rel) => ipcRenderer.invoke('datei:oeffnen', rel),

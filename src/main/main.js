@@ -429,7 +429,6 @@ ipcMain.handle('wissen:notizFinden', (_e, name) => wissen.notizFinden(name))
 ipcMain.handle('wissen:morgenberichte', () => wissen.morgenberichte())
 ipcMain.handle('wissen:entscheidungen', () => wissen.entscheidungen())
 ipcMain.handle('wissen:bibliothek', () => wissen.bibliothek())
-ipcMain.handle('wissen:dateien', () => wissen.dateien())
 ipcMain.handle('datei:oeffnen', async (_e, rel) => {
   const fehler = await shell.openPath(wissen.sicher(rel))
   if (fehler) throw new Error(fehler)
