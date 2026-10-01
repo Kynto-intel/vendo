@@ -1,4 +1,4 @@
-// Wissen-Bereiche: Wissen (Vault), Bibliothek, Entscheidungen, Dateien, dazu der Morgenbericht.
+// Wissen-Bereiche: Bibliothek (eigene Ordner) und Entscheidungen, dazu der Morgenbericht.
 // Ein gemeinsamer "Leser" zeigt Notizen und Dokumente an (Markdown oder HTML).
 
 import { markdownZuHtml } from './markdown.js'
@@ -8,6 +8,7 @@ import { hinweis } from './fenster.js'
 const api = window.jarves
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const kb = (b) => (b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(b / 1024))} KB`)
 
 let helfer = { vorlesen: () => {}, ansichtZeigen: () => {}, anLuzzy: () => {} }
 export function wissenEinrichten(h) {
@@ -93,7 +94,7 @@ function listeKlicks(listeEl, leser) {
 }
 
 // Aufgeklappte Gruppen merken; standardmäßig ist alles zugeklappt
-const offeneGruppen = { wissen: new Set(), bibliothek: new Set() }
+const offeneGruppen = { bibliothek: new Set() }
 function gruppenUmschalten(listeEl, art) {
   listeEl.addEventListener('click', (e) => {
     const kopf = e.target.closest('.gruppe-kopf')
@@ -107,76 +108,31 @@ function gruppenUmschalten(listeEl, art) {
 }
 const zu = (art, name) => (offeneGruppen[art].has(name) ? '' : ' eingeklappt')
 
-// ── Wissen (Vault) ──
-const wissenLeser = leserErstellen($('wissen-leser'))
-listeKlicks($('wissen-liste'), wissenLeser)
-let vaultCache = []
-
-function vaultZeigen(notizen, { suche = false } = {}) {
-  const el = $('wissen-liste')
-  if (!notizen.length) return (el.innerHTML = `<div class="leise">${suche ? 'Nichts gefunden.' : 'Keine Notizen gefunden.'}</div>`)
-  const gruppen = {}
-  for (const n of notizen) (gruppen[suche ? 'Treffer' : n.bereich] ??= []).push(n)
-  el.innerHTML = Object.entries(gruppen)
-    .map(
-      ([bereich, liste]) => `
-      <div class="gruppe${suche ? '' : zu('wissen', bereich)}" data-gruppe="${maskieren(bereich)}">
-        <button class="gruppe-kopf" type="button">${maskieren(bereich.replace(/^\d+_/, '').replace(/[_&]/g, ' ').replace(/\\/g, ' › '))} <span>${liste.length}</span></button>
-        <div class="gruppe-inhalt">
-          ${liste
-            .map(
-              (n) => `
-            <button class="eintrag" data-pfad="${maskieren(n.pfad)}" data-geheim="${n.geheim ? '1' : ''}" type="button" title="${maskieren(n.wofuer || n.pfad)}">
-              <span class="eintrag-titel">${maskieren(n.titel)}</span>
-              ${n.status ? `<span class="status status-${n.status === 'prüfen' ? 'pruefen' : n.status}">${maskieren(n.status)}</span>` : ''}
-              ${n.geheim ? '<span class="status status-geheim">Zugangsdaten</span>' : ''}
-              ${n.ausschnitt ? `<span class="eintrag-info">… ${maskieren(n.ausschnitt)} …</span>` : n.wofuer ? `<span class="eintrag-info">${maskieren(n.wofuer)}</span>` : ''}
-            </button>`
-            )
-            .join('')}
-        </div>
-      </div>`
-    )
-    .join('')
-}
-
-gruppenUmschalten($('wissen-liste'), 'wissen')
-
-let suchUhr = 0
-$('wissen-suche').addEventListener('input', (e) => {
-  clearTimeout(suchUhr)
-  const text = e.target.value.trim()
-  suchUhr = setTimeout(async () => {
-    if (!text) return vaultZeigen(vaultCache)
-    const treffer = await api.wissen.suchen(text)
-    const geheim = new Set(vaultCache.filter((n) => n.geheim).map((n) => n.pfad))
-    vaultZeigen(treffer.map((t) => ({ ...t, geheim: geheim.has(t.pfad) })), { suche: true })
-  }, 250)
-})
-
-export async function wissenLaden() {
-  vaultCache = await api.wissen.vault().catch(() => [])
-  if (!$('wissen-suche').value.trim()) vaultZeigen(vaultCache)
-  if (!wissenLeser.aktuell()) {
-    const start = vaultCache.find((n) => n.name === '00_Übersicht.md')
-    if (start) wissenLeser.zeigen(start.pfad)
-  }
-}
-
-export function notizOeffnen(pfad) {
-  helfer.ansichtZeigen('wissen')
-  wissenLeser.zeigen(pfad)
-}
-
 // ── Bibliothek ──
 const bibliothekLeser = leserErstellen($('bibliothek-leser'))
 listeKlicks($('bibliothek-liste'), bibliothekLeser)
 
+// Notiz aus der Suche, einem Notiz-Link oder dem Morgenbericht: im Leser der Bibliothek zeigen
+export function notizOeffnen(pfad) {
+  helfer.ansichtZeigen('bibliothek')
+  bibliothekLeser.zeigen(pfad)
+}
+
 export async function bibliothekLaden() {
-  const quellen = await api.wissen.bibliothek().catch(() => [])
-  const el = $('bibliothek-liste')
+  const { ordner = [], quellen = [] } = (await api.wissen.bibliothek().catch(() => null)) || {}
   const gesamt = quellen.reduce((s, q) => s + q.dokumente.length, 0)
   $('bibliothek-anzahl').textContent = gesamt ? `${gesamt} Dokumente` : ''
+  // Gewählte Ordner als Kärtchen (✕ nimmt den Ordner nur aus der Bibliothek, die Dateien bleiben)
+  $('bibliothek-ordner').innerHTML = quellen
+    .map(
+      (q) => `
+      <span class="bib-chip${q.vorhanden ? '' : ' fehlt'}" title="${maskieren(q.ordner)}">📁 ${maskieren(q.ordner)}${q.vorhanden ? '' : ' (nicht gefunden)'}
+        <button type="button" data-bib-weg="${maskieren(q.ordner)}" title="Aus der Bibliothek nehmen (der Ordner und seine Dateien bleiben)">✕</button>
+      </span>`
+    )
+    .join('')
+  const el = $('bibliothek-liste')
+  if (!ordner.length) return (el.innerHTML = '<div class="leer-hinweis">Noch kein Ordner gewählt. Klick oben auf „+ Ordner wählen“ und such dir einen Ordner auf deinem PC aus. Er bleibt gespeichert.</div>')
   el.innerHTML = quellen
     .filter((q) => q.dokumente.length)
     .map(
@@ -189,15 +145,25 @@ export async function bibliothekLaden() {
               (d) => `
             <button class="eintrag" data-pfad="${maskieren(d.pfad)}" type="button" title="${maskieren(d.pfad)}">
               <span class="eintrag-titel">${maskieren(d.name.replace(/\.(md|html?|txt)$/i, ''))}</span>
-              <span class="eintrag-info">${vorWann(d.geaendert)} · ${kb(d.groesse)}</span>
+              <span class="eintrag-info">${d.unter ? `${maskieren(d.unter)} · ` : ''}${vorWann(d.geaendert)} · ${kb(d.groesse)}</span>
             </button>`
             )
             .join('')}
         </div>
       </div>`
     )
-    .join('') || '<div class="leise">Noch keine Dokumente.</div>'
+    .join('') || '<div class="leise">In den gewählten Ordnern liegen keine Texte (Markdown, Text, HTML).</div>'
 }
+$('bibliothek-ordner-neu').addEventListener('click', async () => {
+  const liste = await api.wissen.bibliothekOrdnerWaehlen().catch((e) => hinweis(e.message, { titel: 'Bibliothek' }))
+  if (liste) bibliothekLaden()
+})
+$('bibliothek-ordner').addEventListener('click', async (e) => {
+  const knopf = e.target.closest('[data-bib-weg]')
+  if (!knopf) return
+  await api.wissen.bibliothekOrdnerEntfernen(knopf.dataset.bibWeg).catch(() => {})
+  bibliothekLaden()
+})
 gruppenUmschalten($('bibliothek-liste'), 'bibliothek')
 
 // ── Entscheidungen ──

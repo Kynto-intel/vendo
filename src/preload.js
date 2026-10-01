@@ -82,13 +82,14 @@ contextBridge.exposeInMainWorld('jarves', {
     tokenEintragen: (token) => ipcRenderer.invoke('shopify:tokenEintragen', token)
   },
   wissen: {
-    vault: () => ipcRenderer.invoke('wissen:vault'),
     suchen: (anfrage) => ipcRenderer.invoke('wissen:suchen', anfrage),
     lesen: (rel) => ipcRenderer.invoke('wissen:lesen', rel),
     notizFinden: (name) => ipcRenderer.invoke('wissen:notizFinden', name),
     morgenberichte: () => ipcRenderer.invoke('wissen:morgenberichte'),
     entscheidungen: () => ipcRenderer.invoke('wissen:entscheidungen'),
-    bibliothek: () => ipcRenderer.invoke('wissen:bibliothek')
+    bibliothek: () => ipcRenderer.invoke('wissen:bibliothek'),
+    bibliothekOrdnerWaehlen: () => ipcRenderer.invoke('bibliothek:ordnerWaehlen'),
+    bibliothekOrdnerEntfernen: (ordner) => ipcRenderer.invoke('bibliothek:ordnerEntfernen', ordner)
   },
   datei: {
     oeffnen: (rel) => ipcRenderer.invoke('datei:oeffnen', rel),

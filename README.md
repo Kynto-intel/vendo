@@ -159,8 +159,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 | | **Kanban** | Hermes-Kanban-Board |
 | | **Routinen** | Auslösewort → Auftrag, mit Zeitplan und Schnellbefehlen |
 | **Werkzeuge** | **Aufgaben** · **Kalender** · **Fokus** · **Gedanken** · **Wetter** · **Meilensteine** | Plugins, siehe [Plugins](#plugins) |
-| **Wissen** | **Wissen** | Der Obsidian-Vault (`Documents\Donnerwolf`) zum Lesen, mit Morgenbericht |
-| | **Bibliothek** · **Entscheidungen** | Nachschlagen, offene Entscheidungen – nur lesend |
+| **Wissen** | **Bibliothek** · **Entscheidungen** | Texte aus deinen eigenen Ordnern lesen, offene Entscheidungen – nur lesend |
 | **System** | **System** | Hermes, PC (Festplatte, Grafikkarte), Ollama, Nutzung/Kosten, **Kosten-Wächter**, **Shopify-Zugang**, **Selbsttest** |
 | | **Terminal** | PowerShell in Jarves-OS mit den gängigen Hermes-Befehlen zum Anklicken und eigenen gespeicherten Befehlen (siehe unten) |
 
@@ -197,14 +196,18 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
   enthalten). Von Hand bearbeiten geht auch – dabei Jarves-OS geschlossen lassen.
 - Das Terminal bedienst nur du – Luzzy und die Crew haben darauf keinen Zugriff.
 
-**Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf`):
+**Wissen & Co. im Detail** (alles nur lesend, nur im Ordner `Documents\Donnerwolf` und in den Ordnern, die du für die
+Bibliothek gewählt hast):
 
-- **Wissen:** der Obsidian-Vault mit Suche und Notiz-Links, Einstieg über `00_Übersicht.md`. Zugangsdaten in Notizen
-  werden verdeckt. Änderungen am Vault macht Luzzy nur nach deinem Ja.
 - **Morgenbericht:** Ein Hermes-Job erstellt ihn und legt ihn unter `04_Analytics\Morgenberichte\JJJJ-MM-TT.md` ab.
   Jarves-OS zeigt ihn als Karte, liest ihn vor und startet ihn über die Routine „Morgenbericht“ (mit Zeitplan) oder
   „Heute erstellen“.
-- **Bibliothek:** Blog-Recherchen, Entwürfe, fertige Artikel und der Ordner `Donnerwolf\Bibliothek`, schön formatiert.
+- **Bibliothek:** Texte (Markdown, Text, HTML) aus Ordnern, die du selbst bestimmst, schön formatiert. Oben
+  **„+ Ordner wählen“** öffnet das Ordner-Fenster von Windows; der Ordner erscheint als Kärtchen und bleibt gespeichert
+  (`daten/einstellungen.json`, `bibliothek.ordner`). Mehrere Ordner gehen, Unterordner werden mit durchsucht, ✕ am
+  Kärtchen nimmt einen Ordner wieder heraus (die Dateien bleiben). Es gibt keinen fest eingebauten Pfad mehr. Hier
+  öffnen sich auch Notizen aus der Suchleiste, aus Notiz-Links und der Morgenbericht („Lesen“). Den Vault durchsuchst
+  du über die Suchleiste (Strg+F).
 - **Entscheidungen:** das Entscheidungs-Tagebuch aus `Donnerwolf-Shop\04_Decision_Log\` mit Filter gilt / überholt /
   Prüfung fällig. Neue Entscheidungen legt Luzzy an.
 - **Jobs:** Hermes-Jobs aller Profile mit Zeitplan, letztem und nächstem Lauf; ausführen, pausieren, löschen (mit Rückfrage).
@@ -568,7 +571,7 @@ hat (Jarves-OS, Hermes-App). Sie schreibt direkt in die Dateien der Plugins; ist
 - **Zugangsdaten** (Shopify-Token, Hermes-Schlüssel) nie anzeigen, loggen, speichern oder an die Oberfläche geben.
   Geheime Dateien werden von der Dateisuche nie gefunden.
 - **Dateien** nur speichern, wenn Felix klickt – mit Sicherung und „Rückgängig“. **Vault-Schreiben** nur in
-  `Donnerwolf-Shop\Jarves-OS\` und nie überschreiben. Wissen, Bibliothek & Co. sind nur lesend.
+  `Donnerwolf-Shop\Jarves-OS\` und nie überschreiben. Bibliothek & Co. sind nur lesend.
 - **PC-Steuerung** nur geprüfte Aktionen: nie beliebige Befehle, Herunterfahren, Schließen, Programme per Pfad.
 - **Löschen** (Jobs, Gespräche, Chats) nur nach Rückfrage.
 - **Was das Haus verlässt:** Nachrichten an Luzzy gehen an das Modell, das in Hermes eingestellt ist. Die Stimme

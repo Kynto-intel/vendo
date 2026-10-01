@@ -551,6 +551,13 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 .status-pruefen { color: var(--gold-hell); border-color: var(--gold-leise); }
 .status-historisch { color: var(--text-leise); border-color: var(--gedimmt); }
 .status-geheim { color: var(--rot-hell); border-color: rgba(200, 88, 78, 0.5); }
+/* Bibliothek: gewählte Ordner als Kärtchen über der Liste */
+.bib-ordner { display: flex; flex-wrap: wrap; gap: 8px; flex: none; }
+.bib-ordner:empty { display: none; }
+.bib-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--flaeche); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 5px 6px 5px 10px; font-size: 12px; }
+.bib-chip.fehlt { opacity: 0.6; }
+.bib-chip button { background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.6; padding: 2px 5px; font-size: 11px; }
+.bib-chip button:hover { opacity: 1; color: var(--gold-hell); }
 .suche { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 10px; font-size: 12px; width: 240px; outline: none; }
 .suche:focus { border-color: var(--gold); }
 

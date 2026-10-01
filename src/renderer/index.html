@@ -158,12 +158,16 @@
           <div class="kanban-tafel" id="kanban-tafel"></div>
         </section>
 
-        <!-- Bibliothek: lange Texte der Agenten -->
+        <!-- Bibliothek: Texte aus Ordnern, die Felix selbst wählt (gespeichert in den Einstellungen) -->
         <section class="ansicht ansicht-seite" data-ansicht="bibliothek" hidden>
           <header class="seiten-kopf">
-            <div><h2>Bibliothek <span class="leise klein" id="bibliothek-anzahl"></span></h2><p class="leise">Recherchen, Entwürfe und fertige Artikel der Agenten.</p></div>
-            <button class="knopf-flach" data-neu-laden="bibliothek" type="button">Aktualisieren</button>
+            <div><h2>Bibliothek <span class="leise klein" id="bibliothek-anzahl"></span></h2><p class="leise">Texte aus deinen eigenen Ordnern (Markdown, Text, HTML). Hier öffnen sich auch Notizen aus der Suche.</p></div>
+            <div class="seiten-knoepfe">
+              <button class="knopf-gold" id="bibliothek-ordner-neu" type="button" title="Einen Ordner von deinem PC zur Bibliothek hinzufügen">+ Ordner wählen</button>
+              <button class="knopf-flach" data-neu-laden="bibliothek" type="button">Aktualisieren</button>
+            </div>
           </header>
+          <div class="bib-ordner" id="bibliothek-ordner"></div>
           <div class="zweispaltig">
             <div class="liste-spalte hud" id="bibliothek-liste"><div class="leise">Lade …</div></div>
             <article class="leser hud" id="bibliothek-leser"></article>
@@ -187,21 +191,6 @@
           <div class="zweispaltig">
             <div class="liste-spalte hud" id="entscheidungen-liste"><div class="leise">Lade …</div></div>
             <article class="leser hud" id="entscheidungen-leser"></article>
-          </div>
-        </section>
-
-        <!-- Wissen: Obsidian-Vault -->
-        <section class="ansicht ansicht-seite" data-ansicht="wissen" hidden>
-          <header class="seiten-kopf">
-            <div><h2>Wissen</h2><p class="leise">Dein Donnerwolf-Vault. Status aus der Übersicht: aktuell, prüfen, historisch.</p></div>
-            <div class="seiten-knoepfe">
-              <input id="wissen-suche" class="suche" type="search" placeholder="Im Vault suchen …" />
-              <button class="knopf-flach" data-neu-laden="wissen" type="button">Aktualisieren</button>
-            </div>
-          </header>
-          <div class="zweispaltig">
-            <div class="liste-spalte hud" id="wissen-liste"><div class="leise">Lade …</div></div>
-            <article class="leser hud" id="wissen-leser"></article>
           </div>
         </section>
 

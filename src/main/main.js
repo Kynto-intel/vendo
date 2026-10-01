@@ -420,15 +420,21 @@ app.on('web-contents-created', (_e, wc) => {
 app.on('before-quit', () => { if (!oberflaecheGestoert) plugins.startOk() })
 ipcMain.handle('plugins:aufrufen', (_e, id, name, argumente) => plugins.aufrufen(String(id), String(name), Array.isArray(argumente) ? argumente : []))
 
-// Wissen (nur lesen, nur im Donnerwolf-Ordner)
+// Wissen (nur lesen, nur im Donnerwolf-Ordner und in den Bibliothek-Ordnern)
 const wissen = require('./wissen')
-ipcMain.handle('wissen:vault', () => wissen.vault())
 ipcMain.handle('wissen:suchen', (_e, anfrage) => wissen.suchen(anfrage))
 ipcMain.handle('wissen:lesen', (_e, rel) => wissen.lesen(rel))
 ipcMain.handle('wissen:notizFinden', (_e, name) => wissen.notizFinden(name))
 ipcMain.handle('wissen:morgenberichte', () => wissen.morgenberichte())
 ipcMain.handle('wissen:entscheidungen', () => wissen.entscheidungen())
 ipcMain.handle('wissen:bibliothek', () => wissen.bibliothek())
+// Bibliothek: Ordner selbst wählen (Ordner-Fenster von Windows) oder wieder herausnehmen; gespeichert in den Einstellungen
+ipcMain.handle('bibliothek:ordnerWaehlen', async () => {
+  const r = await dialog.showOpenDialog(fenster, { title: 'Ordner für die Bibliothek', properties: ['openDirectory'] })
+  if (r.canceled || !r.filePaths[0]) return null
+  return wissen.bibliothekOrdnerDazu(r.filePaths[0])
+})
+ipcMain.handle('bibliothek:ordnerEntfernen', (_e, ordner) => wissen.bibliothekOrdnerWeg(String(ordner || '').slice(0, 500)))
 ipcMain.handle('datei:oeffnen', async (_e, rel) => {
   const fehler = await shell.openPath(wissen.sicher(rel))
   if (fehler) throw new Error(fehler)

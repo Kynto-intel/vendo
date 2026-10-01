@@ -5,7 +5,7 @@
 
 import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from '../ansichten.js'
 import { terminalLaden } from '../terminal.js'
-import { wissenLaden, bibliothekLaden, entscheidungenLaden } from '../wissen.js'
+import { bibliothekLaden, entscheidungenLaden } from '../wissen.js'
 import { crewBotsLaden, wechseln as crewWechseln, crewSichtbarGeworden } from '../crewchat.js'
 
 const api = window.jarves
@@ -25,7 +25,6 @@ export const BEREICHE = [
   { id: 'kanban', name: 'Kanban', aktiv: true },
   { id: 'bibliothek', name: 'Bibliothek', aktiv: true },
   { id: 'entscheidungen', name: 'Entscheidungen', aktiv: true },
-  { id: 'wissen', name: 'Wissen', aktiv: true },
   { id: 'system', name: 'System', aktiv: true },
   { id: 'terminal', name: 'Terminal', aktiv: true }
 ]
@@ -39,7 +38,6 @@ const SYMBOLE = {
   kanban: '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/>',
   bibliothek: '<path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="M9 7h6"/>',
   entscheidungen: '<path d="M12 3v18M5 7h14"/><path d="M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/><path d="M8 21h8"/>',
-  wissen: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>',
   terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/>',
   system: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
   'plugin-aufgaben': '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M8 12l3 3 5-6"/>',
@@ -55,7 +53,7 @@ const GRUPPEN = [
   ['Luzzy', ['zentrale', 'crew']],
   ['Automation', ['jobs', 'kanban', 'plugin-routinen']],
   ['Werkzeuge', ['plugin-aufgaben', 'plugin-kalender', 'plugin-fokus', 'plugin-gedanken', 'plugin-wetter', 'plugin-meilensteine']],
-  ['Wissen', ['wissen', 'bibliothek', 'entscheidungen']],
+  ['Wissen', ['bibliothek', 'entscheidungen']],
   ['System', ['system', 'terminal']]
 ]
 const symbol = (id) => `<svg viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[id] || SYMBOL_PLUGIN}</svg>`
@@ -75,9 +73,9 @@ export function bereicheZeigen() {
 // ── Bereiche wechseln; offene Bereiche aktualisieren sich regelmäßig ──
 const LADEN = {
   crew: crewLaden, jobs: jobsLaden, kanban: kanbanLaden, system: systemLaden, terminal: terminalLaden,
-  bibliothek: bibliothekLaden, entscheidungen: entscheidungenLaden, wissen: wissenLaden
+  bibliothek: bibliothekLaden, entscheidungen: entscheidungenLaden
 }
-const TAKT = { terminal: 600000, crew: 15000, jobs: 20000, kanban: 15000, system: 5000, bibliothek: 30000, entscheidungen: 30000, wissen: 60000 }
+const TAKT = { terminal: 600000, crew: 15000, jobs: 20000, kanban: 15000, system: 5000, bibliothek: 30000, entscheidungen: 30000 }
 let aktuelleAnsicht = 'zentrale'
 let crewOffen = false // Crew-Bereich offen: Luzzy hört dort nicht mit (siehe ansichtZeigen)
 let taktUhr = 0

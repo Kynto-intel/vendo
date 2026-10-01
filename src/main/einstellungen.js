@@ -21,7 +21,8 @@ const STANDARD = {
   leisten: { links: true, rechts: true }, // true = aufgeklappt
   panel: { offen: false, breite: 460 },
   sprache: { freihaendig: true, crewStill: true, aktivierungswort: true, automatischSenden: true, weiterZuhoeren: true, unterbrechen: true, musikErkennen: true },
-  meldungen: { vorlesen: true, ton: true, bestellung: true, mail: true, job: true, crew: true, ruheVon: '22:00', ruheBis: '07:00' }
+  meldungen: { vorlesen: true, ton: true, bestellung: true, mail: true, job: true, crew: true, ruheVon: '22:00', ruheBis: '07:00' },
+  bibliothek: { ordner: [] } // Ordner, die im Bereich Bibliothek gezeigt werden (wählt Felix dort selbst)
 }
 
 function laden() {
@@ -37,7 +38,8 @@ function laden() {
       panel: { ...STANDARD.panel, ...(gespeichert.panel || {}) },
       leisten: { ...STANDARD.leisten, ...(gespeichert.leisten || {}) },
       sprache: { ...STANDARD.sprache, ...(gespeichert.sprache || {}) },
-      meldungen: { ...STANDARD.meldungen, ...(gespeichert.meldungen || {}) }
+      meldungen: { ...STANDARD.meldungen, ...(gespeichert.meldungen || {}) },
+      bibliothek: { ...STANDARD.bibliothek, ...(gespeichert.bibliothek || {}) }
     }
   } catch {
     return structuredClone(STANDARD)

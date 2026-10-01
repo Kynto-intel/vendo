@@ -1,8 +1,9 @@
-// Wissen: Vault, Morgenberichte, Entscheidungen, Bibliothek, Dateien.
-// Nur lesend und nur innerhalb von C:\Users\Felix\Documents\Donnerwolf.
+// Wissen: Vault-Suche, Morgenberichte, Entscheidungen, Bibliothek.
+// Nur lesend und nur innerhalb von C:\Users\Felix\Documents\Donnerwolf oder der Ordner, die Felix für die Bibliothek gewählt hat.
 
 const fs = require('node:fs/promises')
 const path = require('node:path')
+const einstellungen = require('./einstellungen')
 
 const WURZEL = 'C:\\Users\\Felix\\Documents\\Donnerwolf'
 const VAULT = path.join(WURZEL, 'Donnerwolf-Shop')
@@ -13,21 +14,27 @@ const TEXT_ENDUNGEN = new Set(['.md', '.txt', '.html', '.htm', '.json', '.csv'])
 // Beim Durchsuchen des ganzen Ordners überspringen (groß, technisch oder Sicherungen)
 const UEBERSPRINGEN = new Set(['node_modules', '.git', '.obsidian', 'firecrawl-selfhost', 'Kynto backups', '__pycache__', '.venv'])
 
-// Quellen der Bibliothek: lange Texte der Agenten
-const BIBLIOTHEK = [
-  { id: 'bibliothek', name: 'Bibliothek', ordner: path.join(WURZEL, 'Bibliothek') },
-  { id: 'recherche', name: 'Blog-Recherchen', ordner: path.join(WURZEL, 'Social Media', 'Donnerwolf', 'Blog', 'Recherche') },
-  { id: 'entwuerfe', name: 'Blog-Entwürfe', ordner: path.join(WURZEL, 'Social Media', 'Donnerwolf', 'Blog', 'Entwuerfe') },
-  { id: 'artikel', name: 'Fertige Blogartikel', ordner: path.join(WURZEL, 'Social Media', 'Donnerwolf', 'Blog') }
-]
+// Bibliothek: die Ordner wählt Felix selbst (Bereich Bibliothek → „+ Ordner wählen“), gespeichert in den Einstellungen
+// (daten/einstellungen.json: bibliothek.ordner, ganze Pfade)
+function bibliothekOrdner() {
+  const liste = einstellungen.laden().bibliothek?.ordner
+  return Array.isArray(liste) ? liste.filter((o) => typeof o === 'string' && path.isAbsolute(o)) : []
+}
+// Liegt der Pfad in diesem Ordner? (Windows: Groß-/Kleinschreibung egal)
+function innerhalb(voll, ordner) {
+  const a = path.resolve(voll).toLowerCase()
+  const b = path.resolve(ordner).toLowerCase()
+  return a === b || a.startsWith(b.endsWith(path.sep) ? b : b + path.sep)
+}
 
-// Relativen Pfad prüfen: muss innerhalb des Donnerwolf-Ordners bleiben
+// Pfad prüfen (relativ zum Donnerwolf-Ordner oder ganz): muss im Donnerwolf-Ordner oder in einem Bibliothek-Ordner liegen
 function sicher(relativ) {
   const voll = path.resolve(WURZEL, String(relativ || ''))
-  if (voll !== WURZEL && !voll.startsWith(WURZEL + path.sep)) throw new Error('Pfad außerhalb des Donnerwolf-Ordners.')
+  if (!innerhalb(voll, WURZEL) && !bibliothekOrdner().some((o) => innerhalb(voll, o))) throw new Error('Pfad außerhalb der erlaubten Ordner.')
   return voll
 }
-const relativ = (voll) => path.relative(WURZEL, voll)
+// Im Donnerwolf-Ordner kurz (relativ), außerhalb der ganze Pfad
+const relativ = (voll) => (innerhalb(voll, WURZEL) ? path.relative(WURZEL, voll) : voll)
 
 async function dateienIn(ordner, { endungen = TEXT_ENDUNGEN, tief = false, max = 400 } = {}) {
   const ergebnis = []
@@ -64,45 +71,6 @@ async function lesen(rel) {
   if (!TEXT_ENDUNGEN.has(path.extname(voll).toLowerCase())) throw new Error('Dieser Dateityp wird nicht angezeigt.')
   if (info.size > MAX_GROESSE) throw new Error('Datei zu groß für die Anzeige.')
   return { pfad: relativ(voll), name: path.basename(voll), text: await fs.readFile(voll, 'utf8'), geaendert: info.mtimeMs }
-}
-
-// Tabellen der 00_Übersicht.md: Pfad → Wofür + Status (aktuell, prüfen, historisch)
-async function uebersicht() {
-  const karte = {}
-  try {
-    const text = await fs.readFile(path.join(VAULT, '00_Übersicht.md'), 'utf8')
-    for (const zeile of text.split(/\r?\n/)) {
-      const spalten = zeile.split('|').map((s) => s.trim())
-      if (spalten.length < 5) continue
-      const datei = (spalten[2].match(/`([^`]+)`/) || [])[1]
-      if (!datei || datei.includes('JJJJ')) continue
-      const rel = path.join('Donnerwolf-Shop', datei.replace(/\//g, '\\'))
-      karte[rel] = { wofuer: spalten[3], status: spalten[4] }
-    }
-  } catch {
-    // keine Übersicht
-  }
-  return karte
-}
-
-async function vault() {
-  const [notizen, karte] = await Promise.all([dateienIn(VAULT, { endungen: new Set(['.md']), tief: true }), uebersicht()])
-  return notizen
-    .map((n) => {
-      const info = karte[n.pfad] || null
-      const status = info?.status || ''
-      return {
-        ...n,
-        titel: n.name.replace(/\.md$/, ''),
-        // Gruppe = oberster Ordner im Vault (Unterordner, z. B. der Sicherungen, landen in einer Gruppe)
-        bereich: n.ordner.replace(/^Donnerwolf-Shop\\?/, '').split(path.sep)[0] || 'Start',
-        wofuer: info?.wofuer || '',
-        status: /histor/i.test(status) ? 'historisch' : /prüfen/i.test(status) ? 'prüfen' : /aktuell/i.test(status) ? 'aktuell' : '',
-        statusText: status,
-        geheim: /zugangsdaten|token|passwort/i.test(status + ' ' + n.name)
-      }
-    })
-    .sort((a, b) => a.pfad.localeCompare(b.pfad, 'de'))
 }
 
 async function suchen(anfrage) {
@@ -173,15 +141,39 @@ async function entscheidungen() {
   return ergebnis.sort((a, b) => b.datum.localeCompare(a.datum))
 }
 
+// Bibliothek: pro gewähltem Ordner eine Gruppe mit allen Texten darin (auch in Unterordnern), neueste zuerst
+const BIBLIOTHEK_ENDUNGEN = new Set(['.md', '.txt', '.html', '.htm'])
 async function bibliothek() {
+  const ordner = bibliothekOrdner()
   const quellen = []
-  for (const q of BIBLIOTHEK) {
-    const tief = q.id === 'bibliothek'
-    const endungen = q.id === 'artikel' ? new Set(['.html', '.htm']) : new Set(['.md', '.txt', '.html'])
-    const dokumente = (await dateienIn(q.ordner, { endungen, tief })).sort((a, b) => b.geaendert - a.geaendert)
-    quellen.push({ id: q.id, name: q.name, ordner: relativ(q.ordner), vorhanden: dokumente.length > 0 || q.id !== 'bibliothek', dokumente })
+  for (const o of ordner) {
+    let vorhanden = true
+    try {
+      vorhanden = (await fs.stat(o)).isDirectory()
+    } catch {
+      vorhanden = false
+    }
+    const dokumente = vorhanden
+      ? (await dateienIn(o, { endungen: BIBLIOTHEK_ENDUNGEN, tief: true, max: 800 }))
+          .map((d) => ({ ...d, unter: path.relative(o, path.dirname(path.resolve(WURZEL, d.pfad))) })) // Unterordner in diesem Ordner
+          .sort((a, b) => b.geaendert - a.geaendert)
+      : []
+    quellen.push({ id: o, name: path.basename(o) || o, ordner: o, vorhanden, dokumente })
   }
-  return quellen
+  return { ordner, quellen }
+}
+function bibliothekOrdnerDazu(ordner) {
+  const neu = path.resolve(String(ordner || ''))
+  const liste = bibliothekOrdner()
+  if (!liste.some((o) => path.resolve(o).toLowerCase() === neu.toLowerCase())) liste.push(neu)
+  einstellungen.speichern({ bibliothek: { ordner: liste } })
+  return liste
+}
+function bibliothekOrdnerWeg(ordner) {
+  const weg = path.resolve(String(ordner || '')).toLowerCase()
+  const liste = bibliothekOrdner().filter((o) => path.resolve(o).toLowerCase() !== weg)
+  einstellungen.speichern({ bibliothek: { ordner: liste } })
+  return liste
 }
 
-module.exports = { WURZEL, VAULT, sicher, lesen, vault, suchen, notizFinden, morgenberichte, entscheidungen, bibliothek }
+module.exports = { WURZEL, VAULT, sicher, lesen, suchen, notizFinden, morgenberichte, entscheidungen, bibliothek, bibliothekOrdnerDazu, bibliothekOrdnerWeg }
