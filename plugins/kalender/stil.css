@@ -65,3 +65,14 @@
 /* Monatsblatt eingeklappt: nur noch die Liste (breit) */
 .kal-raster.eingeklappt { grid-template-columns: minmax(0, 720px); }
 .kal-raster.eingeklappt .kal-monatsblatt { display: none; }
+/* Aufgaben im Kalender (Plugin Aufgaben): im Monatsblatt als „☐ …“, ziehbar; in der Tagesliste mit Haken */
+.kal-aufgabe { text-align: left; font-size: 10px; line-height: 1.3; background: transparent; border: 0; border-left: 2px dashed var(--gold-leise); color: var(--text-leise); padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab; }
+.kal-aufgabe:hover { color: var(--text); border-left-color: var(--gold); background: rgba(var(--akzent-rgb), 0.06); }
+.kal-tag.ziel { border-color: var(--gold-hell); background: rgba(var(--akzent-rgb), 0.16); }
+.kal-aufgabe-zeile { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-left: 2px dashed var(--gold-leise); cursor: grab; }
+.kal-aufgabe-zeile:hover { border-left-color: var(--gold); background: rgba(var(--akzent-rgb), 0.06); }
+.kal-haken { flex: none; width: 15px; height: 15px; border: 1px solid var(--gold-leise); background: transparent; cursor: pointer; padding: 0; }
+.kal-haken:hover { border-color: var(--gold); background: rgba(var(--akzent-rgb), 0.2); }
+.kal-aufgabe-text { flex: 1; min-width: 0; font-size: 13px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kal-aufgabe-text:hover { color: var(--gold-hell); }
+.kal-aufgabe-text small { font-size: 11px; color: var(--text-leise); }

@@ -14,6 +14,12 @@
 .af-pfeil { flex: none; color: var(--gold); font-size: 11px; margin-top: 3px; }
 /* Aufgeklappt: Details lesen oder bearbeiten */
 .af-detail { padding: 2px 12px 12px 40px; }
+/* Wann: schnell auf einen anderen Tag legen */
+.af-wann { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.af-chip { background: transparent; border: 1px solid var(--rahmen); border-radius: var(--radius); color: var(--text-leise); font-size: 11px; padding: 3px 9px; cursor: pointer; }
+.af-chip:hover { border-color: var(--gold); color: var(--gold-hell); }
+.af-chip.an { border-color: var(--gold); color: var(--gold-hell); background: rgba(var(--akzent-rgb), 0.12); }
+.af-wann input[type='date'] { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: var(--radius); padding: 2px 6px; font-size: 11px; color: var(--text); color-scheme: dark; outline: none; }
 .af-details-text { font-size: 13px; line-height: 1.55; }
 .af-detail .leise { font-size: 12px; }
 .af-detail-knoepfe { display: flex; gap: 8px; margin-top: 8px; }

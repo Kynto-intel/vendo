@@ -111,15 +111,32 @@ export async function starten(ctx) {
   let offenId = '' // aufgeklappte Aufgabe (Details sichtbar)
   let bearbeitenId = '' // Aufgabe, deren Formular gerade offen ist
   let review = null // { seit } solange Jarves-OS auf Felix' Ziele wartet
+  // Andere Teile (Kalender) erfahren, wenn sich die Aufgaben geändert haben (nur bei echter Änderung)
+  const hoerer = new Set()
+  let letzterStand = ''
+  function melden() {
+    const stand = JSON.stringify(daten.aufgaben)
+    if (stand === letzterStand) return
+    letzterStand = stand
+    for (const fn of hoerer) {
+      try {
+        fn()
+      } catch {
+        // ein Zuhörer mit Fehler hält die anderen nicht auf
+      }
+    }
+  }
 
   async function laden() {
     const d = await ctx.daten.laden()
     daten = { aufgaben: Array.isArray(d.aufgaben) ? d.aufgaben : [], erinnert: d.erinnert || {}, review: { erinnern: true, tag: 0, zeit: '19:00', zuletzt: '', ...(d.review || {}) } }
     zeichnen()
+    melden()
   }
   async function speichern() {
     await ctx.daten.speichern(daten)
     zeichnen()
+    melden()
   }
   // Luzzy (Werkzeug jarves_aufgaben) oder jemand anderes hat die Datei geändert: neu einlesen, bevor hier
   // etwas mit einem alten Stand darüber gespeichert wird (z. B. der Erinnerungs-Stand)
@@ -347,7 +364,16 @@ export async function starten(ctx) {
         <div class="af-detail-knoepfe"><button class="knopf-gold" type="submit">Speichern</button><button class="knopf-flach" data-a="abbrechen" type="button">Abbrechen</button></div>
       </form>`
     }
+    // Schnell auf einen anderen Tag legen (der Tag erscheint auch im Kalender)
+    const morgen = tagText(plusTage(1))
+    const chip = (wert, name, an) => `<button class="af-chip${an ? ' an' : ''}" data-a="tag" data-tag="${wert}" type="button">${name}</button>`
     return `<div class="af-detail">
+      <div class="af-wann">
+        <span class="leise">Wann:</span>
+        ${chip('heute', 'Heute', a.datum === heute())}${chip('morgen', 'Morgen', a.datum === morgen)}${chip('woche', '+1 Woche', false)}${chip('ohne', 'Ohne Datum', !a.datum)}
+        <input type="date" data-wann value="${m(a.datum || '')}" title="Tag wählen" />
+        ${a.datum && window.__jarvesKalender ? '<button class="af-chip" data-a="kalender" type="button" title="Diesen Tag im Kalender zeigen">Im Kalender zeigen</button>' : ''}
+      </div>
       ${a.details ? `<div class="af-details-text msg-text md">${ctx.markdownZuHtml(a.details)}</div>` : '<div class="leise">Noch keine Details. Schreib selbst welche dazu oder sag Luzzy: „Schreib bei der Aufgabe … die Details dazu.“</div>'}
       <div class="af-detail-knoepfe"><button class="knopf-flach" data-a="bearbeiten" type="button">${a.details ? 'Bearbeiten' : 'Details schreiben'}</button></div>
     </div>`
@@ -401,6 +427,15 @@ export async function starten(ctx) {
       if (bearbeitenId) $('[data-form] textarea')?.focus()
       return
     }
+    if (knopf.dataset.a === 'kalender') return a?.datum && window.__jarvesKalender?.zeigen(a.datum)
+    // Auf einen anderen Tag legen: heute, morgen, eine Woche später (ab dem bisherigen Tag), ohne Datum
+    if (knopf.dataset.a === 'tag' && a) {
+      const art = knopf.dataset.tag
+      const basis = a.datum && a.datum >= heute() ? new Date(`${a.datum}T12:00`) : new Date()
+      a.datum = art === 'heute' ? heute() : art === 'morgen' ? tagText(plusTage(1)) : art === 'woche' ? tagText(plusTage(7, basis)) : ''
+      if (!a.datum) a.zeit = ''
+      return speichern()
+    }
     if (knopf.dataset.a === 'loeschen' && a?.details && !(await ctx.bestaetigen(`„${a.text}“ mit ihren Details löschen?`, { titel: 'Aufgabe löschen', ja: 'Löschen', gefahr: true }))) return
     if (knopf.dataset.a === 'erledigt' && a) {
       a.erledigt = !a.erledigt
@@ -429,6 +464,15 @@ export async function starten(ctx) {
     else delete a.details
     await speichern()
   })
+  // Tag im Datumsfeld der aufgeklappten Aufgabe gewählt
+  $('[data-liste]').addEventListener('change', async (e) => {
+    if (!e.target.matches('[data-wann]')) return
+    const a = daten.aufgaben.find((x) => x.id === e.target.closest('[data-id]')?.dataset.id)
+    if (!a) return
+    a.datum = /^\d{4}-\d{2}-\d{2}$/.test(e.target.value) ? e.target.value : ''
+    if (!a.datum) a.zeit = ''
+    await speichern()
+  })
   ctx.kopfKnoepfe.querySelector('[data-review]').addEventListener('click', async () => {
     const antwort = await reviewStarten()
     if (typeof antwort === 'string') ctx.vorlesen(antwort)
@@ -444,7 +488,37 @@ export async function starten(ctx) {
   setInterval(zeichnen, 5 * 60000) // „heute“ wandert mit
 
   await laden()
-  // Für andere Teile von Jarves-OS (Wochen-Review): Aufgaben anlegen und lesen
-  window.__jarvesAufgaben = { anlegen, offen: () => sortiert(offen()), erledigtSeit: (zeit) => daten.aufgaben.filter((a) => a.erledigt && a.erledigtAm >= zeit) }
+  // Für andere Teile von Jarves-OS (Wochen-Review, Kalender): Aufgaben anlegen, lesen, auf einen Tag legen, abhaken,
+  // im Bereich Aufgaben aufgeklappt zeigen; beiAenderung meldet jede Änderung (auch durch Luzzy)
+  window.__jarvesAufgaben = {
+    anlegen,
+    offen: () => sortiert(offen()),
+    erledigtSeit: (zeit) => daten.aufgaben.filter((a) => a.erledigt && a.erledigtAm >= zeit),
+    alle: () => daten.aufgaben.map((a) => ({ ...a })),
+    async datumSetzen(id, datum) {
+      const a = daten.aufgaben.find((x) => x.id === id)
+      if (!a) return false
+      a.datum = /^\d{4}-\d{2}-\d{2}$/.test(String(datum)) ? datum : ''
+      if (!a.datum) a.zeit = ''
+      await speichern()
+      return true
+    },
+    async erledigen(id, wert = true) {
+      const a = daten.aufgaben.find((x) => x.id === id)
+      if (!a) return false
+      a.erledigt = Boolean(wert)
+      a.erledigtAm = a.erledigt ? Date.now() : undefined
+      await speichern()
+      return true
+    },
+    zeigen(id) {
+      offenId = id
+      bearbeitenId = ''
+      ctx.oeffnen()
+      zeichnen({ auchBeimBearbeiten: true })
+      setTimeout(() => $(`[data-id="${id}"]`)?.scrollIntoView({ block: 'center' }), 60)
+    },
+    beiAenderung: (fn) => hoerer.add(fn)
+  }
   return { laden, takt: 30000 }
 }

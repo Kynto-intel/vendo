@@ -1,6 +1,9 @@
 // Kalender-Plugin für Jarves-OS.
 // Termine liegen in plugins/kalender/daten.json: { termine: [{ id, titel, datum, zeit, dauer, notiz, erinnerung }] }
 //   datum "JJJJ-MM-TT", zeit "HH:MM" oder "" (ganztägig), dauer in Minuten, erinnerung Minuten vorher (0 = keine)
+// Verbunden mit dem Aufgaben-Plugin (window.__jarvesAufgaben, falls eingeschaltet): offene Aufgaben mit Datum stehen
+// als „☐ …“ an ihrem Tag. Ziehen legt eine Aufgabe auf einen anderen Tag, Klick öffnet sie im Bereich Aufgaben.
+// In der Tagesliste: Aufgaben des Tages (abhaken, vom Tag nehmen) und Aufgaben ohne Tag (＋ legt sie auf den Tag).
 
 const WOCHENTAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const zwei = (n) => String(n).padStart(2, '0')
@@ -39,6 +42,10 @@ export async function starten(ctx) {
     // ohne Speicher: ausgeklappt
   }
   const erinnert = new Set() // in dieser Sitzung schon erinnert (zusätzlich zu daten.erinnert)
+  // Aufgaben-Plugin (falls eingeschaltet): offene Aufgaben für die Tage und die Tagesliste
+  const aufgabenApi = () => window.__jarvesAufgaben
+  const offeneAufgaben = () => (aufgabenApi()?.alle?.() || []).filter((a) => !a.erledigt)
+  let gezogen = '' // ID der Aufgabe, die gerade auf einen anderen Tag gezogen wird
 
   async function laden() {
     const d = await ctx.daten.laden()
@@ -129,17 +136,30 @@ export async function starten(ctx) {
     start.setDate(1 - versatz)
     const nachTag = {}
     for (const t of sortiert(daten.termine)) (nachTag[t.datum] ??= []).push(t)
+    const offene = offeneAufgaben()
+    const aufgabenNachTag = {}
+    for (const a of offene) if (a.datum) (aufgabenNachTag[a.datum] ??= []).push(a)
     const zellen = []
     for (let i = 0; i < 42; i++) {
       const d = new Date(start)
       d.setDate(start.getDate() + i)
       const text = tagText(d)
       const termine = nachTag[text] || []
+      const aufgaben = aufgabenNachTag[text] || []
+      // höchstens vier Zeilen je Tag (mit „+ weitere“): Termine zuerst, dann Aufgaben
+      const termineDa = termine.slice(0, aufgaben.length ? 2 : 3)
+      let aufgabenDa = aufgaben.slice(0, 4 - termineDa.length)
+      let rest = termine.length + aufgaben.length - termineDa.length - aufgabenDa.length
+      if (rest > 0 && termineDa.length + aufgabenDa.length === 4) {
+        aufgabenDa = aufgabenDa.slice(0, -1)
+        rest++
+      }
       zellen.push(`
         <div class="kal-tag${d.getMonth() !== monat.getMonth() ? ' fremd' : ''}${text === heute() ? ' heute' : ''}${tagGewaehlt === text ? ' gewaehlt' : ''}" data-tag="${text}">
           <div class="kal-nummer">${d.getDate()}</div>
-          ${termine.slice(0, 3).map((t) => `<button class="kal-termin" data-termin="${m(t.id)}" type="button" title="${m(t.titel)}">${t.zeit ? `<b>${m(t.zeit)}</b> ` : ''}${m(t.titel)}</button>`).join('')}
-          ${termine.length > 3 ? `<div class="kal-mehr">+${termine.length - 3} weitere</div>` : ''}
+          ${termineDa.map((t) => `<button class="kal-termin" data-termin="${m(t.id)}" type="button" title="${m(t.titel)}">${t.zeit ? `<b>${m(t.zeit)}</b> ` : ''}${m(t.titel)}</button>`).join('')}
+          ${aufgabenDa.map((a) => `<button class="kal-aufgabe" data-aufgabe="${m(a.id)}" draggable="true" type="button" title="Aufgabe: ${m(a.text)} · ziehen: auf einen anderen Tag legen · klicken: öffnen">☐ ${m(a.text)}</button>`).join('')}
+          ${rest > 0 ? `<div class="kal-mehr">+${rest} weitere</div>` : ''}
         </div>`)
     }
     $('[data-tage]').innerHTML = zellen.join('')
@@ -175,6 +195,16 @@ export async function starten(ctx) {
       if (schonVorbei) html += `<div class="leise klein">${schonVorbei === 1 ? 'Ein Termin' : `${schonVorbei} Termine`} heute schon vorbei.</div>`
       const danach = kommend.find((t) => t.datum > tag)
       if (!liste.length && danach) html += `<div class="kal-danach leise klein">Als Nächstes:</div>${eintrag(danach, true)}`
+      // Aufgaben dieses Tages und Aufgaben, die noch keinen Tag haben (＋ legt sie auf diesen Tag)
+      const aufgabeZeile = (a, mitTag) => `<div class="kal-aufgabe-zeile" data-aufgabe="${m(a.id)}" draggable="true" title="Ziehen: auf einen Tag im Monatsblatt legen">
+          <button class="kal-haken" data-ak="erledigt" type="button" title="Erledigt"></button>
+          <span class="kal-aufgabe-text" data-ak="oeffnen" role="button" tabindex="0" title="Klicken: im Bereich Aufgaben öffnen (Details)">${m(a.text)}${a.zeit ? ` <small>${m(a.zeit)} Uhr</small>` : ''}</span>
+          ${mitTag ? '<button class="knopf-mini" data-ak="ohne" type="button" title="Von diesem Tag nehmen (ohne Datum)">✕</button>' : `<button class="knopf-mini" data-ak="hierher" type="button" title="Auf ${m(datumLang(tag))} legen">＋</button>`}
+        </div>`
+      const amTagAufgaben = offene.filter((a) => a.datum === tag)
+      const ohneTag = offene.filter((a) => !a.datum)
+      if (amTagAufgaben.length) html += `<div class="kal-danach leise klein">Aufgaben an diesem Tag:</div>${amTagAufgaben.map((a) => aufgabeZeile(a, true)).join('')}`
+      if (ohneTag.length) html += `<div class="kal-danach leise klein">Aufgaben ohne Tag (＋ legt sie auf diesen Tag, oder auf einen Tag ziehen):</div>${ohneTag.map((a) => aufgabeZeile(a, false)).join('')}`
     }
     $('[data-kommend]').innerHTML = html
 
@@ -211,6 +241,19 @@ export async function starten(ctx) {
     if (k) zeichnen()
   })
   ctx.element.addEventListener('click', async (e) => {
+    // Aufgaben: in der Tagesliste abhaken, öffnen, auf den Tag legen, vom Tag nehmen; im Monatsblatt öffnen
+    const aufgabe = e.target.closest('[data-aufgabe]')
+    if (aufgabe) {
+      const api = aufgabenApi()
+      const id = aufgabe.dataset.aufgabe
+      const art = e.target.closest('[data-ak]')?.dataset.ak || (aufgabe.classList.contains('kal-aufgabe') ? 'oeffnen' : '')
+      if (!api || !art) return
+      if (art === 'erledigt') await api.erledigen(id, true)
+      if (art === 'hierher') await api.datumSetzen(id, listenTag())
+      if (art === 'ohne') await api.datumSetzen(id, '')
+      if (art === 'oeffnen') api.zeigen(id)
+      return
+    }
     const termin = e.target.closest('[data-termin]')
     if (termin) {
       formFuellen(daten.termine.find((t) => t.id === termin.dataset.termin))
@@ -241,6 +284,38 @@ export async function starten(ctx) {
         })
       }
     }
+  })
+  // Aufgabe auf einen anderen Tag ziehen (aus dem Monatsblatt oder aus der Tagesliste)
+  const zielWeg = () => ctx.element.querySelectorAll('.kal-tag.ziel').forEach((el) => el.classList.remove('ziel'))
+  ctx.element.addEventListener('dragstart', (e) => {
+    const el = e.target.closest?.('[data-aufgabe]')
+    if (!el) return
+    gezogen = el.dataset.aufgabe
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', el.textContent.trim())
+  })
+  ctx.element.addEventListener('dragover', (e) => {
+    const tag = gezogen && e.target.closest('[data-tag]')
+    if (!tag) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (!tag.classList.contains('ziel')) {
+      zielWeg()
+      tag.classList.add('ziel')
+    }
+  })
+  ctx.element.addEventListener('drop', async (e) => {
+    const tag = gezogen && e.target.closest('[data-tag]')
+    if (!tag) return
+    e.preventDefault()
+    const id = gezogen
+    gezogen = ''
+    zielWeg()
+    await aufgabenApi()?.datumSetzen(id, tag.dataset.tag)
+  })
+  ctx.element.addEventListener('dragend', () => {
+    gezogen = ''
+    zielWeg()
   })
   $('[data-suche-datum]').addEventListener('change', (e) => {
     const wert = e.target.value
@@ -326,6 +401,27 @@ export async function starten(ctx) {
 
   // Tagwechsel: Heute-Markierung und Karte aktualisieren
   setInterval(zeichnen, 5 * 60000)
+
+  // Aufgaben-Plugin: neu zeichnen, sobald sich Aufgaben ändern (das Plugin startet evtl. erst nach dem Kalender)
+  const aufgabenUhr = setInterval(() => {
+    if (!aufgabenApi()?.beiAenderung) return
+    clearInterval(aufgabenUhr)
+    aufgabenApi().beiAenderung(() => !gezogen && zeichnen())
+    zeichnen()
+  }, 1000)
+  // Für den Bereich Aufgaben („Im Kalender zeigen“): diesen Tag wählen und den Kalender öffnen
+  window.__jarvesKalender = {
+    zeigen(datum) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(datum))) return
+      const [j, mo] = datum.split('-').map(Number)
+      monat = new Date(j, mo - 1, 1)
+      tagGewaehlt = datum === heute() ? null : datum
+      suche = ''
+      formVerbergen()
+      ctx.oeffnen()
+      zeichnen()
+    }
+  }
 
   await laden()
   return { laden, takt: 60000 }
