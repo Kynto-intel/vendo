@@ -133,15 +133,15 @@ export async function bibliothekLaden() {
     .join('')
   const el = $('bibliothek-liste')
   if (!ordner.length) return (el.innerHTML = '<div class="leer-hinweis">Noch kein Ordner gewählt. Klick oben auf „+ Ordner wählen“ und such dir einen Ordner auf deinem PC aus. Er bleibt gespeichert.</div>')
-  // Jeder Unterordner ist eine eigene Gruppe (auch verschachtelt); Dateien direkt im gewählten Ordner stehen in einer
-  // Gruppe mit dessen Namen. Bei mehreren gewählten Ordnern steht über jedem sein Name.
+  // Wie im Explorer: jeder Unterordner ist eine eigene Gruppe (auch verschachtelt), Dateien direkt im gewählten Ordner
+  // stehen einzeln darunter, ohne Gruppe. Bei mehreren gewählten Ordnern steht über jedem sein Name.
   const mitInhalt = quellen.filter((q) => q.dokumente.length)
   el.innerHTML = mitInhalt
     .map((q) => {
       const baum = baumBauen(q.dokumente)
-      const direkt = baum.dokumente.length ? gruppeHtml(q.name, { ordner: new Map(), dokumente: baum.dokumente }, q.id) : ''
       const unter = ordnerSortiert(baum).map(([name, knoten]) => gruppeHtml(name, knoten, `${q.id}\\${name}`)).join('')
-      return `${mitInhalt.length > 1 ? `<div class="bib-kopf" title="${maskieren(q.ordner)}">📁 ${maskieren(q.name)}</div>` : ''}${direkt}${unter}`
+      const direkt = baum.dokumente.map(eintragHtml).join('')
+      return `${mitInhalt.length > 1 ? `<div class="bib-kopf" title="${maskieren(q.ordner)}">📁 ${maskieren(q.name)}</div>` : ''}${unter}${direkt}`
     })
     .join('') || '<div class="leise">In den gewählten Ordnern liegen keine Texte (Markdown, Text, HTML).</div>'
 }
@@ -161,6 +161,12 @@ function baumBauen(dokumente) {
 }
 const ordnerSortiert = (knoten) => [...knoten.ordner].sort((a, b) => a[0].localeCompare(b[0], 'de', { numeric: true }))
 const anzahlIn = (knoten) => knoten.dokumente.length + [...knoten.ordner.values()].reduce((summe, u) => summe + anzahlIn(u), 0)
+// Ein Dokument in der Liste
+const eintragHtml = (d) => `
+            <button class="eintrag" data-pfad="${maskieren(d.pfad)}" type="button" title="${maskieren(d.pfad)}">
+              <span class="eintrag-titel">${maskieren(d.name.replace(/\.(md|html?|txt)$/i, ''))}</span>
+              <span class="eintrag-info">${vorWann(d.geaendert)} · ${kb(d.groesse)}</span>
+            </button>`
 // Eine Gruppe: erst ihre Unterordner (wieder Gruppen), dann ihre Dokumente (neueste zuerst)
 function gruppeHtml(name, knoten, id) {
   return `
@@ -168,15 +174,7 @@ function gruppeHtml(name, knoten, id) {
         <button class="gruppe-kopf" type="button">${maskieren(name)} <span>${anzahlIn(knoten)}</span></button>
         <div class="gruppe-inhalt">
           ${ordnerSortiert(knoten).map(([unterName, unter]) => gruppeHtml(unterName, unter, `${id}\\${unterName}`)).join('')}
-          ${knoten.dokumente
-            .map(
-              (d) => `
-            <button class="eintrag" data-pfad="${maskieren(d.pfad)}" type="button" title="${maskieren(d.pfad)}">
-              <span class="eintrag-titel">${maskieren(d.name.replace(/\.(md|html?|txt)$/i, ''))}</span>
-              <span class="eintrag-info">${vorWann(d.geaendert)} · ${kb(d.groesse)}</span>
-            </button>`
-            )
-            .join('')}
+          ${knoten.dokumente.map(eintragHtml).join('')}
         </div>
       </div>`
 }
