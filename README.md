@@ -5,7 +5,7 @@
 > [!WARNING]
 > **Experimental project: Vendo is still under active development and is not a mature, stable, or production-ready application.** Features may be incomplete, unreliable, or change without notice. Expect bugs, rough edges, and breaking changes. Do not depend on Vendo for critical work or irreversible actions. Back up important data and verify what the app or an AI agent is doing.
 
-Vendo is a small personal project built for one Windows desktop setup. It brings a voice-first assistant, Hermes Agent conversations, local desktop tools, and personal workflows into one application. Hermes remains the AI and tool layer; Vendo provides the desktop interface and integrates selected capabilities. Some names, profiles, paths, and integrations may need adaptation for other setups.
+Vendo is a personal project built for the author's own Windows desktop setup, not a general-purpose product. It brings a voice-first assistant, Hermes Agent conversations, local desktop tools, and personal workflows into one application. Hermes remains the AI and tool layer; Vendo provides the desktop interface and integrates selected capabilities. Some names, profiles, paths, and integrations may need adaptation, and support or compatibility outside this setup is not guaranteed.
 
 The detailed user guide is currently in German: [README.md](README.md).
 
