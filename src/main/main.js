@@ -1,4 +1,4 @@
-// Jarves-OS Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
+// Vendo Hauptprozess: Fenster, Hermes-Verbindung, Stimme, System-Werte.
 
 const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard, protocol, dialog } = require('electron')
 
@@ -76,7 +76,7 @@ function fensterErstellen() {
     minWidth: 720, // klein genug fürs Andocken an die Bildschirmhälfte (Full HD: 960 px)
     minHeight: 560,
     backgroundColor: '#0E0E10',
-    title: 'Jarves-OS',
+    title: 'Vendo',
     autoHideMenuBar: true,
     show: false,
     // Keine Titelleiste; Windows zeichnet nur die drei Fensterknöpfe, in der Farbe der rechten Spalte
@@ -356,8 +356,8 @@ ipcMain.handle('gespraeche:entfernen', (_e, name) => {
   return gespraecheFuerOberflaeche()
 })
 
-// Nur lesende Abfragen an diese Hermes-Bereiche (Jobs, Crew, Kosten, Kanban, Modell-Liste, Status)
-const LESEN_ERLAUBT = [/^\/api\/cron\/jobs/, /^\/api\/profiles/, /^\/api\/analytics\//, /^\/api\/plugins\/kanban\//, /^\/api\/model\/options/, /^\/api\/status$/, /^\/api\/sessions/]
+// Nur lesende Abfragen an diese Hermes-Bereiche (Jobs, Crew, Kosten, Modell-Liste, Status)
+const LESEN_ERLAUBT = [/^\/api\/cron\/jobs/, /^\/api\/profiles/, /^\/api\/analytics\//, /^\/api\/model\/options/, /^\/api\/status$/, /^\/api\/sessions/]
 ipcMain.handle('hermes:lesen', (_e, pfad) => {
   if (typeof pfad !== 'string' || !LESEN_ERLAUBT.some((m) => m.test(pfad))) throw new Error('Abfrage nicht erlaubt.')
   return hermes.rest(pfad)
@@ -456,7 +456,7 @@ ipcMain.handle('datei:pfad', (_e, pfad) => dateisuche.pfadTreffer(String(pfad ||
 ipcMain.handle('datei:mitProgramm', async (_e, id) => {
   const voll = dateisuche.pfadVon(id)
   // Programme und Skripte startet Jarves-OS nie von selbst, auch nicht auf Knopfdruck
-  if (dateisuche.istProgramm(voll)) throw new Error('Programme und Skripte startet Jarves-OS nicht. Nimm „Im Ordner zeigen“.')
+  if (dateisuche.istProgramm(voll)) throw new Error('Programme und Skripte startet Vendo nicht. Nimm „Im Ordner zeigen“.')
   const fehler = await shell.openPath(voll)
   if (fehler) throw new Error(fehler)
 })
@@ -497,7 +497,7 @@ ipcMain.handle('zwischenablage:lesen', () => clipboard.readText().slice(0, 15000
 // Schneller starten: Desktop-Verknüpfung und Autostart mit Windows (der Start per Terminal bleibt)
 // Beides startet Electron direkt mit dem Projektordner, ohne Terminal-Fenster.
 const APP_ORDNER = path.join(__dirname, '..', '..')
-const VERKNUEPFUNG = () => path.join(app.getPath('desktop'), 'Jarves-OS.lnk')
+const VERKNUEPFUNG = () => path.join(app.getPath('desktop'), 'Vendo.lnk')
 const autostartOptionen = () => ({ path: process.execPath, args: [APP_ORDNER] })
 ipcMain.handle('start:stand', () => ({
   windows: process.platform === 'win32',
@@ -510,7 +510,7 @@ ipcMain.handle('start:verknuepfung', () => {
     target: process.execPath,
     args: `"${APP_ORDNER}"`,
     cwd: APP_ORDNER,
-    description: 'Jarves-OS: Luzzy und die Donnerwolf-Kommandozentrale'
+    description: 'Vendo: Luzzy und die Donnerwolf-Kommandozentrale'
   })
   if (!ok) throw new Error('Verknüpfung konnte nicht angelegt werden.')
   return VERKNUEPFUNG()
@@ -628,7 +628,7 @@ ipcMain.handle('vault:antwortMerken', async (_e, antwort, frage) => {
   // Titel: erster Satz der Antwort, ohne Markdown-Zeichen
   const erster = antwort.replace(/[#*_`>\[\]]/g, '').split(/(?<=[.!?])\s|\n/).map((s) => s.trim()).find(Boolean) || 'Antwort'
   const titel = `${datum} ${erster.slice(0, 60).replace(/[.!?:,;\s]+$/, '')}`
-  const inhalt = `---\ndatum: ${datum} ${zwei(jetzt.getHours())}:${zwei(jetzt.getMinutes())}\nquelle: Luzzy (Jarves-OS)\ntags: [gemerkt]\n---\n\n${frage ? `**Frage:** ${frage}\n\n---\n\n` : ''}${antwort}\n`
+  const inhalt = `---\ndatum: ${datum} ${zwei(jetzt.getHours())}:${zwei(jetzt.getMinutes())}\nquelle: Luzzy (Vendo)\ntags: [gemerkt]\n---\n\n${frage ? `**Frage:** ${frage}\n\n---\n\n` : ''}${antwort}\n`
   return vaultSchreiben.anlegen('Gemerkte Antworten', titel, inhalt)
 })
 
@@ -887,7 +887,7 @@ app.whenReady().then(() => {
   // Eine der beiden reicht: nur warnen, wenn keine frei ist (Strg+Umschalt+M belegt z. B. Microsoft Teams)
   const miniTaste1 = globalShortcut.register('Control+Shift+M', miniUmschalten)
   const miniTaste2 = globalShortcut.register('Control+Alt+L', miniUmschalten)
-  if (!miniTaste1 && !miniTaste2) console.warn('Mini-Modus: Strg+Umschalt+M und AltGr+L sind beide von anderen Programmen belegt. Der Mini-Knopf in Jarves-OS geht weiter.')
+  if (!miniTaste1 && !miniTaste2) console.warn('Mini-Modus: Strg+Umschalt+M und AltGr+L sind beide von anderen Programmen belegt. Der Mini-Knopf in Vendo geht weiter.')
   hermes.neuVerbinden()
   bildschirmfotoFuerTest()
   skriptFuerTest()

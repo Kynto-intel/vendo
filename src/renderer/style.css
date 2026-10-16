@@ -284,16 +284,6 @@ body { user-select: none; }
 .job-auftrag { margin: 0; font-size: 12px; color: var(--text-leise); line-height: 1.5; }
 .job-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 
-/* Kanban */
-.kanban-tafel { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr); gap: 10px; overflow-x: auto; flex: 1; min-height: 300px; padding-bottom: 6px; }
-.spalte { background: var(--tief); border: 1px solid var(--linie); display: flex; flex-direction: column; min-height: 0; }
-.spalte h3 { margin: 0; padding: 10px 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-leise); border-bottom: 1px solid var(--linie); display: flex; justify-content: space-between; }
-.spalte h3 span { color: var(--gold); }
-.spalte-inhalt { padding: 8px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
-.spalte-leer { color: var(--gedimmt); text-align: center; padding: 10px 0; }
-.aufgabe { background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold); padding: 8px 10px; }
-.aufgabe-titel { font-size: 12px; line-height: 1.4; }
-.aufgabe-info { font-family: var(--mono); font-size: 10px; color: var(--text-leise); margin-top: 4px; }
 
 /* System */
 .system-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
@@ -810,8 +800,7 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
 .palette-liste li, .eintrag, .rt-karte { border-radius: var(--radius); }
 
 /* Listen und Tabellen */
-.spalte, .liste-spalte, .leser { background-color: var(--leiste); border-color: var(--rahmen); }
-.aufgabe { border-radius: var(--radius); }
+.liste-spalte, .leser { background-color: var(--leiste); border-color: var(--rahmen); }
 
 /* Einstellungen mit Tabs */
 .dialog.einstellungen { width: min(900px, 94vw); height: min(680px, 90vh); max-height: 90vh; padding: 0; }
@@ -899,7 +888,7 @@ input[type='checkbox'], input[type='range'] { accent-color: var(--gold); }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 2px 6px rgba(0, 0, 0, 0.35), 0 14px 34px -14px rgba(0, 0, 0, 0.9);
 }
 .dialog { border-radius: 12px; overflow: hidden; }
-.kal-tag, .kal-termin, .spalte, .rt-karte, .af-aufgabe, .gd-notiz, .wt-treffer-knopf, .tk-balken, .ms-balken, .fk-balken, .balken { border-radius: var(--radius); }
+.kal-tag, .kal-termin, .rt-karte, .af-aufgabe, .gd-notiz, .wt-treffer-knopf, .tk-balken, .ms-balken, .fk-balken, .balken { border-radius: var(--radius); }
 .einstellungen fieldset, .einstellungen .karten-liste li { border-radius: 8px; }
 .leer-hinweis { border-radius: var(--radius-karte); }
 .msg.felix .msg-text { border-radius: 10px 10px 2px 10px; }
@@ -1499,6 +1488,135 @@ body.datei-drueber .datei-ablage { display: grid; }
 .bp-editor:focus { border-color: var(--gold); }
 .bp-fehler { font-size: 12.5px; }
 .bp-hinweis { font-size: 11px; }
+
+/* Werkstatt: eine neu angeordnete Instrumentplatte statt bloß einer anderen Farbpalette. */
+:root[data-design='werkstatt'] .ansicht-zentrale.mit-cockpit {
+  padding: 58px clamp(18px, 3vw, 42px) 0;
+  gap: 18px;
+  background:
+    radial-gradient(ellipse 76% 48% at 52% 22%, rgba(var(--akzent-rgb), 0.08), transparent 72%),
+    linear-gradient(rgba(190, 207, 210, 0.018) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(190, 207, 210, 0.018) 1px, transparent 1px) 0 0 / 42px 42px,
+    var(--hintergrund);
+}
+:root[data-design='werkstatt'] .ansicht-zentrale.mit-cockpit::before {
+  content: 'WERKSTATT  /  SYSTEMPLATTE  01';
+  position: absolute;
+  top: 42px;
+  left: clamp(18px, 3vw, 42px);
+  z-index: 1;
+  color: var(--text-leise);
+  font: 9px var(--mono);
+  letter-spacing: 0.18em;
+}
+:root[data-design='werkstatt'] .cockpit { gap: 16px; }
+:root[data-design='werkstatt'] .ck-instrumente {
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+  grid-template-areas: 'links mitte' 'rechts mitte' 'leiste leiste';
+  gap: 10px 14px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--rahmen) 72%, #a2afb1);
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(116deg, rgba(205, 218, 220, 0.018) 0 1px, transparent 1px 8px),
+    linear-gradient(145deg, #222a2d, #101517 58%, #0a0e10);
+  box-shadow: inset 0 1px 0 rgba(235, 243, 244, 0.08), 0 18px 34px -22px #000;
+}
+:root[data-design='werkstatt'] .ck-fluegel,
+:root[data-design='werkstatt'] .ck-fluegel.rechts {
+  align-items: flex-start;
+  padding: 12px 16px;
+  text-align: left;
+  clip-path: none;
+  border: 1px solid var(--rahmen);
+  border-left: 3px solid var(--gold-dunkel);
+  border-radius: 3px;
+  background: linear-gradient(110deg, rgba(var(--akzent-rgb), 0.09), rgba(17, 23, 26, 0.72) 54%);
+}
+:root[data-design='werkstatt'] .ck-gross { font-size: 34px; font-weight: 350; }
+:root[data-design='werkstatt'] .ck-linie { width: min(220px, 100%); height: 26px; }
+:root[data-design='werkstatt'] .ck-mitte {
+  min-height: 218px;
+  aspect-ratio: auto;
+  border: 1px solid var(--rahmen);
+  border-radius: 4px;
+  background: radial-gradient(circle, rgba(var(--akzent-rgb), 0.11), rgba(8, 12, 14, 0.92) 68%);
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(229, 240, 242, 0.07);
+}
+:root[data-design='werkstatt'] .ck-kreis { inset: 4%; width: 92%; height: 92%; }
+:root[data-design='werkstatt'] .ck-zahl { font-size: 48px; font-weight: 350; }
+:root[data-design='werkstatt'] .ck-status { border-radius: 3px; background: rgba(5, 9, 10, 0.82); }
+:root[data-design='werkstatt'] .ck-leiste {
+  border-radius: 3px;
+  background: rgba(5, 9, 10, 0.72);
+  box-shadow: inset 0 1px 0 rgba(235, 243, 244, 0.045);
+}
+:root[data-design='werkstatt'] .ck-orchester {
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--rahmen) 72%, #a2afb1);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(35, 44, 47, 0.92), rgba(13, 18, 20, 0.96));
+  box-shadow: inset 0 1px 0 rgba(235, 243, 244, 0.06), 0 12px 25px -20px #000;
+}
+:root[data-design='werkstatt'] .ck-bot {
+  border-radius: 3px;
+  background: linear-gradient(150deg, rgba(var(--akzent-rgb), 0.07), rgba(11, 16, 18, 0.96) 58%);
+}
+:root[data-design='werkstatt'] .ck-avatar { border-radius: 4px; }
+:root[data-design='werkstatt'] .ansicht-zentrale.mit-cockpit .befehl {
+  border-color: var(--gold-dunkel);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #1d2528, #111719);
+  box-shadow: 0 -16px 30px 6px var(--hintergrund), inset 0 1px 0 rgba(235, 243, 244, 0.07);
+}
+@container mitte (max-width: 760px) {
+  :root[data-design='werkstatt'] .ck-instrumente {
+    grid-template-columns: minmax(0, 1fr) minmax(138px, 0.8fr);
+  }
+  :root[data-design='werkstatt'] .ck-mitte { min-height: 190px; }
+}
+
+/* Nachtleitstand: kühles Stahllicht, Glasflächen und ein zurückhaltendes Messraster. */
+:root[data-design='nachtleitstand'] .mitte {
+  background:
+    radial-gradient(ellipse 76% 54% at 50% 18%, rgba(var(--akzent-rgb), 0.075), transparent 72%),
+    var(--hintergrund);
+}
+:root[data-design='nachtleitstand'] body.anim-hintergrund .mitte {
+  background:
+    radial-gradient(ellipse 76% 54% at 50% 18%, rgba(var(--akzent-rgb), 0.09), transparent 72%),
+    linear-gradient(rgba(var(--akzent-rgb), 0.025) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(var(--akzent-rgb), 0.025) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--hintergrund);
+}
+:root[data-design='nachtleitstand'] .hud {
+  border-color: color-mix(in srgb, var(--rahmen) 78%, #8ba1a8);
+  background-image:
+    linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)),
+    linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)),
+    linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)),
+    linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)),
+    linear-gradient(145deg, rgba(186, 215, 222, 0.045), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 42%);
+  background-size: 10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px, 100% 100%, 100% 100%;
+  background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%, 0 0, 0 0;
+  box-shadow: inset 0 1px 0 rgba(214, 237, 242, 0.055), 0 14px 30px -20px rgba(0, 0, 0, 0.95);
+}
+:root[data-design='nachtleitstand'] .leiste,
+:root[data-design='nachtleitstand'] .live {
+  background-image: linear-gradient(180deg, rgba(168, 198, 205, 0.035), transparent 150px);
+}
+:root[data-design='nachtleitstand'] .ck-instrumente {
+  background:
+    radial-gradient(ellipse 62% 92% at 50% 42%, rgba(var(--akzent-rgb), 0.11), transparent 72%),
+    repeating-linear-gradient(0deg, rgba(190, 217, 222, 0.018) 0 1px, transparent 1px 4px),
+    linear-gradient(145deg, #172126, #0b1114 72%);
+}
+:root[data-design='nachtleitstand'] .ck-fluegel,
+:root[data-design='nachtleitstand'] .ck-bot {
+  backdrop-filter: blur(8px);
+  border-color: color-mix(in srgb, var(--rahmen) 76%, #71868c);
+}
 .crew-neu-laden { flex: none; }
 
 /* rechte Spalte: Bot-Liste */

@@ -1,4 +1,4 @@
-// Jarves-OS Oberfläche: Luzzy in der Mitte, Gespräch, Live-Spalte, Einstellungen.
+// Vendo-Oberfläche: Luzzy in der Mitte, Gespräch, Live-Spalte, Einstellungen.
 
 import { reaktorErstellen, welleErstellen } from './reaktor.js'
 import { markdownZuHtml } from './markdown.js'
@@ -300,7 +300,7 @@ function weiterZuhoeren() {
 // (angezeigt beim Mikrofon oben, in den Einstellungen → Sprechen und im Selbsttest).
 const wakeHinweis = () =>
   wakeGrund === 'disabled'
-    ? '„Hey Luzzy“ ist in Hermes aus. Meist, weil die Hermes-App offen war und Jarves-OS an ihr Hermes angedockt hat (anderes Profil). Hermes-App schließen und Jarves-OS neu starten.'
+    ? '„Hey Luzzy“ ist in Hermes aus. Meist, weil die Hermes-App offen war und Vendo an ihr Hermes angedockt hat (anderes Profil). Hermes-App schließen und Vendo neu starten.'
     : `„Hey Luzzy“ hört gerade nicht zu (${wakeGrund}).`
 async function wakeEinrichten() {
   const soll = Boolean(einstellungen?.sprache?.aktivierungswort) && freihaendig() && verbunden
@@ -926,7 +926,7 @@ async function abschicken(feld, { gesprochen = false } = {}) {
   if (mitgeliefert) {
     const jetzt = new Date()
     const stand = `${jetzt.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
-    return anLuzzy(`${text}\n\n[Von Jarves-OS mitgeschickt, Stand ${stand}. Nutze diese Daten direkt statt zu suchen:]\n${mitgeliefert}`, { anzeige: text, gesprochen })
+    return anLuzzy(`${text}\n\n[Von Vendo mitgeschickt, Stand ${stand}. Nutze diese Daten direkt statt zu suchen:]\n${mitgeliefert}`, { anzeige: text, gesprochen })
   }
   return anLuzzy(text, { gesprochen })
 }

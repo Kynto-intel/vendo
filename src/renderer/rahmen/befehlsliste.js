@@ -141,12 +141,12 @@ function paletteBefehle() {
     { name: 'Zwischenablage an Luzzy', gruppe: 'Luzzy', stichwoerter: 'kopiert strg+umschalt+l zusammenfassen übersetzen verbessern', ausfuehren: () => ablageOeffnen() },
     { name: 'Selbsttest', gruppe: 'System', stichwoerter: 'prüfen check test fehler', ausfuehren: () => h.selbsttest() },
     {
-      name: 'Jarves-OS sichern', gruppe: 'System', stichwoerter: 'backup sicherung',
+      name: 'Vendo sichern', gruppe: 'System', stichwoerter: 'backup sicherung',
       ausfuehren: async () => {
-        bescheid('Sichere Jarves-OS …')
+        bescheid('Sichere Vendo …')
         try {
           await api.sicherung.anlegen()
-          bescheid('Jarves-OS ist gesichert.')
+          bescheid('Vendo ist gesichert.')
         } catch (e) {
           bescheid(`Sicherung fehlgeschlagen: ${e.message}`)
         }

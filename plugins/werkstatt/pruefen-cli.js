@@ -1,5 +1,5 @@
 // Prüfprogramm der Werkstatt für Luzzy: dieselbe Prüfung wie in Jarves-OS, als Text im Terminal.
-//   node "C:\Users\Felix\Desktop\jarves-os\jarves-os\plugins\werkstatt\pruefen-cli.js" <plugin-id>
+//   node "C:\Users\Felix\Desktop\Vendo\Vendo\plugins\werkstatt\pruefen-cli.js" <plugin-id>
 // Prüft Aufbau, Syntax und Rechte, startet den Hintergrundteil (haupt.js) probeweise in einem eigenen Prozess
 // (Hänger nach 10 s) und zeigt den letzten Testlauf von Felix (.testbericht.json). Ändert nichts.
 // Endet mit Code 0, wenn es keine Fehler gibt, sonst 1.

@@ -121,7 +121,7 @@ function ordnerPfad(name) {
   }
   const ORDNER = { desktop: 'desktop', downloads: 'downloads', download: 'downloads', dokumente: 'documents', bilder: 'pictures', fotos: 'pictures', musik: 'music', videos: 'videos' }
   if (n === 'donnerwolf') return WURZEL
-  if (n === 'jarves' || n === 'jarves os') return path.join(__dirname, '..', '..')
+  if (n === 'vendo' || n === 'jarves' || n === 'jarves os') return path.join(__dirname, '..', '..')
   return ORDNER[n] ? pfad(ORDNER[n]) : null
 }
 

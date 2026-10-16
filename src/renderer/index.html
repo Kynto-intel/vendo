@@ -6,7 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: jarves-datei:; media-src 'self' blob: jarves-datei:; frame-src jarves-datei:; connect-src 'self'"
     />
-    <title>Jarves-OS</title>
+    <title>Vendo</title>
     <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -16,7 +16,7 @@
     <div class="intro" id="intro">
       <div class="intro-mitte">
         <div class="intro-reaktor"><div class="intro-ring r1"></div><div class="intro-ring r2"></div><div class="intro-ring r3"></div><div class="intro-kern"></div></div>
-        <div class="intro-titel">JARVES-OS</div>
+        <div class="intro-titel">VENDO</div>
         <div class="intro-unter">Donnerwolf · Kommandozentrale</div>
         <div class="intro-log" id="intro-log"></div>
         <div class="intro-status">Alle Systeme bereit</div>
@@ -29,7 +29,7 @@
       <!-- Links: Bereiche -->
       <aside class="leiste">
         <div class="zug marke">
-          <button class="marke-knopf" id="links-umschalten" type="button" title="Leiste einklappen (Strg+B)"><span class="marke-zeichen">ᛃ</span><span class="marke-name">JARVES<span>-OS</span></span></button>
+          <button class="marke-knopf" id="links-umschalten" type="button" title="Leiste einklappen (Strg+B)"><span class="marke-zeichen">V</span><span class="marke-name">VENDO</span></button>
         </div>
         <nav class="bereiche" id="bereiche"></nav>
         <div class="leiste-fuss">
@@ -136,26 +136,13 @@
           </div>
         </section>
 
-        <!-- Jobs: geplante Hermes-Jobs -->
+        <!-- Cron-Jobs: geplante Hermes-Aufträge -->
         <section class="ansicht ansicht-seite" data-ansicht="jobs" hidden>
           <header class="seiten-kopf">
-            <div><h2>Jobs <span class="leise klein" id="jobs-anzahl"></span></h2><p class="leise">Geplante Aufgaben aller Agenten. Neue Jobs legst du einfach bei Luzzy an.</p></div>
+            <div><h2>Cron-Jobs <span class="leise klein" id="jobs-anzahl"></span></h2><p class="leise">Geplante Aufgaben aller Agenten. Neue Cron-Jobs legst du einfach bei Luzzy an.</p></div>
             <button class="knopf-flach" data-neu-laden="jobs" type="button">Aktualisieren</button>
           </header>
           <div class="jobs-raster" id="jobs-liste"><div class="leise">Lade …</div></div>
-        </section>
-
-        <!-- Kanban -->
-        <section class="ansicht ansicht-seite" data-ansicht="kanban" hidden>
-          <header class="seiten-kopf">
-            <div><h2>Kanban <span class="leise klein" id="kanban-anzahl"></span></h2><p class="leise">Aufgaben der Agenten mit Status.</p></div>
-            <div class="seiten-knoepfe">
-              <select id="kanban-auswahl" class="auswahl"></select>
-              <button class="knopf-flach" data-neu-laden="kanban" type="button">Aktualisieren</button>
-            </div>
-          </header>
-          <div class="leer-hinweis" id="kanban-hinweis" hidden>Die Tafel ist leer. Wenn Luzzy oder die Bots größere Aufgaben in Hermes' Kanban anlegen, erscheinen sie hier.</div>
-          <div class="kanban-tafel" id="kanban-tafel"></div>
         </section>
 
         <!-- Bibliothek: Texte aus Ordnern, die Felix selbst wählt (gespeichert in den Einstellungen) -->
@@ -242,7 +229,7 @@
                   <input id="shopify-token-feld" type="password" placeholder="shpat_…" spellcheck="false" autocomplete="off" />
                   <button class="knopf-gold" type="submit">Prüfen &amp; eintragen</button>
                 </div>
-                <div class="leise klein" id="shopify-token-hinweis">Jarves-OS prüft den Token bei Shopify und trägt ihn dann überall in Hermes ein (Hermes und alle Bots, config.yaml und .env). Vorher wird jede Datei gesichert.</div>
+                <div class="leise klein" id="shopify-token-hinweis">Vendo prüft den Token bei Shopify und trägt ihn dann überall in Hermes ein (Hermes und alle Bots, config.yaml und .env). Vorher wird jede Datei gesichert.</div>
               </form>
             </section>
             <section class="karte hud"><h3>PC</h3><div id="system-pc"><div class="leise">Lade …</div></div></section>
@@ -479,7 +466,7 @@
           <label class="haken"><input id="e-unterbrechen" type="checkbox" /> Luzzy unterbrechen: einfach reinreden oder „Hey Luzzy“ sagen, während sie spricht</label>
           <label class="haken" title="Solange Musik oder ein Video läuft: kein Reinreden und kein Weiter-Zuhören; bei „Hey Luzzy“ pausiert die Musik kurz und läuft danach weiter"><input id="e-musik" type="checkbox" /> Musik erkennen: Musik zählt nicht als Sprache (bei „Hey Luzzy“ pausiert sie kurz)</label>
             <div class="leise" id="e-mikrofon-status">Mikrofon: wird geprüft …</div>
-            <div class="leise">Sprechen: Mikrofon-Knopf oder <b>Strg+Leertaste</b> (geht auch, wenn Jarves-OS im Hintergrund ist).</div>
+            <div class="leise">Sprechen: Mikrofon-Knopf oder <b>Strg+Leertaste</b> (geht auch, wenn Vendo im Hintergrund ist).</div>
           </fieldset>
         </section>
         <section class="e-seite" data-e-seite="meldungen" hidden>
@@ -503,7 +490,7 @@
           </fieldset>
         </section>
         <section class="e-seite" data-e-seite="aussehen" hidden>
-          <div class="e-seite-kopf"><h3>Aussehen</h3><p class="leise">Design, Animationen und der Start von Jarves-OS.</p></div>
+          <div class="e-seite-kopf"><h3>Aussehen</h3><p class="leise">Design, Animationen und der Start von Vendo.</p></div>
           <fieldset class="design-wahl" id="e-design">
             <legend>Design</legend>
             <div class="dw-titel">Farbdesign</div>
@@ -542,14 +529,14 @@
           </fieldset>
         </section>
         <section class="e-seite" data-e-seite="start" hidden>
-          <div class="e-seite-kopf"><h3>Start & Sicherung</h3><p class="leise">Schneller starten und Jarves-OS sichern.</p></div>
+          <div class="e-seite-kopf"><h3>Start & Sicherung</h3><p class="leise">Vendo schneller starten und sichern.</p></div>
           <fieldset>
             <legend>Starten</legend>
             <div class="sicherung-knoepfe">
               <button class="knopf-flach" id="e-verknuepfung" type="button">Verknüpfung auf dem Desktop anlegen</button>
             </div>
             <label class="haken"><input id="e-autostart" type="checkbox" /> Mit Windows starten</label>
-            <div class="leise" id="e-start-stand">Doppelklick auf „Jarves-OS“ auf dem Desktop startet ohne Terminal. <code>npm start</code> geht weiterhin.</div>
+            <div class="leise" id="e-start-stand">Doppelklick auf „Vendo“ auf dem Desktop startet ohne Terminal. <code>npm start</code> geht weiterhin.</div>
           </fieldset>
           <fieldset>
             <legend>Sicherung</legend>
@@ -558,7 +545,7 @@
               <button class="knopf-flach" id="e-sicherung-ordner" type="button">Ordner öffnen</button>
             </div>
             <div class="leise" id="e-sicherung-stand">…</div>
-            <div class="leise">Kopie von Jarves-OS samt Einstellungen und Plugin-Daten (ohne node_modules) nach <code>Desktop\jarves-os\backup</code>. Am besten vor jedem Update.</div>
+            <div class="leise">Kopie von Vendo samt Einstellungen und Plugin-Daten (ohne node_modules) nach <code>Desktop\jarves-os\backup</code>. Am besten vor jedem Update.</div>
           </fieldset>
         </section>
         </div>

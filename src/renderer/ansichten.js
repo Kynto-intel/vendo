@@ -1,4 +1,4 @@
-// Bereiche der Zentrale: Crew, Jobs, Kanban, System. Alle Daten kommen live aus Hermes.
+// Bereiche der Zentrale: Crew, Jobs, System. Alle Daten kommen live aus Hermes.
 
 import { bestaetigen, hinweis } from './fenster.js'
 import { kostenKarteLaden } from './kosten.js' // Kosten-Wächter im System-Tab
@@ -60,13 +60,11 @@ function fehlerKarte(el, text) {
 
 // ── Crew ──
 // Modell-Liste aus Hermes (GET /api/model/options, dieselbe Liste wie in der Hermes-App): nur Anbieter, für die
-// das Profil einen Zugang hat. Ältere Hermes-Versionen: Liste aus dem Kanban-Plugin.
+// das Profil einen Zugang hat.
 const modellListen = new Map() // profil → [{ slug, name, models: [id] }]
 async function modelleLaden(profil, { neu = false } = {}) {
   if (!neu && modellListen.get(profil)?.length) return modellListen.get(profil)
-  const antwort =
-    (await lesen(`/api/model/options?profile=${encodeURIComponent(profil)}${neu ? '&refresh=1' : ''}`)) ||
-    (await lesen('/api/plugins/kanban/model-options'))
+  const antwort = await lesen(`/api/model/options?profile=${encodeURIComponent(profil)}${neu ? '&refresh=1' : ''}`)
   const liste = (antwort?.providers || [])
     .map((a) => ({
       slug: String(a.slug || ''),
@@ -264,9 +262,9 @@ export async function jobsLaden() {
   // Doppelte (derselbe Job über mehrere Profile gemeldet) entfernen
   const gesehen = new Set()
   const jobs = listen.flat().filter((j) => (gesehen.has(j.id) ? false : gesehen.add(j.id)))
-  $('jobs-anzahl').textContent = jobs.length ? `${jobs.length} ${jobs.length === 1 ? 'Job' : 'Jobs'}` : ''
+  $('jobs-anzahl').textContent = jobs.length ? `${jobs.length} ${jobs.length === 1 ? 'Cron-Job' : 'Cron-Jobs'}` : ''
   if (!jobs.length) {
-    return fehlerKarte(el, 'Noch keine geplanten Jobs. Sag Luzzy zum Beispiel: „Schick mir jeden Morgen um 8 den Morgenbericht.“ Der Job erscheint dann hier.')
+    return fehlerKarte(el, 'Noch keine geplanten Cron-Jobs. Sag Luzzy zum Beispiel: „Schick mir jeden Morgen um 8 den Morgenbericht.“ Der Cron-Job erscheint dann hier.')
   }
   el.innerHTML = jobs
     .map((j) => {
@@ -310,44 +308,6 @@ document.addEventListener('click', async (e) => {
   }
   jobsLaden()
 })
-
-// ── Kanban ──
-const SPALTEN = { triage: 'Eingang', todo: 'Zu tun', scheduled: 'Geplant', ready: 'Bereit', running: 'Läuft', blocked: 'Blockiert', review: 'Prüfen', done: 'Erledigt' }
-
-export async function kanbanLaden() {
-  const el = $('kanban-tafel')
-  const tafeln = await lesen('/api/plugins/kanban/boards')
-  const auswahl = $('kanban-auswahl')
-  const aktuell = auswahl.value || tafeln?.current || 'default'
-  if (tafeln?.boards) {
-    auswahl.innerHTML = tafeln.boards
-      .filter((b) => !b.archived)
-      .map((b) => `<option value="${maskieren(b.slug)}"${b.slug === aktuell ? ' selected' : ''}>${maskieren(b.name || b.slug)}</option>`)
-      .join('')
-  }
-  const tafel = await lesen(`/api/plugins/kanban/board?board=${encodeURIComponent(aktuell)}`)
-  if (!tafel?.columns) return fehlerKarte(el, 'Kanban ist gerade nicht erreichbar.')
-  const gesamt = tafel.columns.reduce((s, c) => s + c.tasks.length, 0)
-  $('kanban-anzahl').textContent = gesamt ? `${gesamt} Aufgaben` : ''
-  el.innerHTML = tafel.columns
-    .map(
-      (spalte) => `
-      <section class="spalte">
-        <h3>${maskieren(SPALTEN[spalte.name] || spalte.name)} <span>${spalte.tasks.length}</span></h3>
-        <div class="spalte-inhalt">
-          ${spalte.tasks.length ? spalte.tasks.map((t) => `
-            <article class="aufgabe">
-              <div class="aufgabe-titel">${maskieren(t.title || t.id)}</div>
-              <div class="aufgabe-info">${maskieren(CREW_NAMEN[t.assignee] || t.assignee || 'offen')}${t.priority ? ` · ${maskieren(t.priority)}` : ''}</div>
-            </article>`).join('') : '<div class="spalte-leer">–</div>'}
-        </div>
-      </section>`
-    )
-    .join('')
-  if (!gesamt) $('kanban-hinweis').hidden = false
-  else $('kanban-hinweis').hidden = true
-}
-$('kanban-auswahl')?.addEventListener('change', kanbanLaden)
 
 // ── System ──
 export async function systemLaden() {

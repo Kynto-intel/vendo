@@ -65,6 +65,7 @@ export async function starten(ctx) {
 
   // ── Aufbau ──
   ctx.kopfKnoepfe.innerHTML = `
+    <button class="knopf-gold" data-k="neu" type="button">+ Termin</button>
     <button class="knopf-flach" data-k="zurueck" type="button">‹</button>
     <span class="kal-monat" data-monat></span>
     <button class="knopf-flach" data-k="vor" type="button">›</button>
@@ -194,7 +195,7 @@ export async function starten(ctx) {
       html = liste.length ? liste.map((t) => eintrag(t, false)).join('') : `<div class="leise">${schonVorbei ? 'Für heute steht nichts mehr an.' : 'Keine Termine.'}</div>`
       if (schonVorbei) html += `<div class="leise klein">${schonVorbei === 1 ? 'Ein Termin' : `${schonVorbei} Termine`} heute schon vorbei.</div>`
       const danach = kommend.find((t) => t.datum > tag)
-      if (!liste.length && danach) html += `<div class="kal-danach leise klein">Als Nächstes:</div>${eintrag(danach, true)}`
+      if (tag === heute() && !liste.length && danach) html += `<div class="kal-danach leise klein">Als Nächstes:</div>${eintrag(danach, true)}`
       // Aufgaben dieses Tages und Aufgaben, die noch keinen Tag haben (＋ legt sie auf diesen Tag)
       const aufgabeZeile = (a, mitTag) => `<div class="kal-aufgabe-zeile" data-aufgabe="${m(a.id)}" draggable="true" title="Ziehen: auf einen Tag im Monatsblatt legen">
           <button class="kal-haken" data-ak="erledigt" type="button" title="Erledigt"></button>
@@ -221,6 +222,11 @@ export async function starten(ctx) {
   // ── Bedienung ──
   ctx.kopfKnoepfe.addEventListener('click', (e) => {
     const k = e.target.closest('[data-k]')?.dataset.k
+    if (k === 'neu') {
+      formFuellen(null, tagGewaehlt || heute())
+      form.titel.focus()
+      return
+    }
     if (k === 'zurueck') monat.setMonth(monat.getMonth() - 1)
     if (k === 'vor') monat.setMonth(monat.getMonth() + 1)
     if (k === 'heute') {
@@ -261,14 +267,11 @@ export async function starten(ctx) {
     }
     const tag = e.target.closest('[data-tag]')
     if (tag) {
-      if (tag.classList.contains('gewaehlt') && !form.hidden && !bearbeitet) return formVerbergen()
       tagGewaehlt = tag.dataset.tag === heute() ? null : tag.dataset.tag
       suche = ''
       $('[data-suche-text]').value = ''
       zeichnen()
       if (tag.dataset.tag === heute()) $(`[data-tag="${tag.dataset.tag}"]`)?.classList.add('gewaehlt')
-      formFuellen(null, tag.dataset.tag)
-      form.titel.focus()
       return
     }
     const k = e.target.closest('[data-k]')?.dataset.k

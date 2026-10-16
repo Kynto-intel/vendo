@@ -1,24 +1,26 @@
-# Jarves-OS
+# Vendo
 
 **Felix' Kommandozentrale für Hermes – mit Luzzy in der Mitte.**
 
-Jarves-OS ist eine eigene Desktop-App (Electron) für den Donnerwolf-Shop. Sie verbindet sich mit dem lokalen Hermes
+Vendo ist eine eigene Desktop-App (Electron) für den Donnerwolf-Shop. Sie verbindet sich mit dem lokalen Hermes
 und macht daraus eine Sprach- und Klick-Zentrale: Luzzy (Hermes-Profil `donnerwolf`) hört zu, antwortet mit ihrer
 eigenen, lokalen Stimme, verteilt Aufgaben an ihre Crew, meldet Bestellungen und Mails, kennt Termine, Wetter,
 Aufgaben und Notizen, findet und bearbeitet Dateien, steuert den PC – und vieles davon funktioniert sogar ohne Internet.
 
-> **Grundregel: Hermes selbst wird nie verändert.** Jarves-OS nutzt nur, was Hermes von Haus aus anbietet
+> **Grundregel: Hermes selbst wird nie verändert.** Vendo nutzt nur, was Hermes von Haus aus anbietet
 > (REST, WebSocket, eingebaute Befehle) und update-feste Einstellungen (Profile, config) – immer mit Sicherung.
 > Nichts wird nachgebaut, was Hermes schon kann. Ein Hermes-Update macht nichts kaputt.
 
-**Grundprinzip: Hermes ist das Gehirn, Jarves-OS ist das Gesicht.** Agenten, Werkzeuge, Skills, Gedächtnis, Jobs,
-Kanban, Spracherkennung und Modelle kommen aus Hermes. Jarves-OS zeigt das schöner an, macht es per Stimme bedienbar
+**Grundprinzip: Hermes ist das Gehirn, Vendo ist das Gesicht.** Agenten, Werkzeuge, Skills, Gedächtnis, Jobs,
+Spracherkennung und Modelle kommen aus Hermes. Vendo zeigt das schöner an, macht es per Stimme bedienbar
 und bündelt alles an einem Ort.
 
 - **Ziele:** mit Luzzy reden wie Tony Stark mit JARVIS · alle Agenten, Jobs und Aufgaben auf einen Blick · alles zum
   Shop auf Zuruf · Luzzy verteilt Arbeit an die Crew · Automationen und Meldungen im Blick.
 - **Bewusst nicht:** kein eigener Agent, keine eigene Werkzeugsammlung oder Job-Planung, kein Server im Internet,
-  keine Handy-App. Jarves-OS läuft nur auf Felix' PC.
+  keine Handy-App. Vendo läuft nur auf Felix' PC.
+
+Technische Paketnamen, bestehende Hermes-Gespräche und lokale Datenordner behalten aus Kompatibilitätsgründen teilweise den bisherigen Namen `Jarves-OS` beziehungsweise `jarves-os`.
 
 ## Inhalt
 
@@ -54,7 +56,7 @@ und bündelt alles an einem Ort.
 | Was | Wofür | Pflicht? |
 |---|---|---|
 | Windows 10/11 | PC-Steuerung, Musik-Erkennung, Verknüpfungen | ja |
-| [Node.js](https://nodejs.org) (LTS) | Jarves-OS selbst | ja |
+| [Node.js](https://nodejs.org) (LTS) | Vendo selbst | ja |
 | Hermes mit Profil `donnerwolf` | Luzzy, Crew, Spracherkennung | ja |
 | [uv](https://docs.astral.sh/uv/) | Luzzys Stimme (Pocket TTS) | ja, für die Stimme |
 | Hugging-Face-Konto | einmalige Freigabe für Pocket TTS | ja, für die Stimme |
@@ -64,7 +66,7 @@ und bündelt alles an einem Ort.
 **Einmalig einrichten** (jeden Befehl einzeln in PowerShell):
 
 ```
-cd C:\Users\Felix\Desktop\jarves-os\jarves-os
+cd C:\Users\Felix\Desktop\Vendo\Vendo
 ```
 ```
 npm install
@@ -88,7 +90,7 @@ Beim ersten Start lädt Pocket TTS das deutsche Modell (gut 200 MB). Das dauert 
 ## Starten
 
 ```
-cd C:\Users\Felix\Desktop\jarves-os\jarves-os
+cd C:\Users\Felix\Desktop\Vendo\Vendo
 ```
 ```
 npm start
@@ -155,8 +157,7 @@ mit der Tageszeit: morgens heller, abends wärmer und dunkler.
 |---|---|---|
 | **Luzzy** | **Zentrale** | **Cockpit** (siehe unten) und die Chat-Eingabe; Luzzys Reaktor sitzt unten in der rechten Spalte. Ohne Cockpit: Reaktor, Untertitel, Schnellbefehle, 📌 Antwort merken |
 | | **Crew** | Bot-Karten, Normaler Chat, Bot Mode, Arbeitsbühne (siehe unten) |
-| **Automation** | **Jobs** | Hermes-Jobs ansehen, ausführen, pausieren, löschen (mit Rückfrage) |
-| | **Kanban** | Hermes-Kanban-Board |
+| **Automation** | **Cron-Jobs** | Hermes-Cron-Jobs ansehen, ausführen, pausieren, löschen (mit Rückfrage) |
 | | **Routinen** | Auslösewort → Auftrag, mit Zeitplan und Schnellbefehlen |
 | **Werkzeuge** | **Aufgaben** · **Kalender** · **Fokus** · **Gedanken** · **Wetter** · **Meilensteine** | Plugins, siehe [Plugins](#plugins) |
 | **Wissen** | **Bibliothek** · **Entscheidungen** | Texte aus deinen eigenen Ordnern lesen, offene Entscheidungen – nur lesend |
@@ -210,8 +211,7 @@ Bibliothek gewählt hast):
   du über die Suchleiste (Strg+F).
 - **Entscheidungen:** das Entscheidungs-Tagebuch aus `Donnerwolf-Shop\04_Decision_Log\` mit Filter gilt / überholt /
   Prüfung fällig. Neue Entscheidungen legt Luzzy an.
-- **Jobs:** Hermes-Jobs aller Profile mit Zeitplan, letztem und nächstem Lauf; ausführen, pausieren, löschen (mit Rückfrage).
-- **Kanban:** Hermes' eigenes Kanban-Board (Tafeln, Spalten, Aufgaben der Agenten).
+- **Cron-Jobs:** Hermes-Cron-Jobs aller Profile mit Zeitplan, letztem und nächstem Lauf; ausführen, pausieren, löschen (mit Rückfrage).
 - **Kosten-Wächter** (System): was Luzzy und die Crew heute und diesen Monat kosten (in Dollar, wie Hermes rechnet),
   dazu Tokens und Aufrufe, ein 14-Tage-Verlauf und wer wie viel verbraucht. Tages- und Monatsbudget eintragen:
   Luzzy warnt bei 80 % und 100 % (je einmal, als Meldung mit Warnton), auch wenn der System-Tab nicht offen ist.
@@ -564,7 +564,7 @@ hat (Jarves-OS, Hermes-App). Sie schreibt direkt in die Dateien der Plugins; ist
   `approval.respond`, `image.attach` / `image.attach_bytes` / `pdf.attach` / `file.attach`, `reload.env`,
   `reload.mcp`, `skills.reload`, `wake.*`.
 - **Gelesen über REST:** `/api/profiles` (auch Modell pro Bot ändern), `/api/sessions`, `/api/analytics/usage`,
-  `/api/cron/jobs` (ausführen, pausieren, fortsetzen, löschen), `/api/plugins/kanban/*`, `/api/config`, Status.
+  `/api/cron/jobs` (ausführen, pausieren, fortsetzen, löschen), `/api/config`, Status.
 
 ## Sicherheit, Regeln und Datenschutz
 
@@ -600,13 +600,13 @@ Erster Schritt immer: **„Mach einen Selbsttest“** (oder System → Selbsttes
 ## Sichern, Git und Updates
 
 `npm run backup` (oder Einstellungen → Start & Sicherung → „Jarves-OS sichern“) legt eine Kopie in
-`Desktop\jarves-os\backup\` an. Das Projekt liegt privat auf GitHub (Kynto-intel/jarves-os); `daten\` und
+`Desktop\Vendo\backup\` an. Das Projekt liegt privat auf GitHub (Kynto-intel/jarves-os); `daten\` und
 Plugin-Daten bleiben lokal.
 
 **Neuen Stand holen** (jeden Befehl einzeln, ohne das `PS C:\...>` davor):
 
 ```
-cd C:\Users\Felix\Desktop\jarves-os\jarves-os
+cd C:\Users\Felix\Desktop\Vendo\Vendo
 ```
 ```
 git switch main

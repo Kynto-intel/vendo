@@ -3,7 +3,7 @@
 // beim Start mit pluginBereicheHinzufuegen an.
 // Angebunden in app.js mit navigationEinrichten({ einstellungen, verbunden, hoerModusAnwenden, chatNeuLaden }).
 
-import { crewLaden, jobsLaden, kanbanLaden, systemLaden } from '../ansichten.js'
+import { crewLaden, jobsLaden, systemLaden } from '../ansichten.js'
 import { terminalLaden } from '../terminal.js'
 import { bibliothekLaden, entscheidungenLaden } from '../wissen.js'
 import { crewBotsLaden, wechseln as crewWechseln, crewSichtbarGeworden } from '../crewchat.js'
@@ -21,8 +21,7 @@ export function navigationEinrichten(helfer) {
 export const BEREICHE = [
   { id: 'zentrale', name: 'Zentrale', aktiv: true },
   { id: 'crew', name: 'Crew', aktiv: true },
-  { id: 'jobs', name: 'Jobs', aktiv: true },
-  { id: 'kanban', name: 'Kanban', aktiv: true },
+  { id: 'jobs', name: 'Cron-Jobs', aktiv: true },
   { id: 'bibliothek', name: 'Bibliothek', aktiv: true },
   { id: 'entscheidungen', name: 'Entscheidungen', aktiv: true },
   { id: 'system', name: 'System', aktiv: true },
@@ -35,7 +34,6 @@ const SYMBOLE = {
   zentrale: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
   crew: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 13.6c2.6.2 4.5 2.1 4.5 4.9"/>',
   jobs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
-  kanban: '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/>',
   bibliothek: '<path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="M9 7h6"/>',
   entscheidungen: '<path d="M12 3v18M5 7h14"/><path d="M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/><path d="M8 21h8"/>',
   terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/>',
@@ -51,8 +49,8 @@ const SYMBOLE = {
 const SYMBOL_PLUGIN = '<path d="M9 3h6v4a2 2 0 1 0 4 0h2v6h-3a2 2 0 1 0 0 4h3v4H3V9h4a2 2 0 1 0 0-4H3V3z"/>'
 const GRUPPEN = [
   ['Luzzy', ['zentrale', 'crew']],
-  ['Automation', ['jobs', 'kanban', 'plugin-routinen']],
-  ['Werkzeuge', ['plugin-aufgaben', 'plugin-kalender', 'plugin-fokus', 'plugin-gedanken', 'plugin-wetter', 'plugin-meilensteine']],
+  ['', ['plugin-aufgaben', 'plugin-kalender']],
+  ['Werkzeuge', ['jobs', 'plugin-routinen', 'plugin-fokus', 'plugin-gedanken', 'plugin-wetter', 'plugin-meilensteine']],
   ['Wissen', ['bibliothek', 'entscheidungen']],
   ['System', ['system', 'terminal']]
 ]
@@ -65,17 +63,17 @@ export function bereicheZeigen() {
     let liste = ids.map((id) => BEREICHE.find((b) => b.id === id)).filter(Boolean)
     // Neue Plugins ohne feste Gruppe landen bei den Werkzeugen
     if (name === 'Werkzeuge') liste = liste.concat(BEREICHE.filter((b) => !vergeben.has(b.id)))
-    return liste.length ? `<div class="bereich-gruppe">${name}</div>${liste.map(knopf).join('')}` : ''
+    return liste.length ? `${name ? `<div class="bereich-gruppe">${name}</div>` : ''}${liste.map(knopf).join('')}` : ''
   })
   $('bereiche').innerHTML = gruppen.join('')
 }
 
 // ── Bereiche wechseln; offene Bereiche aktualisieren sich regelmäßig ──
 const LADEN = {
-  crew: crewLaden, jobs: jobsLaden, kanban: kanbanLaden, system: systemLaden, terminal: terminalLaden,
+  crew: crewLaden, jobs: jobsLaden, system: systemLaden, terminal: terminalLaden,
   bibliothek: bibliothekLaden, entscheidungen: entscheidungenLaden
 }
-const TAKT = { terminal: 600000, crew: 15000, jobs: 20000, kanban: 15000, system: 5000, bibliothek: 30000, entscheidungen: 30000 }
+const TAKT = { terminal: 600000, crew: 15000, jobs: 20000, system: 5000, bibliothek: 30000, entscheidungen: 30000 }
 let aktuelleAnsicht = 'zentrale'
 let crewOffen = false // Crew-Bereich offen: Luzzy hört dort nicht mit (siehe ansichtZeigen)
 let taktUhr = 0

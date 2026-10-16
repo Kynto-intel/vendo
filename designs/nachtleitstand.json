@@ -1,0 +1,23 @@
+{
+  "name": "Nachtleitstand",
+  "beschreibung": "Graphit, Stahl und Signal-Cyan",
+  "reihenfolge": 3,
+  "farben": {
+    "hintergrund": "#101518",
+    "leiste": "#0b1013",
+    "flaeche": "#161e22",
+    "flaecheHoch": "#1d282d",
+    "tief": "#080c0e",
+    "eingabe": "#0d1316",
+    "rahmen": "#2b3a40",
+    "linie": "#202c31",
+    "text": "#e5edf0",
+    "textLeise": "#84969c",
+    "gedimmt": "#4b5a60",
+    "akzent": "#58bfd0",
+    "akzentHell": "#93e2ec",
+    "akzentDunkel": "#1b4952",
+    "akzentFlaeche": "#12252b",
+    "aufAkzent": "#071316"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "name": "jarves-os",
   "version": "0.1.0",
-  "description": "Jarves-OS: Felix' Kommandozentrale für Hermes mit Luzzy",
+  "description": "Vendo: Felix' Kommandozentrale für Hermes mit Luzzy",
   "main": "src/main/main.js",
   "private": true,
   "author": "Felix / Donnerwolf",

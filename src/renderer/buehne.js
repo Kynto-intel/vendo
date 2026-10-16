@@ -322,7 +322,7 @@ const TAETIGKEIT = [
   [/skill/, 'schlägt in einem Skill nach'],
   [/shopify/, 'schaut in den Shop'],
   [/mail/, 'schaut ins Postfach'],
-  [/todo|kanban/, 'plant die Aufgaben'],
+  [/todo/, 'plant die Aufgaben'],
   [/session_search/, 'sucht in alten Gesprächen']
 ]
 const taetigkeit = (werkzeug) => (werkzeug ? TAETIGKEIT.find(([m]) => m.test(werkzeug))?.[1] || `arbeitet (${werkzeug})` : '')

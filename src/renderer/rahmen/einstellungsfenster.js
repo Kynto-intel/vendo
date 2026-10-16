@@ -181,7 +181,7 @@ async function startStandZeigen(vorweg = '') {
     $('e-autostart').checked = s.autostart
     $('e-verknuepfung').textContent = s.verknuepfung ? 'Verknüpfung neu anlegen' : 'Verknüpfung auf dem Desktop anlegen'
     $('e-start-stand').textContent = s.windows
-      ? `${vorweg}${s.verknuepfung ? 'Verknüpfung liegt auf dem Desktop. ' : ''}Doppelklick auf „Jarves-OS“ startet ohne Terminal, npm start geht weiterhin.`
+      ? `${vorweg}${s.verknuepfung ? 'Verknüpfung liegt auf dem Desktop. ' : ''}Doppelklick auf „Vendo“ startet ohne Terminal, npm start geht weiterhin.`
       : 'Verknüpfung und Autostart gehen nur unter Windows.'
   } catch (e) {
     $('e-start-stand').textContent = e.message

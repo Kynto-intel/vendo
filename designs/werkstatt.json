@@ -1,0 +1,23 @@
+{
+  "name": "Werkstatt",
+  "beschreibung": "Stahlplatten, Rauchglas und Signal-Amber",
+  "reihenfolge": 6,
+  "farben": {
+    "hintergrund": "#131719",
+    "leiste": "#0d1113",
+    "flaeche": "#1b2225",
+    "flaecheHoch": "#252e32",
+    "tief": "#090c0e",
+    "eingabe": "#101517",
+    "rahmen": "#354146",
+    "linie": "#262f33",
+    "text": "#e8eded",
+    "textLeise": "#929fa2",
+    "gedimmt": "#586467",
+    "akzent": "#d09b4d",
+    "akzentHell": "#f0c477",
+    "akzentDunkel": "#59401f",
+    "akzentFlaeche": "#292116",
+    "aufAkzent": "#171108"
+  }
+}
