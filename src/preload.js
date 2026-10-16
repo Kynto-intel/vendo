@@ -116,8 +116,11 @@ contextBridge.exposeInMainWorld('jarves', {
     fuettern: (bytes) => ipcRenderer.send('wake:fuettern', bytes)
   },
   stimme: {
-    liste: () => ipcRenderer.invoke('stimme:liste'),
+    liste: (anbieter) => ipcRenderer.invoke('stimme:liste', anbieter),
     sprechen: (text, optionen) => ipcRenderer.invoke('stimme:sprechen', text, optionen),
+    status: () => ipcRenderer.invoke('stimme:status'),
+    zugangStatus: () => ipcRenderer.invoke('stimme:zugangStatus'),
+    zugangSetzen: (anbieter, schluessel) => ipcRenderer.invoke('stimme:zugangSetzen', anbieter, schluessel),
     pocketZustand: () => ipcRenderer.invoke('stimme:pocketZustand'),
     pocketStarten: (optionen) => ipcRenderer.invoke('stimme:pocketStarten', optionen),
     pocketDateiWaehlen: () => ipcRenderer.invoke('stimme:pocketDateiWaehlen')

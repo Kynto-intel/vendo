@@ -1,6 +1,6 @@
 // Cockpit in der Zentrale: auf einen Blick sehen, was los ist.
 //   • Instrumente: Erfolgsquote der Agenten · Aufträge (Mission Control) · Ø Bearbeitungszeit · Systemstatus, CPU, RAM, Platte
-//   • Agenten-Orchestrierung: Luzzy (Chefin) oben, darunter die 4 aktivsten Bots (Klick: kleines Chat-Fenster)
+//   • Agenten-Orchestrierung: Luzzy (Chefin) oben, darunter die 5 aktivsten Bots (Klick: kleines Chat-Fenster)
 // Zahlen, ehrlich aus Hermes berechnet (30 Tage, alle Agenten):
 //   Auftrag = eine Nachricht an einen Agenten (von Felix oder einem anderen Bot). Erfolgreich, wenn danach eine fertige
 //   Antwort kommt (finish_reason „stop“); gescheitert, wenn keine kommt (nächster Auftrag kam trotzdem, oder > 15 Min.).
@@ -237,7 +237,7 @@ export function zeichnen() {
 function orchesterHtml() {
   const agenten = stand?.agenten || []
   const chef = agenten.find((a) => a.profil === LUZZY)
-  const bots = agenten.filter((a) => a.profil !== LUZZY).sort((a, b) => b.heute - a.heute || b.anzahl - a.anzahl).slice(0, 4)
+  const bots = agenten.filter((a) => a.profil !== LUZZY).sort((a, b) => b.heute - a.heute || b.anzahl - a.anzahl).slice(0, 5)
   if (!chef && !bots.length) return '<div class="ck-orchester"><div class="ck-orchester-kopf"><span class="ck-titel">Agenten-Orchestrierung</span></div><div class="leise klein">Lade die Agenten …</div></div>'
   const summeHeute = Math.max(1, bots.reduce((s, b) => s + b.heute, 0) + (chef?.heute || 0))
   const maxHeute = Math.max(1, ...bots.map((b) => b.heute))

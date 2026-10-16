@@ -1265,6 +1265,15 @@ body.datei-drueber .datei-ablage { display: grid; }
 .e-pocket-datei span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #e-pocket-status[data-zustand='bereit'] { color: var(--gruen, #5fd38d); }
 #e-pocket-status[data-zustand='fehler'] { color: var(--rot, #ff6b6b); }
+.e-cloud-zugaenge { display: grid; gap: 10px; }
+.e-cloud-zugaenge > p { margin: 0; }
+.e-stimmen-zeile { display: flex; align-items: center; gap: 6px; }
+.e-stimmen-zeile select { flex: 1; min-width: 0; }
+.e-zugang { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--rahmen); border-radius: 8px; background: rgba(255, 255, 255, 0.02); }
+.e-zugang > div { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.e-zugang input { min-width: 0; width: 100%; }
+.e-zugang small[data-zustand='bereit'] { color: var(--gruen, #5fd38d); }
+.e-zugang small[data-zustand='fehler'] { color: var(--rot, #ff6b6b); }
 .einstellungen label.aus { opacity: 0.4; }
 
 /* Karte „Crew live“ rechts: nur der Bot, der gerade arbeitet (buehne.js) */

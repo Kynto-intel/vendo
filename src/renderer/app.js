@@ -1480,7 +1480,16 @@ async function botAnsprechen({ bot, text }, { gesprochen = false } = {}) {
 }
 
 // ── Einstellungen ──
-const stimmOptionen = () => ({ stimme: einstellungen.stimme, tempo: einstellungen.tempo, lautstaerke: einstellungen.lautstaerke })
+const stimmOptionen = () => {
+  const anbieter = einstellungen.stimmeAnbieter || 'pocket'
+  return {
+    anbieter,
+    stimme: anbieter === 'pocket' ? einstellungen.stimme : einstellungen[`${anbieter}Stimme`],
+    pocketDatei: einstellungen.pocketDatei,
+    tempo: einstellungen.tempo,
+    lautstaerke: einstellungen.lautstaerke
+  }
+}
 
 // Einstellungs-Dialog (Formular, Tabs, Pocket TTS, Sicherung …): rahmen/einstellungsfenster.js
 einstellungsfensterEinrichten({
@@ -1522,7 +1531,6 @@ function testNachrichtSenden() {
 }
 
 // ── Donnerwolf-Startsequenz: Intro mit Systemcheck, danach begrüßt Luzzy ──
-let stimmenListe = []
 async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
   const gruss = einstellungen.start?.begruessung !== false
   if (gruss) meldungenSammeln(true) // Bestellungen über Nacht nicht einzeln vorlesen, sondern in der Begrüßung zählen
@@ -1537,7 +1545,10 @@ async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
   const schritte = [
     { name: 'Hermes-Kern', pruefen: () => verbunden && { ok: true, text: 'verbunden' }, zeit: 8000 },
     { name: 'Luzzy · Profil donnerwolf', pruefen: () => verbunden && { ok: true, text: 'bereit' }, zeit: 800 },
-    { name: 'Stimme', pruefen: () => { const st = stimmenListe.find((x) => x.id === einstellungen.stimme); return st && { ok: true, text: st.name } }, zeit: 1500 },
+    { name: 'Stimme', pruefen: async () => {
+      const st = await api.stimme.status().catch(() => ({ zustand: 'fehler', text: 'nicht erreichbar' }))
+      return { ok: st.zustand === 'bereit' || st.zustand === 'startet', text: st.text }
+    }, zeit: 1500 },
     { name: 'Plugins', pruefen: () => pluginAnzahl != null && { ok: true, text: `${pluginAnzahl} geladen` }, zeit: 5000 },
     { name: 'Shopify', pruefen: () => verbindungInfo('shopify'), zeit: 5000 },
     { name: 'Postfach', pruefen: () => verbindungInfo('mail'), zeit: 3000 }
@@ -1590,8 +1601,7 @@ async function start() {
   let pluginsBereit
   const pluginsFertig = new Promise((r) => (pluginsBereit = r))
   startsequenzLaufen({ mitIntro, pluginsFertig, stumm })
-  const stimmen = await api.stimme.liste()
-  stimmenListe = stimmen
+  const stimmen = await api.stimme.liste('pocket')
   $('e-stimme').innerHTML = stimmen.map((s) => `<option value="${s.id}">${s.name} (${s.herkunft})</option>`).join('')
   animationenAnwenden()
   zustandZeigen()

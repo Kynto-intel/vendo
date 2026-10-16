@@ -51,12 +51,15 @@ async function pruefungen(h) {
         : h.verbunden() ? { ok: false, text: 'aus', tun: h.wakeHinweis?.() || 'Mikrofon prüfen; sonst in Hermes (Profil donnerwolf) das Aktivierungswort prüfen.' } : OHNE_HERMES)
   }
 
-  // Luzzys Stimme: Pocket TTS läuft lokal und meldet seinen Zustand selbst
+  // Luzzys Stimme: lokalen TTS-Server oder gespeicherten Cloud-Zugang prüfen
   await pruefen('Stimme', async () => {
-    const z = await api.stimme.pocketZustand().catch(() => ({ zustand: 'fehler', text: 'nicht erreichbar' }))
-    if (z.zustand === 'bereit') return { ok: true, text: `Pocket TTS ${z.text}` }
-    if (z.zustand === 'startet') return { ok: true, text: 'Pocket TTS startet gerade' }
-    return { ok: false, text: `Pocket TTS: ${z.text}`, tun: 'In den Einstellungen unter Stimme auf „Probe hören“ klicken. Fehlt uv, im Terminal installieren: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"' }
+    const z = await api.stimme.status().catch(() => ({ anbieter: 'pocket', zustand: 'fehler', text: 'nicht erreichbar' }))
+    if (z.zustand === 'bereit') return { ok: true, text: z.text }
+    if (z.zustand === 'startet') return { ok: true, text: z.text }
+    const tun = z.anbieter === 'pocket'
+      ? 'In den Einstellungen unter Stimme auf „Probe hören“ klicken. Fehlt uv, im Terminal installieren: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"'
+      : 'In den Einstellungen unter Stimme den passenden API-Schlüssel speichern und „Probe hören“ auswählen.'
+    return { ok: false, text: z.text, tun }
   })
 
   // Shopify und Postfach: Wächter jetzt prüfen lassen, dann seinen Stand lesen

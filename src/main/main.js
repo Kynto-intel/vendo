@@ -15,6 +15,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { Hermes, PROFIL } = require('./hermes')
 const pocket = require('./pocket')
+const sprachdienste = require('./sprachdienste')
 const einstellungen = require('./einstellungen')
 const dateisuche = require('./dateisuche')
 const pc = require('./pc')
@@ -462,21 +463,52 @@ ipcMain.handle('datei:mitProgramm', async (_e, id) => {
 })
 ipcMain.handle('datei:imOrdner', (_e, id) => shell.showItemInFolder(dateisuche.pfadVon(id)))
 
-// Luzzys Stimme: Pocket TTS (#39), lokal auf dem PC. Kein Text geht ins Internet.
+// Luzzys Stimme: Pocket TTS lokal oder Gemini/ElevenLabs über deren APIs.
 const pocketDateiFuer = (o) => (pocket.stimmeGueltig(o.stimme) === 'eigen' ? o.pocketDatei : '')
 const frist = (ms, text) => new Promise((_r, fehler) => setTimeout(() => fehler(new Error(text)), ms))
-ipcMain.handle('stimme:liste', () => [...pocket.STIMMEN, pocket.EIGEN])
+ipcMain.handle('stimme:liste', async (_e, anbieter = 'pocket') => {
+  if (anbieter === 'pocket') return [...pocket.STIMMEN, pocket.EIGEN]
+  try {
+    return { stimmen: await sprachdienste.stimmenLaden(anbieter) }
+  } catch (e) {
+    return { stimmen: [], fehler: e.message }
+  }
+})
+ipcMain.handle('stimme:zugangStatus', () => sprachdienste.zugangStatus())
+ipcMain.handle('stimme:zugangSetzen', (_e, anbieter, schluessel) => sprachdienste.zugangSetzen(anbieter, schluessel))
+ipcMain.handle('stimme:status', () => {
+  const anbieter = einstellungen.laden().stimmeAnbieter || 'pocket'
+  if (anbieter === 'pocket') return { anbieter, ...pocket.zustand() }
+  const zugaenge = sprachdienste.zugangStatus()
+  if (!zugaenge.speicherVerfuegbar) return { anbieter, zustand: 'fehler', text: 'Verschlüsselter Schlüssel-Speicher nicht verfügbar.' }
+  return zugaenge[anbieter]
+    ? { anbieter, zustand: 'bereit', text: `${anbieter === 'gemini' ? 'Gemini' : 'ElevenLabs'}-API-Schlüssel gespeichert` }
+    : { anbieter, zustand: 'fehler', text: `API-Schlüssel für ${anbieter === 'gemini' ? 'Gemini' : 'ElevenLabs'} fehlt.` }
+})
 ipcMain.handle('stimme:sprechen', async (_e, text, optionen) => {
-  const o = { ...einstellungen.laden(), ...(optionen || {}) }
-  const stimmeId = pocket.stimmeGueltig(o.stimme)
-  const datei = pocketDateiFuer({ ...o, stimme: stimmeId })
-  // Startet der Server noch: warten (bei „Probe hören“ auch beim allerersten Start, der das Modell lädt)
-  if (!pocket.bereit()) await Promise.race([pocket.starten(datei), frist(o.aufPocketWarten ? 10 * 60000 : 90000, 'Pocket TTS startet noch.')])
-  return pocket.sprechen(String(text || '').slice(0, 3000), { stimme: stimmeId, datei }) // Buffer kommt als Uint8Array an
+  try {
+    const o = { ...einstellungen.laden(), ...(optionen || {}) }
+    const anbieter = ['pocket', 'gemini', 'elevenlabs'].includes(o.anbieter || o.stimmeAnbieter) ? (o.anbieter || o.stimmeAnbieter) : 'pocket'
+    const stimmeId = anbieter === 'pocket'
+      ? pocket.stimmeGueltig(o.stimme)
+      : String(optionen?.stimme || o[`${anbieter}Stimme`] || (anbieter === 'gemini' ? 'Kore' : ''))
+    if (anbieter !== 'pocket') return await sprachdienste.sprechen(anbieter, String(text || ''), { stimme: stimmeId, tempo: o.tempo })
+    const datei = pocketDateiFuer({ ...o, stimme: stimmeId })
+    // Startet der Server noch: warten (bei „Probe hören“ auch beim allerersten Start, das Modell lädt)
+    if (!pocket.bereit()) await Promise.race([pocket.starten(datei), frist(o.aufPocketWarten ? 10 * 60000 : 90000, 'Pocket TTS startet noch.')])
+    return await pocket.sprechen(String(text || '').slice(0, 3000), { stimme: stimmeId, datei }) // Buffer kommt als Uint8Array an
+  } catch (e) {
+    return { ttsFehler: e.message }
+  }
 })
 ipcMain.handle('stimme:pocketZustand', () => pocket.zustand())
 ipcMain.handle('stimme:pocketStarten', (_e, optionen) => {
-  pocket.starten(pocketDateiFuer({ ...einstellungen.laden(), ...(optionen || {}) })).catch(() => {})
+  const o = { ...einstellungen.laden(), ...(optionen || {}) }
+  if (o.stimmeAnbieter && o.stimmeAnbieter !== 'pocket') {
+    pocket.stoppen()
+    return pocket.zustand()
+  }
+  pocket.starten(pocketDateiFuer(o)).catch(() => {})
   return pocket.zustand()
 })
 ipcMain.handle('stimme:pocketDateiWaehlen', async () => {
@@ -866,7 +898,8 @@ app.whenReady().then(() => {
   if (!process.env.JARVES_TEST_STUMM) pcBruecke.starten() // ein Testlauf übernimmt nie die Brücke des echten Jarves-OS
   // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann (im stummen Testmodus nicht:
   // dort wird nichts vorgelesen, und abgebrochene Testläufe ließen sonst Server zurück)
-  if (!process.env.JARVES_TEST_STUMM || process.env.JARVES_TEST_POCKET) pocket.starten(pocketDateiFuer(einstellungen.laden())).catch(() => {})
+  const sprachEinstellungen = einstellungen.laden()
+  if (sprachEinstellungen.stimmeAnbieter === 'pocket' && (!process.env.JARVES_TEST_STUMM || process.env.JARVES_TEST_POCKET)) pocket.starten(pocketDateiFuer(sprachEinstellungen)).catch(() => {})
   fensterErstellen()
   // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))

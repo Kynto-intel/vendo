@@ -1,123 +1,63 @@
-// Kleiner, sicherer Markdown-Umwandler für Luzzys Antworten.
-// Erst wird alles HTML-maskiert, dann werden nur bekannte Formatierungen erzeugt.
+import MarkdownIt from '../../node_modules/markdown-it/dist/browser/markdown-it.esm.min.mjs'
 
-const maskieren = (s) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
-function inline(text) {
-  const codes = []
-  let s = text.replace(/`([^`]+)`/g, (_, c) => `\u0000${codes.push(c) - 1}\u0000`)
-  s = maskieren(s)
-  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
-  // Obsidian-Links [[Notiz]] und [[Notiz|Anzeige]]
-  s = s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, ziel, anzeige) => `<a class="wiki" data-wiki="${ziel.trim()}">${(anzeige || ziel).trim()}</a>`)
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-  s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>')
-  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${maskieren(codes[Number(i)])}</code>`)
+function wikiLinks(md) {
+  md.inline.ruler.before('link', 'wiki_link', (state, silent) => {
+    const start = state.pos
+    if (state.src.charCodeAt(start) !== 91 || state.src.charCodeAt(start + 1) !== 91) return false
+    const ende = state.src.indexOf(']]', start + 2)
+    if (ende < 0) return false
+    const inhalt = state.src.slice(start + 2, ende)
+    const trenner = inhalt.indexOf('|')
+    const ziel = (trenner < 0 ? inhalt : inhalt.slice(0, trenner)).trim()
+    const anzeige = (trenner < 0 ? ziel : inhalt.slice(trenner + 1)).trim()
+    if (!ziel || !anzeige) return false
+    if (silent) return true
+    const token = state.push('wiki_link', 'a', 0)
+    token.meta = { ziel }
+    token.children = []
+    state.md.inline.parse(anzeige, state.md, state.env, token.children)
+    state.pos = ende + 2
+    return true
+  })
+  md.renderer.rules.wiki_link = (tokens, index, optionen, umgebung, renderer) => {
+    const token = tokens[index]
+    return `<a class="wiki" data-wiki="${md.utils.escapeHtml(token.meta.ziel)}">${renderer.renderInline(token.children, optionen, umgebung)}</a>`
+  }
 }
 
-const tabellenZeile = (z) => z.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((s) => s.trim())
+function aufgabenListen(md) {
+  md.core.ruler.push('vendo_task_lists', (state) => {
+    for (let index = 0; index < state.tokens.length; index++) {
+      const inline = state.tokens[index]
+      if (inline.type !== 'inline') continue
+      const match = inline.content.match(/^\[([ xX])\]\s+/)
+      if (!match) continue
+      const listenpunkt = state.tokens.slice(0, index).reverse().find((token) => token.type === 'list_item_open')
+      const text = inline.children?.find((token) => token.type === 'text' && token.content.startsWith(match[0]))
+      if (!listenpunkt || !text) continue
+      listenpunkt.attrJoin('class', 'aufgabe-punkt')
+      text.content = `${match[1] === ' ' ? '☐' : '☑'} ${text.content.slice(match[0].length)}`
+    }
+  })
+}
+
+const markdown = MarkdownIt({ html: false, linkify: true, breaks: true })
+markdown.use(wikiLinks).use(aufgabenListen)
+markdown.validateLink = (url) => /^https?:\/\//i.test(url)
+markdown.renderer.rules.link_open = (tokens, index, optionen, umgebung, renderer) => {
+  tokens[index].attrSet('target', '_blank')
+  tokens[index].attrSet('rel', 'noopener')
+  return renderer.renderToken(tokens, index, optionen)
+}
+markdown.renderer.rules.heading_open = () => '<h3>'
+markdown.renderer.rules.heading_close = () => '</h3>'
+markdown.renderer.rules.table_open = (tokens, index, optionen, umgebung, renderer) => {
+  tokens[index].attrJoin('class', 'md-tabelle')
+  return `<div class="tabelle-rahmen">${renderer.renderToken(tokens, index, optionen)}`
+}
+markdown.renderer.rules.table_close = (tokens, index, optionen, umgebung, renderer) => `${renderer.renderToken(tokens, index, optionen)}</div>`
 
 export function markdownZuHtml(text) {
-  // YAML-Kopf (Obsidian-Eigenschaften) weglassen
-  const ohneKopf = String(text || '').replace(/\r/g, '').replace(/^---\n[\s\S]*?\n---\n/, '')
-  const zeilen = ohneKopf.split('\n')
-  const aus = []
-  let liste = null
-  let absatz = []
-  let code = null
-  let tabelle = null // { kopf, zeilen }
-
-  const tabelleEnde = () => {
-    if (!tabelle) return
-    aus.push(
-      `<div class="tabelle-rahmen"><table class="md-tabelle"><thead><tr>${tabelle.kopf.map((k) => `<th>${inline(k)}</th>`).join('')}</tr></thead><tbody>${tabelle.zeilen
-        .map((z) => `<tr>${z.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`)
-        .join('')}</tbody></table></div>`
-    )
-    tabelle = null
-  }
-
-  const absatzEnde = () => {
-    if (absatz.length) aus.push(`<p>${absatz.map(inline).join('<br>')}</p>`)
-    absatz = []
-  }
-  const listeEnde = () => {
-    if (liste) aus.push(`</${liste}>`)
-    liste = null
-  }
-
-  for (let i = 0; i < zeilen.length; i++) {
-    const zeile = zeilen[i]
-    // Tabellen: Kopfzeile + Trennzeile |---|---|
-    if (code === null && /^\s*\|.*\|\s*$/.test(zeile)) {
-      if (tabelle) {
-        tabelle.zeilen.push(tabellenZeile(zeile))
-        continue
-      }
-      if (/^\s*\|?\s*:?-{2,}/.test(zeilen[i + 1] || '')) {
-        absatzEnde()
-        listeEnde()
-        tabelle = { kopf: tabellenZeile(zeile), zeilen: [] }
-        i++
-        continue
-      }
-    } else tabelleEnde()
-    if (code === null && /^\s*(-{3,}|\*{3,})\s*$/.test(zeile)) {
-      absatzEnde()
-      listeEnde()
-      aus.push('<hr>')
-      continue
-    }
-    if (code === null && /^\s*>\s?/.test(zeile)) {
-      absatzEnde()
-      listeEnde()
-      aus.push(`<blockquote>${inline(zeile.replace(/^\s*>\s?/, ''))}</blockquote>`)
-      continue
-    }
-    if (code !== null) {
-      if (/^```/.test(zeile)) {
-        aus.push(`<pre><code>${maskieren(code.join('\n'))}</code></pre>`)
-        code = null
-      } else code.push(zeile)
-      continue
-    }
-    if (/^```/.test(zeile)) {
-      absatzEnde()
-      listeEnde()
-      code = []
-      continue
-    }
-    const ueberschrift = zeile.match(/^(#{1,3})\s+(.*)/)
-    const punkt = zeile.match(/^\s*[-*•]\s+(.*)/)
-    const nummer = zeile.match(/^\s*\d+[.)]\s+(.*)/)
-    if (ueberschrift) {
-      absatzEnde()
-      listeEnde()
-      aus.push(`<h3>${inline(ueberschrift[2])}</h3>`)
-    } else if (punkt || nummer) {
-      absatzEnde()
-      const art = punkt ? 'ul' : 'ol'
-      if (liste !== art) {
-        listeEnde()
-        aus.push(`<${art}>`)
-        liste = art
-      }
-      const inhalt = (punkt || nummer)[1]
-      const haken = inhalt.match(/^\[([ xX])\]\s+(.*)/)
-      aus.push(haken ? `<li class="aufgabe-punkt">${haken[1] === ' ' ? '☐' : '☑'} ${inline(haken[2])}</li>` : `<li>${inline(inhalt)}</li>`)
-    } else if (!zeile.trim()) {
-      absatzEnde()
-      listeEnde()
-    } else {
-      listeEnde()
-      absatz.push(zeile)
-    }
-  }
-  if (code !== null) aus.push(`<pre><code>${maskieren(code.join('\n'))}</code></pre>`)
-  tabelleEnde()
-  absatzEnde()
-  listeEnde()
-  return aus.join('')
+  const ohneKopf = String(text || '').replace(/\r/g, '').replace(/^---\n[\s\S]*?\n---(?:\n|$)/, '')
+  return markdown.render(ohneKopf)
 }

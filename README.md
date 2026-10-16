@@ -30,7 +30,7 @@ Technische Paketnamen, bestehende Hermes-Gespräche und lokale Datenordner behal
 4. [Die Oberfläche](#die-oberfläche)
 5. [Luzzy und die Crew](#luzzy-und-die-crew)
 6. [Sprechen und Zuhören](#sprechen-und-zuhören)
-7. [Luzzys Stimme (Pocket TTS)](#luzzys-stimme-pocket-tts)
+7. [Luzzys Stimme](#luzzys-stimme)
 8. [Alle Sprachbefehle](#alle-sprachbefehle)
 9. [Dateien finden, anzeigen und bearbeiten](#dateien-finden-anzeigen-und-bearbeiten)
 10. [PC-Steuerung](#pc-steuerung)
@@ -58,8 +58,10 @@ Technische Paketnamen, bestehende Hermes-Gespräche und lokale Datenordner behal
 | Windows 10/11 | PC-Steuerung, Musik-Erkennung, Verknüpfungen | ja |
 | [Node.js](https://nodejs.org) (LTS) | Vendo selbst | ja |
 | Hermes mit Profil `donnerwolf` | Luzzy, Crew, Spracherkennung | ja |
-| [uv](https://docs.astral.sh/uv/) | Luzzys Stimme (Pocket TTS) | ja, für die Stimme |
-| Hugging-Face-Konto | einmalige Freigabe für Pocket TTS | ja, für die Stimme |
+| [uv](https://docs.astral.sh/uv/) | Lokale Stimme Pocket TTS | optional |
+| Hugging-Face-Konto | Eigene Stimme für Pocket TTS freischalten | optional |
+| Gemini-API-Schlüssel | Cloud-Stimme Gemini TTS | optional |
+| ElevenLabs-API-Schlüssel | Cloud-Stimme ElevenLabs | optional |
 | Mikrofon / Headset | Sprechen mit Luzzy | empfohlen |
 | [Ollama](https://ollama.com) | Notfall-Luzzy ohne Internet | optional |
 
@@ -72,20 +74,22 @@ cd C:\Users\Felix\Desktop\Vendo\Vendo
 npm install
 ```
 
-uv installieren (falls noch nicht da):
+Nur für Pocket TTS: uv installieren (falls noch nicht da):
 
 ```
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Pocket TTS freischalten: auf [huggingface.co/kyutai/pocket-tts](https://huggingface.co/kyutai/pocket-tts) anmelden,
-den Bedingungen zustimmen, dann einmal anmelden (der Schlüssel bleibt auf dem PC, niemandem weitergeben):
+Eigene Stimme für Pocket TTS freischalten: auf [huggingface.co/kyutai/pocket-tts](https://huggingface.co/kyutai/pocket-tts)
+anmelden, den Bedingungen zustimmen, dann einmal anmelden:
 
 ```
 uvx hf auth login
 ```
 
-Beim ersten Start lädt Pocket TTS das deutsche Modell (gut 200 MB). Das dauert einmalig ein paar Minuten.
+Beim ersten Start von Pocket TTS lädt das deutsche Modell (gut 200 MB). Das dauert einmalig ein paar Minuten.
+Gemini- und ElevenLabs-Schlüssel kannst du unter **Einstellungen → Stimme** eintragen; Vendo speichert sie
+verschlüsselt im Windows-Benutzerkonto und nicht in `daten/einstellungen.json`.
 
 ## Starten
 
@@ -290,19 +294,29 @@ automatisch, Bilder kommen aus `hermes\profiles\<bot>\assets\avatar.png`.
 - **Musik erkennen:** Läuft Musik oder ein Video auf dem PC, zählt das nicht als Sprache; bei „Hey Luzzy“ pausiert
   die Musik kurz und läuft danach weiter.
 
-## Luzzys Stimme (Pocket TTS)
+## Luzzys Stimme
 
-Luzzy spricht mit **Pocket TTS** (Kyutai, deutsches Modell), **komplett lokal auf dem PC**. Kein Text geht dafür ins
-Internet, es kostet nichts, und die Stimme ist schneller als Echtzeit.
+Unter **Einstellungen → Stimme** kannst du zwischen drei Anbietern wählen:
 
-- **13 weibliche Stimmen:** Alba, Anna, Azelma, Caro, Cosette, Eponine, Estelle, Eve, Fantine, Jane, Lola, Mary, Vera.
+- **Pocket TTS:** Kyutai, deutsches Modell, komplett lokal und ohne laufende API-Kosten. Kein Vorlesetext geht ins
+  Internet. 13 Stimmen plus eine eigene, nur mit Zustimmung aufgenommene Stimme.
+- **Gemini TTS:** Cloud-Sprachausgabe von Google mit mehreren Stimmen. Dafür brauchst du einen Gemini-API-Schlüssel.
+- **ElevenLabs:** Cloud-Sprachausgabe mit den Stimmen deines ElevenLabs-Kontos. Dafür brauchst du einen
+  ElevenLabs-API-Schlüssel.
+
+Bei Gemini und ElevenLabs wird der Vorlesetext an den jeweiligen Anbieter übertragen; Kosten und Nutzungslimits
+richten sich nach deinem Konto. Die Schlüssel werden mit Windows DPAPI verschlüsselt im lokalen Vendo-Benutzerordner
+gespeichert, nicht in den normalen Einstellungen oder im Git-Projekt. Sie werden nie an den Renderer zurückgegeben.
+
+- **Pocket TTS – 13 weibliche Stimmen:** Alba, Anna, Azelma, Caro, Cosette, Eponine, Estelle, Eve, Fantine, Jane, Lola, Mary, Vera.
   Alle sprechen Deutsch; die Sprecherinnen stammen aus anderen Sprachen, ein leichter Akzent ist möglich.
 - **Eigene Stimme:** eine saubere Aufnahme (WAV/MP3, 10 bis 30 Sekunden, ohne Musik) wählen – **nur von jemandem,
   der zugestimmt hat**.
 - **Tempo** (−20 bis +20 %) und **Lautstärke** (100 bis 400 %, Standard 250 %; ein Begrenzer verhindert Übersteuern).
-- **Probe hören** in Einstellungen → Stimme. Dort steht auch, ob Pocket TTS läuft.
-- Jarves-OS startet `uvx pocket-tts serve --language german` beim Start selbst (nur auf 127.0.0.1) und beendet es
-  beim Schließen. Nach dem Start braucht Luzzy ein paar Sekunden, bis sie sprechen kann.
+- **Gemini:** Die verfügbaren Stimmen sind direkt in der Auswahl; das aktuelle Gemini-TTS-Modell wird verwendet.
+- **ElevenLabs:** Vendo lädt die verfügbaren Stimmen deines Kontos, sobald der Schlüssel gespeichert ist.
+- **Probe hören** testet den jeweils ausgewählten Anbieter. Pocket TTS startet Vendo lokal auf `127.0.0.1` und beendet
+  den Server beim Schließen; Cloud-Anbieter benötigen eine Internetverbindung.
 
 ## Alle Sprachbefehle
 
@@ -468,7 +482,8 @@ Ist Hermes nicht erreichbar oder scheitert eine Antwort an Internet oder Cloud-M
 Ollama** (kleinstes vorhandene Modell, z. B. `gemma4:12b`; Jarves-OS startet Ollama selbst). Sie kennt Datum,
 Uhrzeit, Termine, Aufgaben und Notizen; Shop, Mails und Internet gehen dann nicht, das sagt sie ehrlich.
 Solche Antworten sind mit **„🛟 Notbetrieb“** markiert. Timer, Notizen, Aufgaben, PC-Sofortbefehle, Dateisuche und
-Luzzys Stimme laufen ohnehin ohne Internet (Seiten, Suchen und Links öffnen geht nur mit Luzzy über Hermes).
+Pocket TTS laufen ohne Internet; Gemini- und ElevenLabs-Sprachausgabe benötigen eine Verbindung (Seiten, Suchen und
+Links öffnen geht nur mit Luzzy über Hermes).
 
 ## Plugins
 
@@ -494,7 +509,7 @@ Knopf „Einstellungen“ unten links. Gespeichert in `daten\einstellungen.json`
 
 | Tab | Was du einstellst |
 |---|---|
-| **Stimme** | Stimme (13 Stimmen oder eigene Aufnahme), Tempo, Lautstärke, automatisch vorlesen, Probe hören |
+| **Stimme** | Anbieter (Pocket TTS, Gemini, ElevenLabs), Stimme, Cloud-Zugänge, Tempo, Lautstärke, automatisch vorlesen, Probe hören |
 | **Sprechen** | Freihändig, im Crew-Bereich nicht mithören, „Hey Luzzy“, sofort abschicken, weiter zuhören, Unterbrechen, Musik erkennen, Mikrofon-Status |
 | **Meldungen** | Was gemeldet und vorgelesen wird, Ton, Ruhezeit |
 | **Aussehen** | **Design:** Farbdesign (Donnerwolf Gold, Nordlicht, Blutmond, Runenwald, Eisen), Hintergrund (Tiefschwarz, Normal, Etwas heller), Ecken (Kantig, Weich), Schriftgröße (Klein bis Sehr groß). Sofort sichtbar, gespeichert mit „Speichern“, Abbrechen stellt das alte Design wieder her. Dazu Animationen (Reaktor, Welle, Scanlinie, Hintergrund), Farben nach Tageszeit (passen sich jedem Design an) |
@@ -570,15 +585,16 @@ hat (Jarves-OS, Hermes-App). Sie schreibt direkt in die Dateien der Plugins; ist
 
 - **Hermes nie verändern**, nichts nachbauen, was Hermes kann. Luzzys Shop-Regeln bleiben: nichts veröffentlichen
   und nichts im Shop ändern ohne Felix' Ja.
-- **Zugangsdaten** (Shopify-Token, Hermes-Schlüssel) nie anzeigen, loggen, speichern oder an die Oberfläche geben.
+- **Zugangsdaten** nie loggen oder an die Oberfläche zurückgeben. TTS-API-Schlüssel werden nur verschlüsselt mit Windows DPAPI gespeichert; Shopify-Token und Hermes-Schlüssel werden nicht in Vendo gespeichert.
   Geheime Dateien werden von der Dateisuche nie gefunden.
 - **Dateien** nur speichern, wenn Felix klickt – mit Sicherung und „Rückgängig“. **Vault-Schreiben** nur in
   `Donnerwolf-Shop\Jarves-OS\` und nie überschreiben. Bibliothek & Co. sind nur lesend.
 - **PC-Steuerung** nur geprüfte Aktionen: nie beliebige Befehle, Herunterfahren, Schließen, Programme per Pfad.
 - **Löschen** (Jobs, Gespräche, Chats) nur nach Rückfrage.
-- **Was das Haus verlässt:** Nachrichten an Luzzy gehen an das Modell, das in Hermes eingestellt ist. Die Stimme
-  (Pocket TTS), Spracherkennung, Dateisuche, PC-Steuerung, Timer und Notizen bleiben auf dem PC. Das Wetter bekommt
-  nur den Ort. Das Mikrofon darf nur Jarves-OS selbst benutzen.
+- **Was das Haus verlässt:** Nachrichten an Luzzy gehen an das Modell, das in Hermes eingestellt ist. Pocket TTS
+  erzeugt die Stimme lokal; Gemini TTS und ElevenLabs übertragen den Vorlesetext an den jeweiligen Cloud-Anbieter.
+  Spracherkennung, Dateisuche, PC-Steuerung, Timer und Notizen bleiben auf dem PC. Das Wetter bekommt nur den Ort.
+  Das Mikrofon darf nur Jarves-OS selbst benutzen.
 
 ## Probleme lösen
 
@@ -586,6 +602,8 @@ Erster Schritt immer: **„Mach einen Selbsttest“** (oder System → Selbsttes
 
 | Problem | Lösung |
 |---|---|
+| Gemini TTS spricht nicht | Einstellungen → Stimme: Gemini-API-Schlüssel speichern; API-Zugriff und Nutzungslimit im Google-Konto prüfen |
+| ElevenLabs-Stimmen fehlen | ElevenLabs-API-Schlüssel speichern; Anbieter erneut auswählen, damit Vendo die Stimmenliste lädt |
 | Luzzy spricht nicht, Status „uv ist nicht installiert“ | uv installieren (siehe [Einrichten](#einrichten)), Jarves-OS neu starten |
 | Status „braucht die Hugging-Face-Freigabe“ | Auf huggingface.co/kyutai/pocket-tts zustimmen, dann `uvx hf auth login` |
 | Pocket TTS „Zeichensatz-Fehler“ | Setzt Jarves-OS selbst (`PYTHONUTF8=1`); nur bei Tests im Terminal vorher `$env:PYTHONUTF8=1` |
@@ -619,7 +637,6 @@ Neue Funktionen kommen direkt auf `main` oder als Pull Request auf dem Branch `c
 
 **Neue Ideen** (Runde 2: Optimierungen, Stimme, Killer-Funktionen, ungenutzte Hermes-Funktionen): [`ideen.md`](ideen.md).
 
-**Für später** (bewusst nicht gebaut): eine kostenpflichtige ElevenLabs-Stimme, falls Pocket TTS einmal nicht reicht.
 Neue Wünsche am einfachsten als Plugin über die [Werkstatt](#plugins) bauen lassen.
 
 **Bewusst gestrichen:** Produktideen-Schmiede (macht die Crew mit Kira → Lira → Milla schon) und Social-Planer
@@ -627,7 +644,7 @@ Neue Wünsche am einfachsten als Plugin über die [Werkstatt](#plugins) bauen la
 
 ## Aufbau (für Entwickler)
 
-Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbindung), `node-pty`, `@xterm/xterm` und `@xterm/addon-fit` (Terminal; node-pty bringt fertige Windows-Dateien mit, nichts muss kompiliert werden).
+Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbindung), `markdown-it`, `node-pty`, `@xterm/xterm` und `@xterm/addon-fit` (Terminal; node-pty bringt fertige Windows-Dateien mit, nichts muss kompiliert werden).
 
 | Ordner / Datei | Inhalt |
 |---|---|
@@ -635,6 +652,7 @@ Electron 38, reines JavaScript ohne Build. Abhängigkeiten: `ws` (Hermes-Verbind
 | `src/main/hermes.js` | Verbindung zu Hermes (WebSocket-RPC und REST), Gespräche, Bot Chats |
 | `src/main/waechter.js` | Bestellungen, Mails, Jobs, Meilensteine |
 | `src/main/pocket.js` | Luzzys Stimme: Pocket-TTS-Server starten/stoppen, Sprechen |
+| `src/main/sprachdienste.js` | Gemini-/ElevenLabs-TTS und verschlüsselte API-Schlüssel |
 | `src/main/dateisuche.js` | Index über den ganzen PC, Suche, Anzeigen, Speichern mit Sicherung |
 | `src/main/pc.js` | Programme, Webseiten, Tasten, Lautstärke, Ordner, Sperren (geprüft) |
 | `src/main/notfall.js` · `musik.js` · `wissen.js` | Ollama-Notbetrieb · Musik-Erkennung · Vault lesen |

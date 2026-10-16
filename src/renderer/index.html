@@ -438,7 +438,14 @@
           <div class="e-seite-kopf"><h3>Stimme</h3><p class="leise">Wie Luzzy klingt.</p></div>
           <fieldset>
             <legend>Luzzys Stimme</legend>
-            <label>Stimme <select id="e-stimme"></select></label>
+            <label>Anbieter <select id="e-stimme-anbieter">
+              <option value="pocket">Pocket TTS · lokal</option>
+              <option value="gemini">Gemini TTS</option>
+              <option value="elevenlabs">ElevenLabs</option>
+            </select></label>
+            <label for="e-stimme">Stimme</label>
+            <div class="e-stimmen-zeile"><select id="e-stimme"></select><button class="knopf-flach" id="e-stimmen-laden" type="button" hidden>Neu laden</button></div>
+            <div class="leise klein" id="e-stimme-hinweis"></div>
             <div class="e-pocket" id="e-pocket" hidden>
               <div class="e-pocket-datei" id="e-pocket-datei-zeile">
                 <span id="e-pocket-datei" class="leise">Keine Aufnahme gewählt</span>
@@ -447,6 +454,19 @@
               <p class="leise" id="e-pocket-hinweis">Eine saubere Aufnahme, 10 bis 30 Sekunden, ohne Musik. Nur von jemandem, der zugestimmt hat.</p>
               <div class="leise" id="e-pocket-status">Pocket TTS: wird geprüft …</div>
               <p class="leise">Pocket TTS läuft lokal auf deinem PC, kein Text geht ins Internet. Nach dem Start von Jarves braucht es ein paar Sekunden, bis Luzzy sprechen kann.</p>
+            </div>
+            <div class="e-cloud-zugaenge">
+              <p class="leise">Gemini und ElevenLabs senden den Vorlesetext an ihren Cloud-Dienst. Schlüssel werden verschlüsselt auf diesem Windows-Konto gespeichert.</p>
+              <div class="e-zugang">
+                <label for="e-gemini-schluessel">Gemini API-Schlüssel</label>
+                <div><input id="e-gemini-schluessel" type="password" autocomplete="new-password" spellcheck="false" placeholder="API-Schlüssel einfügen" /><button class="knopf-flach" id="e-gemini-speichern" type="button">Speichern</button><button class="knopf-flach" id="e-gemini-entfernen" type="button" title="Gemini-Schlüssel entfernen">Entfernen</button></div>
+                <small class="leise" id="e-gemini-status">Zugang wird geprüft …</small>
+              </div>
+              <div class="e-zugang">
+                <label for="e-elevenlabs-schluessel">ElevenLabs API-Schlüssel</label>
+                <div><input id="e-elevenlabs-schluessel" type="password" autocomplete="new-password" spellcheck="false" placeholder="API-Schlüssel einfügen" /><button class="knopf-flach" id="e-elevenlabs-speichern" type="button">Speichern</button><button class="knopf-flach" id="e-elevenlabs-entfernen" type="button" title="ElevenLabs-Schlüssel entfernen">Entfernen</button></div>
+                <small class="leise" id="e-elevenlabs-status">Zugang wird geprüft …</small>
+              </div>
             </div>
             <label>Tempo <input id="e-tempo" type="range" min="-20" max="20" step="1" /> <output id="e-tempo-wert"></output></label>
             <label>Lautstärke <input id="e-lautstaerke" type="range" min="100" max="400" step="10" /> <output id="e-lautstaerke-wert"></output></label>

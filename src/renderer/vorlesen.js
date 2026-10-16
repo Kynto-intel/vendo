@@ -169,6 +169,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     start()
     try {
       const bytes = await window.jarves.stimme.sprechen(sauber, optionen)
+      if (bytes?.ttsFehler) throw new Error(bytes.ttsFehler)
       if (meinLauf !== lauf) return
       await pauseAbwarten()
       if (meinLauf !== lauf) return
@@ -201,7 +202,10 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     let wecken = null
     const erzeugen = (eintrag) => {
       if (eintrag && !eintrag.bytes) {
-        eintrag.bytes = window.jarves.stimme.sprechen(eintrag.text, optionen)
+        eintrag.bytes = window.jarves.stimme.sprechen(eintrag.text, optionen).then((bytes) => {
+          if (bytes?.ttsFehler) throw new Error(bytes.ttsFehler)
+          return bytes
+        })
         eintrag.bytes.catch(() => {}) // Fehler wird beim Abspielen gemeldet
       }
     }
@@ -217,13 +221,15 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
           }
           const eintrag = schlange.shift()
           erzeugen(eintrag)
-          erzeugen(schlange[0]) // das nächste lädt schon
+          if (optionen?.anbieter !== 'elevenlabs') erzeugen(schlange[0]) // das nächste lädt schon
           let bytes
           try {
             bytes = await eintrag.bytes
           } catch (e) {
             if (meinLauf === lauf) beiFehler(e)
-            continue
+            schlange.length = 0
+            fertig = true
+            break
           }
           if (meinLauf !== lauf) return
           await pauseAbwarten()

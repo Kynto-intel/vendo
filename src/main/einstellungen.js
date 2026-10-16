@@ -8,7 +8,10 @@ const { stimmeGueltig } = require('./pocket')
 const DATEI = path.join(__dirname, '..', '..', 'daten', 'einstellungen.json')
 
 const STANDARD = {
+  stimmeAnbieter: 'pocket',
   stimme: 'alba', // Pocket TTS, lokal
+  geminiStimme: 'Kore',
+  elevenlabsStimme: '',
   tempo: '+0%',
   lautstaerke: 250, // Prozent: Pocket TTS ist von sich aus leise
   vorlesen: true,
@@ -31,7 +34,10 @@ function laden() {
     return {
       ...STANDARD,
       ...gespeichert,
+      stimmeAnbieter: ['pocket', 'gemini', 'elevenlabs'].includes(gespeichert.stimmeAnbieter) ? gespeichert.stimmeAnbieter : STANDARD.stimmeAnbieter,
       stimme: stimmeGueltig(gespeichert.stimme), // alte Edge-Stimmen und „Jürgen“ werden zu Alba
+      geminiStimme: typeof gespeichert.geminiStimme === 'string' ? gespeichert.geminiStimme : STANDARD.geminiStimme,
+      elevenlabsStimme: typeof gespeichert.elevenlabsStimme === 'string' ? gespeichert.elevenlabsStimme : STANDARD.elevenlabsStimme,
       animationen: { ...STANDARD.animationen, ...(gespeichert.animationen || {}) },
       design: { ...STANDARD.design, ...(gespeichert.design || {}) },
       start: { ...STANDARD.start, ...(gespeichert.start || {}) },

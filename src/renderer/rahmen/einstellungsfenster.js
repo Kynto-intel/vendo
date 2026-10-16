@@ -20,9 +20,92 @@ export function einstellungsfensterEinrichten(helfer) {
 let pocketDatei = ''
 let pocketUhr = null
 const dateiName = (p) => String(p || '').split(/[\\/]/).pop()
+const maskieren = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+const stimmeFuer = (anbieter, einstellungen = h.einstellungen()) => anbieter === 'pocket' ? einstellungen.stimme : einstellungen[`${anbieter}Stimme`]
+
+async function stimmenFuellen(anbieter, ausgewaehlt = '') {
+  const auswahl = $('e-stimme')
+  const hinweis = $('e-stimme-hinweis')
+  $('e-stimmen-laden').hidden = anbieter !== 'elevenlabs'
+  auswahl.disabled = true
+  hinweis.textContent = anbieter === 'elevenlabs' ? 'Lade Stimmen aus deinem ElevenLabs-Konto …' : ''
+  try {
+    if (anbieter === 'elevenlabs') {
+      const status = await api.stimme.zugangStatus()
+      if (!status.elevenlabs) {
+        if ($('e-stimme-anbieter').value !== anbieter) return
+        auswahl.innerHTML = '<option value="">API-Schlüssel fehlt</option>'
+        hinweis.textContent = status.speicherVerfuegbar ? 'Speichere zuerst unten deinen ElevenLabs-API-Schlüssel.' : 'Verschlüsselter Speicher nicht verfügbar.'
+        return
+      }
+    }
+    const ergebnis = await api.stimme.liste(anbieter)
+    if (!Array.isArray(ergebnis) && ergebnis?.fehler) throw new Error(ergebnis.fehler)
+    const stimmen = Array.isArray(ergebnis) ? ergebnis : ergebnis.stimmen || []
+    if ($('e-stimme-anbieter').value !== anbieter) return
+    const liste = [...stimmen]
+    if (ausgewaehlt && !liste.some((s) => s.id === ausgewaehlt)) liste.unshift({ id: ausgewaehlt, name: ausgewaehlt, herkunft: 'gespeichert' })
+    auswahl.innerHTML = liste.map((s) => `<option value="${maskieren(s.id)}">${maskieren(s.name)} (${maskieren(s.herkunft)})</option>`).join('')
+    auswahl.value = ausgewaehlt || liste[0]?.id || ''
+    auswahl.disabled = !liste.length
+    hinweis.textContent = anbieter !== 'elevenlabs' ? '' : stimmen.length
+      ? `${stimmen.length} für Free verfügbare Stimmen gefunden.`
+      : 'Dieses Konto stellt aktuell keine für Free freigegebene Stimme bereit.'
+  } catch (e) {
+    if ($('e-stimme-anbieter').value === anbieter) {
+      auswahl.innerHTML = '<option value="">Stimmenliste nicht verfügbar</option>'
+      hinweis.textContent = e.message
+    }
+  }
+}
+
+async function zugaengeAnzeigen() {
+  const status = { speicherVerfuegbar: false }
+  try {
+    Object.assign(status, await api.stimme.zugangStatus())
+  } catch {
+    // Zugänge bleiben nicht verfügbar, wenn der Hauptprozess sie nicht lesen kann.
+  }
+  for (const anbieter of ['gemini', 'elevenlabs']) {
+    const el = $(`e-${anbieter}-status`)
+    el.textContent = !status.speicherVerfuegbar
+      ? 'Verschlüsselter Speicher nicht verfügbar.'
+      : status[anbieter] ? 'API-Schlüssel verschlüsselt gespeichert.' : 'Kein API-Schlüssel gespeichert.'
+    el.dataset.zustand = !status.speicherVerfuegbar ? 'fehler' : status[anbieter] ? 'bereit' : 'aus'
+  }
+}
+
+async function zugangSpeichern(anbieter, entfernen = false) {
+  const feld = $(`e-${anbieter}-schluessel`)
+  const status = $(`e-${anbieter}-status`)
+  const knopf = $(`e-${anbieter}-${entfernen ? 'entfernen' : 'speichern'}`)
+  const schluessel = entfernen ? '' : feld.value.trim()
+  if (!entfernen && !schluessel) return feld.focus()
+  knopf.disabled = true
+  status.textContent = entfernen ? 'Entferne Schlüssel …' : 'Speichere verschlüsselt …'
+  try {
+    await api.stimme.zugangSetzen(anbieter, schluessel)
+    feld.value = ''
+    await zugaengeAnzeigen()
+    if (anbieter === 'elevenlabs' && $('e-stimme-anbieter').value === 'elevenlabs') {
+      await stimmenFuellen('elevenlabs', h.einstellungen().elevenlabsStimme)
+    }
+  } catch (e) {
+    status.textContent = e.message
+    status.dataset.zustand = 'fehler'
+  } finally {
+    knopf.disabled = false
+  }
+}
+
 async function pocketAnzeigen() {
+  const lokal = $('e-stimme-anbieter').value === 'pocket'
+  $('e-pocket').hidden = !lokal
+  if (!lokal) {
+    clearTimeout(pocketUhr)
+    return
+  }
   const wahl = $('e-stimme').value
-  $('e-pocket').hidden = false
   $('e-pocket-datei-zeile').hidden = $('e-pocket-hinweis').hidden = wahl !== 'eigen'
   $('e-pocket-datei').textContent = pocketDatei ? dateiName(pocketDatei) : 'Keine Aufnahme gewählt'
   clearTimeout(pocketUhr)
@@ -33,14 +116,18 @@ async function pocketAnzeigen() {
   if ($('einstellungen').open && z.zustand === 'startet') pocketUhr = setTimeout(pocketAnzeigen, 2000)
 }
 function pocketStarten() {
-  api.stimme.pocketStarten({ stimme: $('e-stimme').value, pocketDatei }).then(pocketAnzeigen, pocketAnzeigen)
+  const anbieter = $('e-stimme-anbieter').value
+  api.stimme.pocketStarten({ stimmeAnbieter: anbieter, stimme: anbieter === 'pocket' ? $('e-stimme').value : h.einstellungen().stimme, pocketDatei }).then(pocketAnzeigen, pocketAnzeigen)
 }
 const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
 
 function formularFuellen() {
-  $('e-stimme').value = h.einstellungen().stimme
+  const anbieter = h.einstellungen().stimmeAnbieter || 'pocket'
+  $('e-stimme-anbieter').value = anbieter
   pocketDatei = h.einstellungen().pocketDatei || ''
+  stimmenFuellen(anbieter, stimmeFuer(anbieter)).catch(() => {})
   pocketAnzeigen()
+  zugaengeAnzeigen()
   $('e-tempo').value = zahl(h.einstellungen().tempo)
   $('e-lautstaerke').value = h.einstellungen().lautstaerke || 250
   $('e-vorlesen').checked = h.einstellungen().vorlesen
@@ -78,8 +165,13 @@ function reglerAnzeigen() {
 
 function formularLesen() {
   const t = Number($('e-tempo').value)
+  const anbieter = $('e-stimme-anbieter').value
+  const stimme = $('e-stimme').value
   return {
-    stimme: $('e-stimme').value,
+    stimmeAnbieter: anbieter,
+    stimme: anbieter === 'pocket' ? stimme : h.einstellungen().stimme,
+    geminiStimme: anbieter === 'gemini' ? stimme : h.einstellungen().geminiStimme,
+    elevenlabsStimme: anbieter === 'elevenlabs' ? stimme : h.einstellungen().elevenlabsStimme,
     pocketDatei,
     lautstaerke: Number($('e-lautstaerke').value) || 250,
     tempo: `${t >= 0 ? '+' : ''}${t}%`,
@@ -134,24 +226,39 @@ $('e-tempo').addEventListener('input', reglerAnzeigen)
 $('e-lautstaerke').addEventListener('input', reglerAnzeigen)
 $('e-probe').addEventListener('click', async () => {
   const f = formularLesen()
-  if (f.stimme === 'eigen' && !pocketDatei) return ($('e-pocket-status').textContent = 'Wähle erst eine Aufnahme für die eigene Stimme.')
+  const anbieter = $('e-stimme-anbieter').value
+  const stimme = $('e-stimme').value
+  if (anbieter === 'pocket' && stimme === 'eigen' && !pocketDatei) return ($('e-pocket-status').textContent = 'Wähle erst eine Aufnahme für die eigene Stimme.')
   const knopf = $('e-probe')
   // Auf Pocket TTS warten, auch beim allerersten Start (lädt dann das Modell)
   knopf.disabled = true
   knopf.textContent = 'Luzzy spricht gleich …'
-  pocketStarten()
+  if (anbieter === 'pocket') pocketStarten()
   try {
-    await h.vorleser().sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { stimme: f.stimme, tempo: f.tempo, lautstaerke: f.lautstaerke, pocketDatei, aufPocketWarten: true })
+    await h.vorleser().sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { anbieter, stimme, tempo: f.tempo, lautstaerke: f.lautstaerke, pocketDatei, aufPocketWarten: true })
   } finally {
     knopf.disabled = false
     knopf.textContent = 'Probe hören'
     pocketAnzeigen()
   }
 })
-$('e-stimme').addEventListener('change', () => {
+$('e-stimme-anbieter').addEventListener('change', () => {
+  const anbieter = $('e-stimme-anbieter').value
+  stimmenFuellen(anbieter, stimmeFuer(anbieter)).catch(() => {})
   pocketAnzeigen()
   pocketStarten()
 })
+$('e-stimme').addEventListener('change', () => {
+  pocketAnzeigen()
+  if ($('e-stimme-anbieter').value === 'pocket') pocketStarten()
+})
+$('e-stimmen-laden').addEventListener('click', () => {
+  stimmenFuellen('elevenlabs', $('e-stimme').value || h.einstellungen().elevenlabsStimme).catch(() => {})
+})
+$('e-gemini-speichern').addEventListener('click', () => zugangSpeichern('gemini'))
+$('e-gemini-entfernen').addEventListener('click', () => zugangSpeichern('gemini', true))
+$('e-elevenlabs-speichern').addEventListener('click', () => zugangSpeichern('elevenlabs'))
+$('e-elevenlabs-entfernen').addEventListener('click', () => zugangSpeichern('elevenlabs', true))
 $('e-pocket-waehlen').addEventListener('click', async () => {
   const datei = await api.stimme.pocketDateiWaehlen()
   if (!datei) return
