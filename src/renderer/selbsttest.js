@@ -3,7 +3,7 @@
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-const api = window.jarves
+const api = window.vendo
 
 const OHNE_HERMES = { ok: null, text: 'übersprungen, braucht Hermes' }
 
@@ -20,7 +20,7 @@ async function pruefungen(h) {
     try {
       ergebnisse.push({ name, ...(await mitFrist(fn())) })
     } catch (e) {
-      ergebnisse.push({ name, ok: false, text: e.message, tun: 'Unerwarteter Fehler. Jarves-OS neu starten; wenn es bleibt, mir die Meldung schicken.' })
+      ergebnisse.push({ name, ok: false, text: e.message, tun: 'Unerwarteter Fehler. Vendo neu starten; wenn es bleibt, mir die Meldung schicken.' })
     }
     zeigen(ergebnisse, true)
   }
@@ -28,7 +28,7 @@ async function pruefungen(h) {
   await pruefen('Hermes', async () =>
     h.verbunden()
       ? { ok: true, text: 'verbunden' }
-      : { ok: false, text: h.hermesText() || 'nicht verbunden', tun: 'Hermes-App öffnen oder Jarves-OS neu starten. Jarves-OS versucht es auch selbst alle paar Sekunden.' })
+      : { ok: false, text: h.hermesText() || 'nicht verbunden', tun: 'Hermes-App öffnen oder Vendo neu starten. Vendo versucht es auch selbst alle paar Sekunden.' })
 
   await pruefen('Luzzy (Modell)', async () => {
     if (!h.verbunden()) return OHNE_HERMES

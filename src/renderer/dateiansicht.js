@@ -1,11 +1,11 @@
 // Dateiansicht: „Luzzy, such die Datei Thor-Hoodie und öffne sie“, „Öffne die Datei Preisliste“, „Zeig mir das Bild Logo“.
 // Gesucht wird in Felix' üblichen Ordnern (siehe src/main/dateisuche.js). Die Datei erscheint in einem Fenster über
-// Jarves-OS, ohne eigenen Tab: Notizen, Texte, Tabellen, Bilder, PDF, Videos, Musik. Alles andere (Word, Excel …):
+// Vendo, ohne eigenen Tab: Notizen, Texte, Tabellen, Bilder, PDF, Videos, Musik. Alles andere (Word, Excel …):
 // Knopf „Mit Programm öffnen“. Mehrere Treffer: Liste zum Anklicken oder „die zweite“ sagen.
 
 import { markdownZuHtml } from './markdown.js'
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
@@ -49,7 +49,7 @@ export function dateiBefehlErkennen(text) {
   if (!suche) return null
   const endung = /\.\w{2,5}$/.test(suche)
   // Ohne Schlüsselwort und Endung ist „zeig mir …“ meist keine Datei (Bestellungen, Wetter …): das bleibt bei Luzzy.
-  // „Such die Preisliste“ / „Öffne die Preisliste“: unsicher, Jarves-OS schaut nach und gibt sonst an Luzzy weiter
+  // „Such die Preisliste“ / „Öffne die Preisliste“: unsicher, Vendo schaut nach und gibt sonst an Luzzy weiter
   if (!schluessel && !endung && !(suchen && oeffnen) && !NUR_OEFFNEN.test(satz) && !suchen) return null
   return { suche, art: ART_WORT[schluessel] || null, endungen: ENDUNG_WORT[schluessel] || null, sicher: Boolean(schluessel || endung || (suchen && oeffnen)) }
 }
@@ -208,7 +208,7 @@ function inhaltZeichnen() {
   else if (d.art === 'video') inhalt.innerHTML = `<video src="${maskieren(d.url)}" controls autoplay></video>`
   else if (d.art === 'audio') inhalt.innerHTML = `<audio src="${maskieren(d.url)}" controls autoplay></audio>`
   else
-    inhalt.innerHTML = `<div class="da-hinweis">${maskieren(d.hinweis || 'Diese Art Datei kann Jarves-OS nicht selbst anzeigen.')}<br />Mit „Mit Programm öffnen“ geht sie im passenden Programm auf.</div>`
+    inhalt.innerHTML = `<div class="da-hinweis">${maskieren(d.hinweis || 'Diese Art Datei kann Vendo nicht selbst anzeigen.')}<br />Mit „Mit Programm öffnen“ geht sie im passenden Programm auf.</div>`
 }
 
 // ── Bearbeiten: Felix selbst oder Luzzy (live, Stelle für Stelle). Gespeichert wird NUR mit Felix' Klick. ──
@@ -307,7 +307,7 @@ async function rueckgaengigKlick() {
 }
 const fehlerText = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
-// Luzzy ändert: sie schickt Änderungsblöcke, Jarves-OS trägt jeden sofort im Text ein, sobald er vollständig ist
+// Luzzy ändert: sie schickt Änderungsblöcke, Vendo trägt jeden sofort im Text ein, sobald er vollständig ist
 const BLOCK = /<<<ALT\r?\n([\s\S]*?)\r?\n===\r?\n([\s\S]*?)\r?\n?>>>/g
 const AENDERN = /^(?:bitte\s+)?(?:kannst du\s+)?(ändere|änder|ändern|ersetze|ersetz|schreib|schreibe|füge|füg|lösch|lösche|entferne|entfern|korrigier|korrigiere|verbessere|verbesser|übersetze|übersetz|formulier|formuliere|kürze|kürz|ergänze|ergänz|tausch|tausche|streich|streiche|setz|setze|mach|mache|pass|passe|nimm|benenn|benenne)(?![\p{L}])/iu
 

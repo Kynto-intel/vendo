@@ -3,12 +3,12 @@
 //   • Reiter „🎬 Arbeitsbühne“: Kette Luzzy → Kira → Lira → Milla, ein Brief wandert bei jeder Übergabe,
 //     darunter der Ablauf des Auftrags (Klick: ganzer Auftrag und Antwort, „Im Bot Mode öffnen“)
 // Datenquelle: die „Bot Chat“-Unterhaltungen der Bots bei Hermes. Jede Übergabe (message_agent) landet dort als
-// „Message from 🤖 Kira (@kira-…): …“, die Antwort des Bots steht direkt danach. Jarves-OS liest nur mit (REST),
+// „Message from 🤖 Kira (@kira-…): …“, die Antwort des Bots steht direkt danach. Vendo liest nur mit (REST),
 // solange der Crew-Bereich offen ist; ein Werkzeug-Ereignis in Luzzys Bot Chat stößt sofort ein Nachlesen an.
 
 import { crewProfile, botName, LUZZY } from './ansichten.js'
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const BOT_CHAT = 'bot chat'
@@ -282,7 +282,7 @@ function zeichnen() {
       <span>${modell.anzahl > 1 ? `<button class="bue-blaettern" data-auftrag="-1" type="button" ${modell.nr === 0 ? 'disabled' : ''} title="Früherer Auftrag">‹</button> ${modell.nr + 1}/${modell.anzahl} <button class="bue-blaettern" data-auftrag="1" type="button" ${modell.nr === modell.anzahl - 1 ? 'disabled' : ''} title="Späterer Auftrag">›</button> · ` : ''}seit ${uhrzeit(modell.start)} · ${dauerText(modell.dauer)}${modell.fertig ? ' · ✓ fertig' : ''}</span>
     </div>
     <div class="bue-ablauf">${modell.zeilen.map(zeile).join('')}</div>
-    <div class="bue-fuss">Klick auf eine Zeile: ganzer Auftrag und Antwort. Jarves liest die Bot Chats nur mit, geändert wird nichts.</div>`
+    <div class="bue-fuss">Klick auf eine Zeile: ganzer Auftrag und Antwort. Vendo liest die Bot Chats nur mit, geändert wird nichts.</div>`
 }
 
 // Bot-Karten oben: Live-Zeile statt „vor x Min.“, gold = arbeitet, grün = fertig

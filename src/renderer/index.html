@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: jarves-datei:; media-src 'self' blob: jarves-datei:; frame-src jarves-datei:; connect-src 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: vendo-datei:; media-src 'self' blob: vendo-datei:; frame-src vendo-datei:; connect-src 'self'"
     />
     <title>Vendo</title>
     <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
@@ -78,7 +78,7 @@
             <div class="untertitel" id="untertitel"></div>
             <div class="unter-knoepfe">
               <button class="nochmal" id="nochmal" type="button" title="Letzte Antwort nochmal vorlesen (oder sag „Wiederhol das“)" hidden>↻ Nochmal hören</button>
-              <button class="nochmal" id="antwort-merken" type="button" title="Letzte Antwort im Vault merken (Jarves-OS\Gemerkte Antworten)" hidden>📌 Merken</button>
+              <button class="nochmal" id="antwort-merken" type="button" title="Letzte Antwort im Vault merken (Vendo\Gemerkte Antworten)" hidden>📌 Merken</button>
             </div>
           </section>
 
@@ -453,7 +453,7 @@
               </div>
               <p class="leise" id="e-pocket-hinweis">Eine saubere Aufnahme, 10 bis 30 Sekunden, ohne Musik. Nur von jemandem, der zugestimmt hat.</p>
               <div class="leise" id="e-pocket-status">Pocket TTS: wird geprüft …</div>
-              <p class="leise">Pocket TTS läuft lokal auf deinem PC, kein Text geht ins Internet. Nach dem Start von Jarves braucht es ein paar Sekunden, bis Luzzy sprechen kann.</p>
+              <p class="leise">Pocket TTS läuft lokal auf deinem PC, kein Text geht ins Internet. Nach dem Start von Vendo braucht es ein paar Sekunden, bis Luzzy sprechen kann.</p>
             </div>
             <div class="e-cloud-zugaenge">
               <p class="leise">Gemini und ElevenLabs senden den Vorlesetext an ihren Cloud-Dienst. Schlüssel werden verschlüsselt auf diesem Windows-Konto gespeichert.</p>
@@ -570,7 +570,7 @@
               <button class="knopf-flach" id="e-sicherung-ordner" type="button">Ordner öffnen</button>
             </div>
             <div class="leise" id="e-sicherung-stand">…</div>
-            <div class="leise">Kopie von Vendo samt Einstellungen und Plugin-Daten (ohne node_modules) nach <code>Desktop\jarves-os\backup</code>. Am besten vor jedem Update.</div>
+            <div class="leise">Kopie von Vendo samt Einstellungen und Plugin-Daten (ohne node_modules) nach <code>Desktop\vendo\backup</code>. Am besten vor jedem Update.</div>
           </fieldset>
         </section>
         </div>

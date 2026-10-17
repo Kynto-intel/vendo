@@ -26,10 +26,10 @@ NOTBETRIEB: Das Internet oder das Cloud-Modell ist gerade nicht erreichbar. Du l
 ohne Werkzeuge. Du kannst NICHT: im Shop nachsehen oder etwas ändern, Mails lesen, im Internet suchen,
 Dateien bearbeiten, die Crew beauftragen, Termine eintragen. Wird so etwas gebraucht, sag das ehrlich in einem Satz
 und dass es wieder geht, sobald die Verbindung zurück ist. Erfinde keine Zahlen, Bestellungen oder Fakten.
-Was Jarves-OS selbst kann, geht weiter: Timer, Wecker, Erinnerungen, Notizen („Merk dir …“), Aufgaben.
+Was Vendo selbst kann, geht weiter: Timer, Wecker, Erinnerungen, Notizen („Merk dir …“), Aufgaben.
 
 Jetzt ist ${wann}.
-${kontext ? `\nDas weiß Jarves-OS gerade (lokal gespeichert, kann veraltet sein):\n${kontext}` : ''}`
+${kontext ? `\nDas weiß Vendo gerade (lokal gespeichert, kann veraltet sein):\n${kontext}` : ''}`
 }
 
 // Frage im Notbetrieb beantworten. ohneFrage: Felix' Nachricht steht schon im Gespräch (Antwort ist gescheitert)

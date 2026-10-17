@@ -1,6 +1,6 @@
-// Hermes-Gateway (Telegram & Co.) beim Start von Jarves-OS mit hochfahren, damit die Hermes-App nicht offen sein muss.
+// Hermes-Gateway (Telegram & Co.) beim Start von Vendo mit hochfahren, damit die Hermes-App nicht offen sein muss.
 // Nur Hermes' eigener Befehl `hermes gateway start`: Er startet den einen Gateway für alle Profile losgelöst im
-// Hintergrund (er läuft also weiter, wenn Jarves-OS zugeht) und tut nichts, wenn schon einer läuft.
+// Hintergrund (er läuft also weiter, wenn Vendo zugeht) und tut nichts, wenn schon einer läuft.
 // Der Gateway gehört dem Standard-Profil, daher -p default (wie bei den Terminal-Befehlen).
 
 const path = require('node:path')

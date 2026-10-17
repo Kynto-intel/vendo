@@ -1,9 +1,9 @@
 // Zwischenablage an Luzzy: Text in irgendeinem Programm kopieren, Strg+Umschalt+L drücken.
-// Jarves-OS kommt nach vorne und fragt, was Luzzy damit tun soll. Bei Verbessern, Übersetzen und Beantworten
+// Vendo kommt nach vorne und fragt, was Luzzy damit tun soll. Bei Verbessern, Übersetzen und Beantworten
 // liegt das Ergebnis danach wieder in der Zwischenablage, fertig zum Einfügen.
 
 const $ = (id) => document.getElementById(id)
-const api = window.jarves
+const api = window.vendo
 
 const AUFTRAEGE = {
   zusammenfassen: { name: 'Zusammenfassen', kopieren: false, prompt: 'Fasse diesen Text kurz zusammen: die Kernaussagen, höchstens fünf Punkte.' },

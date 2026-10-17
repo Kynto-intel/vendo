@@ -1,7 +1,7 @@
-// Kalender-Plugin für Jarves-OS.
+// Kalender-Plugin für Vendo.
 // Termine liegen in daten/plugins/kalender.json: { termine: [{ id, titel, datum, zeit, dauer, notiz, erinnerung }] }
 //   datum "JJJJ-MM-TT", zeit "HH:MM" oder "" (ganztägig), dauer in Minuten, erinnerung Minuten vorher (0 = keine)
-// Verbunden mit dem Aufgaben-Plugin (window.__jarvesAufgaben, falls eingeschaltet): offene Aufgaben mit Datum stehen
+// Verbunden mit dem Aufgaben-Plugin (window.__vendoAufgaben, falls eingeschaltet): offene Aufgaben mit Datum stehen
 // als „☐ …“ an ihrem Tag. Ziehen legt eine Aufgabe auf einen anderen Tag, Klick öffnet sie im Bereich Aufgaben.
 // In der Tagesliste: Aufgaben des Tages (abhaken, vom Tag nehmen) und Aufgaben ohne Tag (＋ legt sie auf den Tag).
 
@@ -35,7 +35,7 @@ export async function starten(ctx) {
   let tagGewaehlt = null // Tag, dessen Termine unten stehen (null = heute)
   let suche = '' // Suche nach Namen, leer = Termine des Tages
   const listenTag = () => tagGewaehlt || heute()
-  let eingeklappt = false // Monatsblatt eingeklappt (merkt sich Jarves-OS pro PC)
+  let eingeklappt = false // Monatsblatt eingeklappt (merkt sich Vendo pro PC)
   try {
     eingeklappt = localStorage.getItem('kalender-eingeklappt') === '1'
   } catch {
@@ -43,7 +43,7 @@ export async function starten(ctx) {
   }
   const erinnert = new Set() // in dieser Sitzung schon erinnert (zusätzlich zu daten.erinnert)
   // Aufgaben-Plugin (falls eingeschaltet): offene Aufgaben für die Tage und die Tagesliste
-  const aufgabenApi = () => window.__jarvesAufgaben
+  const aufgabenApi = () => window.__vendoAufgaben
   const offeneAufgaben = () => (aufgabenApi()?.alle?.() || []).filter((a) => !a.erledigt)
   let gezogen = '' // ID der Aufgabe, die gerade auf einen anderen Tag gezogen wird
 
@@ -385,8 +385,8 @@ export async function starten(ctx) {
   ctx.kontext(() => {
     const grenze = new Date(Date.now() + 7 * 86400000)
     const liste = sortiert(daten.termine).filter((t) => t.datum >= heute() && beginn(t) <= grenze)
-    if (!liste.length) return 'Termine aus dem Jarves-Kalender (nächste 7 Tage): keine.'
-    return `Termine aus dem Jarves-Kalender (nächste 7 Tage):\n${liste.map((t) => `- ${wannText(t)}: ${t.titel}${t.notiz ? ` (${t.notiz})` : ''}`).join('\n')}`
+    if (!liste.length) return 'Termine aus dem Vendo-Kalender (nächste 7 Tage): keine.'
+    return `Termine aus dem Vendo-Kalender (nächste 7 Tage):\n${liste.map((t) => `- ${wannText(t)}: ${t.titel}${t.notiz ? ` (${t.notiz})` : ''}`).join('\n')}`
   })
 
   // Satz für Luzzys Begrüßung beim Start
@@ -413,7 +413,7 @@ export async function starten(ctx) {
     zeichnen()
   }, 1000)
   // Für den Bereich Aufgaben („Im Kalender zeigen“): diesen Tag wählen und den Kalender öffnen
-  window.__jarvesKalender = {
+  window.__vendoKalender = {
     zeigen(datum) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(datum))) return
       const [j, mo] = datum.split('-').map(Number)

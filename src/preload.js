@@ -8,7 +8,7 @@ const abonnieren = (kanal) => (rueckruf) => {
   return () => ipcRenderer.removeListener(kanal, hoerer)
 }
 
-contextBridge.exposeInMainWorld('jarves', {
+contextBridge.exposeInMainWorld('vendo', {
   // Pfad einer ins Fenster gezogenen Datei (Anhang für Luzzy)
   pfadVon: (datei) => webUtils.getPathForFile(datei),
   anhangWaehlen: () => ipcRenderer.invoke('datei:waehlen'),
@@ -172,6 +172,8 @@ contextBridge.exposeInMainWorld('jarves', {
   },
   system: {
     werte: () => ipcRenderer.invoke('system:werte'),
-    details: () => ipcRenderer.invoke('system:details')
+    details: () => ipcRenderer.invoke('system:details'),
+    leerlauf: () => ipcRenderer.invoke('system:leerlauf'),
+    beiLeerlauf: abonnieren('system:leerlauf')
   }
 })

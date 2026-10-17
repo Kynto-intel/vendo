@@ -7,6 +7,7 @@ import { mikrofonErstellen } from './mikrofon.js'
 
 import { crewLaden } from './ansichten.js'
 import { meldungenEinrichten, meldungNeu, problemNeu, meldungenSammeln } from './meldungen.js'
+import { leerlaufEinrichten } from './leerlauf.js'
 import { miniInfoEinrichten } from './miniinfo.js'
 import { freigabenEinrichten, freigabeAusText, freigabeOffen, freigabeZurueckgezogen, freigabenLeeren, jaKnoepfeAnhaengen, jaKnoepfeEntfernen } from './freigaben.js'
 import { tonSpielen } from './toene.js'
@@ -40,7 +41,7 @@ import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, notizOeffnen, morgenberichtLaden } from './wissen.js'
 
 const $ = (id) => document.getElementById(id)
-const api = window.jarves
+const api = window.vendo
 
 const ZUSTAND_TEXT = {
   bereit: 'Bereit',
@@ -264,18 +265,18 @@ const musikAktiv = () => musikSpielt && einstellungen?.sprache?.musikErkennen !=
 api.musik?.status().then((s) => (musikSpielt = Boolean(s))).catch(() => {})
 api.musik?.beiAenderung((s) => (musikSpielt = Boolean(s)))
 // „Hey Luzzy“ während Musik läuft: Musik anhalten (Medientaste), zuhören, danach von selbst weiter
-let musikVonJarvesAngehalten = false
+let musikVonVendoAngehalten = false
 async function musikKurzAnhalten() {
   if (!musikAktiv()) return
   await api.pc.aktion({ art: 'taste', taste: 'abspielen' }).catch(() => {})
-  musikVonJarvesAngehalten = true
+  musikVonVendoAngehalten = true
   await new Promise((r) => setTimeout(r, 350)) // kurz warten, bis es still ist
 }
 setInterval(() => {
   // Fertig mit Zuhören, Antworten und Vorlesen: angehaltene Musik wieder starten
-  if (!musikVonJarvesAngehalten || spricht || hoert || versteht || beschaeftigt || sprichtGerade) return (musikRuheSeit = 0)
+  if (!musikVonVendoAngehalten || spricht || hoert || versteht || beschaeftigt || sprichtGerade) return (musikRuheSeit = 0)
   if (Date.now() - (musikRuheSeit ||= Date.now()) < 1500) return
-  musikVonJarvesAngehalten = false
+  musikVonVendoAngehalten = false
   musikRuheSeit = 0
   if (!musikSpielt) api.pc.aktion({ art: 'taste', taste: 'abspielen' }).catch(() => {})
 }, 500)
@@ -459,7 +460,7 @@ function nachrichtAnzeigen(rolle, text, { laeuft = false } = {}) {
   wer.textContent = rolle === 'luzzy' ? 'LUZZY' : 'FELIX'
   if (rolle === 'luzzy') {
     el.roh = text // Markdown für „Antwort merken“
-    wer.insertAdjacentHTML('beforeend', '<button class="msg-merken" type="button" title="Antwort im Vault merken (Jarves-OS\\Gemerkte Antworten)">📌</button>')
+    wer.insertAdjacentHTML('beforeend', '<button class="msg-merken" type="button" title="Antwort im Vault merken (Vendo\\Gemerkte Antworten)">📌</button>')
   }
   const textEl = document.createElement('div')
   textEl.className = 'msg-text'
@@ -558,7 +559,7 @@ function wiederholen({ gesprochen = false } = {}) {
 }
 $('nochmal').addEventListener('click', () => !beschaeftigt && wiederholen())
 
-// ── Antwort merken (📌): Luzzys Antwort als Notiz in den Vault (Jarves-OS\Gemerkte Antworten) ──
+// ── Antwort merken (📌): Luzzys Antwort als Notiz in den Vault (Vendo\Gemerkte Antworten) ──
 let letzteFrage = ''
 async function antwortMerken(antwort, frage, knopf) {
   try {
@@ -760,7 +761,7 @@ async function bildschirmZeigen(text, { gesprochen = false } = {}) {
   )
 }
 
-// Befehle, die Jarves-OS selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
+// Befehle, die Vendo selbst erledigt. Gehen sofort, auch ohne Hermes und während Luzzy noch antwortet.
 function lokalerBefehl(text, { gesprochen = false } = {}) {
   // Wartet eine Hermes-Freigabe: „Ja“ / „Nein“ / „Stopp“ beantworten sie
   const freigabe = freigabeAusText(text)
@@ -790,7 +791,7 @@ function lokalerBefehl(text, { gesprochen = false } = {}) {
   // Mehrere Gespräche: „Neues Gespräch Shop“, „Wechsel zum Gespräch Privat“, „Welche Gespräche gibt es?“
   const gespraech = gespraechBefehl(text)
   if (gespraech) return dateiAntworten(gespraech, { gesprochen }), true
-  // Datei suchen und in Jarves-OS zeigen; bei mehreren Treffern: „die zweite“
+  // Datei suchen und in Vendo zeigen; bei mehreren Treffern: „die zweite“
   const nummer = trefferNummer(text)
   if (nummer) return dateiAntworten(trefferOeffnen(nummer), { gesprochen }), true
   const datei = dateiBefehlErkennen(text)
@@ -819,7 +820,7 @@ gespraecheEinrichten({
   beiFehler: (e) => systemNachricht(`Gespräch: ${e.message}`)
 })
 
-// „Öffne Kalender“, „Starte Fokus“: Bereiche von Jarves-OS gehen vor gleichnamigen Programmen
+// „Öffne Kalender“, „Starte Fokus“: Bereiche von Vendo gehen vor gleichnamigen Programmen
 function bereichOeffnen(name) {
   const gesucht = String(name || '').toLowerCase().trim()
   const b = BEREICHE.find((x) => x.aktiv && (x.name.toLowerCase() === gesucht || x.id === gesucht))
@@ -899,7 +900,7 @@ async function abschicken(feld, { gesprochen = false } = {}) {
       return lokalAntworten(satz, { gesprochen })
     }
   }
-  // „Öffne die Preisliste“: gibt es eine passende Datei, zeigt Jarves-OS sie; sonst geht der Satz an Luzzy
+  // „Öffne die Preisliste“: gibt es eine passende Datei, zeigt Vendo sie; sonst geht der Satz an Luzzy
   const vielleichtDatei = dateiBefehlErkennen(text)
   if (vielleichtDatei && !vielleichtDatei.sicher && !vielleichtDatei.pfad) {
     const satz = await dateiSuchenUndZeigen(vielleichtDatei, { nurWennPassend: true }).catch(() => null)
@@ -922,7 +923,7 @@ async function abschicken(feld, { gesprochen = false } = {}) {
   // Plugins dürfen die Eingabe abfangen, z. B. das Auslösewort einer Routine ("Morgenbericht")
   const treffer = await pluginEingabe(text)
   if (treffer) return anLuzzy(treffer.text, { anzeige: treffer.anzeige || text, vorlesen: treffer.vorlesen, gesprochen })
-  // Fragt Felix nach Wetter oder Terminen, schickt Jarves-OS die Daten gleich mit (Luzzy muss nicht suchen)
+  // Fragt Felix nach Wetter oder Terminen, schickt Vendo die Daten gleich mit (Luzzy muss nicht suchen)
   const mitgeliefert = await kontextFuer(text)
   if (mitgeliefert) {
     const jetzt = new Date()
@@ -984,7 +985,7 @@ window.addEventListener('keydown', (e) => {
 })
 
 // Schickt einen Auftrag an Luzzy. anzeige = was im Gespräch als Felix' Nachricht erscheint.
-// nachher(antwort) → Satz für Felix: Jarves-OS macht mit der Antwort etwas (Vault, Zwischenablage). Die Antwort
+// nachher(antwort) → Satz für Felix: Vendo macht mit der Antwort etwas (Vault, Zwischenablage). Die Antwort
 // selbst wird dann nicht vorgelesen, nur dieser Satz.
 let vorlesenErzwungen = false
 let luzzyNachher = null
@@ -1172,7 +1173,7 @@ api.hermes.beiEreignis((ev) => {
         .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
       zustandZeigen()
       const gelungen = text && p.status !== 'error' && !p.error
-      // Felix wollte eine Datei sehen und Luzzy nennt den Pfad: in Jarves-OS anzeigen (Hermes selbst kann das nicht)
+      // Felix wollte eine Datei sehen und Luzzy nennt den Pfad: in Vendo anzeigen (Hermes selbst kann das nicht)
       if (gelungen && istOeffnenWunsch(letzteFrage)) pfadAusAntwortOeffnen(text).catch(() => {})
       const nachher = luzzyNachher
       luzzyNachher = null
@@ -1588,6 +1589,7 @@ async function start() {
     einstellungen.vorlesen = false
     einstellungen.meldungen = { ...einstellungen.meldungen, vorlesen: false }
   }
+  leerlaufEinrichten(api, systemNachricht)
   if (new URLSearchParams(location.search).has('meldungtest')) {
     setTimeout(() => {
       meldungNeu({ art: 'bestellung', titel: 'Neue Bestellung #1411', text: 'Felix, neue Bestellung: Thor-Hoodie in L nach Hamburg, 49,90 Euro. Das ist schon die dritte Bestellung von dieser Person.', anzeige: '49,90 Euro · Thor-Hoodie (L) · Hamburg · 3. Bestellung', zeit: Date.now() })
@@ -1618,7 +1620,7 @@ async function start() {
   nichtStoerenZeigen()
   const testAnsicht = new URLSearchParams(location.search).get('ansicht') // nur Testmodus
   if (testAnsicht) setTimeout(() => bereichLaedt(testAnsicht) && ansichtZeigen(testAnsicht), 5000)
-  // Plugins (jarves-os\plugins): eigener Bereich links, Karte rechts
+  // Plugins (vendo\plugins): eigener Bereich links, Karte rechts
   const pluginBereiche = await pluginsStarten({
     mitte: document.querySelector('.mitte'),
     rechts: document.querySelector('.live'),

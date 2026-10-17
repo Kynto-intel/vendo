@@ -1,7 +1,7 @@
 // Läuft gerade Musik oder ein Video auf dem PC (Spotify, YouTube im Browser, Media Player …)?
 // Windows kennt das über seine Mediensteuerung (die gleiche, die beim Lautstärke-Regler den Titel zeigt).
 // Ein kleines PowerShell-Skript fragt alle 2 Sekunden nach und meldet Änderungen („spielt“ / „still“).
-// Nur lesen, nichts steuern. Jarves-OS nutzt das, damit Musik nicht als Sprache verstanden wird.
+// Nur lesen, nichts steuern. Vendo nutzt das, damit Musik nicht als Sprache verstanden wird.
 
 const { spawn } = require('node:child_process')
 

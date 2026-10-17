@@ -1,14 +1,14 @@
 // PC-Steuerung: Programme starten (alles aus dem Startmenü, auch Store-Apps wie Netflix), Webseiten im Browser,
 // Lautstärke und Musik, Ordner öffnen, PC sperren. Aufrufer: die Sofortbefehle der Oberfläche (pcsteuerung.js) und
 // Luzzys Werkzeug pc_steuern über pcbruecke.js. Hier wird jede Aktion geprüft. Nie: beliebige Befehle,
-// Programme per Pfad, Herunterfahren, Schließen. Testmodus JARVES_TEST_PC=1: nur protokollieren, nichts ausführen.
+// Programme per Pfad, Herunterfahren, Schließen. Testmodus VENDO_TEST_PC=1: nur protokollieren, nichts ausführen.
 
 const { execFile } = require('node:child_process')
 const path = require('node:path')
 const { app, shell } = require('electron')
 const { WURZEL } = require('./wissen')
 
-const TEST = Boolean(process.env.JARVES_TEST_PC)
+const TEST = Boolean(process.env.VENDO_TEST_PC)
 const LISTE_ALTER = 60 * 60 * 1000
 
 const normal = (s) =>
@@ -36,7 +36,7 @@ let programmeZeit = 0
 async function programmListe() {
   if (programme && Date.now() - programmeZeit < LISTE_ALTER) return programme
   let liste = []
-  if (process.env.JARVES_TEST_PROGRAMME) liste = JSON.parse(process.env.JARVES_TEST_PROGRAMME).map((p) => ({ name: p.Name, id: p.AppID }))
+  if (process.env.VENDO_TEST_PROGRAMME) liste = JSON.parse(process.env.VENDO_TEST_PROGRAMME).map((p) => ({ name: p.Name, id: p.AppID }))
   else if (process.platform === 'win32') {
     try {
       const aus = await new Promise((fertig, fehler) =>
@@ -121,7 +121,7 @@ function ordnerPfad(name) {
   }
   const ORDNER = { desktop: 'desktop', downloads: 'downloads', download: 'downloads', dokumente: 'documents', bilder: 'pictures', fotos: 'pictures', musik: 'music', videos: 'videos' }
   if (n === 'donnerwolf') return WURZEL
-  if (n === 'vendo' || n === 'jarves' || n === 'jarves os') return path.join(__dirname, '..', '..')
+  if (n === 'vendo') return path.join(__dirname, '..', '..')
   return ORDNER[n] ? pfad(ORDNER[n]) : null
 }
 

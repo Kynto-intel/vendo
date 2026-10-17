@@ -1,7 +1,7 @@
 // Freigaben bequemer (Offene Entscheidung 1, Variante A: Luzzys Regeln bleiben, Freigeben geht schneller).
 //
 // 1. Hermes-Freigaben: Will Luzzy (oder die Crew) einen Befehl ausführen, den Hermes für riskant hält, fragt Hermes nach.
-//    Jarves-OS zeigt dann über der Eingabe eine Karte: Einmal erlauben · Für dieses Gespräch · Ablehnen.
+//    Vendo zeigt dann über der Eingabe eine Karte: Einmal erlauben · Für dieses Gespräch · Ablehnen.
 //    Luzzy sagt dazu, worum es geht; Felix kann auch einfach „Ja“ oder „Nein“ sagen oder tippen.
 // 2. Luzzys eigene Ja-Fragen (SOUL-Regel: erst zeigen, dann Felix' Ja): Endet ihre Antwort mit so einer Frage,
 //    erscheinen darunter die Knöpfe „Ja, mach“ und „Nein“.

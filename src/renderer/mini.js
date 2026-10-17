@@ -15,12 +15,12 @@ const SYMBOL = { bestellung: '◆', mail: '✉', job: '⚠', crew: '⚑', hinwei
 const TEXT = { hoert: ['Ich höre zu …', 'Klick: fertig'], versteht: ['Verstehe …', ''], denkt: ['Denkt nach …', ''], getrennt: ['Keine Verbindung', 'Hermes ist nicht erreichbar'], schaut: ['Schaut auf den Bildschirm …', ''] }
 
 // Farben des Designs (Einstellungen → Aussehen): das große Fenster legt sie beim Anwenden in localStorage
-// „jarves-design“ ab (akzentRgb, akzentHellRgb, grundRgb, textRgb). Ohne Eintrag bleibt Donnerwolf Gold aus mini.html.
+// „vendo-design“ ab (akzentRgb, akzentHellRgb, grundRgb, textRgb). Ohne Eintrag bleibt Donnerwolf Gold aus mini.html.
 const RGB = /^\d{1,3}, ?\d{1,3}, ?\d{1,3}$/
 function farbenSetzen() {
   let d = null
   try {
-    d = JSON.parse(localStorage.getItem('jarves-design') || 'null')
+    d = JSON.parse(localStorage.getItem('vendo-design') || localStorage.getItem('jarves-design') || 'null')
   } catch {
     // Standard
   }
@@ -38,7 +38,7 @@ const sterne = sterneErstellen($('sterne'), { fenniX: () => fenni.position() }) 
 const fenni = fenniErstellen($('fenni'))
 const gucken = guckenErstellen($('gucken'), { x: () => fenni.position() }) // guckt über die Kante, wenn die Insel weg ist
 addEventListener('storage', (e) => {
-  if (e.key !== 'jarves-design') return
+  if (e.key !== 'vendo-design') return
   farbenSetzen()
   fenni.farbenNeu()
   sterne.farbenNeu()

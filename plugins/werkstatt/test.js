@@ -1,4 +1,4 @@
-// Testlauf-Fenster der Werkstatt: lädt den Entwurf wie Jarves-OS, aber mit nachgebildetem ctx.
+// Testlauf-Fenster der Werkstatt: lädt den Entwurf wie Vendo, aber mit nachgebildetem ctx.
 // Daten bleiben im Speicher, Luzzy/Meldungen/Vorlesen werden nur protokolliert, der Hintergrundteil läuft in einem
 // eigenen Prozess. Jeder Fehler landet im Protokoll und im Bericht an die Werkstatt.
 

@@ -2,7 +2,7 @@
   "id": "meilensteine",
   "name": "Meilensteine",
   "version": "1.0.0",
-  "beschreibung": "Bestellungen bei Donnerwolf insgesamt, der nächste Meilenstein und alle erreichten. Luzzy feiert jeden neuen mit (Liste auch im Vault: Jarves-OS\\Meilensteine.md).",
+  "beschreibung": "Bestellungen bei Donnerwolf insgesamt, der nächste Meilenstein und alle erreichten. Luzzy feiert jeden neuen mit (Liste auch im Vault: Vendo\\Meilensteine.md).",
   "bereich": { "name": "Meilensteine" },
   "luzzy": { "stichwoerter": "meilenstein|wie viele bestellungen|bestellungen insgesamt|nächste[rn]? meilenstein" }
 }

@@ -7,7 +7,7 @@ import { kartenFormularFuellen, kartenFormularLesen } from '../karten.js'
 import { tonSpielen } from '../toene.js'
 import { designAnwenden, designFormularFuellen, designFormularLesen } from './design.js'
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 
 let h = { einstellungen: () => null, einstellungenSetzen: () => {}, vorleser: () => null, mikrofonStatusZeigen: () => {}, nachSpeichern: () => {} }
@@ -328,7 +328,7 @@ $('e-pocket-waehlen').addEventListener('click', async () => {
   pocketDatei = datei
   pocketStarten()
 })
-// Einstellungen: Tabs links (der zuletzt offene Tab bleibt gemerkt, solange Jarves-OS läuft)
+// Einstellungen: Tabs links (der zuletzt offene Tab bleibt gemerkt, solange Vendo läuft)
 let letzterTab = 'stimme'
 function einstellungsTab(id) {
   letzterTab = id

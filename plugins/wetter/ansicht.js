@@ -1,5 +1,5 @@
 // Wetter-Plugin: Tab mit aktuellem Wetter, 24-Stunden-Verlauf (Temperatur, Niederschlag, Wind) und 8 Tagen,
-// Karte rechts, Wetterdaten für Luzzy. Aufbau wie die Google-Wetterkarte, im Jarves-Look.
+// Karte rechts, Wetterdaten für Luzzy. Aufbau wie die Google-Wetterkarte, im Vendo-Look.
 // Ort in daten/plugins/wetter.json: { ort: { name, region, land, breite, laenge, zeitzone } }
 
 // WMO-Wettercodes → Text und Symbol-Art (Symbole: symbolSvg)
@@ -361,7 +361,7 @@ export async function starten(ctx) {
     const j = wetter.current
     const t = wetter.daily
     const tage = t.time.slice(0, 3).map((tag, i) => `- ${tagName(tag, i)}: ${tagWetter(wetter, i)[0]}, ${grad(t.temperature_2m_min[i])} bis ${grad(t.temperature_2m_max[i])}, Regenrisiko ${t.precipitation_probability_max[i] ?? 0} %`)
-    return `Wetter in ${ort.name} (${ort.region || ort.land}), aktuelle Daten aus Jarves-OS, keine Websuche nötig:\n- Jetzt: ${code(j.weather_code)[0]}, ${grad(j.temperature_2m)} (gefühlt ${grad(j.apparent_temperature)}), Wind ${Math.round(j.wind_speed_10m)} km/h\n${tage.join('\n')}\n- Sonnenaufgang ${uhr(t.sunrise[0])}, Sonnenuntergang ${uhr(t.sunset[0])}`
+    return `Wetter in ${ort.name} (${ort.region || ort.land}), aktuelle Daten aus Vendo, keine Websuche nötig:\n- Jetzt: ${code(j.weather_code)[0]}, ${grad(j.temperature_2m)} (gefühlt ${grad(j.apparent_temperature)}), Wind ${Math.round(j.wind_speed_10m)} km/h\n${tage.join('\n')}\n- Sonnenaufgang ${uhr(t.sunrise[0])}, Sonnenuntergang ${uhr(t.sunset[0])}`
   })
 
   // Satz für Luzzys Begrüßung beim Start

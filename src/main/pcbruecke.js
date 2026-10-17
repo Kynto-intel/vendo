@@ -1,8 +1,8 @@
 // Brücke für Luzzys PC-Werkzeug (Hermes-Plugin jarves-pc in profiles\donnerwolf\plugins\jarves-pc):
 // Luzzy entscheidet selbst, was sie am PC tun soll, und ruft pc_steuern auf. Das Plugin schickt die Aktion hierher,
 // ausgeführt wird sie wie bei der Oberfläche über pc.js (dort wird jede Aktion geprüft).
-// Nur 127.0.0.1, mit Zufallsschlüssel. Adresse und Schlüssel stehen, solange Jarves-OS läuft, in
-// %APPDATA%\jarves-os\pc-bruecke.json; beim Beenden wird die Datei gelöscht.
+// Nur 127.0.0.1, mit Zufallsschlüssel. Adresse und Schlüssel stehen, solange Vendo läuft, in
+// %APPDATA%\vendo\pc-bruecke.json; beim Beenden wird die Datei gelöscht.
 
 const http = require('node:http')
 const fs = require('node:fs')

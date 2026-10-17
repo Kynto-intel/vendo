@@ -1,5 +1,5 @@
-// Werkstatt (Idee 34): Felix beschreibt ein Plugin in eigenen Worten, Luzzy baut es in jarves-os\werkstatt\<id>\,
-// Jarves-OS prüft es (Aufbau, Syntax, Rechte) und baut es erst nach Felix' Ja ein. Vorhandene Plugins lassen sich
+// Werkstatt (Idee 34): Felix beschreibt ein Plugin in eigenen Worten, Luzzy baut es in vendo\werkstatt\<id>\,
+// Vendo prüft es (Aufbau, Syntax, Rechte) und baut es erst nach Felix' Ja ein. Vorhandene Plugins lassen sich
 // genauso ändern. Per Sprache: „Bau mir ein Plugin für meine Stoffvorräte“ · „Neues Plugin: Kilometer-Tagebuch“.
 
 const STUFE = {
@@ -19,13 +19,13 @@ export async function starten(ctx) {
   const berichte = new Map() // id → Prüfbericht
   let zuletztEingebaut = null
 
-  // ── Aufträge an Luzzy (Details stehen in ihrem Hermes-Skill „jarves-plugin-werkstatt“) ──
+  // ── Aufträge an Luzzy (Details stehen in ihrem Hermes-Skill „vendo-plugin-werkstatt“) ──
   const PRUEFEN = `node "${PLUGINS}\\werkstatt\\pruefen-cli.js"`
-  const regeln = (id) => `Nutze dafür deinen Skill jarves-plugin-werkstatt (Aufbau, ctx-Werkzeuge, Design, Regeln). Falls du ihn nicht findest: Anleitung ${PLUGINS}\\README.md, Vorbild ${PLUGINS}\\aufgaben\\.
-Das ist Felix' Freigabe für neue oder geänderte Dateien, aber nur im Ordner ${WERKSTATT}\\${id}\\ . Nichts in ${PLUGINS}\\ schreiben, nichts anderes ändern – Jarves-OS prüft das Plugin, Felix testet es und baut es erst danach ein.
+  const regeln = (id) => `Nutze dafür deinen Skill vendo-plugin-werkstatt (Aufbau, ctx-Werkzeuge, Design, Regeln). Falls du ihn nicht findest: Anleitung ${PLUGINS}\\README.md, Vorbild ${PLUGINS}\\aufgaben\\.
+Das ist Felix' Freigabe für neue oder geänderte Dateien, aber nur im Ordner ${WERKSTATT}\\${id}\\ . Nichts in ${PLUGINS}\\ schreiben, nichts anderes ändern – Vendo prüft das Plugin, Felix testet es und baut es erst danach ein.
 Prüf dich selbst, bevor du fertig meldest, und behebe alles, bis keine FEHLER mehr kommen:
 ${PRUEFEN} ${id}`
-  const auftragNeu = (id, wunsch) => `[Plugin-Werkstatt] Felix möchte ein neues Plugin für Jarves-OS: „${wunsch}“
+  const auftragNeu = (id, wunsch) => `[Plugin-Werkstatt] Felix möchte ein neues Plugin für Vendo: „${wunsch}“
 
 Bau es als Dateien im Ordner ${WERKSTATT}\\${id}\\ (plugin.json mit "id": "${id}", ansicht.js, optional stil.css, haupt.js nur wenn nötig).
 ${regeln(id)}
@@ -85,7 +85,7 @@ Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix n
           <textarea name="wunsch" rows="3" maxlength="1500" placeholder="Was soll es können? Z. B. „Ein Plugin für meine Stoffvorräte: Stoffe mit Farbe, Menge und Lieferant, Warnung wenn etwas knapp wird.“"></textarea>
           <div class="ws-zeile"><button class="knopf-gold" type="submit">🛠 Luzzy soll es bauen</button><span class="leise klein">Oder sag: „Bau mir ein Plugin für …“</span></div>
         </form>
-        <div class="leise klein">Luzzy baut in einer Werkstatt-Ecke (<code>werkstatt\\</code>). Jarves-OS prüft den Entwurf, eingebaut wird erst nach deinem Ja.</div>
+        <div class="leise klein">Luzzy baut in einer Werkstatt-Ecke (<code>werkstatt\\</code>). Vendo prüft den Entwurf, eingebaut wird erst nach deinem Ja.</div>
       </section>
       <section class="hud ws-entwuerfe">
         <h3>In der Werkstatt</h3>
@@ -121,9 +121,9 @@ Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix n
     const tests = new Map()
     for (const e of entwuerfe) if (e.fertig) tests.set(e.id, await ctx.aufrufen('testErgebnis', e.id))
     const bremsHinweis = bremse.aus.length
-      ? `<div class="ws-bremse">⚠ Die Notbremse hat ${bremse.aus.length === 1 ? 'ein Plugin' : `${bremse.aus.length} Plugins`} abgeschaltet, weil Jarves-OS damit nicht richtig gestartet ist: ${bremse.aus.map((id) => `<span class="ws-bremse-plugin"><b>${m(id)}</b> <button class="knopf-flach" data-einschalten="${m(id)}" type="button">Wieder einschalten</button></span>`).join(' ')}<div class="leise klein">Besser erst „Ändern lassen“ und Luzzy den Fehler beheben lassen. Nach dem Einschalten Jarves-OS neu starten.</div></div>`
+      ? `<div class="ws-bremse">⚠ Die Notbremse hat ${bremse.aus.length === 1 ? 'ein Plugin' : `${bremse.aus.length} Plugins`} abgeschaltet, weil Vendo damit nicht richtig gestartet ist: ${bremse.aus.map((id) => `<span class="ws-bremse-plugin"><b>${m(id)}</b> <button class="knopf-flach" data-einschalten="${m(id)}" type="button">Wieder einschalten</button></span>`).join(' ')}<div class="leise klein">Besser erst „Ändern lassen“ und Luzzy den Fehler beheben lassen. Nach dem Einschalten Vendo neu starten.</div></div>`
       : ''
-    $('[data-entwuerfe]').innerHTML = bremsHinweis + (zuletztEingebaut ? `<div class="ws-eingebaut">✓ „${m(zuletztEingebaut)}“ ist eingebaut. Damit es erscheint, Jarves-OS einmal neu starten. <button class="knopf-gold" data-neustart type="button">Jetzt neu starten</button></div>` : '') + (entwuerfe.length
+    $('[data-entwuerfe]').innerHTML = bremsHinweis + (zuletztEingebaut ? `<div class="ws-eingebaut">✓ „${m(zuletztEingebaut)}“ ist eingebaut. Damit es erscheint, Vendo einmal neu starten. <button class="knopf-gold" data-neustart type="button">Jetzt neu starten</button></div>` : '') + (entwuerfe.length
       ? entwuerfe.map((e) => {
         if (!e.fertig) return `<article class="ws-karte ws-baut"><div class="ws-kopf"><b>${m(e.name)}</b><span class="ws-marke">⏳ Luzzy baut noch …</span></div><div class="leise klein">${e.dateien.length ? `Bisher: ${m(e.dateien.join(', '))}` : 'Noch keine Dateien.'}</div><div class="ws-knoepfe"><button class="knopf-flach gefahr" data-verwerfen="${m(e.id)}" type="button">Verwerfen</button></div></article>`
         const b = berichte.get(e.id)
@@ -216,7 +216,7 @@ Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix n
         const r = await ctx.aufrufen('einbauen', k.dataset.einbauen)
         zuletztEingebaut = b.name
         berichte.delete(r.id)
-        ctx.melden({ art: 'hinweis', titel: `Plugin „${b.name}“ eingebaut`, anzeige: r.gesichert ? `Alte Fassung gesichert (${r.gesichert}). Jarves-OS neu starten.` : 'Jarves-OS neu starten, dann erscheint es links.' })
+        ctx.melden({ art: 'hinweis', titel: `Plugin „${b.name}“ eingebaut`, anzeige: r.gesichert ? `Alte Fassung gesichert (${r.gesichert}). Vendo neu starten.` : 'Vendo neu starten, dann erscheint es links.' })
         return laden()
       }
       if (k.dataset.verwerfen) {
@@ -226,10 +226,10 @@ Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix n
         return laden()
       }
       if (k.dataset.entfernen) {
-        if (!(await ctx.bestaetigen(`Plugin „${k.dataset.name}“ entfernen? Es wird vorher gesichert und landet im Papierkorb. Danach Jarves-OS neu starten.`, { titel: 'Plugin entfernen', ja: 'Entfernen', gefahr: true }))) return
+        if (!(await ctx.bestaetigen(`Plugin „${k.dataset.name}“ entfernen? Es wird vorher gesichert und landet im Papierkorb. Danach Vendo neu starten.`, { titel: 'Plugin entfernen', ja: 'Entfernen', gefahr: true }))) return
         await ctx.aufrufen('entfernen', k.dataset.entfernen)
         zuletztEingebaut = null
-        ctx.melden({ art: 'hinweis', titel: `Plugin „${k.dataset.name}“ entfernt`, anzeige: 'Jarves-OS neu starten, dann ist es weg.' })
+        ctx.melden({ art: 'hinweis', titel: `Plugin „${k.dataset.name}“ entfernt`, anzeige: 'Vendo neu starten, dann ist es weg.' })
         return laden()
       }
     } catch (err) {
@@ -263,7 +263,7 @@ Zum Schluss kurz, was der Fehler war und was du geändert hast, und dass Felix n
 
   // Notbremse hat gerade etwas abgeschaltet: melden
   const bremse = await ctx.aufrufen('notbremse')
-  if (bremse.jetzt.length) ctx.melden({ art: 'hinweis', titel: 'Plugin abgeschaltet', text: `Felix, ich habe beim Start ${bremse.jetzt.length === 1 ? 'ein neues Plugin' : 'neue Plugins'} abgeschaltet, weil Jarves-OS damit beim letzten Mal nicht richtig gestartet ist. Schau in die Werkstatt.`, anzeige: `${bremse.jetzt.join(', ')} – Details in der Werkstatt` })
+  if (bremse.jetzt.length) ctx.melden({ art: 'hinweis', titel: 'Plugin abgeschaltet', text: `Felix, ich habe beim Start ${bremse.jetzt.length === 1 ? 'ein neues Plugin' : 'neue Plugins'} abgeschaltet, weil Vendo damit beim letzten Mal nicht richtig gestartet ist. Schau in die Werkstatt.`, anzeige: `${bremse.jetzt.join(', ')} – Details in der Werkstatt` })
 
   await laden()
   return { laden, takt: 3000 }

@@ -1,4 +1,4 @@
-// Eigene Rückfrage- und Hinweisfenster im Jarves-Design (statt der grauen Windows-Fenster von confirm/alert).
+// Eigene Rückfrage- und Hinweisfenster im Vendo-Design (statt der grauen Windows-Fenster von confirm/alert).
 //   await bestaetigen('Chat „neu“ löschen?', { titel: 'Chat löschen', ja: 'Löschen', gefahr: true }) → true/false
 //   await hinweis('Bitte erst einen Prompt eintragen.')
 // Esc oder Klick daneben = Abbrechen. Bei gefährlichen Aktionen steht der Fokus auf „Abbrechen“.
@@ -8,7 +8,7 @@ const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp
 function fensterZeigen({ titel, text, ja, nein, gefahr }) {
   return new Promise((fertig) => {
     const d = document.createElement('dialog')
-    d.className = `jarves-fenster hud${gefahr ? ' gefahr' : ''}`
+    d.className = `vendo-fenster hud${gefahr ? ' gefahr' : ''}`
     d.innerHTML = `
       <div class="jf-kopf">${gefahr ? '<span class="jf-zeichen">⚠</span>' : ''}<h3>${maskieren(titel)}</h3></div>
       <p class="jf-text">${maskieren(text)}</p>

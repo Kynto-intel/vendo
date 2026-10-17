@@ -1,5 +1,5 @@
 // Meilensteine, Hintergrundteil: Anzahl aller Bestellungen (zählt der Wächter bei Shopify, siehe src/main/waechter.js)
-// und die im Vault festgehaltenen Meilensteine (Jarves-OS\Meilensteine.md) lesen.
+// und die im Vault festgehaltenen Meilensteine (Vendo\Meilensteine.md) lesen.
 
 const fs = require('node:fs')
 const { istMeilenstein, meilensteinEinstellungen, STAND_DATEI } = require('../../src/main/waechter')

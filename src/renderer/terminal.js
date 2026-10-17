@@ -39,7 +39,7 @@ function terminalFarben() {
 
 const liste = () => gespeichert ?? STANDARD
 async function listeSpeichern(neu) {
-  gespeichert = await window.jarves.terminal.befehleSpeichern(neu)
+  gespeichert = await window.vendo.terminal.befehleSpeichern(neu)
   listeZeichnen()
 }
 const fehlertext = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -60,7 +60,7 @@ function listeZeichnen() {
 function anpassen() {
   if (!term || !$('term-xterm').offsetParent) return // Bereich nicht sichtbar: nichts messen
   fit.fit()
-  if (gestartet) window.jarves.terminal.groesse(term.cols, term.rows)
+  if (gestartet) window.vendo.terminal.groesse(term.cols, term.rows)
 }
 
 async function konsoleStarten() {
@@ -69,7 +69,7 @@ async function konsoleStarten() {
   await document.fonts?.ready // erst messen, wenn die Schrift da ist (sonst stimmen Zeilen und Spalten nicht)
   fit.fit()
   try {
-    await window.jarves.terminal.starten(term.cols, term.rows)
+    await window.vendo.terminal.starten(term.cols, term.rows)
     setTimeout(anpassen, 250)
   } catch (e) {
     gestartet = false
@@ -80,7 +80,7 @@ async function konsoleStarten() {
 async function ausfuehren(b) {
   if (RISKANT.test(b.befehl) && !(await bestaetigen(`„${b.name}“ ausführen?\n\n${b.befehl}\n\nDer Befehl stoppt, löscht oder verändert etwas.`, { titel: 'Befehl ausführen', ja: 'Ausführen', gefahr: true }))) return
   await konsoleStarten()
-  await window.jarves.terminal.befehl(b.befehl)
+  await window.vendo.terminal.befehl(b.befehl)
   term.focus()
 }
 
@@ -114,20 +114,20 @@ export function terminalEinrichten() {
     if (e.type !== 'keydown' || !e.ctrlKey || e.altKey) return true
     const taste = e.key.toLowerCase()
     if (taste === 'c' && term.hasSelection()) {
-      window.jarves.zwischenablage.schreiben(term.getSelection()).catch(() => {}) // über Electron, navigator.clipboard ist gesperrt
+      window.vendo.zwischenablage.schreiben(term.getSelection()).catch(() => {}) // über Electron, navigator.clipboard ist gesperrt
       term.clearSelection()
       return false
     }
     if (taste === 'v') {
-      window.jarves.zwischenablage.lesen().then((t) => t && window.jarves.terminal.schreiben(t)).catch(() => {})
+      window.vendo.zwischenablage.lesen().then((t) => t && window.vendo.terminal.schreiben(t)).catch(() => {})
       return false
     }
-    // Strg+F, Strg+P usw. gehören Jarves-OS (Suche, Befehlspalette), nicht der Konsole
+    // Strg+F, Strg+P usw. gehören Vendo (Suche, Befehlspalette), nicht der Konsole
     return !['f', 'p', 'k', 'b', 'j'].includes(taste)
   })
-  term.onData((d) => window.jarves.terminal.schreiben(d))
-  window.jarves.terminal.beiDaten((d) => term.write(d))
-  window.jarves.terminal.beiEnde(() => {
+  term.onData((d) => window.vendo.terminal.schreiben(d))
+  window.vendo.terminal.beiDaten((d) => term.write(d))
+  window.vendo.terminal.beiEnde(() => {
     gestartet = false
     term.writeln('\r\n\x1b[90m[Konsole beendet – „↻ Neu“ oder einen Befehl anklicken startet sie wieder]\x1b[0m')
   })
@@ -142,7 +142,7 @@ export function terminalEinrichten() {
   // Kein „Leeren“-Knopf: er leerte nur die Anzeige, die Konsole wusste nichts davon und schrieb dann versetzt.
   // Leeren geht mit „cls“ in der Konsole (leert beides).
   $('term-neu-start').addEventListener('click', async () => {
-    await window.jarves.terminal.neu()
+    await window.vendo.terminal.neu()
     gestartet = false
     term.reset()
     await konsoleStarten()
@@ -151,7 +151,7 @@ export function terminalEinrichten() {
 
   // Meine Befehle: aus der eigenen Datei laden, dann ausführen, löschen, speichern, Standard wiederherstellen
   listeZeichnen()
-  window.jarves.terminal.befehle().then((l) => {
+  window.vendo.terminal.befehle().then((l) => {
     gespeichert = Array.isArray(l) ? l : null
     listeZeichnen()
   }).catch(() => {})

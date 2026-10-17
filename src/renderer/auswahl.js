@@ -1,4 +1,4 @@
-// Eigene Auswahlfenster für Datum und Uhrzeit im Jarves-Design, statt der Windows-Standardfenster
+// Eigene Auswahlfenster für Datum und Uhrzeit im Vendo-Design, statt der Windows-Standardfenster
 // (die sich nicht einfärben lassen). Gilt für alle input[type=date|time], auch in Plugins und Dialogen.
 // Das Feld selbst bleibt: Tippen geht wie gewohnt, der Wert steht weiter in input.value (JJJJ-MM-TT bzw. HH:MM).
 // Öffnen: Klick ins Feld, F4 oder Alt+↓. Schließen: Esc, Klick daneben, Auswahl.

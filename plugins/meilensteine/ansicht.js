@@ -29,7 +29,7 @@ export async function starten(ctx) {
 
   // Luzzy: „Wie viele Bestellungen insgesamt?“, „Wann kommt der nächste Meilenstein?“
   ctx.kontext(() => {
-    if (stand.anzahl == null) return 'Bestellungen insgesamt: noch nicht gezählt (Jarves-OS zählt beim nächsten Shopify-Abgleich).'
+    if (stand.anzahl == null) return 'Bestellungen insgesamt: noch nicht gezählt (Vendo zählt beim nächsten Shopify-Abgleich).'
     const n = naechster()
     const ziele = e.eigene.filter((x) => x.anzahl > stand.anzahl).sort((a, b) => a.anzahl - b.anzahl)
     return `Bestellungen bei Donnerwolf insgesamt: ${zahl(stand.anzahl)}. Nächster Meilenstein: ${zahl(n)}. Bestellung (noch ${zahl(n - stand.anzahl)}).${ziele.length ? ` Felix' eigene Ziele: ${ziele.map((x) => `${zahl(x.anzahl)}. Bestellung${x.text ? ` (${x.text})` : ''}`).join(', ')}.` : ''}`
@@ -75,7 +75,7 @@ export async function starten(ctx) {
   function zeichnen() {
     eigeneZeichnen()
     if (stand.anzahl == null) {
-      $('[data-kopf]').innerHTML = `<div class="leer-hinweis">Noch nicht gezählt. Jarves-OS holt die Zahl beim nächsten Abgleich mit Shopify (jede Minute, sobald Hermes verbunden und der Shopify-Zugang gültig ist).</div>`
+      $('[data-kopf]').innerHTML = `<div class="leer-hinweis">Noch nicht gezählt. Vendo holt die Zahl beim nächsten Abgleich mit Shopify (jede Minute, sobald Hermes verbunden und der Shopify-Zugang gültig ist).</div>`
       $('[data-liste]').innerHTML = ''
       return
     }

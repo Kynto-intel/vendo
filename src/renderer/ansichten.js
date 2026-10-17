@@ -2,7 +2,7 @@
 
 import { bestaetigen, hinweis } from './fenster.js'
 import { kostenKarteLaden } from './kosten.js' // Kosten-Wächter im System-Tab
-const api = window.jarves
+const api = window.vendo
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const $ = (id) => document.getElementById(id)
 
@@ -99,7 +99,7 @@ export async function crewLaden() {
         const tag = [...(nutzung?.daily || [])].reverse().find((t) => (t.api_calls || 0) > 0 || (t.input_tokens || 0) > 0)
         if (tag) zuletzt = `${tag.day}T12:00:00`
       }
-      const bild = await window.jarves.hermes.botBild(name).catch(() => null)
+      const bild = await window.vendo.hermes.botBild(name).catch(() => null)
       return { p, summe, zuletzt, letzterTitel: letzte?.title || '', bild: bild?.bild || '' }
     })
   )

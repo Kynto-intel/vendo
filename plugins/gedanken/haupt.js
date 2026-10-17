@@ -1,11 +1,11 @@
 // Gedankenspeicher, Hintergrundteil: Notiz zusätzlich im Vault festhalten
-// (Donnerwolf-Shop\Jarves-OS\Gedankenspeicher.md, wird nur ergänzt, nie überschrieben).
-// Diktierte Ideen („Neue Idee: …“) werden eigene Notizen in Jarves-OS\Ideen\ (mit Datum und Schlagworten).
+// (Donnerwolf-Shop\Vendo\Gedankenspeicher.md, wird nur ergänzt, nie überschrieben).
+// Diktierte Ideen („Neue Idee: …“) werden eigene Notizen in Vendo\Ideen\ (mit Datum und Schlagworten).
 
 module.exports = (ctx) => {
   ctx.bereitstellen('imVault', (zeile) =>
     ctx.vault.anhaengen('Gedankenspeicher.md', `- ${String(zeile).replace(/\s+/g, ' ').slice(0, 2000)}`, {
-      kopf: '# Gedankenspeicher\n\nVon Jarves-OS: alles, was Felix sich mit „Merk dir …“ notiert hat. Neueste unten.'
+      kopf: '# Gedankenspeicher\n\nVon Vendo: alles, was Felix sich mit „Merk dir …“ notiert hat. Neueste unten.'
     })
   )
 
@@ -24,7 +24,7 @@ module.exports = (ctx) => {
       `tags: [${tags.join(', ')}]`,
       `datum: ${tag}`,
       `uhrzeit: "${uhrzeit}"`,
-      'quelle: Jarves-OS, diktiert',
+      'quelle: Vendo, diktiert',
       '---',
       '',
       `# ${sauberTitel}`,

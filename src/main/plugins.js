@@ -1,11 +1,11 @@
-// Plugins für Jarves-OS: jeder Ordner in jarves-os\plugins\<id>\ mit einer plugin.json.
+// Plugins für Vendo: jeder Ordner in vendo\plugins\<id>\ mit einer plugin.json.
 //
 // Aufbau eines Plugins:
 //   plugin.json   Pflicht: { "id", "name", "version", "beschreibung", "bereich": { "name" } }
 //   ansicht.js    Oberfläche (ES-Modul): export function starten(ctx) { ... return { laden } }
 //   stil.css      optional: eigenes Design
 //   haupt.js      optional: Hintergrundteil (CommonJS): module.exports = (ctx) => { ctx.bereitstellen('name', fn) }
-//   Speicher      legt Jarves-OS an: daten\plugins\<id>.json (ctx.daten), siehe datenPfad
+//   Speicher      legt Vendo an: daten\plugins\<id>.json (ctx.daten), siehe datenPfad
 //
 // Plugins sind lokaler Code von Felix/Claude, kein Download aus dem Netz.
 
@@ -43,7 +43,7 @@ function startPruefen() {
     abgeschaltet = [...z.neu]
     z.aus = [...new Set([...z.aus, ...z.neu])]
     z.neu = []
-    console.warn(`Notbremse: Jarves-OS ist beim letzten Mal nicht richtig gestartet. Abgeschaltet: ${abgeschaltet.join(', ')}`)
+    console.warn(`Notbremse: Vendo ist beim letzten Mal nicht richtig gestartet. Abgeschaltet: ${abgeschaltet.join(', ')}`)
   }
   z.laeuft = true
   startZustandSpeichern(z)
@@ -171,7 +171,7 @@ function alleLaden() {
           datenLaden: () => datenLaden(manifest.id),
           datenSpeichern: (d) => datenSpeichern(manifest.id, d),
           bereitstellen: (name, fn) => eintrag.funktionen.set(String(name), fn),
-          // Schreiben nur in Donnerwolf-Shop\Jarves-OS\ (nie überschreiben), siehe src/main/vaultschreiben.js
+          // Schreiben nur in Donnerwolf-Shop\Vendo\ (nie überschreiben), siehe src/main/vaultschreiben.js
           vault: require('./vaultschreiben')
         })
       } catch (fehler) {
@@ -188,7 +188,7 @@ async function aufrufen(id, name, argumente = []) {
   return fn(...argumente)
 }
 
-// Daten-Datei beobachten: ändert jemand anderes sie (z. B. Luzzy trägt einen Termin ein), meldet Jarves-OS das dem Plugin
+// Daten-Datei beobachten: ändert jemand anderes sie (z. B. Luzzy trägt einen Termin ein), meldet Vendo das dem Plugin
 const beobachtet = new Set()
 function beobachten(id, beiAenderung) {
   if (!geladen.has(id)) throw new Error('Unbekanntes Plugin.')

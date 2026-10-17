@@ -1,8 +1,8 @@
 // Dateisuche: „Luzzy, such die Datei Thor-Hoodie und öffne sie“. Sucht nach Dateinamen auf dem ganzen PC (alle
-// Laufwerke, auch AppData) und zeigt die Datei in Jarves-OS an. Ausgelassen: Windows- und Programmordner, Papierkorb,
+// Laufwerke, auch AppData) und zeigt die Datei in Vendo an. Ausgelassen: Windows- und Programmordner, Papierkorb,
 // Zwischenspeicher, Entwickler-Ordner und Dateien mit Zugangsdaten (Hermes-Einstellungen, Schlüssel, Passwörter).
 // Nur lesen: hier wird nichts verändert. Die Oberfläche bekommt keine Pfade zum Öffnen, nur Kennungen aus
-// einer Suche; nur diese Dateien dürfen angezeigt werden (Protokoll jarves-datei://<kennung>).
+// einer Suche; nur diese Dateien dürfen angezeigt werden (Protokoll vendo-datei://<kennung>).
 // Das Verzeichnis (nur Pfade) liegt in daten/dateiindex.txt, damit die Suche nach einem Neustart sofort geht;
 // im Hintergrund wird es alle 30 Minuten frisch eingelesen.
 
@@ -61,9 +61,9 @@ function gesperrt(voll) {
   return GEHEIM.test(voll) || GEHEIME_ORDNER.test(voll)
 }
 
-// Wo gesucht wird: alle Laufwerke (Windows), sonst der Benutzerordner. Testmodus: JARVES_TEST_DATEIEN
+// Wo gesucht wird: alle Laufwerke (Windows), sonst der Benutzerordner. Testmodus: VENDO_TEST_DATEIEN
 async function wurzeln() {
-  if (process.env.JARVES_TEST_DATEIEN) return [process.env.JARVES_TEST_DATEIEN]
+  if (process.env.VENDO_TEST_DATEIEN) return [process.env.VENDO_TEST_DATEIEN]
   if (process.platform !== 'win32') return [os.homedir()]
   const liste = []
   for (const buchstabe of 'CDEFGHIJKLMNOPQRSTUVWXYZ') {
@@ -168,11 +168,11 @@ async function speichern(ix) {
   await fs.writeFile(INDEX_DATEI, zeilen.join('\n'), 'utf8')
 }
 function laden() {
-  if (process.env.JARVES_TEST_DATEIEN) return null
+  if (process.env.VENDO_TEST_DATEIEN) return null
   try {
     const zeilen = fsSync.readFileSync(INDEX_DATEI, 'utf8').split('\n')
     const [version, zeit] = zeilen[0].split(' ')
-    if (version !== INDEX_VERSION) return null // von einer älteren Jarves-Version: neu einlesen
+    if (version !== INDEX_VERSION) return null // von einer älteren Vendo-Version: neu einlesen
     const ix = leererIndex()
     ix.zeit = Number(zeit) || 0
     for (let i = 1; i < zeilen.length; i++) {
@@ -342,7 +342,7 @@ function beschreiben(voll, rest) {
 // außer Systemordnern, AppData und Dateien mit Zugangsdaten
 async function pfadTreffer(pfad) {
   const voll = path.resolve(String(pfad || '').trim().replace(/^["']|["']$/g, ''))
-  if (gesperrt(voll)) throw new Error('Diese Datei zeigt Jarves-OS nicht an (Systemordner oder Zugangsdaten).')
+  if (gesperrt(voll)) throw new Error('Diese Datei zeigt Vendo nicht an (Systemordner oder Zugangsdaten).')
   let info
   try {
     info = await fs.stat(voll)
@@ -356,7 +356,7 @@ async function pfadTreffer(pfad) {
 const PROGRAMME = new Set(['.exe', '.bat', '.cmd', '.com', '.msi', '.ps1', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.scr', '.lnk', '.jar', '.reg', '.hta', '.cpl', '.pif', '.url'])
 const istProgramm = (voll) => PROGRAMME.has(path.extname(voll).toLowerCase())
 
-// Inhalt für die Anzeige: Text direkt, alles andere über jarves-datei://<id>
+// Inhalt für die Anzeige: Text direkt, alles andere über vendo-datei://<id>
 async function inhalt(id) {
   const voll = pfadVon(id)
   const info = await fs.stat(voll)
@@ -366,7 +366,7 @@ async function inhalt(id) {
     if (info.size > MAX_TEXT) return { ...basis, art: 'andere', hinweis: 'Die Datei ist zu groß für die Anzeige.' }
     return { ...basis, text: await fs.readFile(voll, 'utf8'), bearbeitbar: bearbeitbar(voll), rueckgaengig: Boolean(letzteSicherung.get(voll)) }
   }
-  if (['bild', 'pdf', 'video', 'audio'].includes(art)) return { ...basis, url: `jarves-datei://${id}/${encodeURIComponent(path.basename(voll))}` }
+  if (['bild', 'pdf', 'video', 'audio'].includes(art)) return { ...basis, url: `vendo-datei://${id}/${encodeURIComponent(path.basename(voll))}` }
   return basis
 }
 
@@ -388,7 +388,7 @@ async function sichern(voll) {
 
 async function speichern(id, text, geaendertBeimLaden) {
   const voll = pfadVon(id)
-  if (!bearbeitbar(voll)) throw new Error('Diese Datei kann Jarves-OS nicht bearbeiten.')
+  if (!bearbeitbar(voll)) throw new Error('Diese Datei kann Vendo nicht bearbeiten.')
   if (typeof text !== 'string' || text.length > MAX_TEXT) throw new Error('Der Text ist zu groß.')
   const info = await fs.stat(voll)
   if (geaendertBeimLaden && Math.abs(info.mtimeMs - geaendertBeimLaden) > 1) {
@@ -413,7 +413,7 @@ async function rueckgaengig(id) {
   return { text, geaendert: neu.mtimeMs, groesse: neu.size }
 }
 
-// Für protocol.handle('jarves-datei'): nur freigegebene Dateien. net.fetch liefert sie gestreamt mit passendem Typ
+// Für protocol.handle('vendo-datei'): nur freigegebene Dateien. net.fetch liefert sie gestreamt mit passendem Typ
 // (auch Vor- und Zurückspulen bei Videos).
 function antwortFuer(url) {
   const id = new URL(url).hostname

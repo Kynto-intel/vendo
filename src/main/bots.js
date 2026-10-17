@@ -1,4 +1,4 @@
-// Neue Bots (Hermes-Profile) direkt aus Jarves-OS anlegen – nur mit Hermes' eigenem Befehl `hermes profile create`,
+// Neue Bots (Hermes-Profile) direkt aus Vendo anlegen – nur mit Hermes' eigenem Befehl `hermes profile create`,
 // am Hermes-Programm wird nichts verändert. Ein Profil ist update-fest (liegt unter hermes\profiles\<id>\).
 //   • Einstellungen (Modell, Zugänge, Skills) kommen von einem bestehenden Bot (--clone-from), ohne Messenger-Kanäle
 //   • Beschreibung: sagt Luzzy im Bot Mode, wofür der Bot da ist (Hermes nimmt jedes Profil automatisch ins Team)
@@ -12,7 +12,7 @@ const HERMES_HOME = path.join(process.env.LOCALAPPDATA || '', 'hermes')
 const HERMES_EXE = path.join(HERMES_HOME, 'bin', 'hermes.exe')
 const PROFIL = /^[a-z0-9][a-z0-9_-]{0,63}$/
 
-// „Freya“ + „Social Media“ → freya-social-media-bot (daraus liest Jarves-OS später wieder Name und Rolle)
+// „Freya“ + „Social Media“ → freya-social-media-bot (daraus liest Vendo später wieder Name und Rolle)
 function profilId(name, rolle) {
   const teil = (t) => String(t || '').toLowerCase()
     .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
@@ -86,15 +86,15 @@ async function botAnlegen({ name, rolle, beschreibung, aufgaben, soulKomplett = 
   return { id, name, rolle }
 }
 
-// ── Luzzy hilft: SOUL.md schreiben oder Bild-Prompt für den Avatar (ihr Skill jarves-bot-erstellen ist die Anleitung) ──
+// ── Luzzy hilft: SOUL.md schreiben oder Bild-Prompt für den Avatar (ihr Skill vendo-bot-erstellen ist die Anleitung) ──
 // Läuft als einmalige Anfrage an Luzzys Modell (llm.oneshot): nichts davon landet in ihrem Chat.
-const SKILL = path.join(HERMES_HOME, 'profiles', 'donnerwolf', 'skills', 'productivity', 'jarves-bot-erstellen', 'SKILL.md')
+const SKILL = path.join(HERMES_HOME, 'profiles', 'donnerwolf', 'skills', 'productivity', 'vendo-bot-erstellen', 'SKILL.md')
 
 function skillTeil(teil) {
   const text = fs.existsSync(SKILL) ? fs.readFileSync(SKILL, 'utf8') : ''
   const a = text.indexOf('## Teil 1')
   const b = text.indexOf('## Teil 2')
-  if (a < 0 || b < 0) throw new Error('Luzzys Skill „jarves-bot-erstellen“ fehlt.')
+  if (a < 0 || b < 0) throw new Error('Luzzys Skill „vendo-bot-erstellen“ fehlt.')
   return teil === 1 ? text.slice(a, b) : text.slice(b)
 }
 

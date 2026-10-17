@@ -2,17 +2,24 @@
 
 const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, clipboard, protocol, dialog } = require('electron')
 
-// Testmodus ohne echtes Mikrofon: JARVES_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
-if (process.env.JARVES_TEST_MIKROFON) {
+// Testmodus ohne echtes Mikrofon: VENDO_TEST_MIKROFON=<datei.wav> spielt die Datei als Mikrofon ein
+if (process.env.VENDO_TEST_MIKROFON) {
   app.commandLine.appendSwitch('use-fake-device-for-media-stream')
   app.commandLine.appendSwitch('use-fake-ui-for-media-stream')
-  app.commandLine.appendSwitch('use-file-for-fake-audio-capture', `${process.env.JARVES_TEST_MIKROFON}%noloop`)
+  app.commandLine.appendSwitch('use-file-for-fake-audio-capture', `${process.env.VENDO_TEST_MIKROFON}%noloop`)
 }
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
-// Gefundene Dateien in Jarves-OS anzeigen (Bilder, PDF, Video …): nur über jarves-datei://<kennung>, siehe dateisuche.js
-protocol.registerSchemesAsPrivileged([{ scheme: 'jarves-datei', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }])
+// Gefundene Dateien in Vendo anzeigen (Bilder, PDF, Video …): nur über vendo-datei://<kennung>, siehe dateisuche.js
+protocol.registerSchemesAsPrivileged([{ scheme: 'vendo-datei', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }])
 const os = require('node:os')
 const path = require('node:path')
+const fsSync = require('node:fs')
+const userData = path.join(app.getPath('appData'), 'vendo')
+const alteUserData = path.join(app.getPath('appData'), 'jarves-os')
+if (!fsSync.existsSync(userData) && fsSync.existsSync(alteUserData)) {
+  fsSync.cpSync(alteUserData, userData, { recursive: true, force: false, errorOnExist: false })
+}
+app.setPath('userData', userData)
 const { Hermes, PROFIL } = require('./hermes')
 const pocket = require('./pocket')
 const sprachdienste = require('./sprachdienste')
@@ -20,20 +27,21 @@ const einstellungen = require('./einstellungen')
 const dateisuche = require('./dateisuche')
 const pc = require('./pc')
 const notfall = require('./notfall')
+const leerlauf = require('./leerlauf')
 
 const hermes = new Hermes()
 // Die Zentrale-Unterhaltung über ihre feste ID wiederfinden (Titel kann Hermes ändern)
 // Mehrere Gespräche (#27): Liste der Themen in den Einstellungen, jedes mit seiner Hermes-Unterhaltung.
-// „Allgemein“ ist die bisherige Zentrale (Titel „Jarves-OS“), neue Themen heißen in Hermes „Jarves-OS · <Name>“.
+// „Allgemein“ ist die bisherige Zentrale (Titel „Vendo“), neue Themen heißen in Hermes „Vendo · <Name>“.
 function gespraeche() {
   const e = einstellungen.laden()
   let liste = (Array.isArray(e.gespraeche) ? e.gespraeche : []).filter((g) => g && typeof g.name === 'string' && g.name.trim())
-  if (!liste.length) liste = [{ name: 'Allgemein', titel: 'Jarves-OS', session: e.zentraleSession || null }]
+  if (!liste.length) liste = [{ name: 'Allgemein', titel: 'Vendo', session: e.zentraleSession || null }]
   const aktiv = liste.find((g) => g.name === e.aktivesGespraech) || liste[0]
   return { liste, aktiv }
 }
 hermes.gemerkteSession = () => gespraeche().aktiv.session || null
-hermes.gemerkterTitel = () => gespraeche().aktiv.titel || 'Jarves-OS'
+hermes.gemerkterTitel = () => gespraeche().aktiv.titel || 'Vendo'
 hermes.sessionMerken = (id) => {
   const { liste, aktiv } = gespraeche()
   if (aktiv.session === id && einstellungen.laden().gespraeche) return
@@ -46,10 +54,13 @@ const gespraecheFuerOberflaeche = () => {
   return { liste: liste.map((g) => ({ name: g.name })), aktiv: aktiv.name }
 }
 let fenster = null
+let leerlaufBeenden = () => {}
 
 function senden(kanal, daten) {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send(kanal, daten)
 }
+
+ipcMain.handle('system:leerlauf', () => leerlauf.status())
 
 // Fenster merken: Größe und Position vom letzten Mal, aber nur, wenn es noch auf einen Bildschirm passt
 // (z. B. zweiter Monitor abgesteckt). Sonst Standardgröße in der Mitte.
@@ -116,16 +127,16 @@ function fensterErstellen() {
     }
   })
   const query = {}
-  if (process.env.JARVES_TEST_NACHRICHT) query.test = process.env.JARVES_TEST_NACHRICHT
-  if (process.env.JARVES_TEST_PANEL) query.panel = process.env.JARVES_TEST_PANEL
-  if (process.env.JARVES_TEST_STUMM) query.stumm = '1'
-  if (process.env.JARVES_TEST_ANSICHT) query.ansicht = process.env.JARVES_TEST_ANSICHT
-  if (process.env.JARVES_TEST_TAGESZEIT) query.tageszeit = process.env.JARVES_TEST_TAGESZEIT
-  if (process.env.JARVES_TEST_INTRO) query.intro = '1'
-  if (process.env.JARVES_TEST_CREW) query.crewtest = process.env.JARVES_TEST_CREW
-  if (process.env.JARVES_TEST_MELDUNG) query.meldungtest = '1'
+  if (process.env.VENDO_TEST_NACHRICHT) query.test = process.env.VENDO_TEST_NACHRICHT
+  if (process.env.VENDO_TEST_PANEL) query.panel = process.env.VENDO_TEST_PANEL
+  if (process.env.VENDO_TEST_STUMM) query.stumm = '1'
+  if (process.env.VENDO_TEST_ANSICHT) query.ansicht = process.env.VENDO_TEST_ANSICHT
+  if (process.env.VENDO_TEST_TAGESZEIT) query.tageszeit = process.env.VENDO_TEST_TAGESZEIT
+  if (process.env.VENDO_TEST_INTRO) query.intro = '1'
+  if (process.env.VENDO_TEST_CREW) query.crewtest = process.env.VENDO_TEST_CREW
+  if (process.env.VENDO_TEST_MELDUNG) query.meldungtest = '1'
   fenster.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), { query })
-  // Links aus Antworten im Standardbrowser öffnen, nie im Jarves-OS-Fenster
+  // Links aus Antworten im Standardbrowser öffnen, nie im Vendo-Fenster
   fenster.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
     return { action: 'deny' }
@@ -163,7 +174,7 @@ let gatewayGeprueft = false
 hermes.on('status', (s) => {
   senden('hermes:status', s)
   if (s.zustand === 'bereit') waechter.starten()
-  if (s.zustand === 'bereit' && !gatewayGeprueft && !process.env.JARVES_TEST_STUMM && einstellungen.laden().start?.gateway !== false) {
+  if (s.zustand === 'bereit' && !gatewayGeprueft && !process.env.VENDO_TEST_STUMM && einstellungen.laden().start?.gateway !== false) {
     gatewayGeprueft = true
     // Nur ASCII ausgeben: die PowerShell-Konsole zeigt Umlaute und Hermes' Häkchen sonst verstümmelt an
     require('./gateway').starten().then((g) => console.log(`Hermes-Gateway: ${g.ok ? 'laeuft' : 'Start fehlgeschlagen'} (${g.text.replace(/[^\x20-\x7e]/g, '').trim()})`))
@@ -179,8 +190,8 @@ const musikStopp = require('./musik').musikBeobachten((spielt) => {
 })
 app.on('will-quit', () => musikStopp())
 ipcMain.handle('musik:status', () => musikSpielt)
-// Testmodus: JARVES_TEST_FREIGABE=1 spielt nach 9 s eine Freigabe-Anfrage vor (Hermes führt dabei nichts aus)
-if (process.env.JARVES_TEST_FREIGABE) setTimeout(() => hermes.emit('freigabe', { id: 'test-freigabe', kanal: 'zentrale', befehl: 'Remove-Item C:/Temp/alt -Recurse', beschreibung: 'Den Ordner C:/Temp/alt mit allen Dateien löschen', werkzeug: 'terminal', auswahl: ['once', 'session', 'always', 'deny'] }), 9000)
+// Testmodus: VENDO_TEST_FREIGABE=1 spielt nach 9 s eine Freigabe-Anfrage vor (Hermes führt dabei nichts aus)
+if (process.env.VENDO_TEST_FREIGABE) setTimeout(() => hermes.emit('freigabe', { id: 'test-freigabe', kanal: 'zentrale', befehl: 'Remove-Item C:/Temp/alt -Recurse', beschreibung: 'Den Ordner C:/Temp/alt mit allen Dateien löschen', werkzeug: 'terminal', auswahl: ['once', 'session', 'always', 'deny'] }), 9000)
 const letzterVerlauf = {} // pro Kanal (zentrale, crew)
 hermes.on('verlauf', (v) => {
   letzterVerlauf[v.kanal] = v
@@ -277,7 +288,7 @@ ipcMain.handle('gespraeche:wechseln', async (_e, name) => {
   let ziel = liste.find((g) => g.name.toLowerCase() === name.toLowerCase())
   if (!ziel) {
     if (liste.length >= 30) throw new Error('Schon 30 Gespräche. Lösch erst eins.')
-    ziel = { name, titel: `Jarves-OS · ${name}`, session: null }
+    ziel = { name, titel: `Vendo · ${name}`, session: null }
     liste.push(ziel)
   }
   einstellungen.speichern({ gespraeche: liste, aktivesGespraech: ziel.name })
@@ -295,13 +306,13 @@ ipcMain.handle('gespraeche:loeschen', async (_e, name) => {
   return gespraecheFuerOberflaeche()
 })
 
-// Mehrere normale Chats pro Bot (Crew-Tab): Liste in den Einstellungen, „Allgemein“ = Hermes-Titel „Jarves-OS“
+// Mehrere normale Chats pro Bot (Crew-Tab): Liste in den Einstellungen, „Allgemein“ = Hermes-Titel „Vendo“
 const BOT_PROFIL = /^[a-z0-9][a-z0-9_-]{0,63}$/
 function botChats(profil) {
   const alle = einstellungen.laden().botChats || {}
   const eigene = alle[profil] || {}
   let liste = (Array.isArray(eigene.liste) ? eigene.liste : []).filter((g) => g && typeof g.name === 'string' && g.name.trim())
-  if (!liste.length) liste = [{ name: 'Allgemein', titel: 'Jarves-OS', session: null }]
+  if (!liste.length) liste = [{ name: 'Allgemein', titel: 'Vendo', session: null }]
   const aktiv = liste.find((g) => g.name === eigene.aktiv) || liste[0]
   return { alle, liste, aktiv }
 }
@@ -330,7 +341,7 @@ ipcMain.handle('botchats:wechseln', async (_e, profil, name) => {
   let ziel = liste.find((g) => g.name.toLowerCase() === name.toLowerCase())
   if (!ziel) {
     if (liste.length >= 30) throw new Error('Schon 30 Chats. Lösch erst einen.')
-    ziel = { name, titel: `Jarves-OS · ${name}`, session: null }
+    ziel = { name, titel: `Vendo · ${name}`, session: null }
     liste.push(ziel)
   }
   botChatsSpeichern(profil, liste, ziel.name)
@@ -402,14 +413,14 @@ ipcMain.handle('wake:pausieren', () => hermes.wakePausieren())
 ipcMain.handle('wake:stoppen', () => hermes.wakeStoppen())
 ipcMain.on('wake:fuettern', (_e, bytes) => hermes.wakeFuettern(bytes))
 
-// Plugins (jarves-os\plugins\<id>\)
+// Plugins (vendo\plugins\<id>\)
 const plugins = require('./plugins')
 ipcMain.handle('plugins:liste', () => plugins.alleLaden())
 ipcMain.handle('plugins:datenLaden', (_e, id) => plugins.datenLaden(String(id)))
 ipcMain.handle('plugins:datenSpeichern', (_e, id, daten) => plugins.datenSpeichern(String(id), daten))
 ipcMain.handle('plugins:beobachten', (_e, id) => plugins.beobachten(String(id), (pid) => fenster?.webContents.send('plugins:geaendert', pid)))
 ipcMain.handle('plugins:startOk', () => plugins.startOk()) // Notbremse: Start hat geklappt
-// Notbremse: Wird Jarves-OS normal beendet (auch schnell nach dem Start), zählt das als geglückter Start.
+// Notbremse: Wird Vendo normal beendet (auch schnell nach dem Start), zählt das als geglückter Start.
 // Nur Absturz oder Hänger der Oberfläche lösen sie beim nächsten Start aus.
 let oberflaecheGestoert = false
 app.on('web-contents-created', (_e, wc) => {
@@ -456,7 +467,7 @@ ipcMain.handle('datei:rueckgaengig', (_e, id) => dateisuche.rueckgaengig(id))
 ipcMain.handle('datei:pfad', (_e, pfad) => dateisuche.pfadTreffer(String(pfad || '').slice(0, 500)))
 ipcMain.handle('datei:mitProgramm', async (_e, id) => {
   const voll = dateisuche.pfadVon(id)
-  // Programme und Skripte startet Jarves-OS nie von selbst, auch nicht auf Knopfdruck
+  // Programme und Skripte startet Vendo nie von selbst, auch nicht auf Knopfdruck
   if (dateisuche.istProgramm(voll)) throw new Error('Programme und Skripte startet Vendo nicht. Nimm „Im Ordner zeigen“.')
   const fehler = await shell.openPath(voll)
   if (fehler) throw new Error(fehler)
@@ -554,7 +565,7 @@ ipcMain.handle('start:autostart', (_e, an) => {
 })
 
 // ── Andocken an die Bildschirmhälfte ──
-// Exakte Hälfte der Arbeitsfläche (ohne Taskleiste) des Bildschirms, auf dem Jarves-OS gerade ist
+// Exakte Hälfte der Arbeitsfläche (ohne Taskleiste) des Bildschirms, auf dem Vendo gerade ist
 function haelfteBerechnen(seite) {
   const wa = screen.getDisplayMatching(fenster.getBounds()).workArea
   const links = Math.floor(wa.width / 2)
@@ -619,7 +630,7 @@ async function titelfarbeMessen() {
     const alt = titelfarbe.match(/[0-9a-f]{2}/gi).map((h) => parseInt(h, 16))
     if (Math.max(...rgb.map((w, k) => Math.abs(w - alt[k]))) < 3) return // kaum Unterschied: nicht flackern
     titelfarbe = `#${rgb.map((w) => w.toString(16).padStart(2, '0')).join('')}`
-    if (process.env.JARVES_TEST_JS) console.log('TEST-TITELFARBE:', titelfarbe) // nur Testmodus
+    if (process.env.VENDO_TEST_JS) console.log('TEST-TITELFARBE:', titelfarbe) // nur Testmodus
     titelleisteSetzen()
   } catch {
     // nicht auf jedem System möglich
@@ -644,11 +655,11 @@ ipcMain.handle('fenster:design', (_e, d = {}) => {
 })
 setInterval(titelfarbeMessen, 1500)
 
-// Taskleiste blinken lassen, wenn Jarves-OS im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
+// Taskleiste blinken lassen, wenn Vendo im Hintergrund etwas Wichtiges hat (z. B. Timer abgelaufen)
 ipcMain.handle('fenster:aufmerksamkeit', () => {
   if (fenster && !fenster.isDestroyed() && !fenster.isFocused()) fenster.flashFrame(true)
 })
-// Antwort merken (📌): als Notiz in Donnerwolf-Shop\Jarves-OS\Gemerkte Antworten
+// Antwort merken (📌): als Notiz in Donnerwolf-Shop\Vendo\Gemerkte Antworten
 const vaultSchreiben = require('./vaultschreiben')
 ipcMain.handle('vault:antwortMerken', async (_e, antwort, frage) => {
   antwort = String(antwort || '').slice(0, 100000)
@@ -802,7 +813,7 @@ function miniSetzen(an, { schliessen = false } = {}) {
     return
   }
   if (!mini) {
-    // Auf dem Bildschirm, auf dem Jarves-OS gerade ist: oben in der Mitte
+    // Auf dem Bildschirm, auf dem Vendo gerade ist: oben in der Mitte
     const { workArea } = screen.getDisplayMatching(fenster.getBounds())
     mini = new BrowserWindow({
       width: MINI.breite,
@@ -883,10 +894,10 @@ ipcMain.on('mini:hoehe', (_e, offen) => {
 
 // ── Start ──
 app.whenReady().then(() => {
-  // Mikrofon nur für Jarves-OS selbst erlauben
+  // Mikrofon nur für Vendo selbst erlauben
   session.defaultSession.setPermissionRequestHandler((_wc, recht, antwort) => antwort(recht === 'media'))
   session.defaultSession.setPermissionCheckHandler((_wc, recht) => recht === 'media')
-  protocol.handle('jarves-datei', (anfrage) => {
+  protocol.handle('vendo-datei', (anfrage) => {
     try {
       return dateisuche.antwortFuer(anfrage.url)
     } catch (e) {
@@ -895,13 +906,14 @@ app.whenReady().then(() => {
   })
   dateisuche.vorbereiten()
   pc.vorbereiten()
-  if (!process.env.JARVES_TEST_STUMM) pcBruecke.starten() // ein Testlauf übernimmt nie die Brücke des echten Jarves-OS
+  if (!process.env.VENDO_TEST_STUMM) pcBruecke.starten() // ein Testlauf übernimmt nie die Brücke des echten Vendo
   // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann (im stummen Testmodus nicht:
   // dort wird nichts vorgelesen, und abgebrochene Testläufe ließen sonst Server zurück)
   const sprachEinstellungen = einstellungen.laden()
-  if (sprachEinstellungen.stimmeAnbieter === 'pocket' && (!process.env.JARVES_TEST_STUMM || process.env.JARVES_TEST_POCKET)) pocket.starten(pocketDateiFuer(sprachEinstellungen)).catch(() => {})
+  if (sprachEinstellungen.stimmeAnbieter === 'pocket' && (!process.env.VENDO_TEST_STUMM || process.env.VENDO_TEST_POCKET)) pocket.starten(pocketDateiFuer(sprachEinstellungen)).catch(() => {})
   fensterErstellen()
-  // Strg+Leertaste: Sprechen an/aus, auch wenn Jarves-OS im Hintergrund ist
+  leerlaufBeenden = leerlauf.beobachten((an) => senden('system:leerlauf', an))
+  // Strg+Leertaste: Sprechen an/aus, auch wenn Vendo im Hintergrund ist
   globalShortcut.register('Control+Space', () => senden('mikrofon:umschalten'))
   // Strg+Umschalt+H: freihändig an/aus („Hey Luzzy“ & Co. oder nur auf Knopfdruck), auch mitten in einem Anruf
   if (!globalShortcut.register('Control+Shift+H', () => senden('mikrofon:freihaendig'))) console.warn('Strg+Umschalt+H ist schon von einem anderen Programm belegt.')
@@ -926,10 +938,10 @@ app.whenReady().then(() => {
   skriptFuerTest()
 })
 
-// Testmodus: JARVES_TEST_JS=<JavaScript> [JARVES_TEST_JS_NACH=<ms>] führt Code in der Oberfläche aus
+// Testmodus: VENDO_TEST_JS=<JavaScript> [VENDO_TEST_JS_NACH=<ms>] führt Code in der Oberfläche aus
 // und schreibt das Ergebnis in die Konsole (nur zum Entwickeln, z. B. Klicks simulieren).
 function skriptFuerTest() {
-  const code = process.env.JARVES_TEST_JS
+  const code = process.env.VENDO_TEST_JS
   if (!code) return
   // Fehler aus der Oberfläche (auch beim Laden der Module) im Terminal zeigen, damit ein Test sie sieht
   fenster.webContents.on('console-message', (e) => {
@@ -942,22 +954,25 @@ function skriptFuerTest() {
     } catch (e) {
       console.log('TEST-FEHLER:', e.message)
     }
-  }, Number(process.env.JARVES_TEST_JS_NACH || 10000))
+  }, Number(process.env.VENDO_TEST_JS_NACH || 10000))
 }
 
-// Testmodus: JARVES_SCREENSHOT=<datei.png> [JARVES_SCREENSHOT_NACH=<ms>] macht ein Bild der App und beendet sie.
+// Testmodus: VENDO_SCREENSHOT=<datei.png> [VENDO_SCREENSHOT_NACH=<ms>] macht ein Bild der App und beendet sie.
 function bildschirmfotoFuerTest() {
-  const ziel = process.env.JARVES_SCREENSHOT
+  const ziel = process.env.VENDO_SCREENSHOT
   if (!ziel) return
   setTimeout(async () => {
     const bild = await fenster.webContents.capturePage()
     require('node:fs').writeFileSync(ziel, bild.toPNG())
     hermes.beenden()
     app.quit()
-  }, Number(process.env.JARVES_SCREENSHOT_NACH || 15000))
+  }, Number(process.env.VENDO_SCREENSHOT_NACH || 15000))
 }
 
-app.on('will-quit', () => globalShortcut.unregisterAll())
+app.on('will-quit', () => {
+  leerlaufBeenden()
+  globalShortcut.unregisterAll()
+})
 
 app.on('window-all-closed', () => {
   waechter.stoppen()

@@ -6,7 +6,7 @@ import { markdownZuHtml } from './markdown.js'
 import { bestaetigen } from './fenster.js'
 import { botName } from './ansichten.js'
 
-const api = window.jarves
+const api = window.vendo
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const fehlerText = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -17,7 +17,7 @@ export async function botProfilOeffnen(profil) {
   const { name, rolle } = botName(p)
 
   const d = document.createElement('dialog')
-  d.className = 'jarves-fenster hud bot-profil'
+  d.className = 'vendo-fenster hud bot-profil'
   d.innerHTML = `
     <div class="bp-kopf">
       <div class="bp-bild" data-bild>${maskieren(name.charAt(0))}</div>
@@ -44,7 +44,7 @@ export async function botProfilOeffnen(profil) {
     <div class="bp-soul md" data-ansicht><div class="leise">Lade SOUL …</div></div>
     <textarea class="bp-editor" data-editor spellcheck="false" hidden></textarea>
     <div class="fehler bp-fehler" data-fehler hidden></div>
-    <div class="leise klein bp-hinweis">Änderungen gelten ab dem nächsten neuen Chat mit ${maskieren(name)}. Vor jedem Speichern wird die alte Fassung gesichert (Jarves-OS: daten\\datei-sicherungen\\soul).</div>`
+    <div class="leise klein bp-hinweis">Änderungen gelten ab dem nächsten neuen Chat mit ${maskieren(name)}. Vor jedem Speichern wird die alte Fassung gesichert (Vendo: daten\\datei-sicherungen\\soul).</div>`
   const $ = (sel) => d.querySelector(sel)
   document.body.appendChild(d)
   d.showModal()

@@ -281,7 +281,7 @@ class Waechter extends EventEmitter {
       for (const m of erreicht) {
         await require('./vaultschreiben')
           .anhaengen('Meilensteine.md', `- ${heute} · ${tausender(m)}. Bestellung${letzte?.name ? ` (um ${letzte.name})` : ''}${(t => (t ? `: ${t}` : ''))(e.eigene.find((x) => x.anzahl === m)?.text)}`, {
-            kopf: '# Meilensteine\n\nVon Jarves-OS: jede besondere Bestellung bei Donnerwolf.'
+            kopf: '# Meilensteine\n\nVon Vendo: jede besondere Bestellung bei Donnerwolf.'
           })
           .catch(() => {}) // Vault nicht da: Meldung kam trotzdem
       }

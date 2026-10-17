@@ -84,9 +84,9 @@ export async function starten(ctx) {
       r.prompt.trim()
     ]
     if (zusatz) teile.push(`Zusatz von Felix: ${zusatz}`)
-    // Termine, Wetter usw. liefert Jarves-OS selbst: erwähnt der Prompt sie, werden die Daten angehängt
+    // Termine, Wetter usw. liefert Vendo selbst: erwähnt der Prompt sie, werden die Daten angehängt
     const mitgeliefert = await ctx.kontextFuer(`${r.prompt} ${zusatz}`)
-    if (mitgeliefert) teile.push(`Diese Daten liefert Jarves-OS, nutze sie direkt statt zu suchen:\n\n${mitgeliefert}`)
+    if (mitgeliefert) teile.push(`Diese Daten liefert Vendo, nutze sie direkt statt zu suchen:\n\n${mitgeliefert}`)
     if (r.speichern && r.pfad) teile.push(`Speichere das Ergebnis als Markdown-Datei unter ${r.pfad.replace('{datum}', heuteText())} im Donnerwolf-Ordner.`)
     if (r.vorlesen) teile.push('Formuliere die Antwort so, dass sie sich gut vorlesen lässt: kurze Sätze, keine Tabellen.')
     return teile.join('\n\n')
@@ -192,7 +192,7 @@ export async function starten(ctx) {
           <small>Mehrere mit Komma trennen. Sagen oder tippen, z. B. „Hey Luzzy, Feierabend“. Was du danach sagst, geht als Zusatz mit („Morgenbericht ohne Wetter“).</small></label>
         <label>Was soll Luzzy tun? (dein Prompt)
           <textarea name="prompt" rows="8" required placeholder="z. B. Gib mir meinen Morgenbericht: Wetter in Schongau, News zu Shopify, meine Termine heute, neue Bestellungen und was im Postfach eine Antwort braucht.">${m(r.prompt || '')}</textarea>
-          <small>Schreib einfach alles rein, was du willst. Erwähnst du „Termine“ oder „Kalender“, hängt Jarves-OS deine Termine aus dem Kalender automatisch an. Wetter und News holt Luzzy per Websuche.</small></label>
+          <small>Schreib einfach alles rein, was du willst. Erwähnst du „Termine“ oder „Kalender“, hängt Vendo deine Termine aus dem Kalender automatisch an. Wetter und News holt Luzzy per Websuche.</small></label>
         <fieldset><legend>Ergebnis</legend>
           <label class="rt-haken"><input type="checkbox" name="vorlesen" ${r.vorlesen ? 'checked' : ''}/> Vorlesen</label>
           <label class="rt-haken"><input type="checkbox" name="speichern" ${r.speichern ? 'checked' : ''}/> Als Datei speichern unter</label>
@@ -203,7 +203,7 @@ export async function starten(ctx) {
         <fieldset><legend>Zeitplan</legend>
           <label class="rt-haken"><input type="checkbox" name="planAktiv" ${z.aktiv ? 'checked' : ''}/> Automatisch ausführen um <input name="zeit" type="time" value="${m(z.zeit || '08:00')}" /></label>
           <div class="rt-tage">${TAGE.map((t, i) => `<label class="rt-tag"><input type="checkbox" name="tag" value="${i}" ${z.tage?.includes(i) ? 'checked' : ''}/><span>${t}</span></label>`).join('')}</div>
-          <small>Läuft, solange Jarves-OS offen ist.</small>
+          <small>Läuft, solange Vendo offen ist.</small>
         </fieldset>
         <div class="rt-vorschau"><div class="rt-vorschau-titel">So geht der Auftrag an Luzzy</div><pre data-vorschau></pre></div>
         <div class="rt-knoepfe">

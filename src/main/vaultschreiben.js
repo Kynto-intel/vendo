@@ -1,4 +1,4 @@
-// Schreiben in den Vault, eng begrenzt: nur im Ordner Donnerwolf-Shop\Jarves-OS\ und nie eine bestehende
+// Schreiben in den Vault, eng begrenzt: nur im Ordner Donnerwolf-Shop\Vendo\ und nie eine bestehende
 // Datei überschreiben (neue Notizen bekommen notfalls „(2)“, Listen werden nur ergänzt).
 // Genutzt von „Antwort merken“ (📌) und den Plugins Gedankenspeicher und Aufgaben (ctx.vault).
 
@@ -6,9 +6,9 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 const { VAULT } = require('./wissen')
 
-// Testmodus: JARVES_TEST_VAULT=<Ordner> statt des echten Vaults
-const VAULT_ORDNER = process.env.JARVES_TEST_VAULT || VAULT
-const ORDNER = path.join(VAULT_ORDNER, 'Jarves-OS')
+// Testmodus: VENDO_TEST_VAULT=<Ordner> statt des echten Vaults
+const VAULT_ORDNER = process.env.VENDO_TEST_VAULT || VAULT
+const ORDNER = path.join(VAULT_ORDNER, 'Vendo')
 
 // Nur einfache Namen, keine Pfade: „Gedankenspeicher.md“, „Gemerkte Antworten“
 function name(text, { endung = '' } = {}) {
@@ -57,7 +57,7 @@ async function anhaengen(datei, text, { kopf = '' } = {}) {
   return path.relative(VAULT_ORDNER, ziel)
 }
 
-// Datei aus dem Jarves-OS-Ordner lesen ('' wenn es sie nicht gibt)
+// Datei aus dem Vendo-Ordner lesen ('' wenn es sie nicht gibt)
 async function lesen(datei) {
   try {
     return await fs.readFile(path.join(ORDNER, name(datei, { endung: '.md' })), 'utf8')

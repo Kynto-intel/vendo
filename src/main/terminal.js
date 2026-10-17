@@ -1,4 +1,4 @@
-// Terminal in Jarves-OS: eine echte PowerShell-Konsole über node-pty (wie das Terminal in VS Code).
+// Terminal in Vendo: eine echte PowerShell-Konsole über node-pty (wie das Terminal in VS Code).
 // Die Oberfläche zeigt sie mit xterm.js (src/renderer/terminal.js). Farben, Tab, Pfeiltasten, Strg+C und
 // interaktive Programme (hermes chat, hermes model …) laufen direkt darin.
 // Nur Felix bedient das Terminal (Terminal-Bereich); Luzzy und die Plugins nutzen es nicht.
@@ -8,7 +8,7 @@ const path = require('node:path')
 const os = require('node:os')
 
 const HERMES_BIN = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'bin')
-// „Meine Befehle“: eigene Datei, leicht zu lesen und von Hand zu bearbeiten (Jarves-OS dabei geschlossen lassen)
+// „Meine Befehle“: eigene Datei, leicht zu lesen und von Hand zu bearbeiten (Vendo dabei geschlossen lassen)
 const BEFEHLE_DATEI = path.join(__dirname, '..', '..', 'daten', 'terminal-befehle.json')
 
 let pty = null

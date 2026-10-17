@@ -4,7 +4,7 @@
 //   „Diktat: …“                        Text direkt verarbeiten
 //   „Schreib eine Mail an …, dass …“   dito, die Art steht schon im Satz
 
-const api = window.jarves
+const api = window.vendo
 
 // Nur das Wort allein: lange Aufnahme starten
 const START = /^(?:diktat|diktiermodus|diktieren|diktat starten|ich (?:will|möchte) (?:was |etwas )?diktieren)$/

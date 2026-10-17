@@ -7,7 +7,7 @@ import { ablageOeffnen } from '../zwischenablage.js'
 import { sucheOeffnen } from '../suche.js'
 import { timerBefehl, timerListe } from '../timer.js'
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 
 // Aus app.js (befehlslisteEinrichten): ansichtZeigen, abschicken, feldHoehe, aktivitaetMelden, untertitelZeigen,
@@ -16,7 +16,7 @@ const $ = (id) => document.getElementById(id)
 // einstellungenSetzen(neu)
 let h = {}
 
-// An Luzzy schicken wie getippt (Jarves-OS-Befehle, Routinen und Plugins greifen wie gewohnt)
+// An Luzzy schicken wie getippt (Vendo-Befehle, Routinen und Plugins greifen wie gewohnt)
 function paletteSenden(text) {
   h.ansichtZeigen('zentrale')
   const feld = document.querySelector('.befehl .eingabe-text')
@@ -62,11 +62,11 @@ const SPRACHBEFEHLE = [
   ['Nächstes Lied / Musik Pause', 'auch „vorheriges Lied“, „Musik weiter“', 'musik lied song pause'],
   ['Öffne Downloads', 'auch Desktop, Dokumente, Bilder, Musik, Videos, Donnerwolf', 'ordner explorer'],
   ['Sperr den PC', '', 'sperren bildschirm'],
-  ['Such die Datei … und öffne sie', 'zeigt sie direkt in Jarves (Notiz, Bild, PDF, Video …)', 'datei suchen öffnen finden dokument bild pdf'],
+  ['Such die Datei … und öffne sie', 'zeigt sie direkt in Vendo (Notiz, Bild, PDF, Video …)', 'datei suchen öffnen finden dokument bild pdf'],
   ['Ändere … (bei offener Datei)', 'Luzzy ändert die Stellen live im Text, speichern tust du selbst (Strg+S)', 'datei bearbeiten ändern ersetzen korrigieren'],
   ['Öffne die Datei …', 'auch „Zeig mir das Bild …“, „Öffne das PDF …“; mehrere Treffer: „die zweite“', 'datei öffnen zeigen bild foto pdf video tabelle'],
   ['Merk dir: …', 'Gedankenspeicher', 'notiz idee notieren'],
-  ['Neue Idee: …', 'Luzzy schreibt sie sauber als Notiz in den Vault (Jarves-OS, Ideen)', 'idee notiz vault diktat schlagworte'],
+  ['Neue Idee: …', 'Luzzy schreibt sie sauber als Notiz in den Vault (Vendo, Ideen)', 'idee notiz vault diktat schlagworte'],
   ['Diktat', 'frei reden, auch länger: Luzzy macht eine fertige Mail oder Nachricht daraus (Zwischenablage)', 'diktieren diktiermodus mail text', () => h.sprechenStarten({ diktat: true })],
   ['Schreib eine Mail an …, dass …', 'fertige Mail in der Zwischenablage, abschicken tust du selbst', 'mail email nachricht whatsapp brief entwurf diktat'],
   ['Was wollte ich mir merken?', '', 'gedanken notizen'],

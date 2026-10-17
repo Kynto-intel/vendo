@@ -1,6 +1,6 @@
 // Notfall-Luzzy (Idee 33): Ist Hermes oder das Cloud-Modell nicht erreichbar (kein Internet, Anbieter gestört),
 // antwortet Luzzy lokal über Ollama auf Felix' PC. Ollama wird bei Bedarf selbst gestartet.
-// Ohne Werkzeuge: kein Shop, keine Mails, kein Internet. Nur Gespräch plus das, was Jarves-OS mitschickt.
+// Ohne Werkzeuge: kein Shop, keine Mails, kein Internet. Nur Gespräch plus das, was Vendo mitschickt.
 
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')

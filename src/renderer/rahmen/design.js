@@ -6,7 +6,7 @@
 // Hauptprozess (Windows-Knöpfe, Schriftgröße). In den Einstellungen sofort sichtbar, gespeichert mit „Speichern“.
 // Angebunden in app.js mit designEinrichten({ einstellungen: () => einstellungen }).
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
@@ -72,7 +72,7 @@ async function designsLaden() {
   designsFertig = true
   designWahlZeigen()
   try {
-    localStorage.setItem('jarves-design-css', css) // für den nächsten Start (siehe unten)
+    localStorage.setItem('vendo-design-css', css) // für den nächsten Start (siehe unten)
   } catch {
     // egal
   }
@@ -118,7 +118,7 @@ function designMerken(design = { ...DESIGN_STANDARD, ...(h.einstellungen()?.desi
         pinsel.fillRect(0, 0, 1, 1)
         return [...pinsel.getImageData(0, 0, 1, 1).data.slice(0, 3)].join(', ')
       }
-      localStorage.setItem('jarves-design', JSON.stringify({
+      localStorage.setItem('vendo-design', JSON.stringify({
         ...design,
         akzentRgb: css.getPropertyValue('--akzent-rgb').trim(),
         akzentHellRgb: css.getPropertyValue('--akzent-hell-rgb').trim(),
@@ -136,8 +136,8 @@ function designMerken(design = { ...DESIGN_STANDARD, ...(h.einstellungen()?.desi
 
 // Beim Start sofort das zuletzt gespeicherte Design zeigen (Einstellungen und Design-Dateien kommen erst gleich)
 try {
-  const gemerkt = JSON.parse(localStorage.getItem('jarves-design') || 'null')
-  const css = localStorage.getItem('jarves-design-css')
+  const gemerkt = JSON.parse(localStorage.getItem('vendo-design') || localStorage.getItem('jarves-design') || 'null')
+  const css = localStorage.getItem('vendo-design-css') || localStorage.getItem('jarves-design-css')
   if (gemerkt && css) {
     designStilSetzen(css)
     for (const [schluessel, feld, standard] of [['design', 'farbe', null], ['hintergrund', 'hintergrund', 'normal'], ['ecken', 'ecken', 'kantig']]) {

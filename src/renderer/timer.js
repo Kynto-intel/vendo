@@ -1,4 +1,4 @@
-// Timer, Wecker und Erinnerungen per Sprache oder Text, komplett in Jarves-OS (ohne Hermes, ohne Internet):
+// Timer, Wecker und Erinnerungen per Sprache oder Text, komplett in Vendo (ohne Hermes, ohne Internet):
 //   „Stell einen Timer auf 15 Minuten für die Nudeln“ · „Nudel-Timer 10 Minuten“
 //   „Weck mich um 7 Uhr“ · „Erinner mich um 14 Uhr an den Anruf“ · „Erinner mich in 20 Minuten an die Wäsche“
 //   „Wie lange noch für die Nudeln?“ · „Nudel-Timer stoppen“ · „Alle Timer stoppen“
@@ -193,7 +193,7 @@ export function timerBefehl(text) {
 
 // ── Ablaufen ──
 function alarmText(e, { verpasst = false } = {}) {
-  const vorweg = verpasst ? `Während Jarves-OS zu war, um ${uhr(e.ende)} Uhr: ` : ''
+  const vorweg = verpasst ? `Während Vendo zu war, um ${uhr(e.ende)} Uhr: ` : ''
   if (e.typ === 'wecker') return `${vorweg}${new Date(e.ende).getHours() < 11 ? 'Guten Morgen, Felix!' : 'Felix, dein Wecker!'} Es ist ${uhr(e.ende)} Uhr.`
   if (e.typ === 'erinnerung') return `${vorweg}Felix, ${e.phrase ? `denk an ${e.phrase}!` : e.satz ? `du wolltest erinnert werden, dass ${e.satz}.` : 'deine Erinnerung!'}`
   return `${vorweg}Felix, dein Timer ${e.phrase ? `für ${e.phrase}` : `über ${dauerText(e.dauer)}`} ist abgelaufen.`
@@ -269,7 +269,7 @@ export function timerEinrichten({ gespeichert = [], speichern, alarm }) {
   h = { speichern, alarm }
   const jetzt = Date.now()
   liste = (Array.isArray(gespeichert) ? gespeichert : []).filter((e) => e && Number.isFinite(e.ende))
-  // Während Jarves-OS zu war abgelaufen: kurz nachholen (nur die letzte Stunde), Älteres verwerfen
+  // Während Vendo zu war abgelaufen: kurz nachholen (nur die letzte Stunde), Älteres verwerfen
   const verpasst = liste.filter((e) => e.ende <= jetzt && jetzt - e.ende < 3600000)
   liste = liste.filter((e) => e.ende > jetzt)
   if (liste.length !== (Array.isArray(gespeichert) ? gespeichert.length : 0)) aenderung() // Abgelaufenes aus dem Speicher nehmen

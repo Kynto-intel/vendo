@@ -1,5 +1,5 @@
 // Wiederverwendbares Gespräch (Liste + Eingabe) für einen Hermes-Kanal, z. B. die Crew oder ein Bot.
-// Zeigt Verlauf, streamt Antworten live mit und schickt über window.jarves.hermes.senden(kanal, text).
+// Zeigt Verlauf, streamt Antworten live mit und schickt über window.vendo.hermes.senden(kanal, text).
 // Teilen sich mehrere Gespräche eine Eingabe (Crew-Tab), reagiert nur das aktive (istAktiv).
 
 import { markdownZuHtml } from './markdown.js'
@@ -9,7 +9,7 @@ import { anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
 const maskieren = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
 export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FELIX', luzzy: 'LUZZY' }, wer = 'Luzzy', leerText, beiAktivitaet = () => {}, beiFertig = () => {}, istAktiv = () => true }) {
-  const api = window.jarves.hermes
+  const api = window.vendo.hermes
   let beschaeftigt = false
   let antwort = null // { textEl, roh }
   let werkzeug = ''

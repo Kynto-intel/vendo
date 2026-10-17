@@ -1,4 +1,4 @@
-/* Jarves-OS · Designs (Einstellungen → Aussehen): Farben aus dem Ordner designs/, Standard Donnerwolf Gold */
+/* Vendo · Designs (Einstellungen → Aussehen): Farben aus dem Ordner designs/, Standard Donnerwolf Gold */
 
 :root {
   /* Design „Donnerwolf Gold“: fast schwarzes Anthrazit mit warmem Unterton, Gold als einziger Akzent.
@@ -1031,7 +1031,7 @@ input[type='time'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='htt
 .seiten-knoepfe, .plugin-knoepfe { flex-wrap: wrap; align-items: center; }
 .seiten-knoepfe > *, .plugin-knoepfe > * { white-space: nowrap; }
 
-/* ── Dateiansicht: gefundene Datei über Jarves-OS, ohne eigenen Tab ── */
+/* ── Dateiansicht: gefundene Datei über Vendo, ohne eigenen Tab ── */
 .dialog.dateiansicht { width: min(1100px, 88vw); height: min(820px, 86vh); max-width: none; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }
 .dialog.dateiansicht:not([open]) { display: none; }
 .da-kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: none; }
@@ -1178,20 +1178,20 @@ body.datei-drueber .datei-ablage { display: grid; }
 .gm-weg:hover svg { fill: var(--rot-hell, #e07a70); }
 
 /* ── Eigene Rückfrage-/Hinweisfenster (fenster.js) statt der Windows-Fenster ── */
-.jarves-fenster { width: min(440px, calc(100vw - 40px)); padding: 18px 20px 16px; border: 1px solid var(--gold-dunkel); border-radius: var(--radius-karte, 12px); background: var(--flaeche); color: var(--text); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7); }
-.jarves-fenster.gefahr { border-color: rgba(200, 88, 78, 0.55); }
+.vendo-fenster { width: min(440px, calc(100vw - 40px)); padding: 18px 20px 16px; border: 1px solid var(--gold-dunkel); border-radius: var(--radius-karte, 12px); background: var(--flaeche); color: var(--text); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7); }
+.vendo-fenster.gefahr { border-color: rgba(200, 88, 78, 0.55); }
 /* Erst unter der Titelleiste (38 px, titleBarOverlay in main.js) anfangen: sonst liegt ein ✕ oben rechts direkt
    unter dem Windows-Schließen-Knopf. Zentriert bleibt das Fenster im Bereich darunter. */
-.jarves-fenster[open] { top: 38px; max-height: calc(100vh - 38px - 40px); }
-.jarves-fenster::backdrop { background: rgba(5, 4, 3, 0.65); backdrop-filter: blur(2px); }
+.vendo-fenster[open] { top: 38px; max-height: calc(100vh - 38px - 40px); }
+.vendo-fenster::backdrop { background: rgba(5, 4, 3, 0.65); backdrop-filter: blur(2px); }
 .jf-kopf { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .jf-kopf h3 { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); }
-.jarves-fenster.gefahr .jf-kopf h3, .jf-zeichen { color: var(--rot-hell, #e07a70); }
+.vendo-fenster.gefahr .jf-kopf h3, .jf-zeichen { color: var(--rot-hell, #e07a70); }
 .jf-text { margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
 .jf-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
 .knopf-gefahr { padding: 8px 16px; border: 1px solid var(--rot); border-radius: var(--radius); background: rgba(200, 88, 78, 0.16); color: var(--rot-hell, #e07a70); font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
 .knopf-gefahr:hover, .knopf-gefahr:focus-visible { background: rgba(200, 88, 78, 0.28); outline: none; }
-.jarves-fenster .knopf-flach:focus-visible, .jarves-fenster .knopf-gold:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
+.vendo-fenster .knopf-flach:focus-visible, .vendo-fenster .knopf-gold:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
 
 /* ── Shopify-Zugang im System-Tab ── */
 .shopify-zugang form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
@@ -1484,8 +1484,8 @@ body.datei-drueber .datei-ablage { display: grid; }
 .crew-wer[data-profil] .crew-wer-text:hover b { color: var(--gold-hell); }
 
 /* Profil-Fenster eines Bots */
-.jarves-fenster.bot-profil { width: min(860px, calc(100vw - 40px)); display: flex; flex-direction: column; gap: 12px; padding: 20px 22px 16px; }
-.jarves-fenster.bot-profil:not([open]) { display: none; }
+.vendo-fenster.bot-profil { width: min(860px, calc(100vw - 40px)); display: flex; flex-direction: column; gap: 12px; padding: 20px 22px 16px; }
+.vendo-fenster.bot-profil:not([open]) { display: none; }
 .bp-kopf { display: flex; gap: 18px; align-items: flex-start; }
 .bp-bild { flex: none; width: 104px; height: 104px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; border: 2px solid var(--gold-dunkel); background: var(--eingabe); color: var(--gold-hell); font-size: 38px; font-weight: 600; box-shadow: 0 0 0 4px var(--gold-hauch); }
 .bp-bild img { width: 100%; height: 100%; object-fit: cover; }

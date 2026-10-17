@@ -1,8 +1,8 @@
 // Gedankenspeicher: „Merk dir: Stoffproben bestellen“ (Sprache oder Tippen) oder hier eintippen.
 // Daten in daten/plugins/gedanken.json: { notizen: [{ id, text, zeit, erledigt }] }
-// Jede neue Notiz landet zusätzlich im Vault (Jarves-OS\Gedankenspeicher.md). Luzzy kennt die offenen Notizen.
+// Jede neue Notiz landet zusätzlich im Vault (Vendo\Gedankenspeicher.md). Luzzy kennt die offenen Notizen.
 // „Neue Idee: …“ (Sprach-Diktat): Luzzy macht daraus eine saubere Notiz mit Titel und Schlagworten,
-// die als eigene Datei in Jarves-OS\Ideen\ landet; im Gedankenspeicher steht dann „Idee: <Titel>“.
+// die als eigene Datei in Vendo\Ideen\ landet; im Gedankenspeicher steht dann „Idee: <Titel>“.
 
 const neueId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const zeitText = (t) => new Date(t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -13,13 +13,13 @@ const MERKEN = /^(?:merk(?:e)? dir|notier(?:e)?(?: dir)?|schreib(?:e)? (?:dir )?
 // „Neue Idee: …“, „Idee: …“, „Ich hab eine Idee: …“
 const IDEE = /^(?:neue idee|idee|ich hab(?:e)? (?:eine|ne|'ne) idee)[:,.!]?\s+([\s\S]+)$/i
 
-// Auftrag an Luzzy: aus dem Diktat eine Notiz machen (festes Format, damit Jarves-OS sie ablegen kann)
+// Auftrag an Luzzy: aus dem Diktat eine Notiz machen (festes Format, damit Vendo sie ablegen kann)
 const IDEE_AUFTRAG = (roh) => `Felix hat eine Idee diktiert (Rohtext der Spracherkennung, kann Fehler haben). Mach daraus eine saubere Notiz für seinen Obsidian-Vault. Antworte genau in diesem Format, sonst nichts:
 TITEL: kurzer, treffender Titel (höchstens 8 Wörter)
 SCHLAGWORTE: 2 bis 5 Schlagworte, kleingeschrieben, mit Komma getrennt
 ---
 Die Idee als kurze, klare Notiz in Markdown (ein, zwei Absätze oder Stichpunkte). Nichts erfinden, nichts weglassen.
-Keine Werkzeuge benutzen und nichts selbst speichern, das Ablegen übernimmt Jarves-OS.
+Keine Werkzeuge benutzen und nichts selbst speichern, das Ablegen übernimmt Vendo.
 
 """
 ${roh}
@@ -68,11 +68,11 @@ export async function starten(ctx) {
       return `Notiert: ${notiz.text}.`
     } catch (e) {
       console.warn('Gedankenspeicher Vault:', e.message)
-      return `Notiert: ${notiz.text}. Nur hier in Jarves, den Vault hab ich gerade nicht gefunden.`
+      return `Notiert: ${notiz.text}. Nur hier in Vendo, den Vault hab ich gerade nicht gefunden.`
     }
   }
 
-  // „Neue Idee: …“ → Luzzy schreibt sie sauber, Jarves-OS legt sie als Notiz im Vault ab
+  // „Neue Idee: …“ → Luzzy schreibt sie sauber, Vendo legt sie als Notiz im Vault ab
   async function ideeDiktiert(roh, { gesprochen = false } = {}) {
     roh = roh.trim()
     const zeit = Date.now()
@@ -92,7 +92,7 @@ export async function starten(ctx) {
         }
         daten.notizen.push({ id: neueId(), text: `Idee: ${titel}`, zeit, erledigt: false, datei: pfad })
         await speichern()
-        return `Deine Idee „${titel}“ liegt im Vault, im Ordner Jarves-OS, Ideen.`
+        return `Deine Idee „${titel}“ liegt im Vault, im Ordner Vendo, Ideen.`
       }
     })
     if (ok !== false) return true

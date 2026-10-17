@@ -2,12 +2,12 @@
 // Daten in daten/plugins/aufgaben.json: { aufgaben: [{ id, text, details, datum, zeit, erledigt, erstellt, erledigtAm }] }
 //   datum "JJJJ-MM-TT" oder "" (ohne Datum), zeit "HH:MM" oder "" (dann Erinnerung morgens um 9)
 //   details: längere Notizen zur Aufgabe (mehrzeilig, Markdown). Klick auf eine Aufgabe klappt sie auf: Details lesen
-//   und bearbeiten. Luzzy schreibt und liest sie mit ihrem Werkzeug jarves_aufgaben (details, aktion aendern/zeigen).
-// Per Sprache oder Tippen (Jarves-OS antwortet selbst, ohne Hermes):
+//   und bearbeiten. Luzzy schreibt und liest sie mit ihrem Werkzeug vendo_aufgaben (details, aktion aendern/zeigen).
+// Per Sprache oder Tippen (Vendo antwortet selbst, ohne Hermes):
 //   „Neue Aufgabe: Etiketten bestellen bis Freitag“ · „Aufgabe: Max anrufen morgen um 14 Uhr“
 //   „Setz Stoffproben auf meine Liste“ · „Erledigt: Etiketten“ · „Hak Stoffproben ab“ · „Was steht auf meiner Liste?“
 // Wochen-Review: „Wochen-Review“ (oder Knopf, Erinnerung sonntags 19 Uhr). Luzzy fasst die Woche zusammen und fragt
-// nach den Zielen für nächste Woche; Felix' Antwort trägt Jarves-OS als Aufgaben (fällig Freitag) ein.
+// nach den Zielen für nächste Woche; Felix' Antwort trägt Vendo als Aufgaben (fällig Freitag) ein.
 
 import { uhrzeitFinden, zahl, ZAHLEN } from '../../src/renderer/zeitsprache.js'
 
@@ -110,7 +110,7 @@ export async function starten(ctx) {
   let erledigteZeigen = false
   let offenId = '' // aufgeklappte Aufgabe (Details sichtbar)
   let bearbeitenId = '' // Aufgabe, deren Formular gerade offen ist
-  let review = null // { seit } solange Jarves-OS auf Felix' Ziele wartet
+  let review = null // { seit } solange Vendo auf Felix' Ziele wartet
   // Andere Teile (Kalender) erfahren, wenn sich die Aufgaben geändert haben (nur bei echter Änderung)
   const hoerer = new Set()
   let letzterStand = ''
@@ -138,7 +138,7 @@ export async function starten(ctx) {
     zeichnen()
     melden()
   }
-  // Luzzy (Werkzeug jarves_aufgaben) oder jemand anderes hat die Datei geändert: neu einlesen, bevor hier
+  // Luzzy (Werkzeug vendo_aufgaben) oder jemand anderes hat die Datei geändert: neu einlesen, bevor hier
   // etwas mit einem alten Stand darüber gespeichert wird (z. B. der Erinnerungs-Stand)
   ctx.daten.beiAenderung?.(() => laden())
   const offen = () => daten.aufgaben.filter((a) => !a.erledigt)
@@ -198,7 +198,7 @@ export async function starten(ctx) {
       `- Diese Woche erledigte Aufgaben:\n${liste(erledigt)}`,
       `- Noch offene Aufgaben:\n${liste(o)}`,
       termine ? `- ${termine}` : '',
-      'Frag mich am Ende genau eine Frage: Was sind meine Ziele für nächste Woche? Meine Antwort trägt Jarves-OS selbst als Aufgaben ein, du musst dafür nichts tun.'
+      'Frag mich am Ende genau eine Frage: Was sind meine Ziele für nächste Woche? Meine Antwort trägt Vendo selbst als Aufgaben ein, du musst dafür nichts tun.'
     ].filter(Boolean).join('\n')
     ctx.luzzy(auftrag, { anzeige: '▶ Wochen-Review', vorlesen: true, gesprochen })
     return true
@@ -275,14 +275,14 @@ export async function starten(ctx) {
 
   // ── Für Luzzy: offene Aufgaben (bei „Was muss ich heute noch?“ usw.) ──
   // Dazu der Hinweis, womit sie einträgt: kleine Modelle weichen sonst auf eine Datei oder ihre eigene Notizliste aus
-  const WERKZEUG = 'Eintragen, ändern, abhaken in dieser Liste: nur mit dem Werkzeug jarves_aufgaben (über tool_call), nie eine Datei schreiben.'
+  const WERKZEUG = 'Eintragen, ändern, abhaken in dieser Liste: nur mit dem Werkzeug vendo_aufgaben (über tool_call), nie eine Datei schreiben.'
   ctx.kontext(() => {
     const liste = sortiert(offen())
-    if (!liste.length) return `Aufgaben aus Jarves-OS: keine offenen. ${WERKZEUG}`
+    if (!liste.length) return `Aufgaben aus Vendo: keine offenen. ${WERKZEUG}`
     const h = heute()
     const kurz = (t) => (t.length > 240 ? `${t.slice(0, 240)} …` : t)
     const zeile = (a) => `- ${a.text}${a.datum ? ` (fällig ${wannText(a)}${a.datum < h ? ', ÜBERFÄLLIG' : ''})` : ' (ohne Datum)'}${a.details ? `\n  Details: ${kurz(a.details.replace(/\s*\n\s*/g, ' · '))}` : ''}`
-    return `Offene Aufgaben aus Jarves-OS (heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}):\n${liste.map(zeile).join('\n')}\n${WERKZEUG}`
+    return `Offene Aufgaben aus Vendo (heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}):\n${liste.map(zeile).join('\n')}\n${WERKZEUG}`
   })
 
   // ── Begrüßung: fällige Aufgaben ──
@@ -374,7 +374,7 @@ export async function starten(ctx) {
         <span class="leise">Wann:</span>
         ${chip('heute', 'Heute', a.datum === heute())}${chip('morgen', 'Morgen', a.datum === morgen)}${chip('woche', '+1 Woche', false)}${chip('ohne', 'Ohne Datum', !a.datum)}
         <input type="date" data-wann value="${m(a.datum || '')}" title="Tag wählen" />
-        ${a.datum && window.__jarvesKalender ? '<button class="af-chip" data-a="kalender" type="button" title="Diesen Tag im Kalender zeigen">Im Kalender zeigen</button>' : ''}
+        ${a.datum && window.__vendoKalender ? '<button class="af-chip" data-a="kalender" type="button" title="Diesen Tag im Kalender zeigen">Im Kalender zeigen</button>' : ''}
       </div>
       ${a.details ? `<div class="af-details-text msg-text md">${ctx.markdownZuHtml(a.details)}</div>` : '<div class="leise">Noch keine Details. Schreib selbst welche dazu oder sag Luzzy: „Schreib bei der Aufgabe … die Details dazu.“</div>'}
       <div class="af-detail-knoepfe"><button class="knopf-flach" data-a="bearbeiten" type="button">${a.details ? 'Bearbeiten' : 'Details schreiben'}</button></div>
@@ -429,7 +429,7 @@ export async function starten(ctx) {
       if (bearbeitenId) $('[data-form] textarea')?.focus()
       return
     }
-    if (knopf.dataset.a === 'kalender') return a?.datum && window.__jarvesKalender?.zeigen(a.datum)
+    if (knopf.dataset.a === 'kalender') return a?.datum && window.__vendoKalender?.zeigen(a.datum)
     // Auf einen anderen Tag legen: heute, morgen, eine Woche später (ab dem bisherigen Tag), ohne Datum
     if (knopf.dataset.a === 'tag' && a) {
       const art = knopf.dataset.tag
@@ -490,9 +490,9 @@ export async function starten(ctx) {
   setInterval(zeichnen, 5 * 60000) // „heute“ wandert mit
 
   await laden()
-  // Für andere Teile von Jarves-OS (Wochen-Review, Kalender): Aufgaben anlegen, lesen, auf einen Tag legen, abhaken,
+  // Für andere Teile von Vendo (Wochen-Review, Kalender): Aufgaben anlegen, lesen, auf einen Tag legen, abhaken,
   // im Bereich Aufgaben aufgeklappt zeigen; beiAenderung meldet jede Änderung (auch durch Luzzy)
-  window.__jarvesAufgaben = {
+  window.__vendoAufgaben = {
     anlegen,
     offen: () => sortiert(offen()),
     erledigtSeit: (zeit) => daten.aufgaben.filter((a) => a.erledigt && a.erledigtAm >= zeit),

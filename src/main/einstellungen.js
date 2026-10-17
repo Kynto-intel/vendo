@@ -1,4 +1,4 @@
-// Einstellungen von Jarves-OS, gespeichert in daten/einstellungen.json im Projektordner
+// Einstellungen von Vendo, gespeichert in daten/einstellungen.json im Projektordner
 // (so sind sie auch im Backup enthalten).
 
 const fs = require('node:fs')

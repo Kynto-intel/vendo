@@ -1,7 +1,7 @@
 // Shopify-Token im System-Tab erneuern (src/main/shopifytoken.js macht die Arbeit).
-// Der Token steht nur im Eingabefeld und wird nach dem Absenden sofort geleert; Jarves-OS speichert ihn nirgends selbst.
+// Der Token steht nur im Eingabefeld und wird nach dem Absenden sofort geleert; Vendo speichert ihn nirgends selbst.
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 const fehlertext = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -11,7 +11,7 @@ export function shopifyZugangEinrichten({ melden = () => {} } = {}) {
   const hinweis = $('shopify-token-hinweis')
   const knopf = form.querySelector('button[type=submit]')
   api.shopify.stellen().then((n) => {
-    if (n) hinweis.textContent = `Jarves-OS prüft den Token bei Shopify und trägt ihn dann an allen ${n} Stellen in Hermes ein (Hermes und alle Bots, config.yaml und .env). Vorher wird jede Datei gesichert.`
+    if (n) hinweis.textContent = `Vendo prüft den Token bei Shopify und trägt ihn dann an allen ${n} Stellen in Hermes ein (Hermes und alle Bots, config.yaml und .env). Vorher wird jede Datei gesichert.`
   }).catch(() => {})
   form.addEventListener('submit', async (e) => {
     e.preventDefault()

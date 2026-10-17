@@ -14,6 +14,7 @@ const liste = []
 const warteschlange = [] // { art, text } – text leer, wenn nur der Ton kommen soll
 let spielt = false
 let gesammelt = null // während der Startsequenz: Meldungen sammeln statt einzeln vorlesen
+const abfaenger = new Set()
 
 // Sammeln an/aus; beim Ausschalten kommen die gesammelten Meldungen zurück (für die Begrüßung)
 export function meldungenSammeln(an) {
@@ -21,6 +22,21 @@ export function meldungenSammeln(an) {
   const liste = gesammelt || []
   gesammelt = null
   return liste
+}
+
+export function meldungAbfangen(fn) {
+  abfaenger.add(fn)
+  return () => abfaenger.delete(fn)
+}
+
+export function meldungVorlesen(text, art = 'hinweis') {
+  const einstellungen = h.einstellungen() || {}
+  const meldungsEinstellungen = einstellungen.meldungen || {}
+  const sauber = String(text ?? '').trim()
+  if (!sauber || meldungsEinstellungen.vorlesen === false) return false
+  if (einstellungen.nichtStoerenBis > Date.now() || inRuhezeit(meldungsEinstellungen)) return false
+  warteschlange.push({ art, text: sauber })
+  return true
 }
 
 export function meldungenEinrichten(helfer) {
@@ -68,6 +84,7 @@ export function meldungNeu(m) {
   zeigen()
   if (m.still) return // nur in die Liste (z. B. abgelaufener Timer, den Luzzy schon selbst ansagt)
   if (gesammelt) return gesammelt.push(m)
+  if ([...abfaenger].some((abfangen) => abfangen(m))) return
   if (h.einstellungen()?.nichtStoerenBis > Date.now()) return // „Nicht stören“: nur in die Liste
   h.beiNeu(m) // Mini-Insel zeigt sie (auch in der Ruhezeit, dort nur ohne Ton und Vorlesen)
   if (inRuhezeit(e)) return

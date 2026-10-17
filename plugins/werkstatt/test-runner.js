@@ -1,5 +1,5 @@
 // Testlauf der Werkstatt: führt den Hintergrundteil (haupt.js) eines Entwurfs in einem EIGENEN Prozess aus,
-// getrennt von Jarves-OS. Hängt er sich auf oder stürzt ab, betrifft das nur diesen Prozess.
+// getrennt von Vendo. Hängt er sich auf oder stürzt ab, betrifft das nur diesen Prozess.
 // Gestartet mit ELECTRON_RUN_AS_NODE: node test-runner.js <haupt.js> <daten als JSON>
 // Verständigung über stdin/stdout, eine JSON-Zeile pro Nachricht.
 

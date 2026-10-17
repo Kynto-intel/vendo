@@ -55,8 +55,8 @@ export async function starten(ctx) {
 | `ctx.luzzy(text, { anzeige, vorlesen, ansichtWechseln })` | schickt Luzzy einen Auftrag in der Zentrale; `anzeige` = was im Gespräch erscheint |
 | `ctx.kontext(() => text)` | Text, den andere Plugins abfragen können (z. B. Termine für Routinen) |
 | `ctx.kontextVon(id)` | Kontext eines anderen Plugins holen, z. B. `ctx.kontextVon('kalender')` |
-| `await ctx.bestaetigen(text, { titel, ja, gefahr })` | Rückfrage im Jarves-Design (statt `confirm`), liefert true/false |
-| `ctx.hinweis(text, { titel })` | Hinweisfenster im Jarves-Design (statt `alert`) |
+| `await ctx.bestaetigen(text, { titel, ja, gefahr })` | Rückfrage im Vendo-Design (statt `confirm`), liefert true/false |
+| `ctx.hinweis(text, { titel })` | Hinweisfenster im Vendo-Design (statt `alert`) |
 | `ctx.begruessung(() => satz)` | Kurzer Satz für Luzzys Begrüßung beim Start (z. B. Termine heute, Wetter) |
 | `ctx.kontextFuer(text)` | Kontext aller Plugins, deren Stichwörter im Text vorkommen (siehe unten) |
 | `ctx.eingabeFilter(fn)` | Eingaben abfangen: `fn(text)` gibt `{ text, anzeige, vorlesen }` oder `null` zurück |
@@ -75,7 +75,7 @@ export async function starten(ctx) {
 module.exports = (ctx) => {
   ctx.bereitstellen('hallo', async (name) => `Hallo ${name}`)
   // ctx.datenLaden(), ctx.datenSpeichern(obj) gibt es hier auch
-  // ctx.vault: in den Vault schreiben, nur in Donnerwolf-Shop\Jarves-OS\ und ohne zu überschreiben:
+  // ctx.vault: in den Vault schreiben, nur in Donnerwolf-Shop\Vendo\ und ohne zu überschreiben:
   //   await ctx.vault.anhaengen('Gedankenspeicher.md', '- Text', { kopf: '# Überschrift' })
   //   await ctx.vault.anlegen('Unterordner', 'Titel', 'Inhalt')   → neue Notiz
   //   await ctx.vault.lesen('Gedankenspeicher.md')
@@ -96,14 +96,14 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 |---|---|
 | `kalender` | Eigener Kalender: Monatsansicht, Termine, Erinnerungen über Luzzy, „Heute“-Karte, liefert Termine an andere Plugins |
 | `routinen` | Standardaufgaben mit Auslösewort und eigenem Prompt (Termine werden automatisch angehängt, wenn der Prompt sie erwähnt), Ergebnis (vorlesen, speichern), Zeitplan und Knopf über der Eingabe |
-| `gedanken` | Gedankenspeicher: „Merk dir: …“ per Sprache oder Tippen, Liste mit erledigt/löschen, jede Notiz auch im Vault (`Jarves-OS\Gedankenspeicher.md`), Luzzy kennt die offenen Notizen |
+| `gedanken` | Gedankenspeicher: „Merk dir: …“ per Sprache oder Tippen, Liste mit erledigt/löschen, jede Notiz auch im Vault (`Vendo\Gedankenspeicher.md`), Luzzy kennt die offenen Notizen |
 | `aufgaben` | To-do-Liste mit Fälligkeit („Neue Aufgabe: … bis Freitag“, „Erledigt: …“), Erinnerung über Luzzy-Meldung, Begrüßung, Kontext für Luzzy, Karte „Aufgaben“ (anfangs aus, Einstellungen → Rechte Spalte) |
 | `fokus` | Pomodoro-Timer (Fokus, Pause, lange Pause) mit Hintergrundklang (Rauschen, Regen), in der Fokuszeit „Nicht stören“; „Fokus 50 Minuten“, „Fokus beenden“ |
-| `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Jarves-OS\Meilensteine.md`) |
-| `werkstatt` | Plugin-Werkstatt: Luzzy baut neue Plugins in `jarves-os\werkstatt\<id>\`, Vendo prüft (Aufbau, `node --check`, Rechte wie Programme starten, Dateien, Internet, Zugangsdaten) und kopiert sie erst nach Felix' Ja nach `plugins\` (altes Plugin nach `backup\`, `daten.json` bleibt) |
+| `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Vendo\Meilensteine.md`) |
+| `werkstatt` | Plugin-Werkstatt: Luzzy baut neue Plugins in `vendo\werkstatt\<id>\`, Vendo prüft (Aufbau, `node --check`, Rechte wie Programme starten, Dateien, Internet, Zugangsdaten) und kopiert sie erst nach Felix' Ja nach `plugins\` (altes Plugin nach `backup\`, `daten.json` bleibt) |
 
 **Plugin von Luzzy bauen lassen:** In der Werkstatt beschreiben oder „Bau mir ein Plugin für …“ sagen. Luzzy nutzt dafür
-ihren Hermes-Skill `jarves-plugin-werkstatt` (Profil donnerwolf, `skills\productivity\`), prüft sich mit
+ihren Hermes-Skill `vendo-plugin-werkstatt` (Profil donnerwolf, `skills\productivity\`), prüft sich mit
 `node plugins\werkstatt\pruefen-cli.js <id>` selbst und bessert nach, bis keine Fehler mehr kommen. Felix' Testlauf legt
 seinen Bericht als `.testbericht.json` in den Entwurf; „🔧 Luzzy soll die Fehler beheben“ schickt ihr die Fehler.
 Entwürfe liegen in `werkstatt\` (nicht im Git-Projekt), bis Felix sie nach bestandenem Testlauf einbaut.

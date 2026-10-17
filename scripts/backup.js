@@ -1,6 +1,6 @@
-// Sicherung: kopiert den Live-Ordner (ohne node_modules) nach ..\backup\jarves-os_JJJJ-MM-TT_HH-MM
+// Sicherung: kopiert den Live-Ordner (ohne node_modules) nach ..\backup\vendo_JJJJ-MM-TT_HH-MM
 // Aufruf: npm run backup [-- "kurze Notiz"]
-// Auch aus Jarves-OS heraus nutzbar (Einstellungen → Sicherung → „Jetzt sichern“).
+// Auch aus Vendo heraus nutzbar (Einstellungen → Sicherung → „Jetzt sichern“).
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -14,7 +14,7 @@ function sichern(notiz = '') {
   const zwei = (n) => String(n).padStart(2, '0')
   const stempel = `${zeit.getFullYear()}-${zwei(zeit.getMonth() + 1)}-${zwei(zeit.getDate())}_${zwei(zeit.getHours())}-${zwei(zeit.getMinutes())}`
   notiz = String(notiz).trim()
-  const basis = `jarves-os_${stempel}${notiz ? '_' + notiz.replace(/[^\w\-äöüÄÖÜß]+/g, '-').slice(0, 40) : ''}`
+  const basis = `vendo_${stempel}${notiz ? '_' + notiz.replace(/[^\w\-äöüÄÖÜß]+/g, '-').slice(0, 40) : ''}`
   // Zweimal in derselben Minute: nicht überschreiben, sondern durchnummerieren
   let name = basis
   for (let i = 2; fs.existsSync(path.join(ORDNER, name)); i++) name = `${basis}_${i}`

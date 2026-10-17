@@ -1,5 +1,5 @@
 // Designs (Einstellungen → Aussehen): eine Datei pro Design im Ordner designs/ (z. B. designs/nordlicht.json).
-// Neues Design = Datei kopieren, Name und Farben ändern, Jarves-OS neu starten. Der Dateiname ist die ID.
+// Neues Design = Datei kopieren, Name und Farben ändern, Vendo neu starten. Der Dateiname ist die ID.
 // Jede Farbe wird geprüft (#rrggbb); fehlt eine oder ist sie falsch, gilt der Wert aus gold.json (bzw. unten).
 
 const fs = require('node:fs')

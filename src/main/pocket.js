@@ -1,5 +1,5 @@
 // Pocket TTS (Kyutai): Luzzys Stimme. Läuft komplett auf Felix' PC, kein Text geht ins Internet.
-// Jarves-OS startet dafür `uvx pocket-tts serve --language german` im Hintergrund (nur auf 127.0.0.1)
+// Vendo startet dafür `uvx pocket-tts serve --language german` im Hintergrund (nur auf 127.0.0.1)
 // und beendet ihn beim Schließen wieder. Eigene Stimme: eine kurze, saubere Aufnahme (WAV, 10 bis 30 s),
 // nur von jemandem, der zugestimmt hat. Nichts davon ändert Hermes.
 
@@ -31,7 +31,7 @@ const STANDARD_STIMME = 'alba'
 // Alte Einstellungen (Edge-Stimmen, „pocket“ = Jürgen) auf eine gültige Stimme bringen
 const stimmeGueltig = (id) => (id === 'pocket-eigen' ? 'eigen' : id === 'eigen' || STIMMEN.some((s) => s.id === id) ? id : STANDARD_STIMME)
 
-const TEST = process.env.JARVES_TEST_POCKET // Testmodus: Adresse eines schon laufenden Servers, z. B. http://127.0.0.1:8765
+const TEST = process.env.VENDO_TEST_POCKET // Testmodus: Adresse eines schon laufenden Servers, z. B. http://127.0.0.1:8765
 const START_ZEIT = 10 * 60 * 1000 // erster Start lädt Programm und Modell herunter, das dauert
 const ENDUNGEN = /\.(wav|mp3|flac|ogg|m4a|safetensors)$/i
 
@@ -76,15 +76,15 @@ function stimmDatei(datei) {
   return d && ENDUNGEN.test(d) && fs.existsSync(d) ? d : ''
 }
 
-// Reste aufräumen: Wurde Jarves-OS hart beendet (Absturz, Task-Manager), läuft sein Pocket-TTS-Server weiter und
-// belegt pro Stück rund 150 MB. Einmal pro Start alle Pocket-Server beenden, deren Jarves-OS nicht mehr läuft
-// (Elternprozess weg). Pocket TTS nutzt auf diesem PC nur Jarves-OS.
+// Reste aufräumen: Wurde Vendo hart beendet (Absturz, Task-Manager), läuft sein Pocket-TTS-Server weiter und
+// belegt pro Stück rund 150 MB. Einmal pro Start alle Pocket-Server beenden, deren Vendo nicht mehr läuft
+// (Elternprozess weg). Pocket TTS nutzt auf diesem PC nur Vendo.
 let aufgeraeumt = null
 function resteAufraeumen() {
   if (aufgeraeumt) return aufgeraeumt
   if (process.platform !== 'win32') return (aufgeraeumt = Promise.resolve())
   // Für jeden Pocket-Prozess die Kette der Eltern hochgehen (Pocket-Prozesse und Konsolen-Hüllen überspringen):
-  // Kommt oben kein lebender anderer Prozess (uvx/Jarves-OS), ist er verwaist und wird beendet.
+  // Kommt oben kein lebender anderer Prozess (uvx/Vendo), ist er verwaist und wird beendet.
   const skript = `$a = @{}; Get-CimInstance Win32_Process | % { $a[[int]$_.ProcessId] = $_ }
 foreach ($p in @($a.Values | ? { $_.CommandLine -like '*pocket-tts*serve*--language german*' })) {
   $e = $a[[int]$p.ParentProcessId]

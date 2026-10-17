@@ -1,11 +1,11 @@
 // Verbindung zu Hermes.
 //
-// Pro PC läuft genau ein Hermes-Backend. Wie die Hermes-App dockt Jarves-OS an ein
+// Pro PC läuft genau ein Hermes-Backend. Wie die Hermes-App dockt Vendo an ein
 // laufendes an (Adresse aus spawn-ledger.json, Zugangsschlüssel vom Backend selbst)
 // oder startet eins, wenn keins läuft. Danach: REST für Abfragen, WebSocket
 // (/api/ws, JSON-RPC) für Sessions und Live-Ereignisse.
 //
-// Die Zentrale ist ein normaler Chat mit Luzzy: eigene, feste Unterhaltung "Jarves-OS" im
+// Die Zentrale ist ein normaler Chat mit Luzzy: eigene, feste Unterhaltung "Vendo" im
 // Profil donnerwolf. (Der Bot Chat mit message_agent für die Crew kommt als eigener Tab.)
 
 const { spawn } = require('node:child_process')
@@ -18,7 +18,7 @@ const HERMES_HOME = path.join(process.env.LOCALAPPDATA || '', 'hermes')
 const HERMES_EXE = path.join(HERMES_HOME, 'bin', 'hermes.exe')
 const ARBEITSORDNER = 'C:\\Users\\Felix\\Documents\\Donnerwolf'
 const PROFIL = 'donnerwolf'
-const ZENTRALE_TITEL = 'Jarves-OS'
+const ZENTRALE_TITEL = 'Vendo'
 const BOT_CHAT = 'Bot Chat'
 
 function verlaufAus(nachrichten) {
@@ -40,7 +40,7 @@ class Hermes extends EventEmitter {
     this.naechsteId = 1
     this.offen = new Map()
     this.freigaben = new Map() // Hermes fragt nach Felix' Freigabe: Anfrage-ID → { sessionId, requestId }
-    this.sessionId = null // Laufzeit-ID der Zentrale (normaler Chat "Jarves-OS")
+    this.sessionId = null // Laufzeit-ID der Zentrale (normaler Chat "Vendo")
     this.gespeicherteId = null // dauerhafte ID der Zentrale
     this.crew = { sessionId: null, gespeicherteId: null, gewuenscht: false } // Luzzys Bot Chat
     // Direkte Gespräche mit den Bots: Kanal „normal:<profil>“ (normales Gespräch) oder „botchat:<profil>“ (Bot Mode)
@@ -131,7 +131,7 @@ class Hermes extends EventEmitter {
     this.port = verbindung.port
     this.token = verbindung.token
     await this.wsOeffnen()
-    // Hermes sagen, dass Jarves-OS Rückfragen beantwortet (Freigaben für riskante Befehle).
+    // Hermes sagen, dass Vendo Rückfragen beantwortet (Freigaben für riskante Befehle).
     // Ohne das bricht Hermes solche Befehle einfach ab, statt Felix zu fragen.
     await this.rpc('client.capabilities', { server_requests: true }).catch(() => {})
     this.status('verbinde', 'Öffne Luzzys Unterhaltung …')
@@ -189,7 +189,7 @@ class Hermes extends EventEmitter {
     return this.bots.get(kanal)?.sessionId || null
   }
 
-  // Gespräch mit einem Bot öffnen (oder das gemerkte fortsetzen). normal = eigenes Gespräch „Jarves-OS“ im Profil
+  // Gespräch mit einem Bot öffnen (oder das gemerkte fortsetzen). normal = eigenes Gespräch „Vendo“ im Profil
   // des Bots, ohne Bot Mode. botchat = sein „Bot Chat“ (dort arbeiten die Bots zusammen, Bot Mode).
   async botOeffnen(kanal) {
     const t = /^(normal|botchat):([a-z0-9][a-z0-9_-]{0,63})$/.exec(String(kanal))
@@ -200,7 +200,7 @@ class Hermes extends EventEmitter {
     const b = this.bots.get(kanal) || { profil, modus, sessionId: null, letzterVerlauf: [] }
     this.bots.set(kanal, b)
     if (b.sessionId) return this.emit('verlauf', { kanal, verlauf: b.letzterVerlauf || [] })
-    // Normale Bot-Chats: mehrere möglich („Allgemein“ = „Jarves-OS“, weitere „Jarves-OS · <Name>“), siehe main.js
+    // Normale Bot-Chats: mehrere möglich („Allgemein“ = „Vendo“, weitere „Vendo · <Name>“), siehe main.js
     const gewaehlt = modus === 'normal' ? this.botChat?.(profil) : null
     const titel = modus === 'botchat' ? BOT_CHAT : gewaehlt?.titel || ZENTRALE_TITEL
     const weg = (e) => {
@@ -291,8 +291,8 @@ class Hermes extends EventEmitter {
     return true
   }
 
-  // Rückfrage von Hermes. Freigaben zeigt Jarves-OS an; alles andere (Passwörter, Auswahlfragen …)
-  // lehnt es höflich ab, dann macht Hermes weiter wie ohne Jarves-OS.
+  // Rückfrage von Hermes. Freigaben zeigt Vendo an; alles andere (Passwörter, Auswahlfragen …)
+  // lehnt es höflich ab, dann macht Hermes weiter wie ohne Vendo.
   serverAnfrage({ id, method, params = {} }) {
     const kanal = params.session_id ? this.kanalVon(params.session_id) : null
     if (method === 'approval' && kanal) {
@@ -308,7 +308,7 @@ class Hermes extends EventEmitter {
       })
       return
     }
-    this.antwortSenden(id, null, { code: -32601, message: 'Jarves-OS kann diese Rückfrage nicht beantworten.' })
+    this.antwortSenden(id, null, { code: -32601, message: 'Vendo kann diese Rückfrage nicht beantworten.' })
   }
 
   antwortSenden(id, ergebnis, fehler) {
@@ -556,9 +556,9 @@ class Hermes extends EventEmitter {
     return String(antwort.transcript || '').trim()
   }
 
-  // Aktivierungswort: Hermes hört auf "Hey Luzzy", den Ton liefert Jarves-OS (wake.feed, 16 kHz)
+  // Aktivierungswort: Hermes hört auf "Hey Luzzy", den Ton liefert Vendo (wake.feed, 16 kHz)
   async wakeStarten() {
-    // Profil ausdrücklich mitgeben: dockt Jarves-OS an ein Hermes der Hermes-App an, läuft das evtl. mit einem
+    // Profil ausdrücklich mitgeben: dockt Vendo an ein Hermes der Hermes-App an, läuft das evtl. mit einem
     // anderen Profil, in dem „Hey Luzzy“ nicht eingerichtet ist
     const antwort = await this.rpc('wake.start', { surface: 'tui', session_id: this.sessionId || '', profile: PROFIL })
     return antwort || { started: false }

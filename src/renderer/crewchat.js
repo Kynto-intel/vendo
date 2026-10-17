@@ -605,7 +605,7 @@ function neuerBotEinrichten() {
 }
 
 // ── Luzzy hilft beim neuen Bot: SOUL.md schreiben, Bild-Prompt im Stil von Kira, Lira und Milla ──
-// (Anleitung: ihr Hermes-Skill jarves-bot-erstellen; läuft als einmalige Anfrage, nicht in ihrem Chat)
+// (Anleitung: ihr Hermes-Skill vendo-bot-erstellen; läuft als einmalige Anfrage, nicht in ihrem Chat)
 function nbDaten() {
   const f = $('neuer-bot-form')
   return { name: f.name.value, rolle: f.rolle.value, beschreibung: f.beschreibung.value, aufgaben: f.aufgaben.value, andere: bots.map((b) => ({ profil: b.profil, name: b.name, rolle: b.rolle })) }
@@ -674,7 +674,7 @@ function luzzyHilfeEinrichten() {
   $('nb-prompt').addEventListener('click', (e) => {
     const k = e.target.closest('[data-kopieren]')
     if (!k) return
-    // Zwischenablage über Electron (navigator.clipboard ist in Jarves-OS nicht freigegeben)
+    // Zwischenablage über Electron (navigator.clipboard ist in Vendo nicht freigegeben)
     h.api.zwischenablage.schreiben(promptBloecke[Number(k.dataset.kopieren)] || '').then(() => {
       k.textContent = '✓ Kopiert'
       setTimeout(() => (k.textContent = 'Prompt kopieren'), 1500)

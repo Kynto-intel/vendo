@@ -141,7 +141,7 @@ export function mikrofonErstellen({ beiZustand, beiPegel, beiPcm }) {
   }
 
   // Reinreden, während Luzzy spricht. Was von ihrer eigenen Stimme im Mikrofon ankommt, hängt davon ab, wie laut
-  // sie gerade spielt (ausgabe(), 0 … 1). Jarves-OS lernt dieses Verhältnis laufend und meldet beiSprache nur,
+  // sie gerade spielt (ausgabe(), 0 … 1). Vendo lernt dieses Verhältnis laufend und meldet beiSprache nur,
   // wenn deutlich mehr ankommt, als ihr Echo erklärt, gut 0,25 s lang. Gibt eine Funktion zum Beenden zurück.
   function reinreden({ beiSprache, ausgabe = () => 0 }) {
     let aus = false

@@ -1,5 +1,5 @@
 // Vorlesen: Text aufbereiten und abspielen. Die Lautstärke wird gemessen und an Reaktor und Welle gemeldet.
-//   sprechen(text)  ganzer Text auf einmal (Begrüßung, Meldungen, eigene Antworten von Jarves-OS)
+//   sprechen(text)  ganzer Text auf einmal (Begrüßung, Meldungen, eigene Antworten von Vendo)
 //   strom()         Luzzys Antwort Satz für Satz, während sie noch schreibt (siehe satzStuecke)
 
 import { ausspracheAnwenden } from './aussprache.js'
@@ -14,6 +14,7 @@ export function fuersVorlesen(text, { kuerzen = true, aussprache = [] } = {}) {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/^\s*[-*•]\s+/gm, '')
     .replace(/[*~]/g, '')
+    .replace(/#(?=\d)/g, 'Nummer ') // "#1042" -> Bestellnummer wird in Ziffern-Gruppen gelesen (aussprache.js)
     .replace(/[#>|_]/g, ' ')
     .replace(/([.!?:;,])[ \t]*\n+\s*/g, '$1 ')
     .replace(/\s*\n+\s*/g, '. ')
@@ -157,7 +158,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     audio = null
     animationStopp()
     beiPegel(null, 0)
-    // Mitten im Sprechen abgebrochen: melden, damit Jarves-OS weiß, dass Luzzy nicht mehr spricht
+    // Mitten im Sprechen abgebrochen: melden, damit Vendo weiß, dass Luzzy nicht mehr spricht
     if (tonAn) {
       tonAn = false
       beiAbbruch()
@@ -171,7 +172,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     const meinLauf = lauf
     start()
     try {
-      const bytes = await window.jarves.stimme.sprechen(sauber, optionen)
+      const bytes = await window.vendo.stimme.sprechen(sauber, optionen)
       if (bytes?.ttsFehler) throw new Error(bytes.ttsFehler)
       if (meinLauf !== lauf) return
       await pauseAbwarten()
@@ -206,7 +207,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     let wecken = null
     const erzeugen = (eintrag) => {
       if (eintrag && !eintrag.bytes) {
-        eintrag.bytes = window.jarves.stimme.sprechen(eintrag.text, optionen).then((bytes) => {
+        eintrag.bytes = window.vendo.stimme.sprechen(eintrag.text, optionen).then((bytes) => {
           if (bytes?.ttsFehler) throw new Error(bytes.ttsFehler)
           return bytes
         })
@@ -287,6 +288,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
 // (. ! ? : oder Zeilenende), nicht mitten in Code-Blöcken, nicht nach „z. B.“, „ca.“ oder „1.“.
 // Liefert { stueck, bis } oder null (noch zu wenig oder mitten im Satz). schluss: alles, was noch übrig ist.
 const ABKUERZUNG = /(?:^|[\s(])(?:z|B|u|a|d|h|o|ca|bzw|usw|etc|Nr|Str|Dr|Hr|Fr|evtl|inkl|ggf|vgl|bspw|max|min|ggü|Tel|\d+)\.$/
+const KENNUNG_DAVOR = /(?:nummer|nr|id|plz|postleitzahl|order|number)\s*:$/i
 export function satzStueck(roh, von, { schluss = false, mindestens = 60 } = {}) {
   const rest = roh.slice(von)
   if (!rest.trim()) return null
@@ -300,6 +302,7 @@ export function satzStueck(roh, von, { schluss = false, mindestens = 60 } = {}) 
     const davor = rest.slice(0, ende)
     if ((davor.match(/```/g) || []).length % 2) continue // mitten in einem Code-Block
     if (t[0] === '.' && ABKUERZUNG.test(davor)) continue
+    if (t[0] === ':' && KENNUNG_DAVOR.test(davor)) continue // "Bestellnummer: 12345" nicht vor der Nummer trennen
     bestes = ende
   }
   return bestes < 0 ? null : { stueck: rest.slice(0, bestes), bis: von + bestes }

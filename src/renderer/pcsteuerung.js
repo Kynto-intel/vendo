@@ -5,7 +5,7 @@
 // steuert den PC selbst über ihr Werkzeug pc_steuern (Stufe 2: Hermes-Plugin jarves-pc → src/main/pcbruecke.js).
 // Ausgeführt wird im Hauptprozess (src/main/pc.js), dort wird jede Aktion geprüft.
 
-const api = window.jarves
+const api = window.vendo
 
 const ohneLuzzy = (text) => String(text || '').trim().replace(/^\s*(hey|hi|hallo|ok)?\s*luzzy[,!.:\s]*/i, '')
 
@@ -32,7 +32,7 @@ export function pcBefehlErkennen(text) {
   if (/^(?:sperr|sperre)(?: den| meinen)? (?:pc|computer|rechner|bildschirm)$/.test(s)) return { art: 'sperren', sagen: 'Ich sperre den PC.' }
 
   // Ordner
-  t = /^(?:öffne|oeffne|zeig|zeige|mach)(?: mir)?(?: mal)?(?: den| die| das| meinen| meine| mein)?(?: ordner)? (desktop|downloads?|dokumente|bilder|fotos|musik|videos|donnerwolf|jarves(?: os)?)(?:[ -]?ordner)?(?: auf)?$/.exec(s)
+  t = /^(?:öffne|oeffne|zeig|zeige|mach)(?: mir)?(?: mal)?(?: den| die| das| meinen| meine| mein)?(?: ordner)? (desktop|downloads?|dokumente|bilder|fotos|musik|videos|donnerwolf)(?:[ -]?ordner)?(?: auf)?$/.exec(s)
   if (t) return { art: 'ordner', name: t[1], sagen: '' }
 
   // Programm: „Öffne Photoshop“, „Starte das Programm OBS“, „Mach Discord auf“. Nur kurze Namen ohne Adresse,
@@ -49,7 +49,7 @@ export function pcBefehlErkennen(text) {
 }
 
 // Plan ausführen. Gibt Luzzys Satz zurück, oder null, wenn nichts passte (dann geht der Satz weiter an Luzzy).
-// bereichOeffnen(name): Jarves-Bereiche („Öffne Kalender“) gehen vor Programmen.
+// bereichOeffnen(name): Vendo-Bereiche („Öffne Kalender“) gehen vor Programmen.
 export async function pcAusfuehren(plan, { bereichOeffnen = () => false } = {}) {
   if (plan.art === 'programm') {
     if (bereichOeffnen(plan.name)) return `Hier ist ${plan.name.charAt(0).toUpperCase()}${plan.name.slice(1)}.`

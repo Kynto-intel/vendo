@@ -1,4 +1,4 @@
-// Prüfprogramm der Werkstatt für Luzzy: dieselbe Prüfung wie in Jarves-OS, als Text im Terminal.
+// Prüfprogramm der Werkstatt für Luzzy: dieselbe Prüfung wie in Vendo, als Text im Terminal.
 //   node "C:\Users\Felix\Desktop\Vendo\Vendo\plugins\werkstatt\pruefen-cli.js" <plugin-id>
 // Prüft Aufbau, Syntax und Rechte, startet den Hintergrundteil (haupt.js) probeweise in einem eigenen Prozess
 // (Hänger nach 10 s) und zeigt den letzten Testlauf von Felix (.testbericht.json). Ändert nichts.
@@ -17,7 +17,7 @@ try {
 
 const id = String(process.argv[2] || '').trim()
 if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(id)) {
-  console.log('Aufruf: node pruefen-cli.js <plugin-id>   (Ordner in jarves-os\\werkstatt\\)')
+  console.log('Aufruf: node pruefen-cli.js <plugin-id>   (Ordner in vendo\\werkstatt\\)')
   process.exit(1)
 }
 const ordner = path.join(werkstatt.WERKSTATT, id)

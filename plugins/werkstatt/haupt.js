@@ -1,7 +1,7 @@
 // Werkstatt, Hintergrundteil: Entwürfe verwalten, prüfen, einbauen.
-// Luzzy baut neue Plugins in jarves-os\werkstatt\<id>\ (nie direkt in plugins\). Jarves-OS prüft sie hier
+// Luzzy baut neue Plugins in vendo\werkstatt\<id>\ (nie direkt in plugins\). Vendo prüft sie hier
 // (Aufbau, Syntax, welche Rechte der Code nutzt) und kopiert sie erst nach Felix' Ja nach plugins\<id>\.
-// Ersetzte Plugins werden vorher nach Desktop\jarves-os\backup\ gesichert. Felix Daten liegen getrennt in daten/plugins/<id>.json und bleiben.
+// Ersetzte Plugins werden vorher nach Desktop\vendo\backup\ gesichert. Felix Daten liegen getrennt in daten/plugins/<id>.json und bleiben.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -80,7 +80,7 @@ function installierte() {
 
 // Syntax prüfen, ohne den Code auszuführen (Node im Prüfmodus: node --check)
 function syntaxFehler(code, alsModul) {
-  const datei = path.join(os.tmpdir(), `jarves-werkstatt-${process.pid}-${Date.now()}.${alsModul ? 'mjs' : 'cjs'}`)
+  const datei = path.join(os.tmpdir(), `vendo-werkstatt-${process.pid}-${Date.now()}.${alsModul ? 'mjs' : 'cjs'}`)
   fs.writeFileSync(datei, code, 'utf8')
   try {
     const r = spawnSync(process.execPath, ['--check', datei], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, encoding: 'utf8', timeout: 15000, windowsHide: true })
@@ -103,7 +103,7 @@ const MUSTER = [
   { re: /\b(writeFile|writeFileSync|appendFile|appendFileSync|copyFile|copyFileSync|rename|renameSync|mkdir|mkdirSync)\b/, text: 'Schreibt Dateien auf dem PC (außerhalb der eigenen Plugin-Daten)', stufe: 'achtung' },
   { re: /require\(\s*['"]electron['"]\s*\)/, text: 'Nutzt Electron direkt (Fenster, System)', stufe: 'achtung' },
   { re: /process\.env/, text: 'Liest Umgebungsvariablen', stufe: 'achtung' },
-  { re: /window\.jarves/, text: 'Nutzt Jarves-OS-Funktionen direkt statt über ctx', stufe: 'achtung' },
+  { re: /window\.vendo/, text: 'Nutzt Vendo-Funktionen direkt statt über ctx', stufe: 'achtung' },
   { re: /\b(confirm|alert|prompt)\s*\(/, text: 'Nutzt Windows-Fenster (confirm/alert) statt ctx.bestaetigen/ctx.hinweis', stufe: 'hinweis' }
 ]
 
@@ -159,7 +159,7 @@ function pruefen(idRoh, { ordnerBasis = WERKSTATT } = {}) {
   for (const mu of MUSTER) if (mu.re.test(code)) rechte.push({ text: mu.text, stufe: mu.stufe })
   for (const t of code.matchAll(/https?:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)) internet.add(t[1].toLowerCase())
   if (internet.size) rechte.push({ text: `Holt Daten aus dem Internet: ${[...internet].join(', ')}`, stufe: 'achtung' })
-  if (/\bfetch\s*\(/.test(ansicht || '')) rechte.push({ text: 'Versucht direkt aus der Oberfläche ins Internet (geht in Jarves-OS nicht, gehört in haupt.js)', stufe: 'hinweis' })
+  if (/\bfetch\s*\(/.test(ansicht || '')) rechte.push({ text: 'Versucht direkt aus der Oberfläche ins Internet (geht in Vendo nicht, gehört in haupt.js)', stufe: 'hinweis' })
   const stufe = fehler.length ? 'fehler' : rechte.some((r) => r.stufe === 'gefahr') ? 'gefahr' : rechte.some((r) => r.stufe === 'achtung') ? 'achtung' : 'sicher'
   return { id, name: m?.name || id, beschreibung: m?.beschreibung || '', version: m?.version || '', fehler, rechte, internet: [...internet], stufe, dateien, ersetzt: fs.existsSync(path.join(PLUGINS, id)) }
 }
@@ -198,7 +198,7 @@ function einbauen(idRoh) {
   if (daten != null) fs.writeFileSync(path.join(ziel, 'daten.json'), daten, 'utf8') // Felix' Daten behalten
   fs.rmSync(quelle, { recursive: true, force: true })
   testErgebnisse.delete(id)
-  lader.neuMerken?.(id) // Notbremse: startet Jarves-OS damit nicht richtig, wird es beim nächsten Start abgeschaltet
+  lader.neuMerken?.(id) // Notbremse: startet Vendo damit nicht richtig, wird es beim nächsten Start abgeschaltet
   return { id, neu: !gesichert, gesichert: gesichert ? path.basename(gesichert) : null }
 }
 
@@ -393,7 +393,7 @@ function testKanaeleEinrichten() {
   })
 }
 
-// ── Notbremse (siehe src/main/plugins.js): neue Plugins, mit denen Jarves-OS nicht richtig startet, werden abgeschaltet ──
+// ── Notbremse (siehe src/main/plugins.js): neue Plugins, mit denen Vendo nicht richtig startet, werden abgeschaltet ──
 const lader = require('../../src/main/plugins')
 
 function neuStarten() {

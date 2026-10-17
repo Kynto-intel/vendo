@@ -1,11 +1,11 @@
-// Gastgeber für Jarves-OS-Plugins in der Oberfläche.
+// Gastgeber für Vendo-Plugins in der Oberfläche.
 // Jedes Plugin bekommt einen eigenen Bereich (links in der Leiste), optional eine Karte rechts
 // und ein ctx-Objekt mit Werkzeugen. Siehe plugins/README.md.
 
 import { markdownZuHtml } from './markdown.js'
 import { bestaetigen, hinweis } from './fenster.js'
 
-const api = window.jarves
+const api = window.vendo
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const kontextAnbieter = [] // { id, fn } liefern Text für Luzzy (z. B. Termine)
 const stichwoerter = [] // { id, muster } bei diesen Wörtern bekommt Luzzy den Kontext des Plugins mit
@@ -126,7 +126,7 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       bereit: () => (bereit ? bereit() : true),
       maskieren,
       markdownZuHtml,
-      // Rückfrage/Hinweis im Jarves-Design: await ctx.bestaetigen(text, { titel, ja, gefahr }) · ctx.hinweis(text)
+      // Rückfrage/Hinweis im Vendo-Design: await ctx.bestaetigen(text, { titel, ja, gefahr }) · ctx.hinweis(text)
       bestaetigen,
       hinweis
     }
@@ -141,7 +141,7 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
     }
     bereiche.push({ id: bereichId, name: m.bereich?.name || m.name, laden: rueckgabe.laden, takt: rueckgabe.takt })
   }
-  // Notbremse: Läuft Jarves-OS 15 Sekunden nach dem Laden aller Plugins noch, gelten frisch eingebaute als bewährt
+  // Notbremse: Läuft Vendo 15 Sekunden nach dem Laden aller Plugins noch, gelten frisch eingebaute als bewährt
   setTimeout(() => api.plugins.startOk?.().catch(() => {}), 15000)
   return bereiche
 }

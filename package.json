@@ -1,6 +1,7 @@
 {
-  "name": "jarves-os",
+  "name": "vendo",
   "version": "0.1.0",
+  "productName": "Vendo",
   "description": "Vendo: Felix' Kommandozentrale für Hermes mit Luzzy",
   "main": "src/main/main.js",
   "private": true,

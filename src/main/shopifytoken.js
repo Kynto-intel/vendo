@@ -1,13 +1,13 @@
-// Shopify-Token an einer Stelle erneuern (System-Tab): Jarves-OS prüft den neuen Token bei Shopify und trägt ihn
+// Shopify-Token an einer Stelle erneuern (System-Tab): Vendo prüft den neuen Token bei Shopify und trägt ihn
 // dann überall in Hermes ein, wo schon einer steht: hermes\config.yaml, hermes\.env und in jedem Profil
 // (profiles\<name>\config.yaml und .env). Nur die Token-Zeile wird ersetzt, der Rest der Datei bleibt, wie er ist.
-// Vor dem Schreiben: eine Sicherung pro Datei (<datei>.vor-jarves-token.bak, wird jedes Mal überschrieben,
+// Vor dem Schreiben: eine Sicherung pro Datei (<datei>.vor-vendo-token.bak, wird jedes Mal überschrieben,
 // damit sich keine alten Tokens ansammeln). Der Token wird nie geloggt, angezeigt oder zurückgegeben.
 
 const fs = require('node:fs')
 const path = require('node:path')
 
-const HERMES_HOME = process.env.JARVES_TEST_HERMES_HOME || path.join(process.env.LOCALAPPDATA || '', 'hermes')
+const HERMES_HOME = process.env.VENDO_TEST_HERMES_HOME || path.join(process.env.LOCALAPPDATA || '', 'hermes')
 const SHOPIFY_VERSION = '2025-07'
 const TOKEN_FORM = /^shp(at|ca|pa)_[A-Za-z0-9]{20,}$/
 const YAML_ZEILE = /^([ \t]*SHOPIFY_ACCESS_TOKEN:[ \t]*)(['"]?)[^'"\r\n]*\2([ \t]*)$/m
@@ -80,17 +80,17 @@ async function eintragen(tokenRoh, { ohnePruefung = false } = {}) {
   const shop = shopAdresse()
   if (!shop) throw new Error('Die Shop-Adresse fehlt in den Hermes-Einstellungen (SHOPIFY_STORE).')
   const dateien = dateienMitToken()
-  if (!dateien.length) throw new Error('In den Hermes-Einstellungen steht noch kein Shopify-Token, den Jarves-OS ersetzen könnte.')
-  const shopName = ohnePruefung && process.env.JARVES_TEST_HERMES_HOME ? shop : await beiShopifyPruefen(token, shop)
+  if (!dateien.length) throw new Error('In den Hermes-Einstellungen steht noch kein Shopify-Token, den Vendo ersetzen könnte.')
+  const shopName = ohnePruefung && process.env.VENDO_TEST_HERMES_HOME ? shop : await beiShopifyPruefen(token, shop)
 
   const geaendert = []
   for (const { datei, muster } of dateien) {
     const alt = fs.readFileSync(datei, 'utf8')
     const neu = alt.replace(muster, (_z, vorne, anf, hinten) => `${vorne}${anf || (datei.endsWith('.yaml') ? "'" : '')}${token}${anf || (datei.endsWith('.yaml') ? "'" : '')}${hinten}`)
     if (neu === alt) continue
-    fs.writeFileSync(`${datei}.vor-jarves-token.bak`, alt, 'utf8') // eine Sicherung pro Datei
-    fs.writeFileSync(`${datei}.jarves-neu`, neu, 'utf8')
-    fs.renameSync(`${datei}.jarves-neu`, datei)
+    fs.writeFileSync(`${datei}.vor-vendo-token.bak`, alt, 'utf8') // eine Sicherung pro Datei
+    fs.writeFileSync(`${datei}.vendo-neu`, neu, 'utf8')
+    fs.renameSync(`${datei}.vendo-neu`, datei)
     geaendert.push(path.relative(HERMES_HOME, datei))
   }
   return { shopName, dateien: geaendert }

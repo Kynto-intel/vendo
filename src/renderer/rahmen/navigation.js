@@ -8,7 +8,7 @@ import { terminalLaden } from '../terminal.js'
 import { bibliothekLaden, entscheidungenLaden } from '../wissen.js'
 import { crewBotsLaden, wechseln as crewWechseln, crewSichtbarGeworden } from '../crewchat.js'
 
-const api = window.jarves
+const api = window.vendo
 const $ = (id) => document.getElementById(id)
 
 let h = { einstellungen: () => null, verbunden: () => false, hoerModusAnwenden: () => {}, chatNeuLaden: async () => {} }
