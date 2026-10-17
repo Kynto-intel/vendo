@@ -387,15 +387,33 @@ class Hermes extends EventEmitter {
 
   async rest(pfad, optionen = {}) {
     await this.verbindungAbwarten()
-    const antwort = await fetch(`http://127.0.0.1:${this.port}${pfad}`, {
-      method: optionen.method || 'GET',
-      headers: { 'X-Hermes-Session-Token': this.token, 'Content-Type': 'application/json' },
-      body: optionen.body ? JSON.stringify(optionen.body) : undefined,
-      signal: AbortSignal.timeout(optionen.timeout || 30000)
-    })
-    const text = await antwort.text()
-    if (!antwort.ok) throw new Error(`Hermes ${antwort.status}: ${text.slice(0, 200)}`)
-    return text ? JSON.parse(text) : null
+    const url = `http://127.0.0.1:${this.port}${pfad}`
+    try {
+      const antwort = await fetch(url, {
+        method: optionen.method || 'GET',
+        headers: { 'X-Hermes-Session-Token': this.token, 'Content-Type': 'application/json' },
+        body: optionen.body ? JSON.stringify(optionen.body) : undefined,
+        signal: AbortSignal.timeout(optionen.timeout || 30000)
+      })
+      const text = await antwort.text()
+      if (!antwort.ok) {
+        const fehler = text ? text.slice(0, 200) : `Hermes ${antwort.status}`
+        throw new Error(`Hermes ${antwort.status}: ${fehler}`)
+      }
+      if (!text) return null
+      try {
+        return JSON.parse(text)
+      } catch {
+        return text
+      }
+    } catch (e) {
+      const mesg = e instanceof Error ? e.message : String(e)
+      this.status('fehler', /ECONNRESET|fetch failed|terminated|timed out|aborted/i.test(mesg)
+        ? 'Verbindung zu Hermes wurde unterbrochen.'
+        : `Hermes antwortet nicht (${mesg})`)
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) this.neuVerbinden?.(1)
+      throw e
+    }
   }
 
   // ── Luzzys Unterhaltung ──

@@ -29,16 +29,21 @@ import { anhaengeEinrichten, anhaengeAnzahl, anhaengeSenden, anhaengeDazu } from
 import { sendeKnopfSetzen } from './sendeknopf.js'
 import { befehlslisteEinrichten } from './rahmen/befehlsliste.js'
 import { navigationEinrichten, BEREICHE, ansichtZeigen, bereicheZeigen, offeneAnsicht, bereichLaedt, pluginBereicheHinzufuegen } from './rahmen/navigation.js'
-import { designEinrichten, designAnwenden, tageszeitAnwenden, titelfarbeSetzen } from './rahmen/design.js'
+import { designEinrichten, designAnwenden, tageszeitAnwenden } from './rahmen/design.js'
 import { einstellungsfensterEinrichten } from './rahmen/einstellungsfenster.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
 import { kostenEinrichten } from './kosten.js'
 import { cockpitEinrichten, cockpitAnzeigen, cockpitAnstossen } from './cockpit.js'
 import { terminalEinrichten } from './terminal.js'
-import { crewChatEinrichten, crewBotsLaden, crewEreignis, crewVerlauf, botAnrede, anBotSenden, luzzyChatZeigen, aktuellerKanal as crewKanal, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
+import { crewChatEinrichten, crewBotsLaden, crewEreignis, crewVerlauf, botAnrede, anBotSenden, aktuellerKanal as crewKanal, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
 import { wissenEinrichten, notizOeffnen, morgenberichtLaden } from './wissen.js'
+import { maskieren, klartext, istWiederholen, STOPPWOERTER } from './app/helfen.js'
+import { aktivitaetEinrichten } from './app/aktivitaet.js'
+import { musikEinrichten } from './app/musik.js'
+import { panelEinrichten } from './app/panel.js'
+import { kopfzeileEinrichten, leistenEinrichten } from './app/layout.js'
 
 const $ = (id) => document.getElementById(id)
 const api = window.vendo
@@ -259,34 +264,12 @@ async function sprechenStarten({ ohneSpracheNach = 7000, leise = false, diktat =
   }
 }
 
-// ── Musik erkennen: läuft auf dem PC Musik/Video (Windows-Mediensteuerung), zählt sie nicht als Sprache ──
-let musikSpielt = false
-const musikAktiv = () => musikSpielt && einstellungen?.sprache?.musikErkennen !== false
-api.musik?.status().then((s) => (musikSpielt = Boolean(s))).catch(() => {})
-api.musik?.beiAenderung((s) => (musikSpielt = Boolean(s)))
-// „Hey Luzzy“ während Musik läuft: Musik anhalten (Medientaste), zuhören, danach von selbst weiter
-let musikVonVendoAngehalten = false
-async function musikKurzAnhalten() {
-  if (!musikAktiv()) return
-  await api.pc.aktion({ art: 'taste', taste: 'abspielen' }).catch(() => {})
-  musikVonVendoAngehalten = true
-  await new Promise((r) => setTimeout(r, 350)) // kurz warten, bis es still ist
-}
-setInterval(() => {
-  // Fertig mit Zuhören, Antworten und Vorlesen: angehaltene Musik wieder starten
-  if (!musikVonVendoAngehalten || spricht || hoert || versteht || beschaeftigt || sprichtGerade) return (musikRuheSeit = 0)
-  if (Date.now() - (musikRuheSeit ||= Date.now()) < 1500) return
-  musikVonVendoAngehalten = false
-  musikRuheSeit = 0
-  if (!musikSpielt) api.pc.aktion({ art: 'taste', taste: 'abspielen' }).catch(() => {})
-}, 500)
-let musikRuheSeit = 0
-// Nur Musik oder bekannte Fehlerkennungen der Spracherkennung (sie „hört“ bei Musik gern Untertitel-Sätze)
-const NUR_MUSIK = [/[♪♫🎵🎶]/u, /^\W*[\[(]?\s*(musik|music|gesang|singing|applaus|applause|instrumental|lachen)\s*[\])]?\W*$/i, /untertitel(ung)?\s+(im auftrag|von|der|des)/i, /(vielen dank|danke)\s+(fürs|für's|für das)\s+zuschauen/i, /copyright|amara\.org|swr|zdf\s+\d{4}/i]
-function nurMusik(text) {
-  const t = String(text || '').trim()
-  return t.length < 2 || NUR_MUSIK.some((m) => m.test(t))
-}
+// ── Musik erkennen (app/musik.js) ──
+const { musikAktiv, musikKurzAnhalten, nurMusik } = musikEinrichten({
+  api,
+  einstellungen: () => einstellungen,
+  luzzyBeschaeftigt: () => spricht || hoert || versteht || beschaeftigt || sprichtGerade
+})
 
 // Nach Luzzys Antwort kurz weiter zuhören, wenn die Frage gesprochen war (Gesprächsmodus)
 function weiterZuhoeren() {
@@ -428,14 +411,6 @@ function zustandZeigen() {
 }
 
 // ── Untertitel unter dem Reaktor: Luzzys aktuelle Antwort in Kurzform ──
-function klartext(text) {
-  return String(text || '')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/[*_`#>]/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 function untertitelZeigen(text, { fertig = false } = {}) {
   const el = $('untertitel')
   const kurz = klartext(text)
@@ -447,8 +422,6 @@ function untertitelZeigen(text, { fertig = false } = {}) {
     fertig && zuLang && panelGeschlossen() ? '<span class="leise-hinweis">Ganze Antwort im Gespräch</span>' : ''
   }`
 }
-
-const maskieren = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
 // ── Gespräch ──
 function nachrichtAnzeigen(rolle, text, { laeuft = false } = {}) {
@@ -509,42 +482,10 @@ function antwortAktualisieren() {
 }
 
 // ── Aktivität rechts ──
-const aktivitaeten = []
-function aktivitaetMelden(text, laeuft = false) {
-  const zeit = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-  aktivitaeten.unshift({ zeit, text, laeuft })
-  aktivitaeten.length = Math.min(aktivitaeten.length, 8)
-  aktivitaetZeigen()
-}
-function aktivitaetZeigen() {
-  const el = $('aktivitaet')
-  if (!aktivitaeten.length) return (el.innerHTML = '<div class="leise">Nichts los.</div>')
-  el.innerHTML = aktivitaeten
-    .map((a) => `<div class="eintrag${a.laeuft ? ' laeuft' : ''}"><time>${a.zeit}</time><span>${maskieren(a.text)}</span></div>`)
-    .join('')
-}
-function laufendeBeenden() {
-  aktivitaeten.forEach((a) => (a.laeuft = false))
-  aktivitaetZeigen()
-}
+const { melden: aktivitaetMelden, laufendeBeenden } = aktivitaetEinrichten($('aktivitaet'))
 
 // ── „Wiederhol das“: Luzzys letzte Antwort nochmal vorlesen, sofort und ohne Hermes zu fragen ──
 let letzteAntwort = ''
-const WIEDERHOLEN = new Set([
-  'wiederhol', 'wiederhole', 'wiederhol das', 'wiederhole das', 'wiederhol es', 'wiederhole es',
-  'wiederhol das nochmal', 'wiederhole das nochmal', 'wiederhol das noch mal', 'wiederhole das noch mal',
-  'sag das nochmal', 'sag das noch mal', 'sag es nochmal', 'sag es noch mal', 'kannst du das wiederholen',
-  'was hast du gesagt', 'was hast du gerade gesagt', 'wie' // 'wie' = „Wie bitte?“ (bitte wird vorher entfernt)
-])
-function istWiederholen(text) {
-  const kern = text.toLowerCase()
-    .replace(/[.,!?;:"„“]/g, ' ')
-    .replace(/\bbitte\b/g, ' ')
-    .replace(/^\s*(hey\s+)?luzzy\b/, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return WIEDERHOLEN.has(kern)
-}
 function letzteAntwortMerken(text) {
   letzteAntwort = text || ''
   $('nochmal').hidden = !letzteAntwort
@@ -639,65 +580,9 @@ function timerAlarm({ text, titel }) {
   })
 }
 
-// ── Kopfzeile der Mitte: nur so weit kürzen, wie es der Platz verlangt ──
-// Stufen: k1 kurzes Datum, k2 kurze Namen („Hermes“), k3 nur Punkte (Tooltip), k4 Datum weg (Uhrzeit bleibt)
-const kopf = document.querySelector('.mitte-kopf')
-function kopfPasst() {
-  const r = kopf.getBoundingClientRect()
-  const rechts = r.right - parseFloat(getComputedStyle(kopf).paddingRight)
-  const kinder = [...kopf.children].filter((e) => !e.hidden && getComputedStyle(e).display !== 'none')
-  return kinder.every((e) => e.getBoundingClientRect().right <= rechts + 0.5)
-}
-let kopfGeplant = false
-function kopfAnpassen() {
-  if (kopfGeplant) return
-  kopfGeplant = true
-  requestAnimationFrame(() => {
-    kopfGeplant = false
-    for (let stufe = 0; stufe <= 4; stufe++) {
-      for (let k = 1; k <= 4; k++) kopf.classList.toggle(`k${k}`, k <= stufe)
-      if (kopfPasst()) break
-    }
-  })
-}
-new ResizeObserver(kopfAnpassen).observe(kopf)
-new MutationObserver(kopfAnpassen).observe(kopf, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] })
-
-// ── Seitenleisten einklappen: links bleibt eine schmale Leiste mit Symbolen, rechts verschwindet ganz ──
-function leistenAnwenden() {
-  const l = einstellungen?.leisten || { links: true, rechts: true }
-  document.body.classList.toggle('links-zu', l.links === false)
-  document.body.classList.toggle('rechts-zu', l.rechts === false)
-  $('links-umschalten').title = l.links === false ? 'Leiste aufklappen (Strg+B)' : 'Leiste einklappen (Strg+B)'
-  $('rechts-umschalten').title = l.rechts === false ? 'Rechte Spalte aufklappen (Strg+J)' : 'Rechte Spalte einklappen (Strg+J)'
-  titelfarbeSetzen()
-}
-function leisteUmschalten(seite) {
-  // Erst sofort übernehmen, dann speichern: zweimal schnell hintereinander darf sich nicht überschreiben
-  const l = { links: true, rechts: true, ...(einstellungen?.leisten || {}) }
-  l[seite] = l[seite] === false
-  einstellungen.leisten = l
-  leistenAnwenden()
-  api.einstellungen.speichern({ leisten: l })
-}
-$('links-umschalten').addEventListener('click', () => leisteUmschalten('links'))
-$('rechts-umschalten').addEventListener('click', () => leisteUmschalten('rechts'))
-// Strg+Alt+← / → : exakt an die linke/rechte Bildschirmhälfte, Strg+Alt+↑ : ganzer Bildschirm
-window.addEventListener('keydown', (e) => {
-  if (!e.ctrlKey || !e.altKey || e.shiftKey) return
-  const seite = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'voll' }[e.key]
-  if (!seite) return
-  e.preventDefault()
-  api.fenster.andocken(seite)
-})
-window.addEventListener('keydown', (e) => {
-  if (!e.ctrlKey || e.shiftKey || e.altKey) return
-  const taste = e.key.toLowerCase()
-  if (taste === 'b' || taste === 'j') {
-    e.preventDefault()
-    leisteUmschalten(taste === 'b' ? 'links' : 'rechts')
-  }
-})
+// ── Kopfzeile und Seitenleisten (app/layout.js) ──
+kopfzeileEinrichten()
+const { leistenAnwenden, leisteUmschalten } = leistenEinrichten({ api, einstellungen: () => einstellungen })
 
 // ── Befehlspalette (Strg+P): Befehlsliste und Einrichten in rahmen/befehlsliste.js ──
 ablageEinrichten({
@@ -972,7 +857,6 @@ async function nachherAusfuehren(nachher, antwort, { sprechen }) {
 }
 
 // „Stopp“, „Halt“, „Das reicht“: Luzzy hört sofort auf (geht nicht an Hermes)
-const STOPPWOERTER = new Set(['stopp', 'stop', 'halt', 'sei still', 'hör auf', 'schluss', 'genug', 'das reicht', 'danke das reicht', 'ok stopp', 'okay stopp', 'still', 'pst', 'psst', 'schon gut'])
 function stoppen() {
   vorleser.stoppen()
   if (beschaeftigt) api.hermes.abbrechen('zentrale')
@@ -1046,61 +930,136 @@ for (const form of document.querySelectorAll('.eingabe-form')) {
   feld.addEventListener('input', () => feldHoehe(feld))
 }
 
-// ── Gesprächs-Fenster rechts: öffnen/schließen, Breite ziehen ──
-// Das Gespräch mit Luzzy steht nicht mehr rechts angedockt, sondern im Crew-Tab (Normaler Chat → Luzzy).
-// „Öffnen“ (Gesprächs-Karte rechts, Strg+K, Klick auf den Untertitel) springt dorthin, „Schließen“ zurück zur Zentrale.
-const panel = $('gespraech-panel')
-const panelGeschlossen = () => !(offeneAnsicht() === 'crew' && crewKanal() === 'zentrale')
+// ── Gesprächs-Fenster rechts: öffnen/schließen, Breite ziehen (app/panel.js) ──
+const { panelSetzen, panelGeschlossen, breiteSetzen } = panelEinrichten({
+  api,
+  einstellungen: () => einstellungen,
+  runterScrollen
+})
 
-function panelSetzen(offen) {
-  panel.hidden = true
-  titelfarbeSetzen()
-  if (offen) {
-    ansichtZeigen('crew')
-    luzzyChatZeigen().then(() => {
-      runterScrollen()
-      $('luzzy-form')?.querySelector('.eingabe-text')?.focus()
+// ── Hermes-Ereignisse: eine Funktion pro Ereignis, der Verteiler steht ganz unten ──
+function antwortSicherstellen() {
+  if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
+}
+
+// Internet oder Cloud-Modell weg: Luzzy antwortet im Notbetrieb lokal
+function notfallSpaeter() {
+  setTimeout(() => notfallFrage(letzteFrage, { gesprochen: letzteEingabeGesprochen, ohneFrage: true, grund: 'Das Cloud-Modell antwortet nicht' }), 0)
+}
+
+function nachrichtGestartet() {
+  beschaeftigt = true
+  jaKnoepfeEntfernen()
+  vorleser.stoppen()
+  vorleseStromStarten()
+  antwortSicherstellen()
+  zustandZeigen()
+}
+
+function nachrichtDelta(p) {
+  if (typeof p.text !== 'string') return
+  antwortSicherstellen()
+  aktuelleAntwort.roh += p.text
+  vorleseStromFuettern(aktuelleAntwort.roh)
+  try {
+    luzzyBeiText?.(aktuelleAntwort.roh)
+  } catch (e) {
+    console.warn('Live-Änderung:', e.message)
+  }
+  antwortAktualisieren()
+  untertitelZeigen(aktuelleAntwort.roh)
+  zustandZeigen()
+}
+
+function werkzeugGestartet(p) {
+  werkzeug = p.name || 'Werkzeug'
+  aktivitaetMelden(`Werkzeug: ${werkzeug}`, true)
+  antwortAktualisieren()
+  zustandZeigen()
+}
+
+function werkzeugBeendet() {
+  werkzeug = ''
+  laufendeBeenden()
+  antwortAktualisieren()
+  zustandZeigen()
+}
+
+// Antwort fertig, in drei Schritten (die Reihenfolge ist wichtig):
+// 1. anzeigen, 2. Zustand zurücksetzen und Nebenwirkungen, 3. vorlesen bzw. weiterverarbeiten
+function antwortAnzeigen(text, p) {
+  untertitelZeigen(text, { fertig: true })
+  luzzyFragt = /\?[\s"'»«“”)\]]*$/.test(klartext(text))
+  if (aktuelleAntwort) {
+    aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
+    aktuelleAntwort.el.roh = text
+  }
+  else if (text) nachrichtAnzeigen('luzzy', text)
+  if (p.status === 'error' || p.error) {
+    systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
+    if (NETZ_FEHLER.test(String(p.error || p.failure_reason || '')) && letzteFrage) notfallSpaeter()
+  }
+  // Bittet Luzzy um Felix' Ja: Knöpfe „Ja, mach“ / „Nein“ darunter
+  else if (text) jaKnoepfeAnhaengen(aktuelleAntwort?.el || [...document.querySelectorAll('#gespraech .msg.luzzy')].at(-1), text)
+}
+
+function antwortAbschliessen(text, p) {
+  aktuelleAntwort = null
+  beschaeftigt = false
+  werkzeug = ''
+  laufendeBeenden()
+  aktivitaetMelden('Luzzy hat geantwortet')
+  if (text && p.status !== 'error' && !p.error) letzteAntwortMerken(text)
+  // Zwischenablage an Luzzy: Ergebnis gleich wieder in die Zwischenablage
+  ablageErgebnis(p.status !== 'error' && !p.error ? text : '')
+    .then((hinweis) => {
+      if (!hinweis) return
+      aktivitaetMelden(hinweis)
+      $('untertitel').insertAdjacentHTML('beforeend', `<span class="leise-hinweis">📋 ${maskieren(hinweis)}</span>`)
     })
-  } else if (!panelGeschlossen()) ansichtZeigen('zentrale')
-}
-function breiteSetzen(px) {
-  const breite = Math.round(Math.max(320, Math.min(px, window.innerWidth * 0.7)))
-  document.documentElement.style.setProperty('--panel-breite', `${breite}px`)
-  return breite
+    .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
+  zustandZeigen()
 }
 
-$('vorschau').addEventListener('click', () => panelSetzen(panelGeschlossen()))
-$('gespraech-schliessen').addEventListener('click', () => panelSetzen(false))
-$('untertitel').addEventListener('click', () => {
-  if ($('untertitel').textContent) panelSetzen(true)
-})
-window.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
-    e.preventDefault()
-    panelSetzen(panelGeschlossen())
+function antwortWeiterverarbeiten(text, gelungen) {
+  // Felix wollte eine Datei sehen und Luzzy nennt den Pfad: in Vendo anzeigen (Hermes selbst kann das nicht)
+  if (gelungen && istOeffnenWunsch(letzteFrage)) pfadAusAntwortOeffnen(text).catch(() => {})
+  const nachher = luzzyNachher
+  luzzyNachher = null
+  luzzyBeiText = null
+  if (nachher) {
+    if (gelungen) nachherAusfuehren(nachher, text, { sprechen: Boolean(einstellungen?.vorlesen || vorlesenErzwungen || letzteEingabeGesprochen) })
+    else weiterZuhoeren()
+  } else if (vorleseStrom && gelungen) {
+    vorleseStromFuettern(text, { schluss: true }) // Rest vorlesen, dann ist der Strom fertig
+    vorleseStrom.ende()
+  } else if ((einstellungen?.vorlesen || vorlesenErzwungen) && gelungen) vorleser.sprechen(text, stimmOptionen())
+  else {
+    if (vorleseStrom) vorleser.stoppen()
+    weiterZuhoeren()
   }
-})
+  vorleseStrom = null
+  vorlesenErzwungen = false
+}
 
-$('griff').addEventListener('pointerdown', (e) => {
-  const griff = e.currentTarget
-  griff.setPointerCapture(e.pointerId)
-  griff.classList.add('zieht')
-  const startX = e.clientX
-  const startBreite = panel.getBoundingClientRect().width
-  let breite = startBreite
-  const bewegen = (ev) => (breite = breiteSetzen(startBreite + (startX - ev.clientX)))
-  const loslassen = () => {
-    griff.classList.remove('zieht')
-    griff.removeEventListener('pointermove', bewegen)
-    griff.removeEventListener('pointerup', loslassen)
-    einstellungen.panel = { ...einstellungen.panel, breite }
-    api.einstellungen.speichern({ panel: einstellungen.panel })
-  }
-  griff.addEventListener('pointermove', bewegen)
-  griff.addEventListener('pointerup', loslassen)
-})
+function nachrichtBeendet(p) {
+  const text = typeof p.text === 'string' && p.text ? p.text : aktuelleAntwort?.roh || ''
+  const gelungen = text && p.status !== 'error' && !p.error
+  antwortAnzeigen(text, p)
+  antwortAbschliessen(text, p)
+  antwortWeiterverarbeiten(text, gelungen)
+}
 
-// ── Hermes-Ereignisse ──
+function hermesFehler(p) {
+  systemNachricht(p.message || 'Fehler in Hermes.')
+  if (NETZ_FEHLER.test(String(p.message || '')) && letzteFrage && beschaeftigt) notfallSpaeter()
+  beschaeftigt = false
+  aktuelleAntwort = null
+  luzzyNachher = null
+  luzzyBeiText = null
+  zustandZeigen()
+}
+
 api.hermes.beiEreignis((ev) => {
   if (ev.type === 'request.cancel') return freigabeZurueckgezogen(ev.payload?.id) // Hermes hat eine Rückfrage zurückgezogen
   if (ev.type === 'message.start' || ev.type === 'message.complete') cockpitAnstossen() // Cockpit: Aufträge und „arbeitet“ neu rechnen
@@ -1108,104 +1067,21 @@ api.hermes.beiEreignis((ev) => {
   const p = ev.payload || {}
   switch (ev.type) {
     case 'message.start':
-      beschaeftigt = true
-      jaKnoepfeEntfernen()
-      vorleser.stoppen()
-      vorleseStromStarten()
-      if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
-      zustandZeigen()
-      break
+      return nachrichtGestartet()
     case 'message.delta':
-      if (typeof p.text !== 'string') break
-      if (!aktuelleAntwort) aktuelleAntwort = { ...nachrichtAnzeigen('luzzy', '', { laeuft: true }), roh: '' }
-      aktuelleAntwort.roh += p.text
-      vorleseStromFuettern(aktuelleAntwort.roh)
-      try {
-        luzzyBeiText?.(aktuelleAntwort.roh)
-      } catch (e) {
-        console.warn('Live-Änderung:', e.message)
-      }
-      antwortAktualisieren()
-      untertitelZeigen(aktuelleAntwort.roh)
-      zustandZeigen()
-      break
+      return nachrichtDelta(p)
     case 'tool.start':
-      werkzeug = p.name || 'Werkzeug'
-      aktivitaetMelden(`Werkzeug: ${werkzeug}`, true)
-      antwortAktualisieren()
-      zustandZeigen()
-      break
+      return werkzeugGestartet(p)
     case 'tool.complete':
-      werkzeug = ''
-      laufendeBeenden()
-      antwortAktualisieren()
-      zustandZeigen()
-      break
-    case 'message.complete': {
-      const text = typeof p.text === 'string' && p.text ? p.text : aktuelleAntwort?.roh || ''
-      untertitelZeigen(text, { fertig: true })
-      luzzyFragt = /\?[\s"'»«“”)\]]*$/.test(klartext(text))
-      if (aktuelleAntwort) {
-        aktuelleAntwort.textEl.innerHTML = markdownZuHtml(text)
-        aktuelleAntwort.el.roh = text
-      }
-      else if (text) nachrichtAnzeigen('luzzy', text)
-      if (p.status === 'error' || p.error) {
-        systemNachricht(p.error || p.failure_reason || 'Die Antwort ist fehlgeschlagen.')
-        // Internet oder Cloud-Modell weg: Luzzy antwortet im Notbetrieb lokal
-        if (NETZ_FEHLER.test(String(p.error || p.failure_reason || '')) && letzteFrage) setTimeout(() => notfallFrage(letzteFrage, { gesprochen: letzteEingabeGesprochen, ohneFrage: true, grund: 'Das Cloud-Modell antwortet nicht' }), 0)
-      }
-      // Bittet Luzzy um Felix' Ja: Knöpfe „Ja, mach“ / „Nein“ darunter
-      else if (text) jaKnoepfeAnhaengen(aktuelleAntwort?.el || [...document.querySelectorAll('#gespraech .msg.luzzy')].at(-1), text)
-      aktuelleAntwort = null
-      beschaeftigt = false
-      werkzeug = ''
-      laufendeBeenden()
-      aktivitaetMelden('Luzzy hat geantwortet')
-      if (text && p.status !== 'error' && !p.error) letzteAntwortMerken(text)
-      // Zwischenablage an Luzzy: Ergebnis gleich wieder in die Zwischenablage
-      ablageErgebnis(p.status !== 'error' && !p.error ? text : '')
-        .then((hinweis) => {
-          if (!hinweis) return
-          aktivitaetMelden(hinweis)
-          $('untertitel').insertAdjacentHTML('beforeend', `<span class="leise-hinweis">📋 ${maskieren(hinweis)}</span>`)
-        })
-        .catch((e) => systemNachricht(`Zwischenablage: ${e.message}`))
-      zustandZeigen()
-      const gelungen = text && p.status !== 'error' && !p.error
-      // Felix wollte eine Datei sehen und Luzzy nennt den Pfad: in Vendo anzeigen (Hermes selbst kann das nicht)
-      if (gelungen && istOeffnenWunsch(letzteFrage)) pfadAusAntwortOeffnen(text).catch(() => {})
-      const nachher = luzzyNachher
-      luzzyNachher = null
-      luzzyBeiText = null
-      if (nachher) {
-        if (gelungen) nachherAusfuehren(nachher, text, { sprechen: Boolean(einstellungen?.vorlesen || vorlesenErzwungen || letzteEingabeGesprochen) })
-        else weiterZuhoeren()
-      } else if (vorleseStrom && gelungen) {
-        vorleseStromFuettern(text, { schluss: true }) // Rest vorlesen, dann ist der Strom fertig
-        vorleseStrom.ende()
-      } else if ((einstellungen?.vorlesen || vorlesenErzwungen) && gelungen) vorleser.sprechen(text, stimmOptionen())
-      else {
-        if (vorleseStrom) vorleser.stoppen()
-        weiterZuhoeren()
-      }
-      vorleseStrom = null
-      vorlesenErzwungen = false
-      break
-    }
+      return werkzeugBeendet()
+    case 'message.complete':
+      return nachrichtBeendet(p)
     case 'wake.detected':
       // "Hey Luzzy" gehört: zuhören (läuft Musik, pausiert sie kurz und läuft danach weiter)
       musikKurzAnhalten().then(() => sprechenStarten())
-      break
+      return
     case 'error':
-      systemNachricht(p.message || 'Fehler in Hermes.')
-      if (NETZ_FEHLER.test(String(p.message || '')) && letzteFrage && beschaeftigt) setTimeout(() => notfallFrage(letzteFrage, { gesprochen: letzteEingabeGesprochen, ohneFrage: true, grund: 'Das Cloud-Modell antwortet nicht' }), 0)
-      beschaeftigt = false
-      aktuelleAntwort = null
-      luzzyNachher = null
-      luzzyBeiText = null
-      zustandZeigen()
-      break
+      return hermesFehler(p)
   }
 })
 
