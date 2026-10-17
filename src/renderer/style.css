@@ -1274,6 +1274,13 @@ body.datei-drueber .datei-ablage { display: grid; }
 .e-zugang input { min-width: 0; width: 100%; }
 .e-zugang small[data-zustand='bereit'] { color: var(--gruen, #5fd38d); }
 .e-zugang small[data-zustand='fehler'] { color: var(--rot, #ff6b6b); }
+.e-aussprache { display: grid; gap: 8px; }
+.e-aussprache p { margin: 3px 0 0; }
+.e-aussprache-liste { display: grid; gap: 6px; }
+.e-aussprache-zeile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px; align-items: center; gap: 6px; }
+.e-aussprache-zeile input { width: 100%; min-width: 0; }
+.e-aussprache-entfernen { width: 32px; height: 32px; padding: 0; font-size: 18px; }
+.e-aussprache-neu { justify-self: start; }
 .einstellungen label.aus { opacity: 0.4; }
 
 /* Karte „Crew live“ rechts: nur der Bot, der gerade arbeitet (buehne.js) */

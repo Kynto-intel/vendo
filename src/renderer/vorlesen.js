@@ -2,9 +2,11 @@
 //   sprechen(text)  ganzer Text auf einmal (Begrüßung, Meldungen, eigene Antworten von Jarves-OS)
 //   strom()         Luzzys Antwort Satz für Satz, während sie noch schreibt (siehe satzStuecke)
 
+import { ausspracheAnwenden } from './aussprache.js'
+
 const MAX_ZEICHEN = 900
 
-export function fuersVorlesen(text, { kuerzen = true } = {}) {
+export function fuersVorlesen(text, { kuerzen = true, aussprache = [] } = {}) {
   let s = String(text || '')
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]*)`/g, '$1')
@@ -19,6 +21,7 @@ export function fuersVorlesen(text, { kuerzen = true } = {}) {
     .replace(/ ([.,!?:;])/g, '$1')
     .replace(/^[\s.,;:!?]+/, '') // kein Satzzeichen am Anfang (z. B. nach entferntem Code-Block)
     .trim()
+  s = ausspracheAnwenden(s, aussprache)
   if (kuerzen && s.length > MAX_ZEICHEN) {
     // Lange Antworten: nur der Anfang, ganze Sätze
     const schnitt = s.slice(0, MAX_ZEICHEN)
@@ -41,7 +44,7 @@ function tonQuelle(bytes, optionen) {
   }
 }
 
-export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiAbbruch = () => {} }) {
+export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiAbbruch = () => {}, aussprache = () => [] }) {
   let lauf = 0
   let tonAn = false // hat beiStart gemeldet, beiEnde/beiAbbruch noch nicht
   let audio = null
@@ -162,7 +165,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
   }
 
   async function sprechen(text, optionen) {
-    const sauber = fuersVorlesen(text)
+    const sauber = fuersVorlesen(text, { aussprache: aussprache() })
     if (!sauber) return
     stoppen()
     const meinLauf = lauf
@@ -195,6 +198,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
   function strom(optionen) {
     stoppen()
     const meinLauf = lauf
+    const regeln = aussprache()
     const schlange = [] // { text, bytes: Promise | null }
     let fertig = false
     let laeuft = false
@@ -261,7 +265,7 @@ export function vorleserErstellen({ beiStart, beiEnde, beiPegel, beiFehler, beiA
     }
     return {
       stueck(text) {
-        const sauber = fuersVorlesen(text, { kuerzen: false })
+        const sauber = fuersVorlesen(text, { kuerzen: false, aussprache: regeln })
         if (!sauber || meinLauf !== lauf || fertig) return 0
         schlange.push({ text: sauber, bytes: null })
         erzeugen(schlange[0]) // das nächste Stück lädt schon, während das aktuelle noch spielt

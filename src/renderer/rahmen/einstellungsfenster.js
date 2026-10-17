@@ -121,6 +121,55 @@ function pocketStarten() {
 }
 const zahl = (s) => parseInt(String(s).replace(/[^-\d]/g, ''), 10) || 0
 
+function ausspracheZeileErstellen(eintrag = {}) {
+  const zeile = document.createElement('div')
+  zeile.className = 'e-aussprache-zeile'
+
+  const begriff = document.createElement('input')
+  begriff.type = 'text'
+  begriff.placeholder = 'Begriff, z. B. Shopify'
+  begriff.setAttribute('aria-label', 'Begriff')
+  begriff.autocomplete = 'off'
+  begriff.spellcheck = false
+  begriff.dataset.ausspracheBegriff = ''
+  begriff.value = eintrag.begriff || ''
+
+  const aussprache = document.createElement('input')
+  aussprache.type = 'text'
+  aussprache.placeholder = 'Aussprache, z. B. Shop-ifai'
+  aussprache.setAttribute('aria-label', 'Gewünschte Aussprache')
+  aussprache.autocomplete = 'off'
+  aussprache.spellcheck = false
+  aussprache.dataset.ausspracheWert = ''
+  aussprache.value = eintrag.aussprache || ''
+
+  const entfernen = document.createElement('button')
+  entfernen.type = 'button'
+  entfernen.className = 'knopf-icon e-aussprache-entfernen'
+  entfernen.title = 'Eintrag entfernen'
+  entfernen.setAttribute('aria-label', 'Eintrag entfernen')
+  entfernen.dataset.ausspracheEntfernen = ''
+  entfernen.textContent = '−'
+
+  zeile.append(begriff, aussprache, entfernen)
+  return zeile
+}
+
+function ausspracheFormularFuellen() {
+  const eintraege = Array.isArray(h.einstellungen().aussprache) ? h.einstellungen().aussprache : []
+  const zeilen = eintraege.length ? eintraege.map(ausspracheZeileErstellen) : [ausspracheZeileErstellen()]
+  $('e-aussprache-liste').replaceChildren(...zeilen)
+}
+
+function ausspracheFormularLesen() {
+  return [...$('e-aussprache-liste').querySelectorAll('.e-aussprache-zeile')]
+    .map((zeile) => ({
+      begriff: zeile.querySelector('[data-aussprache-begriff]').value.trim().replace(/\s+/g, ' '),
+      aussprache: zeile.querySelector('[data-aussprache-wert]').value.trim().replace(/\s+/g, ' ')
+    }))
+    .filter(({ begriff, aussprache }) => begriff && aussprache)
+}
+
 function formularFuellen() {
   const anbieter = h.einstellungen().stimmeAnbieter || 'pocket'
   $('e-stimme-anbieter').value = anbieter
@@ -131,6 +180,7 @@ function formularFuellen() {
   $('e-tempo').value = zahl(h.einstellungen().tempo)
   $('e-lautstaerke').value = h.einstellungen().lautstaerke || 250
   $('e-vorlesen').checked = h.einstellungen().vorlesen
+  ausspracheFormularFuellen()
   $('e-freihaendig').checked = h.einstellungen().sprache.freihaendig !== false
   $('e-crewstill').checked = h.einstellungen().sprache.crewStill !== false
   $('e-wake').checked = h.einstellungen().sprache.aktivierungswort
@@ -176,6 +226,7 @@ function formularLesen() {
     lautstaerke: Number($('e-lautstaerke').value) || 250,
     tempo: `${t >= 0 ? '+' : ''}${t}%`,
     vorlesen: $('e-vorlesen').checked,
+    aussprache: ausspracheFormularLesen(),
     meldungen: {
       vorlesen: $('e-m-vorlesen').checked,
       ton: $('e-m-ton').checked,
@@ -224,6 +275,16 @@ $('einstellungen-oeffnen').addEventListener('click', () => {
 })
 $('e-tempo').addEventListener('input', reglerAnzeigen)
 $('e-lautstaerke').addEventListener('input', reglerAnzeigen)
+$('e-aussprache-neu').addEventListener('click', () => {
+  const zeile = ausspracheZeileErstellen()
+  $('e-aussprache-liste').append(zeile)
+  zeile.querySelector('[data-aussprache-begriff]').focus()
+})
+$('e-aussprache-liste').addEventListener('click', (e) => {
+  if (!e.target.closest('[data-aussprache-entfernen]')) return
+  e.target.closest('.e-aussprache-zeile').remove()
+  if (!$('e-aussprache-liste').childElementCount) $('e-aussprache-liste').append(ausspracheZeileErstellen())
+})
 $('e-probe').addEventListener('click', async () => {
   const f = formularLesen()
   const anbieter = $('e-stimme-anbieter').value
@@ -235,7 +296,9 @@ $('e-probe').addEventListener('click', async () => {
   knopf.textContent = 'Luzzy spricht gleich …'
   if (anbieter === 'pocket') pocketStarten()
   try {
-    await h.vorleser().sprechen('Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?', { anbieter, stimme, tempo: f.tempo, lautstaerke: f.lautstaerke, pocketDatei, aufPocketWarten: true })
+    const beispiel = h.einstellungen().aussprache?.find((eintrag) => eintrag.begriff)
+    const text = beispiel ? `Hey Felix. ${beispiel.begriff}. So klinge ich.` : 'Hey Felix. So klinge ich. Alle Systeme bereit, was steht an?'
+    await h.vorleser().sprechen(text, { anbieter, stimme, tempo: f.tempo, lautstaerke: f.lautstaerke, pocketDatei, aufPocketWarten: true })
   } finally {
     knopf.disabled = false
     knopf.textContent = 'Probe hören'

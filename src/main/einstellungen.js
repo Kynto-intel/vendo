@@ -15,6 +15,7 @@ const STANDARD = {
   tempo: '+0%',
   lautstaerke: 250, // Prozent: Pocket TTS ist von sich aus leise
   vorlesen: true,
+  aussprache: [],
   animationen: { reaktor: true, scanlinie: true, welle: true, hintergrund: true },
   // Aussehen: farbe gold|nordlicht|blutmond|runenwald|eisen · hintergrund normal|tief|hell · ecken kantig|weich ·
   // schrift klein|normal|gross|sehrgross (Zoom der ganzen App)
@@ -28,6 +29,17 @@ const STANDARD = {
   bibliothek: { ordner: [] } // Ordner, die im Bereich Bibliothek gezeigt werden (wählt Felix dort selbst)
 }
 
+function ausspracheBereinigen(eintraege) {
+  if (!Array.isArray(eintraege)) return []
+  return eintraege
+    .filter((eintrag) => eintrag && typeof eintrag.begriff === 'string' && typeof eintrag.aussprache === 'string')
+    .map(({ begriff, aussprache }) => ({
+      begriff: begriff.trim().replace(/\s+/g, ' '),
+      aussprache: aussprache.trim().replace(/\s+/g, ' ')
+    }))
+    .filter(({ begriff, aussprache }) => begriff && aussprache)
+}
+
 function laden() {
   try {
     const gespeichert = JSON.parse(fs.readFileSync(DATEI, 'utf8'))
@@ -38,6 +50,7 @@ function laden() {
       stimme: stimmeGueltig(gespeichert.stimme), // alte Edge-Stimmen und „Jürgen“ werden zu Alba
       geminiStimme: typeof gespeichert.geminiStimme === 'string' ? gespeichert.geminiStimme : STANDARD.geminiStimme,
       elevenlabsStimme: typeof gespeichert.elevenlabsStimme === 'string' ? gespeichert.elevenlabsStimme : STANDARD.elevenlabsStimme,
+      aussprache: ausspracheBereinigen(gespeichert.aussprache),
       animationen: { ...STANDARD.animationen, ...(gespeichert.animationen || {}) },
       design: { ...STANDARD.design, ...(gespeichert.design || {}) },
       start: { ...STANDARD.start, ...(gespeichert.start || {}) },
@@ -54,6 +67,7 @@ function laden() {
 
 function speichern(neu) {
   const aktuell = { ...laden(), ...neu }
+  aktuell.aussprache = ausspracheBereinigen(aktuell.aussprache)
   fs.mkdirSync(path.dirname(DATEI), { recursive: true })
   fs.writeFileSync(DATEI, JSON.stringify(aktuell, null, 2), 'utf8')
   return aktuell

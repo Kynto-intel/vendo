@@ -472,6 +472,11 @@
             <label>Lautstärke <input id="e-lautstaerke" type="range" min="100" max="400" step="10" /> <output id="e-lautstaerke-wert"></output></label>
             <label class="haken"><input id="e-vorlesen" type="checkbox" /> Antworten automatisch vorlesen</label>
             <button class="knopf-flach" id="e-probe" type="button">Probe hören</button>
+            <div class="e-aussprache">
+              <div><b>Aussprache-Wörterbuch</b><p class="leise klein">Begriffe werden nur beim Vorlesen ersetzt; der Chattext bleibt unverändert.</p></div>
+              <div class="e-aussprache-liste" id="e-aussprache-liste"></div>
+              <button class="knopf-flach e-aussprache-neu" id="e-aussprache-neu" type="button">+ Begriff hinzufügen</button>
+            </div>
           </fieldset>
         </section>
         <section class="e-seite" data-e-seite="sprechen" hidden>

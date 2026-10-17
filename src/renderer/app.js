@@ -84,6 +84,7 @@ function reinredenStarten() {
   })
 }
 const vorleser = vorleserErstellen({
+  aussprache: () => einstellungen?.aussprache || [],
   beiStart: () => {
     spricht = true
     // „Hey Luzzy“ oder einfach Reinreden unterbricht sie (Echo-Unterdrückung filtert ihre eigene Stimme); abschaltbar
