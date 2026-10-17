@@ -6,3 +6,7 @@ plugins/*/daten.json
 
 # Entwürfe der Plugin-Werkstatt (werden erst nach Felix Ja nach plugins/ kopiert)
 /werkstatt/
+
+# Lokale Dokumente, nicht auf GitHub synchronisieren
+/README-Doko.md
+/ideen.md
