@@ -42,8 +42,7 @@ Use a test environment for integrations that can affect a real shop or other imp
 - Windows 10 or 11
 - Node.js LTS and npm
 - A locally installed and configured Hermes Agent
-- A Hermes profile configured for Vendo (the original setup uses the profile `donnerwolf`)
-
+- A Hermes profile configured for Vendo
 Microphone access, Pocket TTS, Ollama, Shopify, mail, and cloud TTS providers are optional and require their own configuration. Vendo does not bundle those services or credentials.
 
 ## Run Locally
