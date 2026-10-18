@@ -1409,7 +1409,7 @@ function testNachrichtSenden() {
 }
 
 // ── Donnerwolf-Startsequenz: Intro mit Systemcheck, danach begrüßt Luzzy ──
-async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
+async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm, introReaktor }) {
   const gruss = einstellungen.start?.begruessung !== false
   if (gruss) meldungenSammeln(true) // Bestellungen über Nacht nicht einzeln vorlesen, sondern in der Begrüßung zählen
   // Wächter gleich nach dem Verbinden prüfen lassen, nicht erst nach seiner ersten Runde
@@ -1431,7 +1431,14 @@ async function startsequenzLaufen({ mitIntro, pluginsFertig, stumm }) {
     { name: 'Shopify', pruefen: () => verbindungInfo('shopify'), zeit: 5000 },
     { name: 'Postfach', pruefen: () => verbindungInfo('mail'), zeit: 3000 }
   ]
-  if (mitIntro) await introAbspielen(schritte)
+  if (mitIntro) {
+    try {
+      await introAbspielen(schritte)
+    } finally {
+      introReaktor.zerstoeren()
+      reaktor.fortsetzen()
+    }
+  }
   if (!gruss) return
   // Auf den ersten Wächter-Durchlauf warten (ohne Intro), damit die Zahlen stimmen
   const ende = Date.now() + 12000
@@ -1476,10 +1483,16 @@ async function start() {
   const suche = new URLSearchParams(location.search)
   const stumm = suche.has('stumm')
   const mitIntro = einstellungen.start?.intro !== false && (!stumm || suche.has('intro')) // Testmodus: ohne Intro
+  let introReaktor = null
   if (!mitIntro) introAus()
+  else {
+    reaktor.pause()
+    introReaktor = reaktorErstellen($('intro-reaktor'))
+    introReaktor.zustand('bereit')
+  }
   let pluginsBereit
   const pluginsFertig = new Promise((r) => (pluginsBereit = r))
-  startsequenzLaufen({ mitIntro, pluginsFertig, stumm })
+  startsequenzLaufen({ mitIntro, pluginsFertig, stumm, introReaktor })
   const stimmen = await api.stimme.liste('pocket')
   $('e-stimme').innerHTML = stimmen.map((s) => `<option value="${s.id}">${s.name} (${s.herkunft})</option>`).join('')
   animationenAnwenden()

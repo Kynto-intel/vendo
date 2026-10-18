@@ -660,15 +660,6 @@ body.intro-an { overflow: hidden; }
 .intro.weg { opacity: 0; transform: scale(1.04); pointer-events: none; }
 .intro-mitte { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(460px, 90vw); }
 .intro-reaktor { position: relative; width: 210px; height: 210px; margin-bottom: 14px; }
-.intro-ring { position: absolute; inset: 0; border-radius: 50%; opacity: 0; transform: scale(0.3); transition: opacity 0.8s ease, transform 1s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
-.intro-ring.r1 { border: 2px dashed var(--gold); animation: intro-drehen 9s linear infinite; }
-.intro-ring.r2 { inset: 26px; border: 1px solid var(--gold-leise); border-top-color: var(--gold-hell); border-bottom-color: var(--gold-hell); animation: intro-drehen 4s linear infinite reverse; transition-delay: 0.15s; }
-.intro-ring.r3 { inset: 52px; border: 3px dotted rgba(var(--akzent-hell-rgb), 0.6); animation: intro-drehen 6s linear infinite; transition-delay: 0.3s; }
-.intro-kern { position: absolute; inset: 84px; border-radius: 50%; background: radial-gradient(circle, var(--reaktor-kern) 0%, var(--gold-hell) 45%, rgba(var(--akzent-rgb), 0) 72%);
-  opacity: 0; transform: scale(0.2); transition: opacity 1s ease 0.4s, transform 1s ease 0.4s, box-shadow 0.6s; }
-.intro.laeuft .intro-ring { opacity: 1; transform: scale(1); }
-.intro.laeuft .intro-kern { opacity: 1; transform: scale(1); box-shadow: 0 0 40px rgba(var(--akzent-hell-rgb), 0.45); animation: intro-puls 2.2s ease-in-out 1.4s infinite; }
-.intro.bereit .intro-kern { box-shadow: 0 0 90px 20px rgba(var(--akzent-hell-rgb), 0.55); }
 .intro-titel { font-family: var(--mono); font-size: 26px; letter-spacing: 1.2em; margin-right: -1.2em; color: var(--gold-hell); opacity: 0; transition: opacity 0.8s ease 0.5s, letter-spacing 1.2s ease 0.5s; }
 .intro.laeuft .intro-titel { opacity: 1; letter-spacing: 0.45em; margin-right: -0.45em; }
 .intro-unter { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-leise); opacity: 0; transition: opacity 0.8s ease 0.9s; }
@@ -684,8 +675,6 @@ body.intro-an { overflow: hidden; }
 .intro-status { font-family: var(--mono); font-size: 13px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold-hell); opacity: 0; transform: translateY(6px); transition: all 0.4s ease; margin-top: 6px; }
 .intro.bereit .intro-status { opacity: 1; transform: none; }
 .intro-hinweis { position: absolute; bottom: 22px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; color: var(--gedimmt); }
-@keyframes intro-drehen { to { rotate: 360deg; } }
-@keyframes intro-puls { 50% { box-shadow: 0 0 60px 8px rgba(var(--akzent-hell-rgb), 0.5); } }
 @keyframes intro-rein { from { opacity: 0; transform: translateX(-8px); } }
 
 /* Nur eine Eingabe: In der Zentrale schreibt Felix unten in der Mitte, das Gespräch rechts zeigt nur den Verlauf.
@@ -1460,7 +1449,6 @@ body.datei-drueber .datei-ablage { display: grid; }
 
 /* Luzzy unten in der rechten Spalte (cockpit.js, wenn das Cockpit an ist): Reaktor, Name, Zustand, ohne Untertitel */
 .live > .luzzy-bereich.in-spalte { order: 9999; margin-top: auto; padding-top: 10px; gap: 4px; }
-.luzzy-bereich.in-spalte .reaktor-rahmen { width: 150px; height: 150px; }
 .luzzy-bereich.in-spalte .luzzy-name { font-size: 20px; }
 .luzzy-bereich.in-spalte .untertitel, .luzzy-bereich.in-spalte .unter-knoepfe { display: none; }
 .ck-bot-balken .ck-titel, .ck-bot-fuss .ck-titel { white-space: nowrap; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; }
