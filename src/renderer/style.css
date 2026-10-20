@@ -1154,6 +1154,7 @@ body.datei-drueber .datei-ablage { display: grid; }
 .crew-thema .gespraech-wahl, .crew-thema.gespraech-wahl { padding-left: 0; }
 .crew-thema .gespraech-menue { left: auto; right: 0; }
 .crew-chat #luzzy-form[hidden], .crew-chat #crew-form[hidden] { display: none; }
+.crew-chat .eingabe, .crew-chat .eingabe:focus-within { border-color: var(--rahmen); box-shadow: none; }
 .gm-weg { font-size: 12px; opacity: 0.7; }
 .gm-weg:hover { opacity: 1; }
 

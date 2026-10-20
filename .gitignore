@@ -4,6 +4,9 @@ daten/
 # Daten der Plugins (Termine, Routinen, Einstellungen): gehören Felix, nicht ins Projekt
 plugins/*/daten.json
 
+# Rechnungs-Plugin: nicht in Git oder GitHub aufnehmen
+/plugins/rechnungen/
+
 # Entwürfe der Plugin-Werkstatt (werden erst nach Felix Ja nach plugins/ kopiert)
 /werkstatt/
 
