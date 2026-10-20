@@ -449,6 +449,14 @@ class Hermes extends EventEmitter {
     this.emit('verlauf', { kanal: 'zentrale', verlauf: verlaufAus(antwort.messages) })
   }
 
+  async verlaufAktualisieren() {
+    if (!this.sessionId) return
+    const sessionId = this.sessionId
+    const antwort = await this.rpc('session.resume', { session_id: sessionId, profile: PROFIL })
+    if (this.sessionId !== sessionId) return
+    this.emit('verlauf', { kanal: 'zentrale', verlauf: verlaufAus(antwort.messages) })
+  }
+
   // Mehrere Gespräche (Themen): eine eigene Hermes-Unterhaltung pro Thema, Luzzy behält pro Thema den Faden.
   // gespeicherteId: fortsetzen; fehlt sie oder ist die Unterhaltung weg: über den Titel suchen, sonst neu anlegen.
   async gespraechOeffnen(gespeicherteId, titel) {

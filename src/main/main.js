@@ -180,7 +180,12 @@ hermes.on('status', (s) => {
     require('./gateway').starten().then((g) => console.log(`Hermes-Gateway: ${g.ok ? 'laeuft' : 'Start fehlgeschlagen'} (${g.text.replace(/[^\x20-\x7e]/g, '').trim()})`))
   }
 })
-hermes.on('ereignis', (e) => senden('hermes:ereignis', e))
+hermes.on('ereignis', (e) => {
+  senden('hermes:ereignis', e)
+  if (e.kanal === 'zentrale' && e.type === 'message.complete') {
+    void hermes.verlaufAktualisieren().catch(() => {})
+  }
+})
 hermes.on('freigabe', (f) => senden('hermes:freigabe', f))
 // Läuft Musik/Video auf dem PC? (Windows-Mediensteuerung, nur lesen) → Oberfläche, damit Musik nicht als Sprache zählt
 let musikSpielt = false
@@ -380,6 +385,19 @@ const sicher = (s) => encodeURIComponent(String(s || ''))
 ipcMain.handle('hermes:aktion', (_e, art, daten = {}) => {
   const profil = daten.profil ? `?profile=${sicher(daten.profil)}` : ''
   switch (art) {
+    case 'ziel-befehl':
+      if (!hermes.sessionId) throw new Error('Luzzys Unterhaltung ist noch nicht geöffnet.')
+      return hermes.rpc('command.dispatch', {
+        session_id: hermes.sessionId,
+        name: 'goal',
+        arg: String(daten.arg || '').slice(0, 2000)
+      })
+    case 'ziel-lenken':
+      if (!hermes.sessionId) throw new Error('Luzzys Unterhaltung ist noch nicht geöffnet.')
+      return hermes.rpc('session.steer', {
+        session_id: hermes.sessionId,
+        text: String(daten.text || '').slice(0, 4000)
+      })
     case 'job-ausfuehren':
       return hermes.rest(`/api/cron/jobs/${sicher(daten.id)}/trigger${profil}`, { method: 'POST' })
     case 'job-pausieren':

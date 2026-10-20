@@ -44,6 +44,7 @@ import { aktivitaetEinrichten } from './app/aktivitaet.js'
 import { musikEinrichten } from './app/musik.js'
 import { panelEinrichten } from './app/panel.js'
 import { kopfzeileEinrichten, leistenEinrichten } from './app/layout.js'
+import { hermesAuftraegeEinrichten, hermesSlashErkennen } from './hermes-slash.js'
 
 const $ = (id) => document.getElementById(id)
 const api = window.vendo
@@ -62,6 +63,7 @@ let einstellungen = null
 designEinrichten({ einstellungen: () => einstellungen }) // Designs, Tageszeit, Windows-Knöpfe (rahmen/design.js)
 let verbunden = false
 let beschaeftigt = false
+let hermesAuftraege = null
 let aktuelleAntwort = null // { el, textEl, roh }
 let werkzeug = ''
 let spricht = false
@@ -407,7 +409,10 @@ function zustandZeigen() {
   $('welle').className = `welle${welleAktiv ? ' aktiv' : ''}${z === 'denkt' || z === 'versteht' ? ' denkt' : ''}`
   $('mikrofon').classList.toggle('an', hoert)
   // Nur Luzzys Eingaben (Zentrale, Luzzys Chat); die Crew-Eingabe schaltet ihr eigenes Gespräch (unterhaltung.js)
-  for (const knopf of document.querySelectorAll('.eingabe-form .senden')) sendeKnopfSetzen(knopf, beschaeftigt, { wer: 'Luzzy' })
+  for (const form of document.querySelectorAll('.eingabe-form')) {
+    const slash = hermesSlashErkennen(form.querySelector('.eingabe-text')?.value)
+    sendeKnopfSetzen(form.querySelector('.senden'), beschaeftigt && !slash, { wer: 'Luzzy' })
+  }
 }
 
 // ── Untertitel unter dem Reaktor: Luzzys aktuelle Antwort in Kurzform ──
@@ -445,10 +450,10 @@ function nachrichtAnzeigen(rolle, text, { laeuft = false } = {}) {
   return { el, textEl }
 }
 
-function systemNachricht(text) {
+function systemNachricht(text, art = '') {
   $('gespraech-leer')?.remove()
   const el = document.createElement('div')
-  el.className = 'msg system'
+  el.className = `msg system ${art}`.trim()
   el.textContent = text
   $('gespraech').appendChild(el)
   runterScrollen()
@@ -755,6 +760,11 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     const liste = a.namen.map((n, i) => `${a.symbole[i]} ${n}`).join('   ')
     return anLuzzy(`${frage}${a.text ? `\n\n${a.text}` : ''}`, { anzeige: `${liste}${text ? `\n${text}` : ''}`, gesprochen })
   }
+  if (hermesAuftraege?.slash(text)) {
+    feld.value = ''
+    feldHoehe(feld)
+    return
+  }
   if (lokalerBefehl(text, { gesprochen })) {
     feld.value = ''
     feldHoehe(feld)
@@ -915,7 +925,7 @@ for (const form of document.querySelectorAll('.eingabe-form')) {
     abschicken(feld)
   })
   form.querySelector('.senden').addEventListener('click', (e) => {
-    if (beschaeftigt) {
+    if (beschaeftigt && !hermesSlashErkennen(feld.value)) {
       e.preventDefault()
       api.hermes.abbrechen('zentrale')
       vorleser.stoppen()
@@ -927,8 +937,39 @@ for (const form of document.querySelectorAll('.eingabe-form')) {
       abschicken(feld)
     }
   })
-  feld.addEventListener('input', () => feldHoehe(feld))
+  feld.addEventListener('input', () => {
+    feldHoehe(feld)
+    if (beschaeftigt) zustandZeigen()
+  })
 }
+
+const zielDialog = document.querySelector('#ziel-dialog')
+const zielForm = document.querySelector('#ziel-form')
+let zielChatFeld = null
+for (const knopf of document.querySelectorAll('[data-ziel-formular]')) {
+  knopf.addEventListener('click', () => {
+    zielChatFeld = knopf.closest('.eingabe-form')?.querySelector('.eingabe-text')
+    if (!zielDialog?.open) zielDialog?.showModal()
+    zielForm?.elements.ziel?.focus()
+  })
+}
+document.querySelector('#ziel-abbrechen')?.addEventListener('click', () => zielDialog?.close())
+zielForm?.addEventListener('submit', (e) => {
+  e.preventDefault()
+  if (!zielChatFeld) return
+  const formData = new FormData(zielForm)
+  const felder = [
+    ['Ziel', 'ziel'],
+    ['Quellen / URLs', 'quellen'],
+    ['Fertig, wenn …', 'fertig'],
+    ['Grenzen und Vorgaben', 'grenzen'],
+    ['Nachfragen, wenn …', 'nachfragen']
+  ]
+  zielChatFeld.value = `/goal ${felder.map(([titel, name]) => `- **${titel}**: ${String(formData.get(name) || '').trim()}`).join('\n')}`
+  feldHoehe(zielChatFeld)
+  zielDialog.close()
+  zielChatFeld.focus()
+})
 
 // ── Gesprächs-Fenster rechts: öffnen/schließen, Breite ziehen (app/panel.js) ──
 const { panelSetzen, panelGeschlossen, breiteSetzen } = panelEinrichten({
@@ -1048,6 +1089,7 @@ function nachrichtBeendet(p) {
   antwortAnzeigen(text, p)
   antwortAbschliessen(text, p)
   antwortWeiterverarbeiten(text, gelungen)
+  verlaufAktualisierenWennBereit()
 }
 
 function hermesFehler(p) {
@@ -1058,7 +1100,26 @@ function hermesFehler(p) {
   luzzyNachher = null
   luzzyBeiText = null
   zustandZeigen()
+  verlaufAktualisierenWennBereit()
 }
+
+hermesAuftraege = hermesAuftraegeEinrichten({
+  api,
+  beschaeftigt: () => beschaeftigt,
+  verbunden: () => verbunden,
+  zielStarten: (text, ziel) => anLuzzy(text, { anzeige: `🎯 Ziel: ${ziel}` }),
+  warteschlangenSenden: async (text) => {
+    const feld = document.querySelector('.befehl .eingabe-text')
+    if (!feld || beschaeftigt || !verbunden) return false
+    ansichtZeigen('zentrale')
+    feld.value = text
+    feldHoehe(feld)
+    await abschicken(feld)
+    return { ok: true, fertig: !beschaeftigt }
+  },
+  melden: (text) => systemNachricht(text),
+  bestaetigen: (text) => systemNachricht(text, 'erfolg')
+})
 
 api.hermes.beiEreignis((ev) => {
   if (ev.type === 'request.cancel') return freigabeZurueckgezogen(ev.payload?.id) // Hermes hat eine Rückfrage zurückgezogen
@@ -1075,7 +1136,12 @@ api.hermes.beiEreignis((ev) => {
     case 'tool.complete':
       return werkzeugBeendet()
     case 'message.complete':
-      return nachrichtBeendet(p)
+      nachrichtBeendet(p)
+      hermesAuftraege?.antwortFertig()
+      return
+    case 'session.control.update':
+      hermesAuftraege?.zielAktualisieren()
+      return
     case 'wake.detected':
       // "Hey Luzzy" gehört: zuhören (läuft Musik, pausiert sie kurz und läuft danach weiter)
       musikKurzAnhalten().then(() => sprechenStarten())
@@ -1085,7 +1151,22 @@ api.hermes.beiEreignis((ev) => {
   }
 })
 
-api.hermes.beiVerlauf((v) => (v?.kanal && v.kanal !== 'zentrale' ? crewVerlauf(v) : verlaufZeigen(v?.verlauf)))
+let wartenderVerlauf = null
+api.hermes.beiVerlauf((v) => {
+  if (v?.kanal && v.kanal !== 'zentrale') return crewVerlauf(v)
+  if (beschaeftigt || aktuelleAntwort) {
+    wartenderVerlauf = v?.verlauf || null
+    return
+  }
+  verlaufZeigen(v?.verlauf)
+})
+
+function verlaufAktualisierenWennBereit() {
+  if (beschaeftigt || aktuelleAntwort || !wartenderVerlauf) return
+  const verlauf = wartenderVerlauf
+  wartenderVerlauf = null
+  verlaufZeigen(verlauf)
+}
 
 // Derselbe Verlauf kommt u. U. zweimal (Ereignis + Abfrage beim Start). Nur neu zeichnen, wenn
 // er sich geändert hat und gerade kein Gespräch läuft, sonst würde eine frische Antwort überschrieben.

@@ -386,6 +386,7 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 .msg.felix .msg-wer { color: var(--text-leise); text-align: right; }
 .msg.felix .msg-text { background: var(--gold-flaeche); border: 1px solid var(--gold-dunkel); border-left: 3px solid var(--gold); padding: 9px 12px; white-space: pre-wrap; }
 .msg.system { align-self: center; font-family: var(--mono); font-size: 11px; color: var(--rot); max-width: 100%; }
+.msg.system.erfolg { color: var(--gruen); }
 .msg-text { line-height: 1.6; word-break: break-word; }
 .msg-text p { margin: 0 0 8px; }
 .msg-text p:last-child { margin-bottom: 0; }
@@ -410,6 +411,7 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 /* Büroklammer links (anhaenge.js) und runder Senden-/Stopp-Knopf rechts (sendeknopf.js) */
 .eingabe, .befehl { padding-left: 8px; }
 .knopf-icon { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; cursor: pointer; color: var(--text-leise); transition: color 150ms, background-color 150ms; }
+.ziel-formular-knopf { margin-left: -15px; }
 .knopf-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .knopf-icon:hover, .knopf-icon:focus-visible { color: var(--gold-hell); background: var(--gold-hauch); outline: none; }
 .knopf-senden { flex: none; width: 38px; height: 38px; border: 1px solid var(--gold); border-radius: 50%; display: grid; place-items: center; cursor: pointer; color: var(--auf-gold); background: linear-gradient(180deg, var(--gold-hell), var(--gold)); box-shadow: 0 6px 18px -8px rgba(var(--akzent-rgb), 0.7); transition: filter 150ms, transform 150ms, box-shadow 150ms, background-color 150ms; }
@@ -471,6 +473,13 @@ body.anim-reaktor .reaktor[data-zustand='denkt'] .r5 { animation-duration: 1.5s;
 .dialog input[type='checkbox'] { accent-color: var(--gold); }
 .dialog output { font-family: var(--mono); font-size: 11px; color: var(--text-leise); }
 .dialog-knoepfe { display: flex; justify-content: flex-end; gap: 10px; }
+.ziel-dialog { width: min(620px, 92vw); max-height: 90vh; overflow-y: auto; }
+.ziel-dialog form { display: grid; gap: 12px; }
+.ziel-dialog h2 { margin-bottom: 2px; }
+.ziel-dialog label { display: grid; grid-template-columns: 1fr; gap: 5px; color: var(--text); font-size: 12px; }
+.ziel-dialog textarea { width: 100%; box-sizing: border-box; min-height: 48px; resize: vertical; padding: 8px 10px; border: 1px solid var(--rahmen); border-radius: var(--radius); background: var(--eingabe); color: var(--text); font: inherit; font-size: 13px; }
+.ziel-dialog textarea:focus { outline: none; }
+
 
 /* ── Animationen ── */
 @keyframes dreh { to { transform: rotate(360deg); } }
