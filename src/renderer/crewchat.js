@@ -12,6 +12,7 @@ import { bestaetigen } from './fenster.js'
 import { buehneEinrichten, buehneStarten, buehneAnstossen } from './buehne.js'
 import { botProfilOeffnen } from './botprofil.js'
 import { sendeKnopfSetzen } from './sendeknopf.js'
+import { hermesAuftraegeEinrichten } from './hermes-slash.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -64,13 +65,15 @@ function gespraech(kanal) {
     $('crew-listen').appendChild(liste)
   }
   liste.dataset.kanal = kanal
-  const eintrag = { liste, geoeffnet: false }
+  const eintrag = { liste, geoeffnet: false, auftraege: null }
   eintrag.unterhaltung = unterhaltungErstellen({
     kanal,
     liste,
     form: $('crew-form'),
     namen: { felix: 'FELIX', luzzy: bot.name.toUpperCase() },
     wer: bot.name,
+    slashAktiv: bot.name.toLowerCase() === 'kira',
+    slash: (text) => eintrag.auftraege?.slash(text) || false,
     leerText: kanal === 'crew'
       ? 'Noch keine Crew-Aufträge. Sag Luzzy, was die Bots erledigen sollen.'
       : bot.modus === 'botchat'
@@ -85,6 +88,21 @@ function gespraech(kanal) {
       if (!(h.crewSichtbar() && aktuellerKanal() === kanal) && fensterKanal !== kanal) h.fertigWoanders(bot, text) // im Bot-Fenster sieht Felix die Antwort ja
     }
   })
+  if (kanal !== 'zentrale' && kanal !== 'crew' && bot.name.toLowerCase() === 'kira') {
+    eintrag.auftraege = hermesAuftraegeEinrichten({
+      api: h.api,
+      kanal,
+      beschaeftigt: () => eintrag.unterhaltung.beschaeftigt(),
+      verbunden: () => h.verbunden?.() ?? true,
+      zielStarten: (text, ziel) => eintrag.unterhaltung.senden(text, `🎯 Ziel: ${ziel}`),
+      warteschlangenSenden: async (text) => {
+        const ok = await eintrag.unterhaltung.senden(text)
+        return ok ? { ok: true, fertig: !eintrag.unterhaltung.beschaeftigt() } : false
+      },
+      melden: (text) => eintrag.unterhaltung.melden(text),
+      bestaetigen: (text) => eintrag.unterhaltung.melden(text, 'erfolg')
+    })
+  }
   gespraeche.set(kanal, eintrag)
   return eintrag
 }
@@ -181,14 +199,17 @@ function zeichnen() {
     ? liste.map((b) => `<button class="crew-bot${b.profil === gewaehlt[modus] ? ' an' : ''}" data-bot="${maskieren(b.profil)}" type="button" title="Hermes-Profil: ${maskieren(b.profil)}">${maskieren(b.name)}${b.rolle ? `<small>${maskieren(b.rolle)}</small>` : ''}</button>`).join('')
     : '<span class="leise klein">Noch keine Bots außer Luzzy.</span>'
   const bot = botVon(gewaehlt[modus])
+  const istKira = bot.name.toLowerCase() === 'kira'
+  $('crew-form').querySelector('[data-ziel-formular]').hidden = !istKira
   $('crew-chat-hinweis').textContent = modus === 'normal'
     ? bot.profil === LUZZY ? 'Dein Gespräch mit Luzzy aus der Zentrale, ohne Bot Mode. Über „Allgemein ▾“ wechselst, erstellst und löschst du Chats.' : `Direktes Gespräch mit ${bot.name}, ohne Bot Mode. Über die Chat-Auswahl rechts wechselst, erstellst und löschst du Chats.`
     : bot.profil === LUZZY
       ? 'Luzzys Bot Chat: sie verteilt Aufträge an die Crew und bekommt die Ergebnisse zurück.'
       : `${bot.name}s Bot Chat: hier arbeiten die Bots zusammen (Übergaben wie Kira → Lira → Milla).`
+  const slashHinweis = istKira ? ' ( /goal · /steer · /queue )' : ''
   $('crew-form').querySelector('textarea').placeholder = modus === 'normal'
-    ? `Nachricht an ${bot.name} …`
-    : bot.profil === LUZZY ? 'Auftrag für die Crew, z. B. „Kira soll Trends für Herbst-Shirts suchen“ …' : `Nachricht in ${bot.name}s Bot Chat …`
+    ? `Nachricht an ${bot.name} …${slashHinweis}`
+    : bot.profil === LUZZY ? 'Auftrag für die Crew, z. B. „Kira soll Trends für Herbst-Shirts suchen“ …' : `Nachricht in ${bot.name}s Bot Chat …${slashHinweis}`
 }
 
 // Karte des gewählten Bots oben hervorheben (nicht auf der Arbeitsbühne)
@@ -340,7 +361,10 @@ export function luzzyChatZeigen() {
 
 // Ereignisse und Verlauf von Hermes für alle Kanäle außer der Zentrale
 export function crewEreignis(ev) {
-  gespraech(ev.kanal).unterhaltung.ereignis(ev)
+  const g = gespraech(ev.kanal)
+  g.unterhaltung.ereignis(ev)
+  if (ev.type === 'message.complete') g.auftraege?.antwortFertig()
+  if (ev.type === 'session.control.update') g.auftraege?.zielAktualisieren()
   // Übergaben und fertige Antworten: Arbeitsbühne sofort nachlesen
   if (ev.type === 'tool.start' || ev.type === 'tool.complete' || ev.type === 'message.complete') buehneAnstossen()
 }

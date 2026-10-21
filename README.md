@@ -1,74 +1,68 @@
 # Vendo
 
-**A personal Windows command center for Hermes Agent, built around voice interaction with Luzzy and an AI agent crew.**
-
-> [!WARNING]
-> **Experimental project: Vendo is still under active development and is not a mature, stable, or production-ready application.** Features may be incomplete, unreliable, or change without notice. Expect bugs, rough edges, and breaking changes. Do not depend on Vendo for critical work or irreversible actions. Back up important data and verify what the app or an AI agent is doing.
-
-Vendo is a personal project built for the author's own Windows desktop setup, not a general-purpose product. It brings a voice-first assistant, Hermes Agent conversations, local desktop tools, and personal workflows into one application. Hermes remains the AI and tool layer; Vendo provides the desktop interface and integrates selected capabilities. Some names, profiles, paths, and integrations may need adaptation, and support or compatibility outside this setup is not guaranteed.
-
-The detailed user guide is currently in German: [README.md](README.md).
-
-## Screenshot
+**A voice-enabled desktop command center for Hermes Agent.**
 
 ![Vendo main screen](docs/images/vendo.png)
 
-## What Vendo Does
+> **Project status:** Vendo is a small, privately maintained project with a public source repository. It is still under active development, but most of its core features work in the intended Windows and Hermes setup. Expect bugs, rough edges, and changes as development continues.
 
-- **Voice interaction:** Talk to Luzzy using speech recognition, an optional wake word, and text-to-speech. Pocket TTS can run locally; Gemini TTS and ElevenLabs are optional cloud services.
-- **Agent crew:** Chat with Hermes profiles, manage bot profiles, and follow work as agents hand tasks to one another.
-- **Personal workflows:** Use tasks, calendar events, reminders, focus sessions, routines, notes, and scheduled jobs in one place.
-- **Shop and inbox notifications:** See new Shopify orders, incoming mail notifications, job failures, and order milestones.
-- **Desktop tools:** Search and preview local files, dictate text, use a built-in PowerShell terminal, and trigger a limited set of PC controls.
-- **Extensible interface:** Add local plugins for custom views, cards, commands, and workflows. The plugin workshop can draft and check plugins before installation.
-- **Optional local fallback:** When configured, Ollama can provide limited local assistance if Hermes is unavailable. Cloud-backed features are not available in that mode.
+Vendo brings a voice interface, Hermes conversations, desktop utilities, and everyday workflows into one Windows application. Hermes provides the AI models, agents, tools, and sessions; Vendo provides the desktop interface and connects selected local capabilities.
 
-Vendo is not a replacement for Hermes Agent, and it does not provide a hosted service or a mobile app.
+## Features
 
-## Project Status
+- **Voice:** Talk to Luzzy with speech recognition, an optional wake word, and text-to-speech. Pocket TTS can speak locally; Gemini TTS and ElevenLabs are optional cloud providers.
+- **Hermes conversations and agents:** Chat with configured Hermes profiles, follow agent activity, and use approvals for actions that need confirmation.
+- **Everyday workflows:** Manage tasks, calendar events, reminders, focus sessions, routines, notes, and milestones. Weather is available through Open-Meteo.
+- **Notifications:** View configured Shopify order notifications, mail notifications provided through Hermes, job failures, milestones, and reminders.
+- **Desktop tools:** Search and preview local files, edit selected text with an explicit save step, dictate into the clipboard, use a PowerShell terminal, and run supported PC controls.
+- **Mini mode:** Keep a compact desktop assistant visible with the Fenni animated companion and key status information.
+- **Plugins:** Extend the interface with local plugin views, cards, commands, and workflows. The workshop can draft, check, and test plugins before you approve installation.
+- **Local fallback:** When enabled and configured, Ollama can provide limited assistance if Hermes is unavailable. Features that require Hermes or cloud services are not available through this fallback.
 
-Vendo is a personal project in active development. It has not been polished or validated as a general-purpose product. In particular:
+Most features depend on the local Hermes installation and its profile configuration. Optional integrations require their own accounts, credentials, and setup.
 
-- The interface, settings, plugin APIs, and local data formats may change.
-- Some features depend on a specific Hermes Agent installation, profile configuration, credentials, or third-party services.
-- Optional integrations may require additional setup and may stop working when their providers change.
-- The repository does not promise stable releases, backward compatibility, or support for production use.
-- AI output and automated actions can be wrong. Review results before acting on them.
+## How It Works
 
-Use a test environment for integrations that can affect a real shop or other important data. Keep independent backups of anything you cannot afford to lose.
+Vendo is an Electron application with a Node.js main process and a JavaScript/HTML/CSS renderer. It connects to Hermes on the same computer through Hermes' local REST API and WebSocket interface. It can attach to a running Hermes backend or start one when needed.
+
+Hermes remains a separate application. Vendo does not modify Hermes program code. It may update selected Hermes profile or user configuration values for supported integrations; it creates a backup before those changes.
 
 ## Requirements
 
 - Windows 10 or 11
+- Git, to clone the repository from the terminal
 - Node.js LTS and npm
-- A locally installed and configured Hermes Agent
-- A Hermes profile configured for Vendo
-Microphone access, Pocket TTS, Ollama, Shopify, mail, and cloud TTS providers are optional and require their own configuration. Vendo does not bundle those services or credentials.
+- A locally installed Hermes Agent with a profile configured for Vendo
 
-## Run Locally
+Optional components include a microphone, `uv` for Pocket TTS, Ollama for local fallback, and accounts or credentials for Shopify, mail, Gemini TTS, or ElevenLabs. Vendo does not bundle these services or credentials.
+
+## Download the Repository
+
+With Git installed, clone the public repository using one terminal command:
+
+```powershell
+git clone https://github.com/Kynto-intel/vendo.git
+```
+
+This creates a `vendo` folder. Open a terminal in that folder to install dependencies and start the app.
+
+## Run from Source
 
 ```powershell
 npm install
 npm start
 ```
 
-This starts the Electron application from source. There is currently no packaged installer or release process documented in this repository. Hermes Agent must be installed and configured separately.
+This launches the Electron application from source. Hermes Agent must be installed and configured separately.
 
-## Data, Integrations, and Safety
+## Data and Integrations
 
-- Vendo is designed for a local, single-user desktop setup. It connects to Hermes running on the same PC.
-- Prompts sent to Hermes may be processed by the model provider configured in Hermes. Review that provider's data and privacy terms.
-- Pocket TTS runs locally when configured. Gemini TTS and ElevenLabs send text to their respective providers for speech generation.
-- Shopify, mail, weather, and other connected services may communicate with their providers. Their availability and data handling depend on the integration and its configuration.
-- App settings and plugin data are intended to remain in the local `daten/` directory, which is excluded from Git. Do not commit credentials, tokens, personal data, or local backups.
-- Vendo includes safeguards such as confirmation prompts for selected risky actions and backups before certain file edits. These safeguards are not a security audit and do not make experimental software risk-free.
-
-Do not use real credentials in a shared test environment, and review permissions before connecting external services.
-
-## Technology
-
-Vendo is built with Electron and JavaScript. The renderer uses native browser technologies; the application connects to Hermes through its local API and WebSocket interfaces. The terminal uses xterm.js and node-pty.
+- App settings and plugin data are stored locally and excluded from the public Git repository. Never commit credentials, tokens, personal data, or local backups.
+- Prompts sent to Hermes may be processed by the model provider configured in Hermes.
+- Pocket TTS generates speech locally. Gemini TTS and ElevenLabs send speech text to their respective providers.
+- Connected services such as Shopify, mail, and weather communicate with their providers when their integrations are used. Data handling depends on each provider and configuration.
+- Vendo asks for confirmation for selected sensitive actions and backs up files before certain edits. Review AI output and verify actions before relying on them.
 
 ## License
 
-No license file is currently included. Do not assume that the code is licensed for reuse, modification, or redistribution.
+No license file is included. Public availability of the repository does not by itself grant permission to reuse, modify, or redistribute the code.

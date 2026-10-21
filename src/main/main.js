@@ -385,19 +385,27 @@ const sicher = (s) => encodeURIComponent(String(s || ''))
 ipcMain.handle('hermes:aktion', (_e, art, daten = {}) => {
   const profil = daten.profil ? `?profile=${sicher(daten.profil)}` : ''
   switch (art) {
-    case 'ziel-befehl':
-      if (!hermes.sessionId) throw new Error('Luzzys Unterhaltung ist noch nicht geöffnet.')
+    case 'ziel-befehl': {
+      const kanal = kanalPruefen(daten.kanal || 'zentrale')
+      if (!/^(?:normal|botchat):kira-trend-scout-bot$/.test(kanal)) throw new Error('Goal-Befehle sind nur für Kira verfügbar.')
+      const sessionId = hermes.sessionIdVon(kanal)
+      if (!sessionId) throw new Error('Das Hermes-Gespräch ist noch nicht geöffnet.')
       return hermes.rpc('command.dispatch', {
-        session_id: hermes.sessionId,
+        session_id: sessionId,
         name: 'goal',
         arg: String(daten.arg || '').slice(0, 2000)
       })
-    case 'ziel-lenken':
-      if (!hermes.sessionId) throw new Error('Luzzys Unterhaltung ist noch nicht geöffnet.')
+    }
+    case 'ziel-lenken': {
+      const kanal = kanalPruefen(daten.kanal || 'zentrale')
+      if (!/^(?:normal|botchat):kira-trend-scout-bot$/.test(kanal)) throw new Error('Steer-Befehle sind nur für Kira verfügbar.')
+      const sessionId = hermes.sessionIdVon(kanal)
+      if (!sessionId) throw new Error('Das Hermes-Gespräch ist noch nicht geöffnet.')
       return hermes.rpc('session.steer', {
-        session_id: hermes.sessionId,
+        session_id: sessionId,
         text: String(daten.text || '').slice(0, 4000)
       })
+    }
     case 'job-ausfuehren':
       return hermes.rest(`/api/cron/jobs/${sicher(daten.id)}/trigger${profil}`, { method: 'POST' })
     case 'job-pausieren':

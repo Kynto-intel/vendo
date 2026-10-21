@@ -87,8 +87,7 @@
           <div class="anhaenge" id="anhaenge" hidden></div>
           <form class="befehl hud eingabe-form" data-quelle="mitte">
             <button class="knopf-icon anhang-knopf" data-anhang type="button" title="Datei oder Bild an Luzzy (oder ins Fenster ziehen, Bild mit Strg+V einfügen)" aria-label="Datei anhängen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.3 8.3a5.2 5.2 0 0 1-7.4-7.4l8.6-8.6a3.5 3.5 0 0 1 4.9 4.9l-8.6 8.6a1.8 1.8 0 0 1-2.5-2.5l7.9-7.9"/></svg></button>
-            <button class="knopf-icon ziel-formular-knopf" data-ziel-formular type="button" title="Ziel mit Formular erstellen" aria-label="Ziel mit Formular erstellen"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 19 5m-3 0h3v3"/></svg></button>
-            <textarea class="eingabe-text" rows="1" placeholder="Sag Luzzy, was ansteht … ( /goal · /steer · /queue )" autocomplete="off"></textarea>
+            <textarea class="eingabe-text" rows="1" placeholder="Sag Luzzy, was ansteht …" autocomplete="off"></textarea>
             <button class="knopf-rund mikrofon" id="mikrofon" type="button" title="Sprechen (Strg+Leertaste)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2z"/></svg>
             </button>
@@ -124,6 +123,7 @@
             <div class="crew-buehne" id="crew-buehne" hidden></div>
             <form class="eingabe hud" id="crew-form">
               <button class="knopf-icon anhang-knopf" data-anhang type="button" title="Datei oder Bild an diesen Bot (oder ins Fenster ziehen, Bild mit Strg+V einfügen)" aria-label="Datei anhängen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.3 8.3a5.2 5.2 0 0 1-7.4-7.4l8.6-8.6a3.5 3.5 0 0 1 4.9 4.9l-8.6 8.6a1.8 1.8 0 0 1-2.5-2.5l7.9-7.9"/></svg></button>
+              <button class="knopf-icon ziel-formular-knopf" data-ziel-formular type="button" title="Mehrstufiges Ziel für Kira erstellen" aria-label="Ziel mit Formular erstellen" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 19 5m-3 0h3v3"/></svg></button>
               <textarea rows="1" placeholder="Auftrag für die Crew, z. B. „Recherchier das Thema Fenrir für einen Blogartikel“ …" autocomplete="off"></textarea>
               <button class="knopf-senden senden" type="submit" title="Senden (Enter)" aria-label="Senden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
             </form>
@@ -271,8 +271,7 @@
         </div>
         <form class="eingabe hud eingabe-form" data-quelle="panel">
           <button class="knopf-icon anhang-knopf" data-anhang type="button" title="Datei oder Bild an Luzzy (oder ins Fenster ziehen, Bild mit Strg+V einfügen)" aria-label="Datei anhängen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.3 8.3a5.2 5.2 0 0 1-7.4-7.4l8.6-8.6a3.5 3.5 0 0 1 4.9 4.9l-8.6 8.6a1.8 1.8 0 0 1-2.5-2.5l7.9-7.9"/></svg></button>
-          <button class="knopf-icon ziel-formular-knopf" data-ziel-formular type="button" title="Ziel mit Formular erstellen" aria-label="Ziel mit Formular erstellen"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 19 5m-3 0h3v3"/></svg></button>
-          <textarea class="eingabe-text" rows="1" placeholder="Nachricht an Luzzy … ( /goal · /steer · /queue )" autocomplete="off"></textarea>
+          <textarea class="eingabe-text" rows="1" placeholder="Nachricht an Luzzy …" autocomplete="off"></textarea>
           <button class="knopf-senden senden" type="submit" title="Senden (Enter)" aria-label="Senden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
         </form>
       </section>

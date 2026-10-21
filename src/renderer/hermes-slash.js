@@ -4,9 +4,9 @@ export function hermesSlashErkennen(text) {
   return /^\s*\/(?:goal|steer|queue|s|q)(?:\s|$)/i.test(String(text || ''))
 }
 
-function warteschlangeLaden() {
+function warteschlangeLaden(schluessel) {
   try {
-    const eintraege = JSON.parse(localStorage.getItem(SCHLUESSEL) || '[]')
+    const eintraege = JSON.parse(localStorage.getItem(schluessel) || '[]')
     return Array.isArray(eintraege)
       ? eintraege.filter((e) => typeof e?.text === 'string' && e.text.trim()).slice(0, 20)
       : []
@@ -15,15 +15,16 @@ function warteschlangeLaden() {
   }
 }
 
-export function hermesAuftraegeEinrichten({ api, beschaeftigt, verbunden, zielStarten, warteschlangenSenden, melden, bestaetigen = melden }) {
-  let warteschlange = warteschlangeLaden()
+export function hermesAuftraegeEinrichten({ api, kanal = 'zentrale', beschaeftigt, verbunden, zielStarten, warteschlangenSenden, melden, bestaetigen = melden }) {
+  const schluessel = kanal === 'zentrale' ? SCHLUESSEL : `${SCHLUESSEL}.${kanal}`
+  let warteschlange = warteschlangeLaden(schluessel)
   let zielAktiv = null
   let wirdGesendet = false
   let statusLaeuft = false
 
   function speichern() {
     try {
-      localStorage.setItem(SCHLUESSEL, JSON.stringify(warteschlange))
+      localStorage.setItem(schluessel, JSON.stringify(warteschlange))
     } catch {
       melden('Warteschlange konnte nicht lokal gespeichert werden.')
     }
@@ -39,7 +40,7 @@ export function hermesAuftraegeEinrichten({ api, beschaeftigt, verbunden, zielSt
 
   async function zielBefehl(arg, { anzeigen = true } = {}) {
     if (!verbunden()) throw new Error('Hermes ist gerade nicht verbunden.')
-    const ergebnis = await api.hermes.aktion('ziel-befehl', { arg })
+    const ergebnis = await api.hermes.aktion('ziel-befehl', { arg, kanal })
     if (ergebnis?.type === 'send' && ergebnis.message) {
       zielAktiv = true
       const ziel = arg.replace(/^(?:draft\s+)?/, '').trim() || 'Ziel fortsetzen'
@@ -95,7 +96,7 @@ export function hermesAuftraegeEinrichten({ api, beschaeftigt, verbunden, zielSt
       if (!text) return melden('Verwendung: /steer <Hinweis für den laufenden Auftrag>')
       if (!beschaeftigt()) return melden('Gerade läuft kein Auftrag. /steer funktioniert während Luzzy arbeitet.')
       try {
-        const ergebnis = await api.hermes.aktion('ziel-lenken', { text })
+        const ergebnis = await api.hermes.aktion('ziel-lenken', { text, kanal })
         if (ergebnis?.status === 'rejected') throw new Error(ergebnis.text || 'Hermes hat den Hinweis abgelehnt.')
         melden(ergebnis?.status === 'redirected'
           ? `Luzzy umgelenkt: ${text}`

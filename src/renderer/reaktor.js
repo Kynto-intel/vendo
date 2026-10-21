@@ -68,6 +68,7 @@ const MODI = {
 
 const RAD = Math.PI / 180
 const GELB = '255,226,70' // Standort-Punkt
+const KUNDE = '255,150,70' // Orte der Shopify-Bestellungen
 
 // ---------- Standort über die Zeitzone des PCs (keine Abfrage, kein Internet nötig) ----------
 const ZONEN = {
@@ -209,9 +210,32 @@ export function reaktorErstellen(behaelter, optionen = {}) {
       .sort((p, q) => p.d - q.d)
       .slice(0, 4)
       .forEach(x => verbindungen.push({ ...bogen(heim.v, x.kn.v), heim: true, pakete: [Math.random(), Math.random()], tempo: 0.14 + Math.random() * 0.1 }))
+    kundenBauen()
     if (sofort) { rot = -lon * RAD; tilt = heim.tilt }
     letzteEingabe = -1e9
   }
+
+  // --- Kundenorte (Shopify-Bestellungen): Liste { lat, lon, ort, anzahl } kommt vom Rechnungen-Plugin ---
+  // Größe des Punkts = Anzahl (logarithmisch), Bögen nur zu den stärksten Orten, Name + Anzahl beim Darüberfahren.
+  const MAX_BOEGEN = 12
+  let kundenRoh = Array.isArray(window.vendoOrte) ? window.vendoOrte : []
+  let kunden = []
+  let kundenPos = []
+  function kundenBauen() {
+    for (let i = verbindungen.length - 1; i >= 0; i--) if (verbindungen[i].kunde) verbindungen.splice(i, 1)
+    const gueltig = kundenRoh.filter(k => k && Number.isFinite(k.lat) && Number.isFinite(k.lon) && k.anzahl > 0)
+    const max = Math.max(1, ...gueltig.map(k => k.anzahl))
+    kunden = gueltig.map(k => ({
+      v: weltVektor(k.lat, k.lon), ort: String(k.ort || ''), anzahl: k.anzahl,
+      rel: Math.log(1 + k.anzahl) / Math.log(1 + max), phase: Math.random() * 6.28
+    }))
+    ;[...kunden].sort((a, b) => b.anzahl - a.anzahl).slice(0, MAX_BOEGEN).forEach(k => {
+      const d = Math.acos(Math.min(1, Math.max(-1, k.v[0] * heim.v[0] + k.v[1] * heim.v[1] + k.v[2] * heim.v[2])))
+      if (d > 0.03) verbindungen.push({ ...bogen(heim.v, k.v), kunde: true, pakete: [Math.random()], tempo: 0.1 + Math.random() * 0.08 })
+    })
+  }
+  const beiOrte = e => { kundenRoh = Array.isArray(e.detail) ? e.detail : []; kundenBauen() }
+  window.addEventListener('vendo:orte', beiOrte)
   const [lat0, lon0] = optionen.ort || ortErmitteln()
   heimSetzen(lat0, lon0, true)
   let vRot = 0, vTilt = 0
@@ -246,7 +270,14 @@ export function reaktorErstellen(behaelter, optionen = {}) {
     canvas.style.cursor = 'grabbing'
   })
   canvas.addEventListener('pointermove', e => {
-    if (!ziehen) return
+    if (!ziehen) {
+      const r = canvas.getBoundingClientRect()
+      const s = r.width ? breite / r.width : 1
+      const mx = (e.clientX - r.left) * s, my = (e.clientY - r.top) * s
+      const treffer = kundenPos.find(q => Math.hypot(q.X - mx, q.Y - my) < 9)
+      canvas.title = treffer ? `${treffer.k.ort || 'Ort unbekannt'} · ${treffer.k.anzahl} Bestellung${treffer.k.anzahl === 1 ? '' : 'en'}` : ''
+      return
+    }
     const dx = e.clientX - letzteX, dy = e.clientY - letzteY
     letzteX = e.clientX; letzteY = e.clientY
     vRot = dx * 0.006
@@ -269,7 +300,7 @@ export function reaktorErstellen(behaelter, optionen = {}) {
   function frame(jetzt) {
     frameId = 0
     if (!laeuft || !aktiv) return
-    if (!canvas.isConnected) { ro.disconnect(); laeuft = false; return }
+    if (!canvas.isConnected) { ro.disconnect(); window.removeEventListener('vendo:orte', beiOrte); laeuft = false; return }
     frameId = requestAnimationFrame(frame)
 
     // Sicherheitsnetz: cockpit.js verschiebt den Behälter zwischen Zentrale und rechter Spalte (Größe ändert sich)
@@ -392,7 +423,7 @@ export function reaktorErstellen(behaelter, optionen = {}) {
           offen = true
         } else offen = false
       }
-      ctx.strokeStyle = `rgba(${HELL},${0.28 * akt.licht})`
+      ctx.strokeStyle = `rgba(${v.kunde ? KUNDE : HELL},${(v.kunde ? 0.22 : 0.28) * akt.licht})`
       ctx.stroke()
 
       if (akt.daten > 0.01) {
@@ -401,7 +432,7 @@ export function reaktorErstellen(behaelter, optionen = {}) {
           const idx = Math.min(proj.length - 1, Math.floor(v.pakete[n] * (proj.length - 1)))
           const p = proj[idx]
           if (p[2] > 0.05) {
-            ctx.fillStyle = `rgba(${HELL},${0.95 * akt.licht})`
+            ctx.fillStyle = `rgba(${v.kunde ? KUNDE : HELL},${0.95 * akt.licht})`
             ctx.beginPath(); ctx.arc(cx + p[0] * R, cy - p[1] * R, 1.6 * (R / 90), 0, 6.2832); ctx.fill()
           }
         }
@@ -418,6 +449,23 @@ export function reaktorErstellen(behaelter, optionen = {}) {
       ctx.beginPath(); ctx.arc(X, Y, (3.5 + 3 * w) * (R / 90), 0, 6.2832); ctx.fill()
       ctx.fillStyle = `rgba(255,255,255,${0.9 * akt.licht})`
       ctx.beginPath(); ctx.arc(X, Y, 1.4 * (R / 90), 0, 6.2832); ctx.fill()
+    }
+
+    // Kundenorte: orange, Größe nach Anzahl der Bestellungen
+    kundenPos = []
+    for (const k of kunden) {
+      const p = dreh(k.v)
+      if (p[2] <= 0.02) continue
+      const X = cx + p[0] * R, Y = cy - p[1] * R
+      const sk = R / 90
+      const fade = Math.min(1, p[2] * 4) * Math.max(0.5, akt.licht)
+      const w = 0.5 + 0.5 * Math.sin(t * 1.6 + k.phase)
+      const r = (1.7 + 3 * k.rel) * sk
+      ctx.fillStyle = `rgba(${KUNDE},${0.2 * fade})`
+      ctx.beginPath(); ctx.arc(X, Y, r * (1.8 + w), 0, 6.2832); ctx.fill()
+      ctx.fillStyle = `rgba(${KUNDE},${0.95 * fade})`
+      ctx.beginPath(); ctx.arc(X, Y, r, 0, 6.2832); ctx.fill()
+      kundenPos.push({ X, Y, k })
     }
 
     // Standort-Punkt (gelb, pulsierend)
@@ -471,6 +519,11 @@ export function reaktorErstellen(behaelter, optionen = {}) {
     pegel(wert) {
       apiPegel = Math.max(0, Math.min(1, wert || 0))
     },
+    // Bestellorte von Hand setzen: kunden([{ lat, lon, ort, anzahl }, …]); normalerweise kommen sie über das Fenster-Ereignis "vendo:orte"
+    kunden(liste) {
+      kundenRoh = Array.isArray(liste) ? liste : []
+      kundenBauen()
+    },
     // Standort von Hand setzen, z. B. ortSetzen(48.1, 10.9)
     ortSetzen(lat, lon) {
       heimSetzen(lat, lon)
@@ -502,6 +555,7 @@ export function reaktorErstellen(behaelter, optionen = {}) {
       if (frameId) cancelAnimationFrame(frameId)
       frameId = 0
       ro.disconnect()
+      window.removeEventListener('vendo:orte', beiOrte)
     }
   }
 }

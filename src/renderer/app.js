@@ -44,7 +44,6 @@ import { aktivitaetEinrichten } from './app/aktivitaet.js'
 import { musikEinrichten } from './app/musik.js'
 import { panelEinrichten } from './app/panel.js'
 import { kopfzeileEinrichten, leistenEinrichten } from './app/layout.js'
-import { hermesAuftraegeEinrichten, hermesSlashErkennen } from './hermes-slash.js'
 
 const $ = (id) => document.getElementById(id)
 const api = window.vendo
@@ -63,7 +62,6 @@ let einstellungen = null
 designEinrichten({ einstellungen: () => einstellungen }) // Designs, Tageszeit, Windows-Knöpfe (rahmen/design.js)
 let verbunden = false
 let beschaeftigt = false
-let hermesAuftraege = null
 let aktuelleAntwort = null // { el, textEl, roh }
 let werkzeug = ''
 let spricht = false
@@ -410,8 +408,7 @@ function zustandZeigen() {
   $('mikrofon').classList.toggle('an', hoert)
   // Nur Luzzys Eingaben (Zentrale, Luzzys Chat); die Crew-Eingabe schaltet ihr eigenes Gespräch (unterhaltung.js)
   for (const form of document.querySelectorAll('.eingabe-form')) {
-    const slash = hermesSlashErkennen(form.querySelector('.eingabe-text')?.value)
-    sendeKnopfSetzen(form.querySelector('.senden'), beschaeftigt && !slash, { wer: 'Luzzy' })
+    sendeKnopfSetzen(form.querySelector('.senden'), beschaeftigt, { wer: 'Luzzy' })
   }
 }
 
@@ -760,11 +757,6 @@ async function abschicken(feld, { gesprochen = false } = {}) {
     const liste = a.namen.map((n, i) => `${a.symbole[i]} ${n}`).join('   ')
     return anLuzzy(`${frage}${a.text ? `\n\n${a.text}` : ''}`, { anzeige: `${liste}${text ? `\n${text}` : ''}`, gesprochen })
   }
-  if (hermesAuftraege?.slash(text)) {
-    feld.value = ''
-    feldHoehe(feld)
-    return
-  }
   if (lokalerBefehl(text, { gesprochen })) {
     feld.value = ''
     feldHoehe(feld)
@@ -925,7 +917,7 @@ for (const form of document.querySelectorAll('.eingabe-form')) {
     abschicken(feld)
   })
   form.querySelector('.senden').addEventListener('click', (e) => {
-    if (beschaeftigt && !hermesSlashErkennen(feld.value)) {
+    if (beschaeftigt) {
       e.preventDefault()
       api.hermes.abbrechen('zentrale')
       vorleser.stoppen()
@@ -948,7 +940,7 @@ const zielForm = document.querySelector('#ziel-form')
 let zielChatFeld = null
 for (const knopf of document.querySelectorAll('[data-ziel-formular]')) {
   knopf.addEventListener('click', () => {
-    zielChatFeld = knopf.closest('.eingabe-form')?.querySelector('.eingabe-text')
+    zielChatFeld = knopf.closest('form')?.querySelector('textarea')
     if (!zielDialog?.open) zielDialog?.showModal()
     zielForm?.elements.ziel?.focus()
   })
@@ -1103,24 +1095,6 @@ function hermesFehler(p) {
   verlaufAktualisierenWennBereit()
 }
 
-hermesAuftraege = hermesAuftraegeEinrichten({
-  api,
-  beschaeftigt: () => beschaeftigt,
-  verbunden: () => verbunden,
-  zielStarten: (text, ziel) => anLuzzy(text, { anzeige: `🎯 Ziel: ${ziel}` }),
-  warteschlangenSenden: async (text) => {
-    const feld = document.querySelector('.befehl .eingabe-text')
-    if (!feld || beschaeftigt || !verbunden) return false
-    ansichtZeigen('zentrale')
-    feld.value = text
-    feldHoehe(feld)
-    await abschicken(feld)
-    return { ok: true, fertig: !beschaeftigt }
-  },
-  melden: (text) => systemNachricht(text),
-  bestaetigen: (text) => systemNachricht(text, 'erfolg')
-})
-
 api.hermes.beiEreignis((ev) => {
   if (ev.type === 'request.cancel') return freigabeZurueckgezogen(ev.payload?.id) // Hermes hat eine Rückfrage zurückgezogen
   if (ev.type === 'message.start' || ev.type === 'message.complete') cockpitAnstossen() // Cockpit: Aufträge und „arbeitet“ neu rechnen
@@ -1137,10 +1111,6 @@ api.hermes.beiEreignis((ev) => {
       return werkzeugBeendet()
     case 'message.complete':
       nachrichtBeendet(p)
-      hermesAuftraege?.antwortFertig()
-      return
-    case 'session.control.update':
-      hermesAuftraege?.zielAktualisieren()
       return
     case 'wake.detected':
       // "Hey Luzzy" gehört: zuhören (läuft Musik, pausiert sie kurz und läuft danach weiter)
@@ -1394,6 +1364,7 @@ setInterval(() => verbunden && offeneAnsicht() !== 'crew' && crewLaden(), 30000)
 // Gespräche im Crew-Bereich: Normaler Chat mit den Bots und Bot Mode (siehe crewchat.js)
 crewChatEinrichten({
   api,
+  verbunden: () => verbunden,
   crewSichtbar: () => offeneAnsicht() === 'crew',
   crewOeffnen: () => offeneAnsicht() !== 'crew' && ansichtZeigen('crew'),
   aktivitaet: (text, laeuft) => {

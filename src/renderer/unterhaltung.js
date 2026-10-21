@@ -5,10 +5,11 @@
 import { markdownZuHtml } from './markdown.js'
 import { sendeKnopfSetzen } from './sendeknopf.js'
 import { anhaengeAnzahl, anhaengeSenden } from './anhaenge.js'
+import { hermesSlashErkennen } from './hermes-slash.js'
 
 const maskieren = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
-export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FELIX', luzzy: 'LUZZY' }, wer = 'Luzzy', leerText, beiAktivitaet = () => {}, beiFertig = () => {}, istAktiv = () => true }) {
+export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FELIX', luzzy: 'LUZZY' }, wer = 'Luzzy', leerText, beiAktivitaet = () => {}, beiFertig = () => {}, istAktiv = () => true, slashAktiv = false, slash = () => false }) {
   const api = window.vendo.hermes
   let beschaeftigt = false
   let antwort = null // { textEl, roh }
@@ -33,10 +34,10 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
     return textEl
   }
 
-  function system(text) {
+  function system(text, art = '') {
     liste.querySelector('.gespraech-leer')?.remove()
     const el = document.createElement('div')
-    el.className = 'msg system'
+    el.className = `msg system ${art}`.trim()
     el.textContent = text
     liste.appendChild(el)
     liste.scrollTop = liste.scrollHeight
@@ -44,7 +45,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
 
   function knopfZeigen() {
     if (!istAktiv()) return
-    sendeKnopfSetzen(knopf, beschaeftigt, { wer })
+    sendeKnopfSetzen(knopf, beschaeftigt && !(slashAktiv && hermesSlashErkennen(feld.value)), { wer })
   }
 
   function antwortZeichnen() {
@@ -58,7 +59,14 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
     if (!istAktiv()) return
     const text = feld.value.trim()
     const mitAnhang = anhaengeAnzahl(form) > 0
-    if ((!text && !mitAnhang) || beschaeftigt) return
+    const istSlash = slashAktiv && !mitAnhang && hermesSlashErkennen(text)
+    if ((!text && !mitAnhang) || (beschaeftigt && !istSlash)) return
+    if (istSlash && slash(text)) {
+      feld.value = ''
+      feld.style.height = 'auto'
+      return
+    }
+    if (beschaeftigt) return
     feld.value = ''
     feld.style.height = 'auto'
     if (!mitAnhang) return senden(text)
@@ -93,7 +101,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
     abschicken()
   })
   knopf.addEventListener('click', (e) => {
-    if (beschaeftigt && istAktiv()) {
+    if (beschaeftigt && istAktiv() && !(slashAktiv && hermesSlashErkennen(feld.value))) {
       e.preventDefault()
       api.abbrechen(kanal)
     }
@@ -107,6 +115,7 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
   feld.addEventListener('input', () => {
     feld.style.height = 'auto'
     feld.style.height = `${Math.min(feld.scrollHeight, 160)}px`
+    knopfZeigen()
   })
 
   leer()
@@ -116,7 +125,8 @@ export function unterhaltungErstellen({ kanal, liste, form, namen = { felix: 'FE
     aktivieren: () => knopfZeigen(),
     beschaeftigt: () => beschaeftigt,
     // Von außen schicken (z. B. „Kira, …“ in der Zentrale)
-    senden: (text) => (beschaeftigt ? Promise.resolve(false) : senden(text).then(() => true)),
+    senden: (text, anzeige = text) => (beschaeftigt ? Promise.resolve(false) : senden(text, anzeige).then(() => true)),
+    melden: (text, art) => system(text, art),
     verlauf(eintraege) {
       if (beschaeftigt || antwort) return
       liste.replaceChildren()
