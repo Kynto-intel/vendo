@@ -3,6 +3,7 @@
   "name": "Wetter",
   "version": "1.0.0",
   "beschreibung": "Wetter für deinen Ort von Open-Meteo (kostenlos, ohne Konto). Luzzy bekommt die Daten direkt und muss nicht suchen.",
+  "symbol": "cloud-sun",
   "bereich": {
     "name": "Wetter"
   },

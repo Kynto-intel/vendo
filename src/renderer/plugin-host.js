@@ -139,7 +139,7 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       ctx.element.innerHTML = `<div class="leer-hinweis fehler">Plugin „${maskieren(m.name)}“ konnte nicht starten: ${maskieren(e.message)}</div>`
       console.warn(`Plugin ${m.id}:`, e)
     }
-    bereiche.push({ id: bereichId, name: m.bereich?.name || m.name, laden: rueckgabe.laden, takt: rueckgabe.takt })
+    bereiche.push({ id: bereichId, name: m.bereich?.name || m.name, symbol: m.symbol, laden: rueckgabe.laden, takt: rueckgabe.takt })
   }
   // Notbremse: Läuft Vendo 15 Sekunden nach dem Laden aller Plugins noch, gelten frisch eingebaute als bewährt
   setTimeout(() => api.plugins.startOk?.().catch(() => {}), 15000)

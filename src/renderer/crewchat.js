@@ -313,6 +313,7 @@ function chatAuswahlEinrichten() {
       if (!(await bestaetigen(`Chat „${name}“ mit ${botVon(profil()).name} endgültig löschen? Das lässt sich nicht rückgängig machen.`, { titel: 'Chat löschen', ja: 'Löschen', gefahr: true }))) return
       try {
         chatStand = await h.api.botChats.loeschen(profil(), name)
+        window.dispatchEvent(new Event('vendo:sitzungen-geaendert'))
         chatAuswahlZeichnen()
       } catch (err) {
         hinweis(`Löschen: ${String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)

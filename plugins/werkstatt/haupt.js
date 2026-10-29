@@ -13,6 +13,7 @@ const PLUGINS = path.join(WURZEL, 'plugins')
 const WERKSTATT = path.join(WURZEL, 'werkstatt')
 const SICHERUNG = path.join(WURZEL, '..', 'backup')
 const ID = /^[a-z0-9][a-z0-9-]{1,40}$/
+const PLUGIN_SYMBOLE = new Set(['checklist', 'target', 'message', 'calendar', 'star', 'repeat', 'cloud-sun', 'tools', 'receipt', 'box', 'book', 'chart', 'clock', 'folder', 'heart', 'search', 'shield'])
 const EIGENE = new Set(['werkstatt']) // die Werkstatt ändert sich nicht selbst
 const ERLAUBT = new Set(['plugin.json', 'ansicht.js', 'stil.css', 'haupt.js', 'README.md', 'LIESMICH.md'])
 const MAX_DATEI = 400_000
@@ -132,6 +133,7 @@ function pruefen(idRoh, { ordnerBasis = WERKSTATT } = {}) {
   else {
     if (m.id !== id) fehler.push(`In plugin.json steht die id „${m.id}“, der Ordner heißt „${id}“.`)
     if (!m.name) fehler.push('plugin.json: Name fehlt.')
+    if (!PLUGIN_SYMBOLE.has(String(m.symbol || ''))) fehler.push('plugin.json: gültiges Symbol fehlt. Erlaubte Symbole stehen in plugins/README.md.')
     if (!m.bereich && !lesen(path.join(ordner, 'ansicht.js'))?.includes('karte(')) rechte.push({ text: 'Hat keinen eigenen Bereich in der Leiste', stufe: 'hinweis' })
     if (m.luzzy?.stichwoerter) {
       try {

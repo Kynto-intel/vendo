@@ -34,7 +34,7 @@ import { einstellungsfensterEinrichten } from './rahmen/einstellungsfenster.js'
 import { shopifyZugangEinrichten, shopifyZugangStatus } from './shopifyzugang.js'
 import { buehneStarten } from './buehne.js'
 import { kostenEinrichten } from './kosten.js'
-import { cockpitEinrichten, cockpitAnzeigen, cockpitAnstossen } from './cockpit.js'
+import { cockpitEinrichten, cockpitAnzeigen, cockpitAnstossen, cockpitPluginsSetzen } from './cockpit.js'
 import { terminalEinrichten } from './terminal.js'
 import { crewChatEinrichten, crewBotsLaden, crewEreignis, crewVerlauf, botAnrede, anBotSenden, aktuellerKanal as crewKanal, aktuellenChatNeuLaden, crewBots, botFensterOeffnen } from './crewchat.js'
 import { notfallEinrichten, notfallAntworten, NETZ_FEHLER } from './notfall.js'
@@ -1273,6 +1273,7 @@ cockpitEinrichten({
   verbunden: () => verbunden,
   botFenster: botFensterOeffnen,
   crewOeffnen: () => ansichtZeigen('crew'),
+  pluginOeffnen: (id) => ansichtZeigen(`plugin-${id}`),
   zentraleSichtbar: () => offeneAnsicht() === 'zentrale'
 })
 
@@ -1579,6 +1580,7 @@ async function start() {
     nichtStoeren: (bis) => nichtStoerenSetzen(Number(bis) || 0, { bestaetigen: false })
   })
   pluginBereicheHinzufuegen(pluginBereiche)
+  cockpitPluginsSetzen(pluginBereiche)
   pluginsBereit(pluginBereiche.length)
   geladenePlugins = pluginBereiche.length
   // Rechte Spalte: eigene Auswahl und Reihenfolge (Einstellungen → Rechte Spalte)

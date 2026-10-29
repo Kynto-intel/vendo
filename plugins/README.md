@@ -10,7 +10,7 @@ plugins/
   mein-plugin/          Ordnername = id (kleine Buchstaben, Zahlen, Bindestrich)
     plugin.json         Pflicht: Name, Beschreibung, Bereich
     ansicht.js          Oberfläche (JavaScript-Modul)
-    stil.css            optional: eigenes Design
+    stil.css            Pflicht: eigene Plugin-Styles
     haupt.js            optional: Hintergrundteil (Node, z. B. für Dateien oder Internet)
     (Speicher)          legt Vendo selbst an: daten/plugins/mein-plugin.json, nicht im Plugin-Ordner
 ```
@@ -24,11 +24,19 @@ plugins/
   "version": "1.0.0",
   "beschreibung": "Kurz, wofür es da ist.",
   "bereich": { "name": "Mein Plugin" },
+  "symbol": "box",
   "aktiv": true
 }
 ```
 
 `"aktiv": false` schaltet ein Plugin ab, ohne es zu löschen.
+
+`symbol` ist Pflicht und bestimmt das Sidebar-Icon. Wähle genau einen passenden Schlüssel aus dieser geprüften Auswahl:
+`checklist`, `target`, `message`, `calendar`, `star`, `repeat`, `cloud-sun`, `tools`, `receipt`, `box`, `book`, `chart`, `clock`, `folder`, `heart`, `search`, `shield`.
+Unbekannte Werte werden nicht als SVG interpretiert; die Werkstatt-Prüfung weist sie zurück.
+
+Jedes Plugin muss eine eigene `stil.css` enthalten. Plugin-spezifische Regeln gehören in diese Datei und sollen nicht
+die Oberflächen anderer Plugins verändern.
 
 ### ansicht.js
 

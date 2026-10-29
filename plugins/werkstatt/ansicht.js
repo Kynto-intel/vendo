@@ -27,7 +27,7 @@ Prüf dich selbst, bevor du fertig meldest, und behebe alles, bis keine FEHLER m
 ${PRUEFEN} ${id}`
   const auftragNeu = (id, wunsch) => `[Plugin-Werkstatt] Felix möchte ein neues Plugin für Vendo: „${wunsch}“
 
-Bau es als Dateien im Ordner ${WERKSTATT}\\${id}\\ (plugin.json mit "id": "${id}", ansicht.js, optional stil.css, haupt.js nur wenn nötig).
+  Bau es als Dateien im Ordner ${WERKSTATT}\\${id}\\ (plugin.json mit "id": "${id}", passendem "symbol", ansicht.js, verpflichtende stil.css, haupt.js nur wenn nötig).
 ${regeln(id)}
 Zum Schluss in 2–3 Sätzen: was das Plugin kann, wie man es bedient, und dass Felix jetzt den Testlauf starten soll.`
   const auftragAendern = (id, wunsch) => `[Plugin-Werkstatt] Ändere das Plugin im Ordner ${WERKSTATT}\\${id}\\ : „${wunsch}“

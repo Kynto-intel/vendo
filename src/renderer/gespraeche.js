@@ -90,6 +90,7 @@ export function gespraecheEinrichten(helfer) {
         e.stopPropagation()
         if (!(await bestaetigen(`Chat „${name}“ mit Luzzy endgültig löschen? Das lässt sich nicht rückgängig machen.`, { titel: 'Chat löschen', ja: 'Löschen', gefahr: true }))) return
         stand = await api.gespraeche.loeschen(name)
+        window.dispatchEvent(new Event('vendo:sitzungen-geaendert'))
         return zeigen()
       }
       zu()

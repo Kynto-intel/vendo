@@ -7,26 +7,25 @@
 //   Bearbeitungszeit = Auftrag bis fertige Antwort. Hermes selbst führt keine Erfolgsquote.
 
 import { crewProfile, botName, LUZZY } from './ansichten.js'
+import { auftraegeAus, laufendeAuftraege, sitzungsCacheBereinigen, tagesdatenLaden } from './cockpit-daten.js'
 
 const $ = (id) => document.getElementById(id)
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const TAG = 24 * 3600 * 1000
 const ZEITRAUM = 30 * TAG
-const HAENGT = 15 * 60 * 1000
-// Hinweise von Hermes (Hintergrundprozess fertig …) sind keine Aufträge
-const HINWEIS = /^\s*\[(?:important|system|background|notification|process|hinweis)|background process|^\s*<(?:system|notification)/i
 
-let h = { api: null, verbunden: () => false, botFenster: () => {}, crewOeffnen: () => {}, zentraleSichtbar: () => true }
+let h = { api: null, verbunden: () => false, botFenster: () => {}, crewOeffnen: () => {}, pluginOeffnen: () => {}, zentraleSichtbar: () => true }
 const nachrichtenCache = new Map() // sitzung → { stand, nachrichten }
 const bilder = {}
 let stand = null
 let system = null
+let tagesplan = []
+let pluginIds = []
 let laeuft = false
 let uhr = 0
 let anstoss = 0
 
 const ms = (t) => (!t ? 0 : typeof t === 'number' ? (t < 1e12 ? t * 1000 : t) : Date.parse(t) || 0)
-const textVon = (m) => (typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.map((c) => c?.text || '').join('') : '')
 const dauerText = (d) => {
   if (!d) return '–'
   const s = d / 1000
@@ -37,31 +36,6 @@ const tagText = (t) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// ── Aufträge aus einem Verlauf ──
-function auftraegeAus(nachrichten, jetzt) {
-  const z = nachrichten.filter((m) => m.role === 'user' || m.role === 'assistant')
-  const liste = []
-  for (let i = 0; i < z.length; i++) {
-    const m = z[i]
-    if (m.role !== 'user' || m.display_kind === 'hidden') continue
-    const text = textVon(m).trim()
-    if (!text || HINWEIS.test(text)) continue
-    const start = ms(m.timestamp)
-    let ende = 0
-    let naechster = false
-    for (let j = i + 1; j < z.length; j++) {
-      if (z[j].role === 'user' && !HINWEIS.test(textVon(z[j]))) {
-        naechster = true
-        break
-      }
-      if (z[j].role === 'assistant' && z[j].finish_reason === 'stop' && textVon(z[j]).trim()) ende = ms(z[j].timestamp)
-    }
-    const ergebnis = ende ? 'ok' : naechster || jetzt - start > HAENGT ? 'fehler' : 'laeuft'
-    liste.push({ start, ende, ergebnis, dauer: ende ? Math.max(0, ende - start) : 0 })
-  }
-  return liste
-}
-
 // ── Nachlesen bei Hermes (Verläufe nur neu holen, wenn sich die Sitzung geändert hat) ──
 async function nachlesen() {
   if (laeuft || !h.verbunden()) return
@@ -70,16 +44,24 @@ async function nachlesen() {
     const jetzt = Date.now()
     const profile = crewProfile((await h.api.hermes.lesen('/api/profiles').catch(() => null))?.profiles || [])
     if (!profile.length) return
+    const vorhandeneSitzungen = new Set()
+    let sitzungsListenVollstaendig = true
     const agenten = await Promise.all(
       profile.map(async (p) => {
-        const liste = (await h.api.hermes.lesen(`/api/sessions?profile=${encodeURIComponent(p.name)}&limit=40&order=recent`).catch(() => null))?.sessions || []
+        const antwort = await h.api.hermes.lesen(`/api/sessions?profile=${encodeURIComponent(p.name)}&limit=40&order=recent`).catch(() => null)
+        if (!antwort) sitzungsListenVollstaendig = false
+        const liste = antwort?.sessions || []
         // Der „Bot Chat“ ist bei Hermes versteckt und fehlt in /api/sessions: über den Titel dazuholen
-        for (const b of await h.api.hermes.sitzungenMitTitel('Bot Chat', p.name).catch(() => [])) {
+        const botChats = await h.api.hermes.sitzungenMitTitel('Bot Chat', p.name).catch(() => null)
+        if (!botChats) sitzungsListenVollstaendig = false
+        for (const b of botChats || []) {
           if (b.id && !liste.some((s) => s.id === b.id)) liste.push({ id: b.id, last_active: b.zuletzt, message_count: -1 })
         }
         // nach Aktivität filtern, nicht nach message_count: den meldet Hermes für Luzzys offene Chats oft als 0
         const sitzungen = liste.filter((s) => jetzt - ms(s.last_active || s.last_activity_at || s.started_at) < ZEITRAUM)
+        for (const sitzung of sitzungen) if (sitzung.id) vorhandeneSitzungen.add(sitzung.id)
         const auftraege = []
+        const bot = botName(p)
         for (const s of sitzungen) {
           const id = s.id
           const sStand = `${s.last_active}|${s.message_count}`
@@ -90,7 +72,9 @@ async function nachlesen() {
             c = { stand: sStand, nachrichten: d.messages || [] }
             nachrichtenCache.set(id, c)
           }
-          auftraege.push(...auftraegeAus(c.nachrichten, jetzt).filter((a) => jetzt - a.start < ZEITRAUM))
+          auftraege.push(...auftraegeAus(c.nachrichten, jetzt)
+            .filter((a) => jetzt - a.start < ZEITRAUM)
+            .map((a) => ({ ...a, profil: p.name, name: bot.name, rolle: bot.rolle })))
         }
         const heute = auftraege.filter((a) => jetzt - a.start < TAG)
         const fertig = auftraege.filter((a) => a.ergebnis === 'ok')
@@ -108,6 +92,7 @@ async function nachlesen() {
         }
       })
     )
+    if (sitzungsListenVollstaendig) sitzungsCacheBereinigen(nachrichtenCache, vorhandeneSitzungen)
     const alle = agenten.flatMap((a) => a.auftraege)
     const fertig = alle.filter((a) => a.ergebnis === 'ok')
     const bewertet = alle.filter((a) => a.ergebnis !== 'laeuft')
@@ -128,11 +113,21 @@ async function nachlesen() {
       fehlerHeute: alle.filter((a) => a.ergebnis === 'fehler' && jetzt - a.start < TAG).length,
       schnitt: fertig.length ? fertig.reduce((s, a) => s + a.dauer, 0) / fertig.length : 0,
       verlauf,
-      agenten
+      agenten,
+      laufend: laufendeAuftraege(agenten)
     }
   } finally {
     laeuft = false
   }
+}
+
+async function tagesdatenLesen() {
+  const datenLaden = h.api?.plugins?.datenLaden
+  if (typeof datenLaden !== 'function') {
+    tagesplan = []
+    return
+  }
+  tagesplan = await tagesdatenLaden(pluginIds, datenLaden)
 }
 
 async function systemLesen() {
@@ -173,6 +168,36 @@ function statusVon() {
 function balken(name, wert, text) {
   const w = wert == null ? 0 : Math.max(0, Math.min(100, wert))
   return `<div class="ck-zelle"><div class="ck-zelle-kopf"><span>${name}</span><b>${text ?? (wert == null ? '–' : `${w} %`)}</b></div><div class="ck-balken${w >= 90 ? ' voll' : ''}"><div style="width:${w}%"></div></div></div>`
+}
+
+function planDatum(eintrag) {
+  const heute = tagText(Date.now())
+  const morgen = new Date()
+  morgen.setDate(morgen.getDate() + 1)
+  const d = new Date(`${eintrag.datum}T00:00:00`)
+  const tag = eintrag.datum === heute ? 'Heute' : eintrag.datum === tagText(morgen) ? 'Morgen' : d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })
+  return `${eintrag.ueberfaellig ? 'Überfällig · ' : ''}${tag}${eintrag.zeit ? ` · ${eintrag.zeit}` : ''}`
+}
+
+function bereicheHtml() {
+  const laufend = stand?.laufend || []
+  const jetzt = Date.now()
+  const laufendHtml = laufend.length ? laufend.map((a) => `
+    <div class="ck-eintrag ck-eintrag-live">
+      <span class="ck-eintrag-punkt aktiv"></span>
+      <span class="ck-eintrag-text"><b>${maskieren(a.name)}</b><small>${maskieren(a.text.slice(0, 180))}</small></span>
+      <time>${dauerText(Math.max(0, jetzt - a.start))}</time>
+    </div>`).join('') : '<div class="ck-leer">Gerade läuft kein Auftrag.</div>'
+  const planHtml = tagesplan.length ? tagesplan.map((a) => `
+    <button class="ck-eintrag" data-ck-plan="${a.art}" data-ck-id="${maskieren(a.id)}" data-ck-datum="${maskieren(a.datum)}" type="button" title="${a.art === 'termin' ? 'Im Kalender öffnen' : 'In Aufgaben öffnen'}">
+      <span class="ck-eintrag-art">${a.art === 'termin' ? 'Termin' : 'Aufgabe'}</span>
+      <span class="ck-eintrag-text"><b>${maskieren(a.text.slice(0, 180))}</b><small>${planDatum(a)}</small></span>
+      <span class="ck-eintrag-pfeil">›</span>
+    </button>`).join('') : '<div class="ck-leer">Keine fälligen Aufgaben oder kommenden Termine.</div>'
+  return `<div class="ck-bereiche">
+    <section class="ck-bereich"><div class="ck-bereich-kopf"><span class="ck-titel">Läuft gerade</span><b>${laufend.length}</b></div><div class="ck-eintraege">${laufendHtml}</div></section>
+    <section class="ck-bereich"><div class="ck-bereich-kopf"><span class="ck-titel">Heute &amp; als Nächstes</span><b>${tagesplan.length}</b></div><div class="ck-eintraege">${planHtml}</div></section>
+  </div>`
 }
 
 function bildVon(profil) {
@@ -231,6 +256,7 @@ export function zeichnen() {
         ${balken('Festplatte', system?.platte)}
       </div>
     </div>
+    ${bereicheHtml()}
     ${orchesterHtml()}`
 }
 
@@ -275,7 +301,7 @@ async function runde() {
   clearTimeout(uhr)
   const sichtbar = !document.hidden && h.zentraleSichtbar() && !$('cockpit')?.hidden
   if (sichtbar) {
-    await Promise.all([nachlesen().catch((e) => console.warn('Cockpit:', e.message)), systemLesen().catch(() => {})])
+    await Promise.all([nachlesen().catch((e) => console.warn('Cockpit:', e.message)), systemLesen().catch(() => {}), tagesdatenLesen()])
     zeichnen()
   }
   const arbeitet = stand?.agenten?.some((a) => a.arbeitet)
@@ -288,6 +314,17 @@ export function cockpitAnstossen() {
   clearTimeout(anstoss)
   anstoss = setTimeout(runde, 2500)
 }
+
+export function cockpitPluginsSetzen(bereiche) {
+  pluginIds = (bereiche || []).map((bereich) => bereich.id)
+  cockpitAnstossen()
+}
+
+window.addEventListener('vendo:sitzungen-geaendert', () => {
+  stand = null
+  zeichnen()
+  cockpitAnstossen()
+})
 
 export function cockpitAnzeigen(an) {
   const el = $('cockpit')
@@ -314,7 +351,19 @@ function luzzyPlatzieren() {
 
 export function cockpitEinrichten(helfer) {
   h = { ...h, ...helfer }
+  h.api.plugins?.beiAenderung?.((id) => ['kalender', 'aufgaben'].includes(id) && cockpitAnstossen())
   $('cockpit').addEventListener('click', (e) => {
+    const plan = e.target.closest('[data-ck-plan]')
+    if (plan) {
+      if (plan.dataset.ckPlan === 'termin' && window.__vendoKalender?.zeigen) return window.__vendoKalender.zeigen(plan.dataset.ckDatum)
+      if (plan.dataset.ckPlan === 'aufgabe' && window.__vendoAufgaben?.zeigen) return window.__vendoAufgaben.zeigen(plan.dataset.ckId)
+      return h.pluginOeffnen(plan.dataset.ckPlan === 'termin' ? 'kalender' : 'aufgaben')
+    }
+    const profil = e.target.closest('[data-ck-profil]')
+    if (profil) {
+      if (profil.dataset.ckProfil === LUZZY) return document.querySelector('.befehl .eingabe-text')?.focus()
+      return h.botFenster(profil.dataset.ckProfil)
+    }
     const bot = e.target.closest('[data-ck-bot]')
     if (bot) return h.botFenster(bot.dataset.ckBot)
     if (e.target.closest('[data-ck-chef]')) return document.querySelector('.befehl .eingabe-text')?.focus()

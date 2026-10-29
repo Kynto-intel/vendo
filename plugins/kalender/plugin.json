@@ -3,6 +3,7 @@
   "name": "Kalender",
   "version": "1.0.0",
   "beschreibung": "Dein eigener Kalender in Vendo. Luzzy erinnert dich vor Terminen und kennt sie, wenn du fragst, was ansteht.",
+  "symbol": "calendar",
   "bereich": {
     "name": "Kalender"
   },

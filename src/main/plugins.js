@@ -1,7 +1,7 @@
 // Plugins für Vendo: jeder Ordner in vendo\plugins\<id>\ mit einer plugin.json.
 //
 // Aufbau eines Plugins:
-//   plugin.json   Pflicht: { "id", "name", "version", "beschreibung", "bereich": { "name" } }
+//   plugin.json   Pflicht: { "id", "name", "version", "beschreibung", "bereich": { "name" }, "symbol" }
 //   ansicht.js    Oberfläche (ES-Modul): export function starten(ctx) { ... return { laden } }
 //   stil.css      optional: eigenes Design
 //   haupt.js      optional: Hintergrundteil (CommonJS): module.exports = (ctx) => { ctx.bereitstellen('name', fn) }
@@ -154,6 +154,7 @@ function alleLaden() {
         version: String(manifest.version || '0.1.0'),
         beschreibung: String(manifest.beschreibung || ''),
         bereich: manifest.bereich ? { name: String(manifest.bereich.name || manifest.name) } : null,
+        symbol: String(manifest.symbol || ''),
         luzzy: manifest.luzzy?.stichwoerter ? { stichwoerter: String(manifest.luzzy.stichwoerter) } : null,
         ansicht: fs.existsSync(path.join(ordner, 'ansicht.js')),
         stil: fs.existsSync(path.join(ordner, 'stil.css'))

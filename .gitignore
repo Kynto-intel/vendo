@@ -13,3 +13,20 @@ plugins/*/daten.json
 # Lokale Dokumente, nicht auf GitHub synchronisieren
 /README-Doko.md
 /ideen.md
+/AGENTS.md
+/src/AGENTS.md
+/plugins/AGENTS.md
+
+# Lokale Tests und Berichte des ignorierten Rechnungs-Plugins
+/tests/rechnungen.test.js
+/tests/rechnungen-parser.test.js
+/tests/rechnungen-main.test.js
+/test-results/rechnungen.result.md
+/test-results/rechnungen-parser.result.md
+/test-results/rechnungen-main.result.md
+/tests/rechnungen-*.test.js
+/tests/fixtures/rechnungen/
+/test-results/rechnungen-*.result.md
+
+# Lokale VS-Code-Einstellungen
+/.vscode/settings.json
