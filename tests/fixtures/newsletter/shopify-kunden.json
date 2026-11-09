@@ -1,0 +1,233 @@
+{
+  "_hinweis": "Erfundene Testdaten für tests/newsletter-shopify.test.js. Zwei Seiten, wie Shopify sie liefert. Keine echten Kunden.",
+  "seite1": {
+    "data": {
+      "customers": {
+        "pageInfo": {
+          "hasNextPage": true,
+          "endCursor": "cursor-seite-2"
+        },
+        "nodes": [
+          {
+            "id": "gid://shopify/Customer/1001",
+            "email": "Anna.Beispiel@Beispiel.de",
+            "firstName": "Anna",
+            "lastName": "Beispiel",
+            "createdAt": "2025-03-01T10:00:00Z",
+            "defaultEmailAddress": {
+              "marketingState": "SUBSCRIBED",
+              "marketingUpdatedAt": "2025-06-01T08:30:00Z"
+            }
+          },
+          {
+            "id": "gid://shopify/Customer/1002",
+            "email": "bo@beispiel.de",
+            "firstName": "Bo",
+            "lastName": "",
+            "createdAt": "2025-04-02T11:00:00Z",
+            "defaultEmailAddress": {
+              "marketingState": "SUBSCRIBED",
+              "marketingUpdatedAt": null
+            }
+          },
+          {
+            "id": "gid://shopify/Customer/1003",
+            "email": "",
+            "firstName": "Ohne",
+            "lastName": "Adresse",
+            "createdAt": "2025-04-03T11:00:00Z",
+            "defaultEmailAddress": null
+          }
+        ]
+      }
+    }
+  },
+  "seite2": {
+    "data": {
+      "customers": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://shopify/Customer/1004",
+            "email": "cem@beispiel.de",
+            "firstName": "Cem",
+            "lastName": "Muster",
+            "createdAt": "2025-05-05T09:00:00Z",
+            "defaultEmailAddress": {
+              "marketingState": "SUBSCRIBED",
+              "marketingUpdatedAt": "2025-07-07T07:00:00Z"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "feldFehler": {
+    "errors": [
+      {
+        "message": "Field 'defaultEmailAddress' doesn't exist on type 'Customer'"
+      }
+    ]
+  },
+  "schlankeSeite": {
+    "data": {
+      "customers": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://shopify/Customer/1005",
+            "email": "dana@beispiel.de",
+            "firstName": "Dana",
+            "lastName": "Muster",
+            "createdAt": "2025-02-02T12:00:00Z"
+          }
+        ]
+      }
+    }
+  },
+  "abmeldungOk": {
+    "data": {
+      "customerEmailMarketingConsentUpdate": {
+        "customer": {
+          "id": "gid://shopify/Customer/1001"
+        },
+        "userErrors": []
+      }
+    }
+  },
+  "abmeldungFehler": {
+    "data": {
+      "customerEmailMarketingConsentUpdate": {
+        "customer": null,
+        "userErrors": [
+          {
+            "field": [
+              "input",
+              "customerId"
+            ],
+            "message": "Customer does not exist"
+          }
+        ]
+      }
+    }
+  },
+  "warenkoerbe": {
+    "data": {
+      "abandonedCheckouts": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://shopify/AbandonedCheckout/5001",
+            "createdAt": "2026-11-08T10:00:00Z",
+            "abandonedCheckoutUrl": "https://beispiel.myshopify.com/wiederherstellen/5001",
+            "totalPriceSet": {
+              "shopMoney": {
+                "amount": "59.80",
+                "currencyCode": "EUR"
+              }
+            },
+            "customer": {
+              "id": "gid://shopify/Customer/1001",
+              "email": "Anna.Beispiel@Beispiel.de",
+              "firstName": "Anna"
+            },
+            "lineItems": {
+              "nodes": [
+                {
+                  "title": "Shirt Wolf",
+                  "quantity": 2
+                },
+                {
+                  "title": "Tasse",
+                  "quantity": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "gid://shopify/AbandonedCheckout/5002",
+            "createdAt": "2026-11-08T11:00:00Z",
+            "abandonedCheckoutUrl": "https://beispiel.myshopify.com/wiederherstellen/5002",
+            "totalPriceSet": {
+              "shopMoney": {
+                "amount": "19.90",
+                "currencyCode": "EUR"
+              }
+            },
+            "customer": null,
+            "lineItems": {
+              "nodes": [
+                {
+                  "title": "Gast-Artikel",
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "warenkoerbeSchlank": {
+    "data": {
+      "abandonedCheckouts": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://shopify/AbandonedCheckout/5003",
+            "createdAt": "2026-11-08T12:00:00Z",
+            "abandonedCheckoutUrl": "https://beispiel.myshopify.com/wiederherstellen/5003",
+            "customer": {
+              "id": "gid://shopify/Customer/1004",
+              "email": "cem@beispiel.de",
+              "firstName": "Cem"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "warenkoerbeFeldFehler": {
+    "errors": [
+      {
+        "message": "Field 'lineItems' doesn't exist on type 'AbandonedCheckout'"
+      }
+    ]
+  },
+  "bestellungen": {
+    "data": {
+      "orders": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "id": "gid://shopify/Order/9001",
+            "createdAt": "2026-11-09T08:00:00Z",
+            "customer": {
+              "email": "Anna.Beispiel@Beispiel.de"
+            }
+          },
+          {
+            "id": "gid://shopify/Order/9002",
+            "createdAt": "2026-11-09T09:00:00Z",
+            "customer": null
+          }
+        ]
+      }
+    }
+  }
+}

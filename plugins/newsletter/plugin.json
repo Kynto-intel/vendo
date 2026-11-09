@@ -1,0 +1,8 @@
+{
+  "id": "newsletter",
+  "name": "Newsletter",
+  "version": "0.1.0",
+  "beschreibung": "Newsletter-Kampagnen und Automationen über dein IONOS-Postfach. Kontakte kommen aus Shopify, Texte von Luzzy. Im Aufbau: bisher nur das Gerüst, noch kein Versand.",
+  "symbol": "message",
+  "bereich": { "name": "Newsletter" }
+}

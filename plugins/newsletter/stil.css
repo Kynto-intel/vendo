@@ -1,0 +1,102 @@
+/* Newsletter-Plugin */
+.plugin-ansicht[data-ansicht='plugin-newsletter'] { overflow: hidden; }
+
+.nl-raster { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+
+.nl-reiter { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--linie); padding-bottom: 8px; }
+.nl-reiter-knopf { background: none; border: 1px solid var(--rahmen); color: var(--text-leise); font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; }
+.nl-reiter-knopf:hover { border-color: var(--gold); color: var(--gold-hell); }
+.nl-reiter-knopf.gewaehlt { border-color: var(--gold); background: var(--gold); color: var(--auf-gold); }
+
+.nl-inhalt { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px; background-color: var(--tief); }
+
+/* Übersicht */
+.nl-kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.nl-kachel { display: flex; flex-direction: column; gap: 2px; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); padding: 11px 13px; }
+.nl-kachel-name { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-leise); }
+.nl-kachel small { font-size: 11px; color: var(--text-leise); line-height: 1.4; word-break: break-all; }
+.nl-zahl { font-size: 26px; line-height: 1.1; color: var(--gold-hell); }
+.nl-stand { font-size: 13px; line-height: 1.3; padding: 4px 0; word-break: break-all; }
+.nl-stand.nl-an { color: var(--gruen); }
+.nl-stand.nl-aus { color: var(--text-leise); }
+
+.nl-hinweis { margin-top: 16px; border: 1px dashed var(--gold-leise); background: rgba(var(--akzent-rgb), 0.04); padding: 12px 14px; max-width: 720px; }
+.nl-hinweis-titel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.nl-hinweis p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--text); }
+.nl-hinweis p:last-child { margin-bottom: 0; }
+.nl-hinweis code { font-family: var(--mono); font-size: 12px; color: var(--gold-hell); }
+
+/* Formular (Zugang) */
+.nl-form { display: flex; flex-direction: column; gap: 12px; max-width: 700px; }
+.nl-form-kopf h3 { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); }
+.nl-form-text { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-leise); }
+.nl-form > label, .nl-form-paar label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-leise); }
+.nl-form input, .nl-form select, .nl-form textarea { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 7px 9px; font-size: 13px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-form textarea { font-family: var(--mono); font-size: 12px; line-height: 1.5; resize: vertical; }
+.nl-form input:focus, .nl-form select:focus, .nl-form textarea:focus { border-color: var(--gold); }
+.nl-abschnitt { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linie); }
+.nl-abschnitt-erst { margin-bottom: 4px; }
+.nl-kacheln-schmal { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 14px; }
+.nl-suche { display: flex; gap: 6px; }
+.nl-suche input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; min-width: 180px; }
+.nl-suche input:focus { border-color: var(--gold); }
+.nl-aktionen { white-space: nowrap; text-align: right; }
+.nl-aktionen button { margin-left: 4px; }
+.nl-form small { font-size: 11px; color: var(--text-leise); line-height: 1.4; }
+.nl-form-paar { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+
+.nl-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+
+.nl-meldung { font-size: 12px; line-height: 1.5; padding: 9px 11px; border: 1px solid var(--rahmen); }
+.nl-meldung.nl-ok { border-color: var(--gruen); color: var(--gruen); }
+.nl-meldung.nl-fehler { border-color: var(--rot); color: var(--rot); }
+.nl-warnung { font-size: 12px; line-height: 1.6; padding: 9px 11px; border: 1px solid var(--rot); color: var(--rot); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.nl-form input[readonly] { color: var(--text-leise); border-style: dashed; }
+
+.nl-vorschau { border: 1px dashed var(--gold-leise); background: rgba(var(--akzent-rgb), 0.04); padding: 10px 12px; }
+.nl-vorschau-titel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.nl-vorschau pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-leise); max-height: 240px; overflow-y: auto; }
+
+/* Protokoll */
+.nl-protokoll-kopf { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }
+.nl-tabelle { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+.nl-tabelle th { text-align: left; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); font-weight: normal; padding: 6px 8px; border-bottom: 1px solid var(--linie); }
+.nl-tabelle td { padding: 6px 8px; border-bottom: 1px solid var(--linie); color: var(--text); vertical-align: top; }
+.nl-tabelle tr.nl-zeile-fehler td { background: rgba(200, 88, 78, 0.07); }
+.nl-mono { font-family: var(--mono); font-size: 11px; color: var(--text-leise); white-space: nowrap; }
+.nl-rot { color: var(--rot); }
+.nl-tabelle .nl-an { color: var(--gruen); }
+
+/* Kampagnen: Liste links, Editor rechts */
+.nl-zwei { display: grid; grid-template-columns: minmax(200px, 270px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.nl-spalte { display: flex; flex-direction: column; gap: 6px; }
+.nl-spalte-breit { min-width: 0; }
+.nl-karte { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); padding: 9px 11px; cursor: pointer; color: var(--text); }
+.nl-karte:hover { border-left-color: var(--gold); }
+.nl-karte.gewaehlt { border-color: var(--gold-dunkel); border-left-color: var(--gold); background: var(--gold-flaeche); }
+.nl-karte-name { font-size: 14px; }
+.nl-karte-info { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--gold-hell); }
+.nl-karte-betreff { font-size: 11px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.nl-bausteine { display: flex; flex-direction: column; gap: 8px; }
+.nl-baustein { border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); padding: 9px 11px; display: flex; flex-direction: column; gap: 6px; background: var(--flaeche); }
+.nl-baustein-kopf { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.nl-baustein-art { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-hell); }
+.nl-baustein-knoepfe { display: flex; gap: 3px; }
+.nl-baustein label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-leise); }
+.nl-baustein input, .nl-baustein textarea { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-baustein textarea { font-family: var(--mono); line-height: 1.5; resize: vertical; }
+.nl-baustein input:focus, .nl-baustein textarea:focus { border-color: var(--gold); }
+
+.nl-zeile { display: flex; gap: 6px; align-items: center; }
+.nl-haken { display: flex; flex-direction: row; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
+.nl-haken input[type='checkbox'] { accent-color: var(--gold); }
+.nl-vorschau-rahmen { width: 100%; height: 520px; border: 1px solid var(--rahmen); background: #fff; margin-bottom: 10px; }
+.nl-form select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+
+/* Noch leere Bereiche */
+.nl-leer { padding: 30px 10px; max-width: 620px; }
+.nl-leer p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--text); }
+.nl-leer p:last-child { margin-bottom: 0; }
+.nl-leer code { font-family: var(--mono); font-size: 12px; color: var(--gold-hell); }
+.nl-marke { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--auf-gold); background: var(--gold-dunkel); padding: 3px 8px; margin-bottom: 10px; }

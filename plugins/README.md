@@ -61,6 +61,7 @@ export async function starten(ctx) {
 | `ctx.melden({ titel, text, anzeige })` | Meldung: erscheint rechts, Luzzy sagt `text` laut (Ruhezeit beachtet) |
 | `ctx.vorlesen(text)` | Luzzy liest etwas vor |
 | `ctx.luzzy(text, { anzeige, vorlesen, ansichtWechseln })` | schickt Luzzy einen Auftrag in der Zentrale; `anzeige` = was im Gespräch erscheint |
+| `await ctx.fragen(text)` | fragt Luzzy etwas und gibt **die Antwort als Text zurück**. Läuft in der eigenen Unterhaltung „Vendo Plugins“, erscheint also nicht im Gespräch in der Zentrale. Immer nur eine Anfrage auf einmal; wirft bei Zeitüberschreitung (3 Minuten) oder wenn schon eine läuft |
 | `ctx.kontext(() => text)` | Text, den andere Plugins abfragen können (z. B. Termine für Routinen) |
 | `ctx.kontextVon(id)` | Kontext eines anderen Plugins holen, z. B. `ctx.kontextVon('kalender')` |
 | `await ctx.bestaetigen(text, { titel, ja, gefahr })` | Rückfrage im Vendo-Design (statt `confirm`), liefert true/false |
@@ -108,6 +109,7 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 | `aufgaben` | To-do-Liste mit Fälligkeit („Neue Aufgabe: … bis Freitag“, „Erledigt: …“), Erinnerung über Luzzy-Meldung, Begrüßung, Kontext für Luzzy, Karte „Aufgaben“ (anfangs aus, Einstellungen → Rechte Spalte) |
 | `fokus` | Pomodoro-Timer (Fokus, Pause, lange Pause) mit Hintergrundklang (Rauschen, Regen), in der Fokuszeit „Nicht stören“; „Fokus 50 Minuten“, „Fokus beenden“ |
 | `meilensteine` | Bestellungen insgesamt (zählt der Wächter bei Shopify), nächster Meilenstein mit Fortschritt, Liste aller erreichten (gefeierte mit Datum aus `Vendo\Meilensteine.md`) |
+| `newsletter` | Newsletter über das eigene IONOS-Postfach (im Aufbau): Postfach-Zugang, Testmail, Versandprotokoll, Drossel mit Stundenbudget, Warteschlange, Kontakte aus Shopify und per CSV mit Abmeldung in beide Richtungen, Kampagnen aus Bausteinen mit Entwurf von Luzzy (`ctx.fragen`), Vorschau und Zeitplan, Automationen für Warenkorbabbruch und Willkommensserie. Noch nie in der laufenden App geprüft. Stand und Bauplan in `plugins/newsletter/README.md` |
 | `werkstatt` | Plugin-Werkstatt: Luzzy baut neue Plugins in `vendo\werkstatt\<id>\`, Vendo prüft (Aufbau, `node --check`, Rechte wie Programme starten, Dateien, Internet, Zugangsdaten) und kopiert sie erst nach Felix' Ja nach `plugins\` (altes Plugin nach `backup\`, `daten.json` bleibt) |
 
 **Plugin von Luzzy bauen lassen:** In der Werkstatt beschreiben oder „Bau mir ein Plugin für …“ sagen. Luzzy nutzt dafür
