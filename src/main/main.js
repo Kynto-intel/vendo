@@ -181,7 +181,9 @@ hermes.on('status', (s) => {
   }
 })
 hermes.on('ereignis', (e) => {
-  senden('hermes:ereignis', e)
+  // Der Kanal „frage“ gehört zu ctx.fragen (Plugin-Anfragen): er wird im Hauptprozess
+  // ausgewertet und soll weder im Gespräch noch im Crew-Tab auftauchen.
+  if (e.kanal !== 'frage') senden('hermes:ereignis', e)
   if (e.kanal === 'zentrale' && e.type === 'message.complete') {
     void hermes.verlaufAktualisieren().catch(() => {})
   }
@@ -211,6 +213,9 @@ ipcMain.handle('hermes:status', () => ({ zustand: hermes.zustand, text: hermes.s
 ipcMain.handle('hermes:senden', (_e, kanal, text) => hermes.senden(kanalPruefen(kanal), String(text || '').slice(0, 20000)))
 ipcMain.handle('hermes:abbrechen', (_e, kanal) => hermes.abbrechen(kanalPruefen(kanal)))
 ipcMain.handle('hermes:crewOeffnen', () => hermes.crewOeffnen())
+// Plugin-Anfrage: Luzzy etwas fragen und die Antwort als Text zurückgeben (ctx.fragen).
+// Läuft in der eigenen Unterhaltung „Vendo Plugins“, nicht in der Zentrale.
+ipcMain.handle('hermes:fragen', (_e, text) => hermes.fragen(String(text || '').slice(0, 20000)))
 ipcMain.handle('hermes:botOeffnen', (_e, kanal) => hermes.botOeffnen(String(kanal || '')))
 // Terminal-Bereich (terminal.js): echte PowerShell-Konsole über node-pty, Anzeige mit xterm.js
 const terminal = require('./terminal')

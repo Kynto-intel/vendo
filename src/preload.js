@@ -41,7 +41,9 @@ contextBridge.exposeInMainWorld('vendo', {
     bild: (base64, name, kanal) => ipcRenderer.invoke('hermes:bild', base64, name, kanal),
     freigabe: (id, wahl) => ipcRenderer.invoke('hermes:freigabe', id, wahl),
     beiVerlauf: abonnieren('hermes:verlauf'),
-    verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal)
+    verlaufHolen: (kanal) => ipcRenderer.invoke('hermes:verlaufHolen', kanal),
+    // Plugin-Anfrage: Luzzy etwas fragen und die Antwort als Text zurückbekommen (ctx.fragen)
+    fragen: (text) => ipcRenderer.invoke('hermes:fragen', text)
   },
   pc: {
     aktion: (aktion) => ipcRenderer.invoke('pc:aktion', aktion)

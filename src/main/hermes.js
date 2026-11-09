@@ -20,6 +20,8 @@ const ARBEITSORDNER = 'C:\\Users\\Felix\\Documents\\Donnerwolf'
 const PROFIL = 'donnerwolf'
 const ZENTRALE_TITEL = 'Vendo'
 const BOT_CHAT = 'Bot Chat'
+const FRAGE_TITEL = 'Vendo Plugins' // eigene Unterhaltung für Plugin-Anfragen (ctx.fragen)
+const FRAGE_TIMEOUT = 180000
 
 function verlaufAus(nachrichten) {
   return (nachrichten || [])
@@ -45,6 +47,8 @@ class Hermes extends EventEmitter {
     this.crew = { sessionId: null, gespeicherteId: null, gewuenscht: false } // Luzzys Bot Chat
     // Direkte Gespräche mit den Bots: Kanal „normal:<profil>“ (normales Gespräch) oder „botchat:<profil>“ (Bot Mode)
     this.bots = new Map() // kanal → { profil, modus, sessionId, letzterVerlauf }
+    this.frageSessionId = null // eigene Unterhaltung für Plugin-Anfragen (ctx.fragen), Kanal „frage“
+    this.frageLaeuft = false
     this.zustand = 'getrennt'
     this.beendet = false
   }
@@ -179,6 +183,7 @@ class Hermes extends EventEmitter {
   kanalVon(sessionId) {
     if (sessionId === this.sessionId) return 'zentrale'
     if (sessionId === this.crew.sessionId) return 'crew'
+    if (sessionId && sessionId === this.frageSessionId) return 'frage'
     for (const [kanal, b] of this.bots) if (b.sessionId === sessionId) return kanal
     return null
   }
@@ -334,6 +339,8 @@ class Hermes extends EventEmitter {
     this.ws = null
     this.sessionId = null
     this.crew.sessionId = null
+    this.frageSessionId = null
+    this.frageLaeuft = false
     for (const b of this.bots.values()) b.sessionId = null
     if (this.beendet) return
     this.status('fehler', 'Verbindung zu Hermes verloren. Verbinde neu …')
@@ -447,6 +454,73 @@ class Hermes extends EventEmitter {
     this.gespeicherteId = antwort.stored_session_id || vorhanden?.resolved_id || vorhanden?.id || null
     if (this.gespeicherteId) this.sessionMerken?.(this.gespeicherteId)
     this.emit('verlauf', { kanal: 'zentrale', verlauf: verlaufAus(antwort.messages) })
+  }
+
+  // ── Plugin-Anfragen (ctx.fragen) ──
+  // Eine eigene Unterhaltung „Vendo Plugins“: Plugins können Luzzy etwas fragen und die
+  // Antwort als Text zurückbekommen (z. B. ein Newsletter-Text). Sie läuft bewusst nicht in
+  // der Zentrale, damit Felix' Gespräch nicht mit Zwischenergebnissen volläuft. Ereignisse
+  // dieses Kanals gehen nicht an die Oberfläche (siehe main.js).
+  async frageOeffnen() {
+    if (this.frageSessionId) return this.frageSessionId
+    let antwort = null
+    const liste = await this.rpc('session.list', { title: FRAGE_TITEL, profile: PROFIL }).catch(() => null)
+    const vorhanden = liste?.sessions?.[0] || null
+    if (vorhanden) {
+      antwort = await this.rpc('session.resume', { session_id: vorhanden.resolved_id || vorhanden.id, profile: PROFIL }).catch(() => null)
+    }
+    if (!antwort) {
+      antwort = await this.rpc('session.create', { profile: PROFIL, cwd: ARBEITSORDNER })
+      await this.rpc('session.title', { session_id: antwort.session_id, title: FRAGE_TITEL }).catch(() => {})
+    }
+    this.frageSessionId = antwort.session_id
+    return this.frageSessionId
+  }
+
+  // Luzzy etwas fragen und auf die fertige Antwort warten. Immer nur eine Frage auf einmal:
+  // sonst ließen sich die Antworten in derselben Unterhaltung nicht auseinanderhalten.
+  async fragen(text, { frist = FRAGE_TIMEOUT } = {}) {
+    const auftrag = String(text || '').trim()
+    if (!auftrag) throw new Error('Die Frage ist leer.')
+    if (this.frageLaeuft) throw new Error('Luzzy beantwortet gerade eine andere Plugin-Anfrage. Kurz warten und erneut versuchen.')
+
+    const sessionId = await this.frageOeffnen()
+    this.frageLaeuft = true
+    try {
+      return await new Promise((fertig, fehler) => {
+        const aufraeumen = () => {
+          clearTimeout(uhr)
+          this.off('ereignis', hoeren)
+        }
+        const hoeren = (ereignis) => {
+          if (ereignis.kanal !== 'frage') return
+          if (ereignis.type === 'message.complete') {
+            aufraeumen()
+            const antwort = String(ereignis.payload?.text || '')
+            if (ereignis.payload?.status === 'error' || ereignis.payload?.error) {
+              return fehler(new Error(String(ereignis.payload?.error || 'Luzzy konnte die Anfrage nicht beantworten.')))
+            }
+            return fertig(antwort)
+          }
+          if (ereignis.type === 'error') {
+            aufraeumen()
+            return fehler(new Error(String(ereignis.payload?.message || 'Fehler in Hermes.')))
+          }
+        }
+        const uhr = setTimeout(() => {
+          aufraeumen()
+          fehler(new Error('Luzzy hat nicht rechtzeitig geantwortet.'))
+        }, frist)
+        this.on('ereignis', hoeren)
+        this.rpc('prompt.submit', { session_id: sessionId, text: auftrag }).catch((e) => {
+          aufraeumen()
+          this.frageSessionId = null // beim nächsten Mal eine neue Unterhaltung öffnen
+          fehler(e)
+        })
+      })
+    } finally {
+      this.frageLaeuft = false
+    }
   }
 
   async verlaufAktualisieren() {

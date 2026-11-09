@@ -101,6 +101,10 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
       melden: (meldung) => melden({ zeit: Date.now(), art: m.id, ...meldung }),
       vorlesen,
       luzzy,
+      // Luzzy etwas fragen und die Antwort als Text zurückbekommen. Läuft in einer eigenen
+      // Unterhaltung („Vendo Plugins“), erscheint also nicht im Gespräch in der Zentrale.
+      // Immer nur eine Anfrage auf einmal; wirft, wenn Luzzy nicht antwortet.
+      fragen: (text) => api.hermes.fragen(text),
       oeffnen: () => ansichtZeigen(bereichId),
       // Text, den Luzzy bei "Was steht an?" mitbekommt
       kontext: (fn) => kontextAnbieter.push({ id: m.id, fn }),
