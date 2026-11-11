@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import kontakte from '../plugins/newsletter/kontakte.js'
 
-const { empfaenger, stand, zusammenfuehren, sperren, freigeben, loeschen, finden, csvLesen, gueltig, zustandErlaubt } = kontakte
+const { empfaenger, stand, zusammenfuehren, abgemeldeteUebernehmen, sperren, freigeben, loeschen, finden, csvLesen, gueltig, zustandErlaubt } = kontakte
 
 const JETZT = 1_700_000_000_000
 
@@ -130,6 +130,45 @@ test('ohne Zustimmungsdatum ist niemand Empfänger, auch nicht nach einem Import
   const e = zusammenfuehren([], [{ email: 'ohne@beispiel.de', quelle: 'csv' }], { jetzt: JETZT })
   assert.equal(e.angelegt, 1)
   assert.equal(empfaenger(e.liste).length, 0)
+})
+
+// ── Abmeldungen, die bei Shopify passiert sind ──
+
+test('wer bei Shopify nicht mehr abonniert ist, wird hier gesperrt', () => {
+  const bestand = zusammenfuehren([], ausShopify, { jetzt: JETZT }).liste
+  // Beim nächsten Sync kommt nur noch bo zurück: anna hat sich im Shop-Konto abgemeldet
+  const e = abgemeldeteUebernehmen(bestand, ['bo@beispiel.de'], { jetzt: JETZT, vollstaendig: true })
+
+  assert.equal(e.anzahl, 1)
+  const anna = finden(e.liste, 'anna@beispiel.de')
+  assert.equal(anna.gesperrt, true)
+  assert.equal(anna.gesperrtGrund, 'bei Shopify nicht mehr abonniert')
+  assert.equal(finden(e.liste, 'bo@beispiel.de').gesperrt, false)
+  assert.equal(empfaenger(e.liste).length, 1)
+})
+
+test('bei einem unvollständigen Abruf wird niemand gesperrt', () => {
+  const bestand = zusammenfuehren([], ausShopify, { jetzt: JETZT }).liste
+  const abgebrochen = abgemeldeteUebernehmen(bestand, ['bo@beispiel.de'], { jetzt: JETZT, vollstaendig: false })
+  assert.equal(abgebrochen.anzahl, 0, 'sonst würde ein halber Abruf die halbe Liste sperren')
+  assert.equal(abgebrochen.uebersprungen, true)
+
+  const leer = abgemeldeteUebernehmen(bestand, [], { jetzt: JETZT, vollstaendig: true })
+  assert.equal(leer.anzahl, 0, 'eine leere Antwort ist kein Grund, alle zu sperren')
+})
+
+test('importierte Adressen bleiben unberührt — sie stehen nicht bei Shopify', () => {
+  const bestand = zusammenfuehren([], [{ email: 'csv@beispiel.de', quelle: 'csv', zustimmungAm: '2025-01-01' }], { jetzt: JETZT }).liste
+  const e = abgemeldeteUebernehmen(bestand, ['jemand@beispiel.de'], { jetzt: JETZT, vollstaendig: true })
+  assert.equal(e.anzahl, 0)
+  assert.equal(finden(e.liste, 'csv@beispiel.de').gesperrt, false)
+})
+
+test('schon Gesperrte werden nicht noch einmal gesperrt', () => {
+  const bestand = sperren(zusammenfuehren([], ausShopify, { jetzt: JETZT }).liste, 'anna@beispiel.de', { grund: 'von Hand', jetzt: JETZT }).liste
+  const e = abgemeldeteUebernehmen(bestand, ['bo@beispiel.de'], { jetzt: JETZT, vollstaendig: true })
+  assert.equal(e.anzahl, 0)
+  assert.equal(finden(e.liste, 'anna@beispiel.de').gesperrtGrund, 'von Hand', 'der ursprüngliche Grund bleibt')
 })
 
 // ── Sperren, Freigeben, Löschen ──

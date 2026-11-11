@@ -13,25 +13,43 @@ const KONTAKT = { email: 'anna@beispiel.de', vorname: 'Anna', nachname: 'Beispie
 
 // ── Anlegen und prüfen ──
 
-test('neueKampagne startet als Entwurf mit einer brauchbaren Vorlage', () => {
+test('neueKampagne startet als Entwurf mit einer brauchbaren Startmail', () => {
   const k = neueKampagne({ name: 'Herbst', jetzt: JETZT })
   assert.equal(k.zustand, 'entwurf')
   assert.equal(k.name, 'Herbst')
   assert.equal(k.geplantAm, null)
-  assert.ok(k.bausteine.length >= 3)
+  assert.match(k.html, /^<table/, 'das Feld ist nicht leer, sondern enthält die Startmail als Quelltext')
+  assert.equal(k.htmlRahmen, true)
   assert.ok(k.id.startsWith('k'))
 })
 
 test('kampagnePruefen verlangt Betreff und Inhalt', () => {
-  const ohneBetreff = kampagnePruefen({ bausteine: [{ art: 'text', text: 'x' }] })
+  const ohneBetreff = kampagnePruefen({ html: '<p>x</p>' })
   assert.equal(ohneBetreff.ok, false)
   assert.match(ohneBetreff.fehler.join(' '), /Betreff fehlt/)
 
-  const ohneInhalt = kampagnePruefen({ betreff: 'Hallo', bausteine: [{ art: 'kopf' }, { art: 'fuss' }] })
+  const ohneInhalt = kampagnePruefen({ betreff: 'Hallo', html: '<!-- nur ein Kommentar -->' })
   assert.equal(ohneInhalt.ok, false)
-  assert.match(ohneInhalt.fehler.join(' '), /keinen Inhalt/)
+  assert.match(ohneInhalt.fehler.join(' '), /keinen sichtbaren Inhalt/)
 
-  assert.equal(kampagnePruefen({ betreff: 'Hallo', bausteine: [{ art: 'text', text: 'x' }] }).ok, true)
+  assert.equal(kampagnePruefen({ betreff: 'Hallo', html: '<p>x</p>' }).ok, true)
+})
+
+// Kampagnen aus der Zeit der Baustein-Oberfläche haben kein `html`. Sie dürfen nicht
+// plötzlich als leer gelten — ihr Inhalt wird aus den Bausteinen gebaut.
+test('eine Kampagne ohne html fällt auf ihre gespeicherten Bausteine zurück', () => {
+  const alt = { betreff: 'Hallo', bausteine: [{ art: 'titel', text: 'Überschrift' }, { art: 'text', text: 'Ein Satz' }] }
+  const geprueft = kampagnePruefen(alt)
+  assert.equal(geprueft.ok, true)
+  assert.match(geprueft.html, /Überschrift/)
+  assert.match(geprueft.html, /Ein Satz/)
+  assert.match(geprueft.html, /^<table/, 'daraus wird Tabellen-HTML')
+})
+
+test('htmlVon nimmt vorhandenes HTML und rührt die Bausteine nicht an', () => {
+  const stueck = { html: '<p>von Hand</p>', bausteine: [{ art: 'text', text: 'alt' }] }
+  assert.equal(kampagnen.htmlVon(stueck), '<p>von Hand</p>')
+  assert.equal(kampagnen.htmlVon({}), '', 'ohne beides bleibt es leer')
 })
 
 test('kampagnePruefen lehnt einen Zeilenumbruch im Betreff ab', () => {

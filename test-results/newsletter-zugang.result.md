@@ -103,3 +103,40 @@ Stand: 29 Tests in dieser Datei, **195 im Plugin**.
   Test läuft ein Ersatz; dass DPAPI auf diesem Rechner funktioniert, muss die App zeigen.
 - **Die Oberfläche.** Das Formular, die Reiter und die Rückmeldungen wurden in Vendo noch
   nicht geöffnet.
+
+## Nachtrag 2026-11-11: Name in Testmails, Feld-Markierungen raus
+
+**Anlass:** In Testmails stand „Hey Vorname“, weil sich für Testmails kein Name eintragen
+ließ. So war nicht zu sehen, ob `{{vorname}}` bei echten Kunden funktioniert. Außerdem standen
+die Feld-Markierungen aus Vorlagen (`data-feld`, `data-feld-hinweis` mit dem Hinweistext für
+die KI) im HTML der verschickten Mail.
+
+**Geändert:** `zugang.js` prüft `testVorname` und `testNachname` (höchstens 60 Zeichen,
+einzeilig, keine `{ } < >`). `haupt.js` hat `testNameMerken`, `zugangLesen` nennt den Namen,
+`zugangSpeichern` lässt ihn stehen, und alle Testmails und Vorschauen ohne echten Empfänger
+nutzen ihn (`testKontakt`), auch die Testmail zur Freigabe. Ohne Namen bleibt es bei
+„Vorname“, damit eine fehlende Ersetzung sichtbar ist. `html-mail.js` entfernt in
+`mailAusHtml` beide Attribute aus jeder Mail; im Editor und in der Vorlage bleiben sie.
+Neuer Block „Name in Testmails“ im Reiter „Zugang“.
+
+**Testbefehl:**
+
+```
+node --test tests/newsletter-zugang.test.js tests/newsletter-html.test.js
+```
+
+Dazu der Regressionslauf über alle dreizehn Newsletter-Testdateien (Befehl wie in
+`test-results/newsletter-bots.result.md`).
+
+**Fixture:** keine Datei; erfundene Daten im Speicher (`info@beispiel.de`, „Erika Muster“).
+
+**Ergebnis: PASS — 32 von 32 (Zugang) und 36 von 36 (HTML), 306 von 306 im
+Regressionslauf.** Neu: Namensprüfung, Merken und Stehenbleiben beim Speichern,
+Vorschau mit „Hey Erika,“ statt „Hey Vorname,“ und ohne Markierungen, `mailAusHtml` ohne
+`data-feld`-Attribute (Text mit dem Wort „data-feld“ bleibt Text).
+
+**In der echten App** (Testmodus, nur lesend, Bildschirmfoto im Scratchpad): der Block
+„Name in Testmails“ erscheint im Reiter „Zugang“ über der Testmail, mit Vorname, Nachname
+und „Namen merken“; keine Fehler in der Konsole. Ein Name wurde dabei nicht gespeichert.
+
+**Nicht geprüft:** eine echte Testmail mit eingetragenem Namen. Das macht Felix selbst.

@@ -116,6 +116,27 @@ function zusammenfuehren(bestand, neue, { jetzt = Date.now() } = {}) {
   return { liste, angelegt, aktualisiert, uebersprungen, gesperrtGelassen }
 }
 
+// Abmeldungen übernehmen, die bei Shopify passiert sind: im Shop-Konto, über eine
+// Shopify-Mail oder durch eine andere App. Der Sync holt nur Abonnenten, wer also fehlt,
+// hat dort nicht mehr zugestimmt — und darf auch von hier nichts mehr bekommen.
+//
+// `vollstaendig` muss stimmen: wurde der Abruf abgebrochen (zu viele Seiten) oder ist er
+// fehlgeschlagen, fehlen Adressen aus technischen Gründen. Dann wird nichts gesperrt.
+function abgemeldeteUebernehmen(bestand, aktuelleAdressen, { jetzt = Date.now(), vollstaendig = false } = {}) {
+  if (!vollstaendig) return { liste: alsListe(bestand), anzahl: 0, uebersprungen: true }
+  const vorhanden = new Set((Array.isArray(aktuelleAdressen) ? aktuelleAdressen : []).map((e) => adresse(e)).filter(Boolean))
+  if (!vorhanden.size) return { liste: alsListe(bestand), anzahl: 0, uebersprungen: true }
+
+  let anzahl = 0
+  const liste = alsListe(bestand).map((k) => {
+    if (k.quelle !== 'shopify' || k.gesperrt) return k
+    if (vorhanden.has(adresse(k.email))) return k
+    anzahl++
+    return { ...k, gesperrt: true, gesperrtAm: jetzt, gesperrtGrund: 'bei Shopify nicht mehr abonniert', geaendertAm: jetzt }
+  })
+  return { liste, anzahl, uebersprungen: false }
+}
+
 // Abmelden: sperren, aber in der Liste behalten
 function sperren(liste, email, { grund = 'abgemeldet', jetzt = Date.now() } = {}) {
   const ziel = adresse(email)
@@ -248,4 +269,4 @@ function csvLesen(text) {
   return { ok: kontakte.length > 0, kontakte, fehler }
 }
 
-module.exports = { empfaenger, stand, zusammenfuehren, sperren, freigeben, loeschen, finden, csvLesen, gueltig, zustandErlaubt, SPALTEN, ZUSTAND_OK, ZUSTAND_OFFEN }
+module.exports = { empfaenger, stand, zusammenfuehren, abgemeldeteUebernehmen, sperren, freigeben, loeschen, finden, csvLesen, gueltig, zustandErlaubt, SPALTEN, ZUSTAND_OK, ZUSTAND_OFFEN }

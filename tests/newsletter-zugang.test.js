@@ -57,7 +57,8 @@ function pluginStarten(startDaten = {}) {
         return true
       },
       bereitstellen: (name, fn) => funktionen.set(name, fn),
-      vault: {}
+      vault: {},
+      eingangOrdner: false // nie den echten Eingangskorb der Bots anfassen
     })
   )
   return { rufen: (name, ...args) => mitLog(() => funktionen.get(name)(...args)), daten: () => daten, funktionen, logs }
@@ -292,4 +293,52 @@ test('kuerzen verrät nur den ersten Buchstaben', () => {
   assert.equal(kuerzen('@beispiel.de'), '***')
   assert.equal(kuerzen(''), '***')
   assert.equal(kuerzen(null), '***')
+})
+
+// ── Name in Testmails ──
+// Ohne eingetragenen Namen stand in jeder Testmail „Hey Vorname“: man konnte nicht sehen,
+// ob {{vorname}} bei echten Kunden funktioniert.
+
+test('zugangPruefen nimmt einen Namen für Testmails an und lehnt Unsinn ab', () => {
+  const gut = zugangPruefen({ benutzer: 'info@beispiel.de', testVorname: ' Erika ', testNachname: 'Muster' })
+  assert.equal(gut.ok, true)
+  assert.equal(gut.wert.testVorname, 'Erika')
+  assert.equal(gut.wert.testNachname, 'Muster')
+  assert.equal(zugangPruefen({ benutzer: 'info@beispiel.de' }).wert.testVorname, '', 'leer ist erlaubt')
+  assert.equal(zugangPruefen({ benutzer: 'info@beispiel.de', testVorname: 'x'.repeat(61) }).ok, false)
+  assert.equal(zugangPruefen({ benutzer: 'info@beispiel.de', testVorname: 'Erika\nBcc: x' }).ok, false)
+  assert.equal(zugangPruefen({ benutzer: 'info@beispiel.de', testVorname: '{{email}}' }).ok, false, 'kein Platzhalter als Name')
+  assert.equal(zugangPruefen({ benutzer: 'info@beispiel.de', testNachname: '<b>' }).ok, false)
+})
+
+test('testNameMerken speichert den Namen, zugangSpeichern lässt ihn stehen', () => {
+  const p = pluginStarten({ zugang: { benutzer: 'info@beispiel.de' } })
+  const e = p.rufen('testNameMerken', { vorname: ' Erika ', nachname: 'Muster' })
+  assert.equal(e.ok, true)
+  assert.equal(p.daten().zugang.testVorname, 'Erika')
+  assert.equal(p.rufen('zugangLesen').testVorname, 'Erika')
+  assert.equal(p.rufen('zugangLesen').testNachname, 'Muster')
+  // Das Zugangsformular schickt keinen Namen mit: er bleibt
+  p.rufen('zugangSpeichern', { benutzer: 'info@beispiel.de', passwort: '' })
+  assert.equal(p.daten().zugang.testVorname, 'Erika')
+  assert.equal(p.daten().zugang.testNachname, 'Muster')
+  // Abgelehnt wird nichts gespeichert
+  assert.equal(p.rufen('testNameMerken', { vorname: '{{x}}' }).ok, false)
+  assert.equal(p.daten().zugang.testVorname, 'Erika')
+  // Leeren geht
+  assert.equal(p.rufen('testNameMerken', { vorname: '', nachname: '' }).ok, true)
+  assert.equal(p.daten().zugang.testVorname, '')
+})
+
+test('Testmail-Vorschau redet mit dem eingetragenen Namen an, ohne ihn mit „Vorname“', () => {
+  const html = '<p data-feld="einleitung" data-feld-hinweis="2-3 Sätze, Du-Form">Hey {{vorname}}, schön dass du da bist.</p>'
+  const p = pluginStarten({ zugang: { benutzer: 'info@beispiel.de' } })
+  const ohne = p.rufen('mailVorschau', { betreff: 'Hallo {{vorname}}', html })
+  assert.match(ohne.html, /Hey Vorname,/)
+  p.rufen('testNameMerken', { vorname: 'Erika', nachname: 'Muster' })
+  const mit = p.rufen('mailVorschau', { betreff: 'Hallo {{vorname}}', html })
+  assert.match(mit.html, /Hey Erika,/)
+  assert.equal(mit.betreff, 'Hallo Erika')
+  assert.ok(!/data-feld/.test(mit.html), 'Feld-Markierungen und Hinweise stehen nicht in der Mail')
+  assert.ok(!mit.html.includes('Du-Form'), 'der Hinweistext für die KI erst recht nicht')
 })

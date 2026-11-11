@@ -9,7 +9,7 @@ zulässt — eine `PLAN.md` würde als Fehler gemeldet.
 
 ## Stand
 
-Letzte Änderung: 2026-11-09
+Letzte Änderung: 2026-11-11
 
 **Gebaut:**
 
@@ -138,8 +138,171 @@ Letzte Änderung: 2026-11-09
   Zuerst stand das Feld oben im Zugangsformular — auf Rückmeldung dorthin verschoben, wo man
   die Adresse ohnehin eintippt.
   Tests: `newsletter-zugang.test.js` auf 29 — **195 insgesamt**.
+- **Abmeldungen per Mail** (2026-11-09): `imap.js` liest eingehende Abmeldungen aus einem
+  Postfach-Ordner und sperrt die Adressen — lokal und bei Shopify, über denselben Weg wie die
+  Kontaktliste. Nur ungelesene Mails, höchstens 200 pro Lauf, alle zehn Minuten im selben
+  Rhythmus wie die Shopify-Auslöser. **Die INBOX bleibt in Ruhe**: geöffnet wird nur der
+  eingestellte Ordner (Voreinstellung `Abmeldungen`), und wer doch `INBOX` einträgt, bekommt
+  eine Warnung — dort zählt dann nur, was im Betreff nach einer Abmeldung aussieht.
+  **Nichts wird gelöscht oder verschoben**, Verarbeitetes bekommt nur das Gelesen-Zeichen.
+  Oberfläche: Block „Abmeldungen per Mail" im Reiter „Kontakte" mit Schalter, Ordner,
+  Server, „Verbindung prüfen" und „Jetzt einlesen".
+  Neue Abhängigkeit: `imapflow` (MIT, vor der Installation geprüft).
+  **Einzurichten:** eine Filterregel bei IONOS, die Mails an die Abmeldeadresse in den
+  Ordner legt.
+  Tests: `tests/newsletter-imap.test.js` (17) — **212 insgesamt**.
+  Bericht: `test-results/newsletter-imap.result.md`.
+- **Abmeldungen bei Shopify übernehmen** (2026-11-09): Beim Nachdenken über einen
+  Ein-Klick-Abmeldelink aufgefallen — wer sich **bei Shopify** abmeldet (im Shop-Konto, über
+  eine Shopify-Mail oder eine andere App), blieb hier Empfänger. Der Sync holt nur
+  Abonnenten; wer fehlt, wird jetzt lokal gesperrt (`abgemeldeteUebernehmen`). Nur bei einem
+  **vollständigen** Abruf, sonst würde ein abgebrochener Durchgang halbe Listen sperren.
+  Importierte Adressen und schon Gesperrte bleiben unberührt.
+  Tests: `newsletter-kontakte.test.js` auf 28 — **216 insgesamt**.
+- **Vorlagen** (2026-11-09): eigener Reiter „Vorlagen" mit Liste, Baustein-Editor, Vorschau
+  und Testmail. Eine Vorlage ist eine gespeicherte Bausteinfolge mit Beispieltexten und
+  Platzhaltern; **Anwenden kopiert** sie in eine Kampagne oder einen einzelnen
+  Automationsschritt, die Vorlage selbst bleibt unverändert. Umgekehrt lässt sich aus einer
+  Kampagne oder einem Schritt eine Vorlage sichern. Luzzy entwirft Vorlagen über `ctx.fragen`
+  — mit einem eigenen Auftrag, der auf Form statt auf fertige Werbetexte zielt. Dadurch
+  müssen nicht alle Mails gleich aussehen.
+  Tests: `tests/newsletter-vorlagen.test.js` (15) — **231 insgesamt**.
+- **HTML-Modus und mitlaufende Vorschau** (2026-11-10): Der Kampagnen-Editor besteht jetzt
+  aus zwei Flächen: links **Code** mit Zeilennummern über die volle Höhe, rechts die Karte
+  **E-Mail-Details** (An, Betreff, Vorschautext, Name, Von) und darunter die **Vorschau, die
+  beim Tippen mitläuft** (Umschalter Rechner/Handy, Textteil ausklappbar). Zwei Wege zum
+  Inhalt — **Bausteine** wie bisher oder **eigenes HTML**. Die Kampagnenliste füllt die
+  Fläche, solange keine Kampagne offen ist; in der Kampagne führt „← Kampagnen" zurück.
+  **Der Vorlagen-Reiter ist genauso gebaut** (Code links, Vorlagen-Details und Vorschau
+  rechts) und kennt denselben HTML-Modus. Beim Anwenden wandert der Weg zum Inhalt mit: eine
+  HTML-Vorlage stellt die Kampagne auf HTML um, eine Bausteine-Vorlage zurück. Für
+  **Automationsschritte wird eine HTML-Vorlage abgelehnt** — die bauen aus Bausteinen.
+  `html-mail.js` säubert das eingetippte HTML (Skripte, Rahmen, eingebettete Objekte,
+  Formulare, `on…`-Attribute und alle Adressen außer `http(s)`, `mailto`, `tel`, `cid` und
+  eingebetteten Bildern) und sagt in der Vorschau an, was es entfernt hat. Outlooks
+  Bedingungskommentare bleiben stehen. Zwei Rahmen-Arten: in Vendos 600-px-Fläche legen
+  (Voreinstellung) oder ein fremdes Dokument so lassen, wie es ist. **Der Fuß mit
+  Abmeldelink und Impressum kommt in beiden Fällen dazu** — sonst baut `mail.js` keine
+  Kampagnenmail. Platzhalter wirken auch im HTML und werden dabei maskiert. Dazu zwei
+  Startpunkte („Bausteine übernehmen", „Beispiel einfügen"), Einrücken mit der
+  Tabulatortaste und **Speichern von selbst** nach 1,2 Sekunden Tippruhe sowie beim
+  Reiterwechsel. Der Modus hängt an der Kampagne; alte Kampagnen bleiben Bausteine.
+  **Mail-Gerüst mitgehend gemacht** (aufgefallen in der Handy-Vorschau): die 600-px-Fläche
+  stand als `width="600"` mit **prozentualer** Höchstbreite, die eine Tabelle in einer
+  Tabellenzelle nicht ausrechnet — die Mail blieb in einem 390-px-Fenster 628 px breit und
+  wurde abgeschnitten, auf jedem Telefon. Jetzt `width="100%"` mit `max-width:600px`, dazu
+  eine feste Tabelle im Bedingungskommentar für Outlook. Nachgemessen bei 320, 390 und
+  742 px: kein seitlicher Überlauf mehr.
+  Nebenbei behoben: der Kampagnenname wurde beim Speichern nie mitgeschickt
+  (`form.name` ist die Eigenschaft des Formulars, nicht das gleichnamige Feld). Und die
+  Vorschau blieb weiß, weil ein `<iframe sandbox="">` mit leerem `srcdoc` ein später
+  zugewiesenes `srcdoc` nicht nachlädt — der Rahmen wird jetzt ersetzt statt beschrieben.
+  Bericht: `test-results/newsletter-html.result.md`.
+- **Nur noch HTML, überall** (2026-11-11): Auf Wunsch ist der Baustein-Editor aus Kampagnen,
+  Vorlagen **und Automationsschritten** verschwunden — kein Umschalter, keine Karten, kein
+  zweiter Weg. Jede Mail ist ein Code-Feld mit Vorschau. Was bleibt und warum:
+  - `bausteine.js` bleibt als **Werkzeug dahinter**: es baut das Mail-Gerüst, den Fuß mit
+    Abmeldelink und Impressum, die Startmail, die neue Kampagnen und Vorlagen schon im
+    Feld haben, und macht aus Luzzys Entwurf HTML.
+  - **Luzzy schreibt weiter kein Markup.** Sie liefert geprüfte Bausteine als JSON, Vendo
+    wandelt sie in Tabellen-HTML und legt es ins Code-Feld (das bisherige wird ersetzt —
+    die Meldung sagt es). So bleibt der Schutz aus `bausteine.js`, ohne dass jemand
+    Bausteine bedienen muss.
+  - **Nichts geht verloren.** Gespeicherte Kampagnen, Vorlagen und Schritte, die noch kein
+    `html` haben, werden beim Öffnen, Prüfen und Versenden aus ihren Bausteinen gebaut
+    (`htmlVon`). Gelöscht wird nichts; beim nächsten Speichern steht das HTML im Feld.
+  - Vorlagen gelten jetzt auch für Automationsschritte ohne Einschränkung.
+  Tests angepasst: `newsletter-html.test.js` (35), `newsletter-kampagnen.test.js` (23),
+  `newsletter-vorlagen.test.js` (17) — **270 insgesamt**.
 
-**Gesamtstand der Tests: 176 in neun Dateien, alle bestanden, plus der App-Lauf.**
+- **Bots bereiten vor, Felix gibt frei** (2026-11-11): Bisher konnte kein Hermes-Bot das
+  Plugin nutzen. Jetzt hat die Newsletter-Texterin (Profil `vala-newsletter-texterin-bot`)
+  ein eigenes Werkzeug — und nur sie. Die Regeln stehen fest in `bots.js`:
+  - **Ein Bot darf (Stand 2026-11-11, abends):** alles im Plugin außer versenden —
+    Überblick und **Auswertung** (Versand, Fehler, Warteschlange, Stundenbudget,
+    Kontaktentwicklung je Monat, Läufe je Automation; Öffnungen und Klicks misst Vendo
+    nicht und sagt das), Kampagnen-Entwürfe anlegen, ändern, kopieren, löschen, Vorlagen
+    anlegen, ändern, aus Kampagnen machen, löschen, **Automationen anlegen und komplett
+    bauen** (Schritte, Wartezeiten, Texte) und löschen, solange sie aus sind, die Marke
+    pflegen (Name, Logo, Farben), Kontakte bei Shopify abgleichen, Kampagnen **zur
+    Freigabe** geben und Automationsschritte als Probe an Felix schicken.
+  - **Nur Felix:** an Empfänger senden, planen, starten, eine Automation einschalten,
+    Impressum und Abmeldeadresse, Postfach, Stundenbudget, einzelne Kontakte (der Bot
+    sieht nur Zahlen). Für nichts davon gibt es eine Aktion; unbekannte Aktionen und
+    Felder werden abgelehnt.
+  - **Sperre gegen erfundene Platzhalter:** Vendo ersetzt nur `{{vorname}}`,
+    `{{nachname}}`, `{{name}}`, `{{email}}` (beim Warenkorb dazu `{{warenkorb}}`,
+    `{{warenkorbLink}}`, `{{summe}}`). Alles andere in `{{ }}` und Bilder ohne
+    https-Adresse sperren Freigabe, Planen, Senden und das Einschalten einer Automation —
+    für Bots wie für Felix. Anlass: Valas erster Entwurf hatte 15 erfundene Platzhalter
+    wie `{{headline}}`, auch in Betreff und Vorschautext. Ein Kampagnen-Entwurf vom Bot
+    braucht außerdem echten Betreff und Vorschautext.
+  - **Sofort sichtbar:** Vendo fragt alle drei Sekunden, ob ein Bot etwas geändert hat, und
+    zeigt es ohne Klick. Bearbeitet Felix gerade genau das Geänderte, erscheint stattdessen
+    ein Hinweis mit „Neu laden“ — sein Code-Feld wird nicht unter ihm neu aufgebaut.
+  - **Bilder von Shopify in der Vorschau:** Vendos Sicherheitsregel
+    (`src/renderer/index.html`) erlaubt jetzt Bilder von `https://cdn.shopify.com`;
+    andere Adressen bleiben gesperrt. Vorher zeigte die Vorschau gar keine Bilder aus dem
+    Netz, auch nicht das Logo.
+  - **Freigabe:** `kampagne_zur_freigabe` schickt Felix die Mail als Testmail mit gelbem
+    Hinweis obendrauf und setzt den neuen Zustand **„wartet auf Freigabe“**. Gesendet wird
+    aus diesem Zustand nie. In Vendo erscheint die Kampagne mit „Freigeben und planen“
+    (Termin vorbelegt) und „Zurück in den Entwurf“; Vendo meldet neue Freigaben auch, wenn
+    der Bereich nicht offen ist. Ändert der Bot danach etwas, ist die Freigabe zurückgezogen.
+  - **Weg:** Der Bot legt Auftragsdateien in `daten/plugins/newsletter/eingang/`, Vendo
+    arbeitet sie jede Sekunde ab und legt die Antwort daneben. So bleibt Vendo der einzige
+    Schreiber von `newsletter.json` — dort liegen auch Kontakte und Warteschlange, die
+    Vendo laufend selbst schreibt. Ohne laufendes Vendo zieht der Bot seinen Auftrag nach
+    30 Sekunden zurück, statt dass er später überraschend ausgeführt wird.
+  - **Auf Hermes-Seite** (außerhalb dieses Repos, im Profil der Texterin): das Hermes-Plugin
+    `plugins\vendo-newsletter` (Werkzeug `vendo_newsletter`, Muster wie `vendo-planer`) und
+    der Skill `skills\email\vendo-newsletter` mit den Regeln für Mail-HTML und dem Ablauf.
+    In der `config.yaml` des Profils drei Zeilen zum Freischalten (cli und telegram),
+    Sicherung `config.yaml.vor-vendo-newsletter-20261111.bak` daneben. Hermes selbst ist
+    unverändert, die anderen Bots haben keinen Zugriff.
+  - Nebenbei: Vendo zeichnet den Bereich beim minütlichen Nachladen nicht mehr neu, wenn
+    ein Editor offen ist — sonst sprang mitten im Tippen der Cursor weg.
+  Tests: `tests/newsletter-bots.test.js` (25) — **295 insgesamt**.
+  Bericht: `test-results/newsletter-bots.result.md`.
+
+- **Nur echte Shop-Adressen, echte Vorlagen** (2026-11-11, nachts): Felix' Regel: jeder
+  Link in einer Mail ist eine echte Adresse aus seinem Shop.
+  - **Shop-Adresse:** Vendo liest die öffentliche Adresse aus der Weiterleitung der
+    myshopify-Adresse (kein Zugang nötig) und merkt sie sich in den Plugin-Daten.
+  - **Fertige Adressen für den Bot:** `shop_produkte` liest die öffentlichen Listen des
+    Shops (`/products.json`, `/collections.json`) und gibt Titel, Preis, Verfügbarkeit,
+    Bild und die fertige Produkt- bzw. Sammlungsadresse zurück, auf Wunsch gefiltert
+    (`suche`). Der Bot setzt keine Adresse selbst zusammen.
+  - **Prüfung vor der Freigabe** (`shoplinks.js`): Links nur auf den eigenen Shop (mit und
+    ohne `www`, dazu die myshopify-Adresse), Bilder dazu von `cdn.shopify.com`. Danach
+    fragt Vendo jede Adresse ab: eine erfundene Produktseite (404) sperrt die Freigabe.
+    Ergebnisse werden zehn Minuten gemerkt, höchstens fünf Abrufe gleichzeitig, Frist acht
+    Sekunden. `links_pruefen` zeigt dem Bot vorab jede unechte Adresse mit Grund. Ohne
+    bekannte Shop-Adresse gibt es keine Freigabe.
+  - **Netzzugriff:** dafür fragt Vendo nur den eigenen Shop ab, nichts sonst.
+  - **Vorlagen sind Vorlagen:** jede Stelle, die pro Kampagne neu geschrieben wird, trägt
+    `data-feld="name"` (optional `data-feld-hinweis`). Eine Vorlage vom Bot ohne Felder ist
+    eine fertige Mail und wird abgelehnt. Auch Luzzys Vorlagen-Entwürfe bekommen Felder.
+    Der Bereich zeigt die Felder einer Vorlage als Marken an.
+  - **Kampagne aus einer Vorlage:** die Kampagne merkt sich die Vorlage und ihren
+    Beispielinhalt. Bleibt Beispieltext oder ein Beispielbild stehen, ist die Freigabe
+    gesperrt, mit Name des Feldes. Der Skill verlangt, die ganze Vorlage auszufüllen und
+    zu verbessern, nicht nur das Nötigste.
+  - **Vorschaubilder:** im Reiter „Vorlagen“ zeigt jede Karte den oberen Ausschnitt der
+    gerenderten Vorlage.
+  - Valas Werkzeug hat jetzt 25 Aktionen; Sicherung der vorigen Fassung im Profil daneben.
+  Tests: `tests/newsletter-bots.test.js` (32) — **302 insgesamt**.
+  Bericht: `test-results/newsletter-bots.result.md` (Nachtrag).
+
+- **Name in Testmails, Markierungen raus** (2026-11-11, nachts): Im Reiter „Zugang“ lässt sich
+  ein Vorname und Nachname für Testmails eintragen. Vendo setzt ihn in allen Testmails und
+  Vorschauen ohne echten Empfänger für {{vorname}}, {{nachname}} und {{name}} ein, auch in der
+  Testmail zur Freigabe; leer steht dort sichtbar „Vorname“. Die Feld-Markierungen einer
+  Vorlage (data-feld, data-feld-hinweis) bleiben im Editor, werden aber aus jeder Mail entfernt.
+  Tests: newsletter-zugang.test.js (32), newsletter-html.test.js (36) — **306 insgesamt**.
+  Bericht: test-results/newsletter-zugang.result.md (Nachtrag).
+
+**Gesamtstand der Tests: 306 in dreizehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 
@@ -198,10 +361,12 @@ plugins/newsletter/
   smtp.js            Verbindung zu IONOS: anmelden, verschicken, Fehlertexte
   drossel.js         Stundenbudget, Mindestabstand, Pause bei Limit-Fehler
   warteschlange.js   Einträge, Idempotenz, Versuche, Verfall
+  imap.js            Abmeldungen aus einem Postfach-Ordner lesen
   shopify.js         Abonnenten holen, Abmeldungen zurückschreiben
   kontakte.js        Bestand führen, zusammenführen, CSV lesen
   bausteine.js       HTML-Schnipsel und Zusammenbau der Mail
   kampagnen.js       prüfen, personalisieren, Zeitplan, KI-Auftrag und -Antwort
+  vorlagen.js        wiederverwendbare Bausteinfolgen, eigener KI-Auftrag
   automationen.js    Zustandsmaschine: Läufe, Schritte, Verfall, Abbruch
   protokoll.js       eine Zeile je Mail in Monatsdateien
   README.md          diese Datei
@@ -312,11 +477,9 @@ query($cursor: String) {
   setzen, sonst holt der nächste Sync die Person wieder herein — **steht**.
 - CSV-Import für Adressen, die nicht aus dem Shop kommen, mit Hinweis bei fehlendem
   Zustimmungsdatum — **steht**.
-- **Offen: Abmeldungen per Mail auslesen.** Der `List-Unsubscribe`-Header verweist auf eine
-  `mailto:`-Adresse; die eingehenden Mails liest das Plugin noch nicht. Dafür braucht es
-  einen IMAP-Zugriff und damit eine weitere Abhängigkeit — siehe „Offene Entscheidungen".
-  Geplanter Weg: eine Filterregel bei IONOS sortiert sie in einen eigenen Ordner, den nur
-  das Plugin liest, damit Vendos Wächter sie nicht als neue Kundenmails meldet.
+- Abmeldungen per Mail auslesen — **steht** (`imap.js`): eine Filterregel bei IONOS sortiert
+  sie in einen eigenen Ordner, den nur das Plugin liest, damit Vendos Wächter sie nicht als
+  neue Kundenmails meldet. Verarbeitetes wird nur als gelesen markiert, nie gelöscht.
 - **Offen: Double-Opt-In** für Anmeldungen außerhalb von Shopify.
 
 **Fertig, wenn:** Der Sync läuft ohne Doppelte und eine Abmeldung wirkt sofort und übersteht
@@ -333,8 +496,8 @@ Ziel: Eine Kampagne entsteht in wenigen Minuten, ohne HTML von Hand.
   **Noch nicht in echten Mailprogrammen angesehen** — gebaut nach den bekannten Regeln für
   Outlook, aber der Nachweis fehlt, bis eine Testmail durch Outlook, Gmail und ein Handy
   gegangen ist.
-- Vorlage = gespeicherte Bausteinfolge mit Platzhaltern. Noch offen: Vorlagen getrennt von
-  Kampagnen speichern und wiederverwenden.
+- Vorlage = gespeicherte Bausteinfolge mit Platzhaltern — **steht**: eigener Reiter,
+  anwendbar auf Kampagnen und auf einzelne Automationsschritte, Entwurf durch Luzzy möglich.
 - Freies HTML gibt es als Testmail im Reiter „Zugang“ (mit Textteil-Vorschau). Ein Rohmodus
   für Kampagnen ist nicht gebaut: dort wären Abmeldelink und Impressum nicht erzwingbar.
 - **Kernerweiterung in Vendo** (nicht Hermes): `ctx.fragen(text)` gibt Plugins die Antwort
@@ -439,19 +602,15 @@ Tests mit konkretem Dateipfad starten, nicht per `node --test` über das ganze P
 
 ## Offene Entscheidungen
 
-- **IMAP für Abmeldungen per Mail.** Damit eine Abmeldung über den
-  `List-Unsubscribe`-Header von selbst wirkt, müsste das Plugin einen Mailordner lesen. Das
-  wäre eine zweite Abhängigkeit (etwa `imapflow`) neben `nodemailer`. Solange die
-  Entscheidung offen ist, werden Abmeldungen von Hand über die Kontaktliste gesperrt — die
-  Mails landen ja im Postfach und sind dort sichtbar.
-- **Geschützte Kundendaten bei Shopify.** Für Kundendaten verlangt Shopify eine Freigabe in
-  der App-Konfiguration. Ob sie für den verwendeten Token vorliegt, zeigt der erste Sync.
 - **Absenderadresse:** IONOS lehnt seit Januar 2024 Absender ab, die nicht zum angemeldeten
   Konto passen (`Sender address is not allowed`). Ob eine Alias-Adresse derselben Domain
   durchgeht, ist nicht offiziell dokumentiert — mit einem Testversand klären. Rückfall:
   Postfachadresse als Absender mit Anzeigename plus `Reply-To`.
 - **Stundenbudget:** 300/h ist ein Startwert. Nach dem ersten großen Versand anpassen.
-- **Geschützte Kundendaten bei Shopify:** Freischaltung für abgebrochene Warenkörbe prüfen.
+- **Geschützte Kundendaten bei Shopify:** für den Kontakt-Sync erledigt (820 Abonnenten kamen
+  an). Ob die Freigabe auch für abgebrochene Warenkörbe reicht, zeigt der erste Abruf.
+- **Double-Opt-In** für Anmeldungen außerhalb von Shopify ist weiterhin nicht gebaut.
+- **Rückgewinnung** hat weiterhin keinen Auslöser.
 
 ## Später: Server
 

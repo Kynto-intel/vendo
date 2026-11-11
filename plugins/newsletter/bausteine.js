@@ -172,6 +172,94 @@ const FELDER = {
 
 const ARTEN = Object.keys(BAUSTEINE)
 
+// Das Grundgerüst jeder Mail: Dokument, Hintergrundfläche und die 600-px-Spalte.
+// Liegt eigens hier, weil es der HTML-Modus (html-mail.js) genauso braucht — ein zweites
+// Skelett wäre eines zu viel, das beim Ändern vergessen wird.
+// `zeilen` sind fertige <tr>-Zeilen der inneren Tabelle.
+//
+// Warum `width="100%"` mit `max-width:600px` und nicht `width="600"` mit `max-width:100%`:
+// Eine Tabelle in einer Tabellenzelle rechnet eine **prozentuale** Höchstbreite nicht aus
+// (die Zellbreite hängt selbst vom Inhalt ab), also blieb die Mail auf dem Handy 600 px
+// breit und wurde seitlich abgeschnitten — in der Vorschau nachgemessen: 628 px in einem
+// 390-px-Fenster. Eine absolute Höchstbreite greift. Outlook kennt `max-width` nicht und
+// bekommt über den Bedingungskommentar seine feste 600-px-Tabelle.
+function huelle(zeilen, { farben = STANDARD_FARBEN, titel = '', vorschauText = '' } = {}) {
+  // Vorschautext: erscheint in der Mailliste neben dem Betreff, soll aber nicht im Text stehen
+  const vorschau = vorschauText
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${m(vorschauText)}</div>`
+    : ''
+
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${m(titel || '')}</title>
+</head>
+<body style="margin:0;padding:0;background-color:${farben.hintergrund};">
+${vorschau}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background-color:${farben.hintergrund};">
+  <tr><td align="center" style="padding:24px 12px;">
+    <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${BREITE}"><tr><td><![endif]-->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:${BREITE}px;margin:0 auto;background-color:${farben.flaeche};">
+      ${zeilen}
+    </table>
+    <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr>
+</table>
+</body>
+</html>`
+}
+
+// Die Bausteine zu Tabellenzeilen machen — ohne Dokument drumherum und ohne Fuß.
+// Der HTML-Modus setzt damit den Editor auf den Stand der Bausteine.
+// Was in einem Feld einer Vorlage hinkommt — für data-feld-hinweis
+const FELD_HINWEISE = {
+  titel: 'Überschrift für diese Kampagne, kurz und kraftvoll',
+  text: 'Text für diese Kampagne',
+  bild: 'Bild aus dem Shop (cdn.shopify.com)',
+  knopf: 'Knopftext und Adresse einer Seite aus dem Shop',
+  produkt: 'Produkt aus dem Shop: Bild, Name, Preis, Adresse genau wie geliefert'
+}
+
+// `felder: true` macht aus den Zeilen eine Vorlage: jeder Inhaltsbaustein bekommt
+// data-feld (titel1, text1, produkt2 …) und eine Anweisung. Kopf, Trenner und Fuß bleiben
+// fest. Bei Bildern sitzt das Feld am <img>, sonst an der Zelle.
+function zeilenAus(bausteine, { marke = {}, farben = null, felder = false } = {}) {
+  const f = farben || { ...STANDARD_FARBEN, ...(marke.farben || {}) }
+  const zeilen = []
+  const zaehler = {}
+  for (const baustein of Array.isArray(bausteine) ? bausteine : []) {
+    const bauen = BAUSTEINE[baustein?.art]
+    if (!bauen || baustein.art === 'fuss') continue // unbekannte Art wird übergangen, nicht geraten
+    const angaben = { ...baustein, farben: f }
+    if (baustein.art === 'kopf') {
+      // Mit `||`, nicht `??`: der Editor speichert leere Felder als leeren String, und der
+      // soll auf die Marke zurückfallen statt das Logo zu verschlucken.
+      angaben.logo = baustein.logo || marke.logo || ''
+      angaben.titel = baustein.titel || marke.titel || ''
+    }
+    let zeile = bauen(angaben)
+    if (felder && zeile && FELD_HINWEISE[baustein.art]) {
+      zaehler[baustein.art] = (zaehler[baustein.art] || 0) + 1
+      const merkmal = `data-feld="${baustein.art}${zaehler[baustein.art]}" data-feld-hinweis="${m(FELD_HINWEISE[baustein.art])}"`
+      zeile = baustein.art === 'bild' ? zeile.replace('<img ', `<img ${merkmal} `) : zeile.replace('<td ', `<td ${merkmal} `)
+    }
+    zeilen.push(zeile)
+  }
+  return zeilen
+}
+
+// Dieselben Zeilen als eigenständiger Inhaltsblock, wie ihn der HTML-Editor zeigt:
+// eine Tabelle, die sich in die 600-px-Spalte einfügt.
+function inhaltAus(bausteine, angaben = {}) {
+  const zeilen = zeilenAus(bausteine, angaben)
+  if (!zeilen.length) return ''
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+${zeilen.map((z) => `  ${z}`).join('\n')}
+</table>`
+}
+
 // Eine Mail aus Bausteinen zusammensetzen.
 // `marke`: { logo, titel, farben, impressum }
 function mailAus(bausteine, { marke = {}, abmeldeAdresse = '', vorschauText = '' } = {}) {
@@ -201,29 +289,7 @@ function mailAus(bausteine, { marke = {}, abmeldeAdresse = '', vorschauText = ''
     zeilen[stelle] = BAUSTEINE.fuss({ ...liste[stelle], abmeldeAdresse, impressum: marke.impressum, farben })
   }
 
-  // Vorschautext: erscheint in der Mailliste neben dem Betreff, soll aber nicht im Text stehen
-  const vorschau = vorschauText
-    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${m(vorschauText)}</div>`
-    : ''
-
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${m(marke.titel || '')}</title>
-</head>
-<body style="margin:0;padding:0;background-color:${farben.hintergrund};">
-${vorschau}
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${farben.hintergrund};">
-  <tr><td align="center" style="padding:24px 12px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${BREITE}" style="width:${BREITE}px;max-width:100%;background-color:${farben.flaeche};">
-      ${zeilen.join('\n      ')}
-    </table>
-  </td></tr>
-</table>
-</body>
-</html>`
+  return huelle(zeilen.join('\n      '), { farben, titel: marke.titel, vorschauText })
 }
 
 // Eine schlichte Startvorlage, damit nicht jede Kampagne bei null anfängt
@@ -237,4 +303,4 @@ function startVorlage() {
   ]
 }
 
-module.exports = { mailAus, startVorlage, BAUSTEINE, FELDER, ARTEN, STANDARD_FARBEN, BREITE }
+module.exports = { mailAus, huelle, zeilenAus, inhaltAus, startVorlage, BAUSTEINE, FELDER, ARTEN, STANDARD_FARBEN, SCHRIFT, BREITE, maskieren: m }

@@ -1,29 +1,51 @@
 'use strict'
 // Newsletter-Plugin: Kampagnen.
 //
-// Eine Kampagne ist eine Bausteinfolge mit Betreff, Zielgruppe und optionalem Zeitpunkt.
+// Eine Kampagne ist ein Stück Mail-HTML mit Betreff, Zielgruppe und optionalem Zeitpunkt.
 // Hier liegt alles, was ohne Netz und ohne Oberfläche entschieden werden kann: prüfen,
 // personalisieren, fällige Kampagnen finden, und die Verständigung mit der KI.
 //
-// Die KI schreibt kein Markup. Sie bekommt die erlaubten Bausteine beschrieben und liefert
-// JSON zurück; was nicht in die Form passt, wird verworfen statt geraten. Begründung steht
-// in bausteine.js.
+// Der Inhalt ist HTML, überall. Die Bausteine aus bausteine.js sind kein zweiter Weg mehr,
+// sondern nur noch das Werkzeug dahinter: sie bauen Kopf und Fuß, die Startmail und den
+// Entwurf von Luzzy — und erzeugen daraus HTML, das im Code-Feld landet.
+//
+// Die KI schreibt weiterhin kein Markup. Sie bekommt die erlaubten Bausteine beschrieben
+// und liefert JSON; Vendo macht daraus geprüftes Tabellen-HTML. Warum, steht in
+// bausteine.js: ein Modell, das „einen schönen Newsletter in HTML“ schreibt, liefert etwas,
+// das im Browser gut aussieht und in Outlook auseinanderfällt.
 
-const { ARTEN, FELDER, startVorlage } = require('./bausteine.js')
+const { ARTEN, FELDER, startVorlage, inhaltAus, maskieren } = require('./bausteine.js')
+const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, MAX_HTML } = require('./html-mail.js')
 
-const ZUSTAENDE = ['entwurf', 'geplant', 'laeuft', 'fertig', 'abgebrochen']
+// 'freigabe': ein Bot hat die Kampagne vorbereitet und Felix eine Testmail geschickt; sie
+// wartet auf seine Bestätigung in Vendo. Gesendet wird aus diesem Zustand nie.
+const ZUSTAENDE = ['entwurf', 'freigabe', 'geplant', 'laeuft', 'fertig', 'abgebrochen']
 const MAX_BAUSTEINE = 40
 
 const neueId = () => `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 const sauber = (wert) => String(wert ?? '').trim()
 
-function neueKampagne({ name = 'Neue Kampagne', jetzt = Date.now() } = {}) {
+// Das HTML eines gespeicherten Stücks. Älteres aus der Zeit der Baustein-Oberfläche hat
+// noch kein `html`: dann wird es aus den Bausteinen gebaut, damit nichts verloren geht.
+// Gelöscht wird dabei nichts — die Bausteine bleiben liegen, bis das Stück neu gespeichert
+// wird, und dann steht das HTML an ihrer Stelle.
+function htmlVon(roh, { marke = {} } = {}) {
+  const stueck = roh && typeof roh === 'object' ? roh : {}
+  const html = String(stueck.html ?? '')
+  if (html.trim()) return html
+  const bausteine = bausteineSaeubern(stueck.bausteine)
+  return bausteine.length ? inhaltAus(bausteine, { marke }) : ''
+}
+
+function neueKampagne({ name = 'Neue Kampagne', marke = {}, jetzt = Date.now() } = {}) {
   return {
     id: neueId(),
     name: sauber(name) || 'Neue Kampagne',
     betreff: '',
     vorschauText: '',
-    bausteine: startVorlage(),
+    // Nicht leer anfangen: die Startmail als Quelltext, zum Überschreiben
+    html: inhaltAus(startVorlage(), { marke }),
+    htmlRahmen: true, // in Vendos 600-px-Fläche legen; aus = eigenes Dokument
     zielgruppe: 'alle', // vorerst: alle Empfänger mit Zustimmung
     zustand: 'entwurf',
     geplantAm: null,
@@ -57,20 +79,26 @@ function bausteineSaeubern(liste) {
   return heraus
 }
 
-function kampagnePruefen(kampagne = {}) {
+function kampagnePruefen(kampagne = {}, { marke = {} } = {}) {
   const fehler = []
   const betreff = sauber(kampagne.betreff)
   if (!betreff) fehler.push('Der Betreff fehlt.')
   if (betreff.length > 200) fehler.push('Der Betreff ist zu lang (höchstens 200 Zeichen).')
   if (/[\r\n]/.test(String(kampagne.betreff ?? ''))) fehler.push('Der Betreff darf keinen Zeilenumbruch enthalten.')
 
-  const bausteine = bausteineSaeubern(kampagne.bausteine)
-  const inhalt = bausteine.filter((b) => ['titel', 'text', 'bild', 'produkt', 'knopf'].includes(b.art))
-  if (!inhalt.length) fehler.push('Die Kampagne hat noch keinen Inhalt (Text, Bild, Produkt oder Knopf).')
+  const html = htmlVon(kampagne, { marke })
+  if (!hatInhalt(html)) fehler.push('Die Kampagne hat noch keinen sichtbaren Inhalt.')
+  if (html.length > MAX_HTML) fehler.push(`Das HTML ist zu lang (höchstens ${MAX_HTML} Zeichen).`)
+
+  // Was nicht ersetzt wird, käme wörtlich bei den Empfängern an: sperren, nicht nur zeigen
+  const fremde = fremdePlatzhalter([kampagne.betreff, kampagne.vorschauText, html].join(' '))
+  if (fremde.length) fehler.push(`Unbekannte Platzhalter: ${fremde.slice(0, 8).join(', ')}${fremde.length > 8 ? ' …' : ''} — die kämen so bei den Empfängern an. Vendo ersetzt nur {{vorname}}, {{nachname}}, {{name}} und {{email}}.`)
+  const ohneAdresse = bilderOhneAdresse(html)
+  if (ohneAdresse.length) fehler.push(`${ohneAdresse.length === 1 ? 'Ein Bild hat' : `${ohneAdresse.length} Bilder haben`} keine gültige Adresse (nötig: https://…).`)
 
   if (kampagne.geplantAm && !Number.isFinite(Number(kampagne.geplantAm))) fehler.push('Der Zeitpunkt ist unbrauchbar.')
 
-  return { ok: fehler.length === 0, fehler, bausteine }
+  return { ok: fehler.length === 0, fehler, html }
 }
 
 // Platzhalter ersetzen. Unbekannte Platzhalter bleiben stehen, damit man sie beim
@@ -91,6 +119,20 @@ function personalisieren(text, kontakt = {}, extra = {}) {
     if (fn) return fn(kontakt)
     const zusatz = Object.entries(extra).find(([k]) => k.toLowerCase() === schluessel)
     if (zusatz) return String(zusatz[1] ?? '')
+    return ganz
+  })
+}
+
+// Dasselbe für eigenes HTML — mit einem Unterschied: der eingesetzte Wert wird maskiert.
+// In den Bausteinen maskiert der Baustein selbst, hier steht der Text schon im Markup, und
+// ein Nachname mit spitzer Klammer würde die Mail sonst aufbrechen.
+function personalisierenHtml(text, kontakt = {}, extra = {}) {
+  return String(text ?? '').replace(/\{\{\s*([a-zA-Z]+)\s*\}\}/g, (ganz, name) => {
+    const schluessel = String(name).toLowerCase()
+    const fn = PLATZHALTER[schluessel]
+    if (fn) return maskieren(fn(kontakt))
+    const zusatz = Object.entries(extra).find(([k]) => k.toLowerCase() === schluessel)
+    if (zusatz) return maskieren(zusatz[1] ?? '')
     return ganz
   })
 }
@@ -203,7 +245,9 @@ module.exports = {
   kampagnePruefen,
   bausteineSaeubern,
   personalisieren,
+  personalisierenHtml,
   bausteinePersonalisieren,
+  htmlVon,
   faellige,
   verpasste,
   kampagneAendern,

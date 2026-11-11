@@ -47,7 +47,17 @@ function zugangPruefen(eingabe = {}) {
   if (testAdresse && !EMAIL_FORM.test(testAdresse)) fehler.push('Die Testadresse sieht nicht wie eine E-Mail-Adresse aus.')
   if (!einzeilig(eingabe.testAdresse)) fehler.push('Die Testadresse darf keinen Zeilenumbruch enthalten.')
 
-  return { ok: fehler.length === 0, fehler, wert: { benutzer, host, port, absenderName, antwortAn, testAdresse } }
+  // Name des Testempfängers: damit {{vorname}} in Testmails echt ersetzt wird und man sieht,
+  // ob die Anrede stimmt. Leer heißt: Vendo setzt „Vorname“ und „Nachname“ ein.
+  const testVorname = sauber(eingabe.testVorname)
+  const testNachname = sauber(eingabe.testNachname)
+  for (const [wert, roh, wer] of [[testVorname, eingabe.testVorname, 'Vorname'], [testNachname, eingabe.testNachname, 'Nachname']]) {
+    if (wert.length > 60) fehler.push(`Der ${wer} für Testmails ist zu lang (höchstens 60 Zeichen).`)
+    if (!einzeilig(roh)) fehler.push(`Der ${wer} für Testmails darf keinen Zeilenumbruch enthalten.`)
+    if (/[{}<>]/.test(wert)) fehler.push(`Der ${wer} für Testmails darf keine Klammern { } < > enthalten.`)
+  }
+
+  return { ok: fehler.length === 0, fehler, wert: { benutzer, host, port, absenderName, antwortAn, testAdresse, testVorname, testNachname } }
 }
 
 module.exports = { zugangPruefen, kuerzen, einzeilig, EMAIL_FORM, HOST_FORM, SMTP_STANDARD, PORTS }

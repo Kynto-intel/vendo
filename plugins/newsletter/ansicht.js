@@ -2,7 +2,7 @@
 // Daten in daten/plugins/newsletter.json, Stand und Bauplan siehe README.md im Plugin-Ordner.
 //
 // Stand: Postfach, Testmail, Protokoll, Drossel, Warteschlange, Kontakte aus Shopify und
-// per CSV, Kampagnen aus Bausteinen mit Entwurf von Luzzy. Noch keine Automationen.
+// per CSV, Kampagnen und Vorlagen als Mail-HTML mit Entwurf von Luzzy, Automationen.
 //
 // Passwort und Shopify-Token werden nur zum Speichern an haupt.js übergeben und kommen von
 // dort nie zurück.
@@ -25,6 +25,7 @@ const BEREICHE = [
   { id: 'uebersicht', name: 'Übersicht' },
   { id: 'kontakte', name: 'Kontakte' },
   { id: 'kampagnen', name: 'Kampagnen' },
+  { id: 'vorlagen', name: 'Vorlagen' },
   { id: 'automationen', name: 'Automationen' },
   { id: 'protokoll', name: 'Protokoll' },
   { id: 'zugang', name: 'Zugang' }
@@ -37,10 +38,7 @@ const STUNDE = 3600000
 const TEST_VORLAGE = '<p>Hallo,</p>\n<p>das ist eine Testmail aus Vendo.</p>\n<p>Gruß</p>'
 const CSV_BEISPIEL = 'email;vorname;nachname;zustimmungam\nmax@beispiel.de;Max;Muster;2026-01-15'
 
-// Welche Felder im Baustein-Editor mehrzeilig sind
-const LANG = new Set(['text', 'beschreibung', 'impressum'])
-
-const ZUSTAND_TEXT = { entwurf: 'Entwurf', geplant: 'geplant', laeuft: 'läuft', fertig: 'fertig', abgebrochen: 'abgebrochen' }
+const ZUSTAND_TEXT = { entwurf: 'Entwurf', freigabe: 'wartet auf Freigabe', geplant: 'geplant', laeuft: 'läuft', fertig: 'fertig', abgebrochen: 'abgebrochen' }
 
 export async function starten(ctx) {
   const m = ctx.maskieren
@@ -50,11 +48,19 @@ export async function starten(ctx) {
   let schlange = null
   let kontakte = null
   let shopify = null
+  let abmeldungen = null
   let marke = null
   let kampagnen = null
   let vorschauDaten = null
+  let vorschauOffen = true // die mitlaufende Vorschau neben dem Kampagnen-Editor
+  let vorschauBreite = 'desktop' // 'desktop' oder 'mobil'
+  let vorschauTakt = null // Zeitgeber: nicht bei jedem Tastendruck neu bauen
+  let sicherungTakt = null // Zeitgeber: Tippen speichert von selbst
+  let letzteVorschau = '' // zuletzt gezeigtes HTML, damit der Rahmen nicht grundlos neu lädt
   let meldung = null // Zugang-Reiter
   let testMeldung = null
+  let testNameMeldung = null
+  let testName = null // Eingaben im Namensformular, solange nicht gemerkt
   let kontaktMeldung = null
   let kampagneMeldung = null
   let vorschau = null // Textteil der Testmail
@@ -66,6 +72,11 @@ export async function starten(ctx) {
   let ki = { thema: '', ton: '' }
   let autos = null
   let laeufe = null
+  let vorlagen = null
+  let gewaehlteVorlage = null
+  let vorlageMeldung = null
+  let vorlageVorschau = null
+  let vorlageKi = { zweck: '', ton: '' }
   let autoMeldung = null
   let autoVorschau = null
   let bereich = 'uebersicht'
@@ -100,8 +111,10 @@ export async function starten(ctx) {
   const shopifyHolen = async () => (shopify = await stillHolen('shopifyLesen'))
   const markeHolen = async () => (marke = await stillHolen('markeLesen'))
   const kontakteHolen = async () => (kontakte = await stillHolen('kontakteLesen', { suche, anzahl: 100 }))
+  const abmeldungenHolen = async () => (abmeldungen = await stillHolen('abmeldungenLesen'))
   const kampagnenHolen = async () => (kampagnen = await stillHolen('kampagnenLesen'))
   const autosHolen = async () => (autos = await stillHolen('automationenLesen'))
+  const vorlagenHolen = async () => (vorlagen = await stillHolen('vorlagenLesen'))
   const laeufeHolen = async () => (laeufe = await stillHolen('laeufeLesen'))
   const protokollHolen = async () => (protokoll = (await stillHolen('protokollLesen', { anzahl: 50 })) || [])
 
@@ -111,11 +124,16 @@ export async function starten(ctx) {
     daten = { ...LEER, ...d }
     if (fehlt.length) await ctx.daten.speichern(daten)
     await Promise.all([zugangHolen(), drosselHolen(), schlangeHolen()])
-    if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen()])
-    if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen()])
-    if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen()])
+    if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
+    if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
+    if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
+    if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
     if (bereich === 'zugang') await markeHolen()
     if (bereich === 'protokoll') await protokollHolen()
+    // Vendo ruft laden() jede Minute auf, solange der Bereich offen ist. Bei offenem Editor
+    // nicht neu zeichnen: das würde das Code-Feld neu aufbauen, Cursor und Scrollstelle
+    // wären weg — mitten im Tippen. Gespeichert wird dort ohnehin von selbst.
+    if (offenerEditor()) return
     zeichnen()
   }
 
@@ -152,11 +170,12 @@ export async function starten(ctx) {
     const aktiv = daten.automationen.filter((a) => a.aktiv).length
     const empfaenger = daten.kontakte.filter((k) => !k.gesperrt && k.zustimmungAm).length
     const laufen = daten.kampagnen.filter((k) => k.zustand === 'laeuft' || k.zustand === 'geplant').length
+    const freigaben = daten.kampagnen.filter((k) => k.zustand === 'freigabe').length
     const p = postfachStand()
     return `
       <div class="nl-kacheln">
         <div class="nl-kachel"><span class="nl-kachel-name">Empfänger</span>${zahl(empfaenger)}<small>mit Zustimmung, nicht gesperrt</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Kampagnen</span>${zahl(daten.kampagnen)}<small>${laufen} geplant oder laufend</small></div>
+        <div class="nl-kachel"><span class="nl-kachel-name">Kampagnen</span>${zahl(daten.kampagnen)}<small>${laufen} geplant oder laufend${freigaben ? ` · <strong>${freigaben} warten auf deine Freigabe</strong>` : ''}</small></div>
         <div class="nl-kachel"><span class="nl-kachel-name">Automationen</span>${zahl(aktiv)}<small>davon aktiv</small></div>
         <div class="nl-kachel"><span class="nl-kachel-name">Postfach</span><span class="nl-stand ${p.klasse}">${m(p.text)}</span><small>${m(p.hinweis)}</small></div>
         ${versandKachel()}
@@ -187,100 +206,155 @@ export async function starten(ctx) {
       .join('')
   }
 
-  // `schrittNummer` ist gesetzt, wenn die Karte zu einem Automationsschritt gehört
-  function bausteinKarte(baustein, stelle, felder, schrittNummer = null) {
-    const inSchritt = schrittNummer !== null
-    const zusatz = inSchritt ? ` data-nummer="${schrittNummer}"` : ''
-    const eigene = felder[baustein.art] || []
-    const eingaben = eigene
-      .map((feld) => {
-        const wert = baustein[feld] ?? ''
-        return LANG.has(feld)
-          ? `<label>${m(feld)}<textarea data-feld="${m(feld)}" rows="4">${m(wert)}</textarea></label>`
-          : `<label>${m(feld)}<input data-feld="${m(feld)}" value="${m(wert)}" /></label>`
-      })
-      .join('')
-    const fest = baustein.art === 'kopf' || baustein.art === 'fuss'
+  // Die linke Fläche: das Code-Feld. Gleich für Kampagnen und Vorlagen — beide haben
+  // denselben Inhalt, nur ein anderes Drumherum.
+  function inhaltFlaeche(art, obj, laeuft = false) {
+    const werkzeuge = `
+      <label class="nl-haken nl-klein"><input type="checkbox" name="htmlRahmen" ${obj.htmlRahmen !== false ? 'checked' : ''} ${laeuft ? 'disabled' : ''} /> Vendo-Rahmen</label>
+      <button class="knopf-mini" data-nl="html-beispiel" type="button" ${laeuft ? 'disabled' : ''} title="Eine schlichte Startmail einsetzen">Beispiel</button>`
+
     return `
-      <div class="nl-baustein" data-baustein data-art="${m(baustein.art)}">
-        <div class="nl-baustein-kopf">
-          <span class="nl-baustein-art">${m(baustein.art)}${fest ? ' (fest)' : ''}</span>
-          <span class="nl-baustein-knoepfe">
-            <button class="knopf-mini" data-nl="${inSchritt ? 'auto-baustein-hoch' : 'baustein-hoch'}" data-stelle="${stelle}"${zusatz} type="button" title="nach oben">↑</button>
-            <button class="knopf-mini" data-nl="${inSchritt ? 'auto-baustein-runter' : 'baustein-runter'}" data-stelle="${stelle}"${zusatz} type="button" title="nach unten">↓</button>
-            <button class="knopf-mini" data-nl="${inSchritt ? 'auto-baustein-weg' : 'baustein-weg'}" data-stelle="${stelle}"${zusatz} type="button" title="entfernen">✕</button>
-          </span>
+      <section class="nl-flaeche nl-links">
+        <div class="nl-flaeche-kopf">
+          <span class="nl-flaeche-titel">Code</span>
+          <span class="nl-flaeche-werkzeuge">${werkzeuge}</span>
         </div>
-        ${eingaben || '<p class="nl-form-text leise">Ohne Angaben.</p>'}
+        ${art === 'kampagne' && !laeuft ? `<div class="nl-flaeche-leiste">${vorlageWahl('kampagne', obj.id)}</div>` : ''}
+        <div class="nl-code-feld" data-code-feld>
+          <pre class="nl-code-zeilen" data-code-zeilen aria-hidden="true">1</pre>
+          <textarea class="nl-code" data-html-code name="html" spellcheck="false" wrap="off" ${laeuft ? 'disabled' : ''} placeholder="&lt;!-- Dein Mail-HTML. Tabellen und Inline-CSS halten in Outlook, Flexbox und Grid nicht. --&gt;">${m(obj.html || '')}</textarea>
+        </div>
+        <p class="nl-flaeche-fuss">{{vorname}}, {{nachname}}, {{name}} und {{email}} werden pro
+        Empfänger ersetzt und dabei maskiert. Skripte, Rahmen und Formulare entfernt Vendo beim
+        Versand; Abmeldelink und Impressum kommen immer dazu.</p>
+      </section>`
+  }
+
+  // Die Angaben rechts über der Vorschau: Empfänger, Betreff, Vorschautext, Absender.
+  // Dieselben Felder wie vorher, nur als ruhige Zeilen statt als Formularblock — sie
+  // stehen neben der Mail, nicht über dem Code.
+  function detailKarte(k, laeuft) {
+    const absender = zugang?.benutzer
+      ? `${zugang.absenderName ? `${m(zugang.absenderName)} · ` : ''}<span class="nl-detail-adresse">${m(zugang.benutzer)}</span>`
+      : '<span class="leise">noch kein Postfach eingetragen</span>'
+    return `
+      <details class="nl-detail-karte" data-detail-karte open>
+        <summary><span>E-Mail-Details</span></summary>
+        <div class="nl-detail-zeilen">
+          <div class="nl-detail-zeile">
+            <span class="nl-detail-name">An</span>
+            <span class="nl-detail-wert">${Number(kampagnen.empfaenger) || 0} Empfänger mit Zustimmung</span>
+          </div>
+          <label class="nl-detail-zeile">
+            <span class="nl-detail-name">Betreff</span>
+            <input name="betreff" maxlength="200" value="${m(k.betreff)}" ${laeuft ? 'disabled' : ''} placeholder="z. B. Neu im Shop: {{vorname}}, schau mal" />
+          </label>
+          <label class="nl-detail-zeile">
+            <span class="nl-detail-name">Vorschautext</span>
+            <input name="vorschauText" maxlength="200" value="${m(k.vorschauText)}" ${laeuft ? 'disabled' : ''} placeholder="steht im Postfach neben dem Betreff" />
+          </label>
+          <label class="nl-detail-zeile">
+            <span class="nl-detail-name">Name</span>
+            <input name="name" maxlength="80" value="${m(k.name)}" ${laeuft ? 'disabled' : ''} />
+          </label>
+          <div class="nl-detail-zeile">
+            <span class="nl-detail-name">Von</span>
+            <span class="nl-detail-wert">${absender}</span>
+          </div>
+        </div>
+      </details>`
+  }
+
+  // Alles, was nicht ständig gebraucht wird: Zeitpunkt, Luzzy, Löschen. Unter den beiden
+  // Flächen, damit Code und Vorschau die Höhe bekommen.
+  function kampagneFuss(k, laeuft) {
+    return `
+      <div class="nl-kampagne-fuss">
+        <details class="nl-klapp">
+          <summary>Zu einem Zeitpunkt senden</summary>
+          <div class="nl-zeile nl-klapp-inhalt">
+            <input name="geplantAm" type="datetime-local" form="kampagne-form" value="${k.geplantAm ? new Date(k.geplantAm - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}" ${laeuft ? 'disabled' : ''} />
+            <button class="knopf-flach" data-nl="kampagne-planen" type="button" ${laeuft ? 'disabled' : ''}>Planen</button>
+            <span class="leise">Läuft nur, solange Vendo an ist; ein verstrichener Zeitpunkt wird bis zu 24 Stunden nachgeholt.</span>
+          </div>
+        </details>
+        ${kiBlock(k, laeuft)}
+        <div class="nl-knoepfe">
+          <button class="knopf-flach gefahr" data-nl="kampagne-weg" type="button" ${laeuft ? 'disabled' : ''}>Kampagne löschen</button>
+        </div>
+      </div>`
+  }
+
+  // Ein Bot hat die Kampagne zur Freigabe gegeben. Gesendet wird erst, wenn Felix hier
+  // bestätigt — der Bot selbst kann weder planen noch senden (siehe bots.js).
+  function freigabeKasten(k) {
+    const f = k.freigabe || {}
+    const lokal = (ms) => (ms ? new Date(ms - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '')
+    const testmail = f.testmail?.ok
+      ? 'Die Testmail ist in deinem Postfach — sieh sie dir dort an.'
+      : `Die Testmail kam nicht raus${f.testmail?.text ? `: ${m(f.testmail.text)}` : ''}. Schick dir oben eine „Testmail an mich“.`
+    return `
+      <div class="nl-freigabe">
+        <div class="nl-freigabe-text">
+          <strong>${m(f.von || 'Ein Bot')} hat diese Kampagne zur Freigabe geschickt</strong>${f.angefragtAm ? ` (${m(zeit(f.angefragtAm))})` : ''}.
+          ${testmail}
+          ${f.gewuenschtAm ? `Gewünschter Termin: <strong>${m(zeit(f.gewuenschtAm))}</strong>.` : 'Einen Termin hat der Bot nicht vorgeschlagen.'}
+          Ohne deine Bestätigung geht nichts raus.
+        </div>
+        <div class="nl-zeile nl-freigabe-knoepfe">
+          <input type="datetime-local" data-freigabe-zeit value="${lokal(f.gewuenschtAm)}" />
+          <button class="knopf-gold" data-nl="kampagne-freigeben" type="button">Freigeben und planen</button>
+          <button class="knopf-flach" data-nl="kampagne-entwurf" type="button">Zurück in den Entwurf</button>
+        </div>
       </div>`
   }
 
   function kampagneEditor() {
     const k = kampagnen.liste.find((x) => x.id === gewaehlt)
-    if (!k) return '<div class="nl-leer"><p class="leise">Links eine Kampagne wählen oder eine neue anlegen.</p></div>'
+    if (!k) return ''
     const laeuft = k.zustand === 'laeuft'
-    const arten = (kampagnen.arten || []).filter((a) => a !== 'kopf' && a !== 'fuss')
     return `
-      <form class="nl-form" data-kampagne-form data-id="${m(k.id)}">
-        <div class="nl-form-kopf nl-protokoll-kopf">
-          <h3>${m(k.name)} — ${m(ZUSTAND_TEXT[k.zustand] || k.zustand)}</h3>
+      <div class="nl-kampagne">
+        <div class="nl-kampagne-kopf">
+          <span class="nl-kampagne-titel">
+            <button class="knopf-flach" data-nl="kampagne-zu" type="button" title="Zurück zur Liste">← Kampagnen</button>
+            <strong>${m(k.name)}</strong>
+            <span class="nl-marke-klein">${m(ZUSTAND_TEXT[k.zustand] || k.zustand)}</span>
+            <span class="nl-stand-anzeige" data-stand></span>
+          </span>
           <span class="nl-knoepfe">
-            <button class="knopf-flach" data-nl="kampagne-vorschau" type="button">Vorschau</button>
-            <button class="knopf-flach gefahr" data-nl="kampagne-weg" type="button" ${laeuft ? 'disabled' : ''}>Löschen</button>
+            <button class="knopf-flach" type="submit" form="kampagne-form" ${laeuft ? 'disabled' : ''}>Speichern</button>
+            <button class="knopf-flach" data-nl="kampagne-test" type="button" ${zugang?.passwortGesetzt ? '' : 'disabled'}>Testmail an mich</button>
+            <button class="knopf-gold" data-nl="kampagne-start" type="button" ${laeuft ? 'disabled' : ''}>Jetzt an alle senden</button>
+            ${k.zustand === 'laeuft' || k.zustand === 'geplant' ? '<button class="knopf-flach gefahr" data-nl="kampagne-stop" type="button">Abbrechen</button>' : ''}
+            ${k.zustand === 'fertig' || k.zustand === 'abgebrochen' ? '<button class="knopf-flach" data-nl="kampagne-entwurf" type="button">Zurück zum Entwurf</button>' : ''}
           </span>
         </div>
 
         ${laeuft ? '<div class="nl-warnung">Die Kampagne läuft. Zum Ändern erst abbrechen.</div>' : ''}
-
-        <div class="nl-form-paar">
-          <label>Name <input name="name" maxlength="80" value="${m(k.name)}" ${laeuft ? 'disabled' : ''} /></label>
-          <label>Empfänger <input value="${Number(kampagnen.empfaenger) || 0} mit Zustimmung" readonly /></label>
-        </div>
-        <label>Betreff
-          <input name="betreff" maxlength="200" value="${m(k.betreff)}" ${laeuft ? 'disabled' : ''} placeholder="z. B. Neu im Shop: {{vorname}}, schau mal" />
-          <small>{{vorname}}, {{nachname}}, {{name}} und {{email}} werden pro Empfänger ersetzt.</small></label>
-        <label>Vorschautext
-          <input name="vorschauText" maxlength="200" value="${m(k.vorschauText)}" ${laeuft ? 'disabled' : ''} />
-          <small>Steht im Postfach neben dem Betreff, nicht in der Mail selbst.</small></label>
-
-        <div class="nl-form-kopf"><h3>Bausteine</h3></div>
-        <p class="nl-form-text">Kopf und Fuß werden automatisch ergänzt — der Fuß trägt
-        Abmeldelink und Impressum. Dazwischen bestimmst du (oder Luzzy) den Inhalt.</p>
-        <div class="nl-bausteine" data-bausteine>
-          ${(k.bausteine || []).map((b, i) => bausteinKarte(b, i, kampagnen.felder || {})).join('')}
-        </div>
-        <div class="nl-knoepfe">
-          <select data-neue-art ${laeuft ? 'disabled' : ''}>${arten.map((a) => `<option value="${m(a)}">${m(a)}</option>`).join('')}</select>
-          <button class="knopf-flach" data-nl="baustein-neu" type="button" ${laeuft ? 'disabled' : ''}>Baustein hinzufügen</button>
-        </div>
-
-        <div class="nl-knoepfe nl-abschnitt">
-          <button class="knopf-gold" type="submit" ${laeuft ? 'disabled' : ''}>Speichern</button>
-          <button class="knopf-flach" data-nl="kampagne-test" type="button" ${zugang?.passwortGesetzt ? '' : 'disabled'}>Testmail an mich</button>
-          <button class="knopf-flach" data-nl="kampagne-start" type="button" ${laeuft ? 'disabled' : ''}>Jetzt an alle senden</button>
-          ${k.zustand === 'laeuft' || k.zustand === 'geplant' ? '<button class="knopf-flach gefahr" data-nl="kampagne-stop" type="button">Abbrechen</button>' : ''}
-          ${k.zustand === 'fertig' || k.zustand === 'abgebrochen' ? '<button class="knopf-flach" data-nl="kampagne-entwurf" type="button">Zurück zum Entwurf</button>' : ''}
-        </div>
-        <label>Oder zu einem Zeitpunkt senden
-          <span class="nl-zeile">
-            <input name="geplantAm" type="datetime-local" value="${k.geplantAm ? new Date(k.geplantAm - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}" ${laeuft ? 'disabled' : ''} />
-            <button class="knopf-flach" data-nl="kampagne-planen" type="button" ${laeuft ? 'disabled' : ''}>Planen</button>
-          </span>
-          <small>Läuft nur, solange Vendo an ist. Ein verstrichener Zeitpunkt wird beim Start
-          nachgeholt, aber nur innerhalb von 24 Stunden.</small></label>
+        ${k.zustand === 'freigabe' ? freigabeKasten(k) : ''}
         ${meldungsZeile(kampagneMeldung)}
-      </form>
-      ${kiBlock(k, laeuft)}
-      ${vorschauBlock()}`
+
+        <form class="nl-kampagne-flaechen" id="kampagne-form" data-kampagne-form data-id="${m(k.id)}">
+          ${inhaltFlaeche('kampagne', k, laeuft)}
+          <aside class="nl-rechts">
+            ${detailKarte(k, laeuft)}
+            ${vorschauSpalte()}
+          </aside>
+        </form>
+
+        ${kampagneFuss(k, laeuft)}
+      </div>`
   }
 
   function kiBlock(k, laeuft) {
     return `
       <form class="nl-form nl-abschnitt" data-ki-form data-id="${m(k.id)}">
         <div class="nl-form-kopf"><h3>Von Luzzy entwerfen lassen</h3></div>
-        <p class="nl-form-text">Luzzy bekommt die erlaubten Bausteine beschrieben und antwortet
-        mit Inhalt — kein HTML. Übernommen werden Betreff, Vorschautext und die Bausteine
-        zwischen Kopf und Fuß. Danach selbst prüfen und eine Testmail schicken.</p>
+        <p class="nl-form-text">Luzzy schreibt kein Markup: sie bekommt geprüfte Bausteine
+        beschrieben und antwortet mit Inhalt, Vendo macht daraus Tabellen-HTML. Übernommen
+        werden Betreff, Vorschautext und der Inhalt — <strong>das bisherige HTML wird dabei
+        ersetzt</strong>. Danach selbst prüfen und eine Testmail schicken.</p>
         <div class="nl-form-paar">
           <label>Thema <input name="thema" maxlength="200" value="${m(ki.thema)}" placeholder="z. B. Herbstaktion, drei neue Motive" ${laeuft ? 'disabled' : ''} /></label>
           <label>Tonfall (optional) <input name="ton" maxlength="120" value="${m(ki.ton)}" placeholder="z. B. kurz, direkt, kein Werbesprech" ${laeuft ? 'disabled' : ''} /></label>
@@ -289,42 +363,204 @@ export async function starten(ctx) {
       </form>`
   }
 
-  function vorschauBlock() {
-    if (!vorschauDaten) return ''
-    if (!vorschauDaten.ok) return `<div class="nl-abschnitt">${meldungsZeile({ ok: false, text: vorschauDaten.text || 'Vorschau nicht möglich.' })}</div>`
+  // Die mitlaufende Vorschau rechts neben dem Editor. Der Rahmen bleibt beim Tippen stehen
+  // und wird nur noch gefüllt (siehe vorschauFuellen) — ein Neuzeichnen würde den Fokus im
+  // Textfeld verlieren und die Scrollstelle verwerfen.
+  function vorschauSpalte() {
+    const art = offenerEditor()
+    if (!art) return ''
+    if (!vorschauOffen) {
+      return `
+        <section class="nl-flaeche nl-vorschau-spalte">
+          <div class="nl-flaeche-kopf">
+            <span class="nl-flaeche-titel">Vorschau</span>
+            <button class="knopf-mini" data-nl="vorschau-umschalten" type="button">einblenden</button>
+          </div>
+        </section>`
+    }
+    const d = art === 'vorlage' ? vorlageVorschau : vorschauDaten
     return `
-      <div class="nl-abschnitt">
-        <div class="nl-form-kopf nl-protokoll-kopf">
-          <h3>Vorschau</h3>
-          <button class="knopf-flach" data-nl="vorschau-zu" type="button">Schließen</button>
+      <section class="nl-flaeche nl-vorschau-spalte" data-vorschau-spalte>
+        <div class="nl-flaeche-kopf">
+          <span class="nl-flaeche-titel">Vorschau</span>
+          <span class="nl-flaeche-werkzeuge">
+            <span class="nl-umschalter">
+              <button class="nl-umschalt-knopf${vorschauBreite === 'desktop' ? ' gewaehlt' : ''}" data-nl="vorschau-breite" data-breite="desktop" type="button">Rechner</button>
+              <button class="nl-umschalt-knopf${vorschauBreite === 'mobil' ? ' gewaehlt' : ''}" data-nl="vorschau-breite" data-breite="mobil" type="button">Handy</button>
+            </span>
+            <button class="knopf-mini" data-nl="vorschau-umschalten" type="button">ausblenden</button>
+          </span>
         </div>
-        <p class="nl-form-text">Betreff: <strong>${m(vorschauDaten.betreff || '')}</strong> · Beispielkontakt: ${m(vorschauDaten.beispielAdresse || '')}</p>
-        ${vorschauDaten.hinweise?.length ? `<div class="nl-warnung">${m(vorschauDaten.hinweise.join(' '))}</div>` : ''}
-        <iframe class="nl-vorschau-rahmen" sandbox="" srcdoc="${m(vorschauDaten.html)}" title="Vorschau der Mail"></iframe>
-        <div class="nl-vorschau"><div class="nl-vorschau-titel">Textteil für Programme ohne HTML</div><pre>${m(vorschauDaten.text || '')}</pre></div>
-      </div>`
+        <p class="nl-vorschau-zeile" data-vorschau-kopf>${d?.ok ? `Beispielkontakt: ${m(d.beispielAdresse || '')}` : 'Wird aufgebaut …'}</p>
+        <div class="nl-vorschau-warnung" data-vorschau-hinweise>${d?.ok && d.hinweise?.length ? `<div class="nl-warnung">${m(d.hinweise.join(' '))}</div>` : ''}${d?.ok && d.gesaeubert ? `<div class="nl-vorschau-gesaeubert">${m(d.gesaeubert)}</div>` : ''}</div>
+        <div class="nl-vorschau-buehne${vorschauBreite === 'mobil' ? ' mobil' : ''}" data-vorschau-buehne>
+          <iframe class="nl-vorschau-rahmen" sandbox="" data-vorschau-rahmen srcdoc="${m(d?.ok ? d.html : '')}" title="Vorschau der Mail"></iframe>
+        </div>
+        <details class="nl-vorschau-text">
+          <summary>Textteil für Programme ohne HTML</summary>
+          <pre data-vorschau-text>${m(d?.ok ? d.text || '' : '')}</pre>
+        </details>
+      </section>`
   }
 
   function kampagnenAnsicht() {
     if (!kampagnen) {
       return '<div class="nl-leer"><p>Der Hintergrundteil ist nicht erreichbar.</p><p class="leise">Vendo einmal neu starten.</p></div>'
     }
+    // Ist eine Kampagne offen, gehört der Platz ihr: Code links, Mail rechts. Die Liste
+    // steht dann hinter „← Kampagnen".
+    if (gewaehlt && kampagnen.liste.some((k) => k.id === gewaehlt)) return kampagneEditor()
     return `
-      <div class="nl-zwei">
-        <div class="nl-spalte">
-          <div class="nl-form-kopf nl-protokoll-kopf">
-            <h3>Kampagnen</h3>
-            <button class="knopf-flach" data-nl="kampagne-neu" type="button">+ Neu</button>
-          </div>
-          ${kampagnenListe()}
+      <div class="nl-kampagnen-liste">
+        <div class="nl-form-kopf nl-protokoll-kopf">
+          <h3>Kampagnen</h3>
+          <button class="knopf-gold" data-nl="kampagne-neu" type="button">+ Neue Kampagne</button>
         </div>
-        <div class="nl-spalte-breit">${kampagneEditor()}</div>
+        ${meldungsZeile(kampagneMeldung)}
+        <div class="nl-karten">${kampagnenListe()}</div>
+      </div>`
+  }
+
+  // ── Vorlagen ──
+
+  // Auswahlfeld, das überall dort steht, wo eine Vorlage angewendet werden kann
+  function vorlageWahl(ziel, id, schritt = null) {
+    if (!vorlagen?.liste?.length) {
+      return `<p class="nl-form-text leise">Noch keine Vorlage. Im Reiter „Vorlagen“ eine anlegen oder von Luzzy entwerfen lassen.</p>`
+    }
+    const kennung = `${ziel}:${id}${schritt === null ? '' : `:${schritt}`}`
+    return `
+      <div class="nl-zeile">
+        <select data-vorlage-wahl="${m(kennung)}">
+          <option value="">Vorlage wählen …</option>
+          ${vorlagen.liste.map((v) => `<option value="${m(v.id)}">${m(v.name)}</option>`).join('')}
+        </select>
+        <button class="knopf-flach" data-nl="vorlage-anwenden" data-ziel="${m(ziel)}" data-id="${m(id)}"${schritt === null ? '' : ` data-nummer="${schritt}"`} type="button">Übernehmen</button>
+        <button class="knopf-flach" data-nl="vorlage-sichern" data-ziel="${m(ziel)}" data-id="${m(id)}"${schritt === null ? '' : ` data-nummer="${schritt}"`} type="button">Als Vorlage sichern</button>
+      </div>`
+  }
+
+  function vorlagenListe() {
+    if (!vorlagen?.liste?.length) return '<p class="nl-form-text leise">Noch keine Vorlage.</p>'
+    // Jede Karte zeigt oben einen Ausschnitt der fertigen Mail: die echte Mail, verkleinert,
+    // nur der obere Teil sichtbar. Ein Element mit Rolle „button“ statt <button>, weil ein
+    // Rahmen in einem Knopf nicht vorgesehen ist; der Rahmen selbst nimmt keine Klicks an.
+    return vorlagen.liste
+      .map(
+        (v) => `
+        <div class="nl-karte nl-vorlage-karte${v.id === gewaehlteVorlage ? ' gewaehlt' : ''}" data-nl="vorlage-auf" data-id="${m(v.id)}" role="button" tabindex="0" aria-label="Vorlage ${m(v.name)} öffnen">
+          <span class="nl-mini" aria-hidden="true">
+            ${v.vorschau ? `<iframe sandbox="" tabindex="-1" loading="lazy" title="" srcdoc="${m(v.vorschau)}"></iframe>` : ''}
+          </span>
+          <span class="nl-karte-name">${m(v.name)}</span>
+          <span class="nl-karte-info">${v.felder?.length ? `${v.felder.length} Felder` : 'ohne Felder'} · ${v.geaendertAm ? zeit(v.geaendertAm) : 'neu'}${v.hinweise?.length ? ' · unvollständig' : ''}</span>
+          <span class="nl-karte-betreff">${m(v.beschreibung || '')}</span>
+        </div>`
+      )
+      .join('')
+  }
+
+  // Rechts neben dem Code: wofür die Vorlage da ist. Eine Vorlage hat keinen Betreff und
+  // keine Empfänger — deshalb stehen hier Name, Zweck und der Weg in die Kampagne.
+  function vorlageDetailKarte(v) {
+    return `
+      <details class="nl-detail-karte" open>
+        <summary><span>Vorlagen-Details</span></summary>
+        <div class="nl-detail-zeilen">
+          <label class="nl-detail-zeile">
+            <span class="nl-detail-name">Name</span>
+            <input name="name" maxlength="80" value="${m(v.name)}" />
+          </label>
+          <label class="nl-detail-zeile">
+            <span class="nl-detail-name">Wofür</span>
+            <input name="beschreibung" maxlength="200" value="${m(v.beschreibung)}" placeholder="z. B. Produktvorstellung mit Bild" />
+          </label>
+          <div class="nl-detail-zeile">
+            <span class="nl-detail-name">Felder</span>
+            <span class="nl-detail-wert">${
+              v.felder?.length
+                ? v.felder.map((f) => `<span class="nl-feld" title="${m(f.hinweis || '')}">${m(f.name)}</span>`).join(' ')
+                : '<span class="nl-rot">Keine markiert — ohne data-feld ist das eine fertige Mail, keine Vorlage.</span>'
+            }</span>
+          </div>
+          <div class="nl-detail-zeile">
+            <span class="nl-detail-name">Anwenden</span>
+            <span class="nl-detail-wert leise">In einer Kampagne über „Vorlage wählen“, und auf jeden einzelnen Automationsschritt.</span>
+          </div>
+        </div>
+      </details>`
+  }
+
+  function vorlageEditor() {
+    const v = vorlagen.liste.find((x) => x.id === gewaehlteVorlage)
+    if (!v) return ''
+    return `
+      <div class="nl-kampagne">
+        <div class="nl-kampagne-kopf">
+          <span class="nl-kampagne-titel">
+            <button class="knopf-flach" data-nl="vorlage-zu" type="button" title="Zurück zur Liste">← Vorlagen</button>
+            <strong>${m(v.name)}</strong>
+            <span class="nl-stand-anzeige" data-stand></span>
+          </span>
+          <span class="nl-knoepfe">
+            <button class="knopf-flach" type="submit" form="vorlage-form">Speichern</button>
+            <button class="knopf-flach" data-nl="vorlage-test" type="button" ${zugang?.passwortGesetzt ? '' : 'disabled'}>Testmail an mich</button>
+            <button class="knopf-flach gefahr" data-nl="vorlage-weg" type="button">Löschen</button>
+          </span>
+        </div>
+
+        ${v.hinweise?.length ? `<div class="nl-warnung">${m(v.hinweise.join(' '))}</div>` : ''}
+        ${meldungsZeile(vorlageMeldung)}
+
+        <form class="nl-kampagne-flaechen" id="vorlage-form" data-vorlage-form data-id="${m(v.id)}">
+          ${inhaltFlaeche('vorlage', v)}
+          <aside class="nl-rechts">
+            ${vorlageDetailKarte(v)}
+            ${vorschauSpalte()}
+          </aside>
+        </form>
+
+        <div class="nl-kampagne-fuss">${vorlageKiBlock(v)}</div>
+      </div>`
+  }
+
+  function vorlageKiBlock(v) {
+    return `
+      <form class="nl-form nl-abschnitt" data-vorlage-ki-form data-id="${m(v ? v.id : '')}">
+        <div class="nl-form-kopf"><h3>Von Luzzy entwerfen lassen</h3></div>
+        <p class="nl-form-text">Luzzy entwirft die Form, nicht den fertigen Text: Aufbau mit
+        Beispielinhalt, jede Stelle, die pro Kampagne neu geschrieben wird, als Feld markiert. ${v ? 'Übernommen wird in die offene Vorlage.' : 'Es entsteht eine neue Vorlage.'}</p>
+        <div class="nl-form-paar">
+          <label>Wofür ist die Vorlage? <input name="zweck" maxlength="200" value="${m(vorlageKi.zweck)}" placeholder="z. B. neues Produkt mit Bild und Knopf" /></label>
+          <label>Tonfall (optional) <input name="ton" maxlength="120" value="${m(vorlageKi.ton)}" placeholder="z. B. kurz, direkt" /></label>
+        </div>
+        <div class="nl-knoepfe">
+          <button class="knopf-gold" type="submit">Luzzy fragen</button>
+          ${v ? '<button class="knopf-flach" data-nl="vorlage-ki-neu" type="button">Als neue Vorlage</button>' : ''}
+        </div>
+      </form>`
+  }
+
+  function vorlagenAnsicht() {
+    if (!vorlagen) return '<div class="nl-leer"><p>Der Hintergrundteil ist nicht erreichbar.</p><p class="leise">Vendo einmal neu starten.</p></div>'
+    if (gewaehlteVorlage && vorlagen.liste.some((v) => v.id === gewaehlteVorlage)) return vorlageEditor()
+    return `
+      <div class="nl-kampagnen-liste">
+        <div class="nl-form-kopf nl-protokoll-kopf">
+          <h3>Vorlagen</h3>
+          <button class="knopf-gold" data-nl="vorlage-neu" type="button">+ Neue Vorlage</button>
+        </div>
+        ${meldungsZeile(vorlageMeldung)}
+        <p class="nl-form-text leise">Vorlagen legen fest, wie eine Mail aufgebaut ist.
+        In Kampagnen und in jedem Automationsschritt lässt sich eine auswählen.</p>
+        <div class="nl-karten">${vorlagenListe()}</div>
+        ${vorlageKiBlock(null)}
       </div>`
   }
 
   // ── Automationen ──
 
-  function automationSchritt(automation, schritt, nummer, felder) {
+  function automationSchritt(automation, schritt, nummer) {
     const stunden = Math.round((Number(schritt.nach) || 0) / STUNDE)
     const verfall = Math.round((Number(schritt.verfallNach) || 48 * STUNDE) / STUNDE)
     return `
@@ -345,19 +581,18 @@ export async function starten(ctx) {
             <small>Später nicht mehr senden — besser gar nicht als zu spät.</small></label>
         </div>
         <label>Betreff <input data-schrittfeld="betreff" maxlength="200" value="${m(schritt.betreff || '')}" /></label>
-        <div class="nl-bausteine">
-          ${(schritt.bausteine || []).map((b, i) => bausteinKarte(b, i, felder, nummer)).join('') || '<p class="nl-form-text leise">Noch kein Inhalt. Unten einen Baustein hinzufügen.</p>'}
+        ${vorlageWahl('automation', automation.id, nummer)}
+        <label class="nl-haken nl-klein"><input type="checkbox" data-schrittfeld="htmlRahmen" ${schritt.htmlRahmen !== false ? 'checked' : ''} /> Vendo-Rahmen (600 px, Markenfarben)</label>
+        <div class="nl-code-feld nl-code-schritt">
+          <textarea class="nl-code" data-schrittfeld="html" spellcheck="false" wrap="off" placeholder="&lt;!-- Mail-HTML für diesen Schritt --&gt;">${m(schritt.html || '')}</textarea>
         </div>
-        <div class="nl-knoepfe">
-          <select data-neue-art-schritt="${nummer}">${(kampagnen?.arten || ['titel', 'text', 'knopf', 'bild', 'produkt', 'trenner']).filter((a) => a !== 'kopf' && a !== 'fuss').map((a) => `<option value="${m(a)}">${m(a)}</option>`).join('')}</select>
-          <button class="knopf-flach" data-nl="auto-baustein-neu" data-id="${m(automation.id)}" data-nummer="${nummer}" type="button">Baustein hinzufügen</button>
-        </div>
+        <small>Abmeldelink und Impressum kommen beim Versand dazu. Mit „Vorschau“ ansehen,
+        mit „Testmail“ an dich selbst schicken.</small>
       </div>`
   }
 
   function automationKarte(automation) {
     const art = autos.arten.find((a) => a.art === automation.art)
-    const felder = kampagnen?.felder || {}
     const platzhalter = automation.art === 'warenkorb' ? ' Zusätzlich: {{warenkorb}}, {{warenkorbLink}}, {{summe}}.' : ''
     return `
       <form class="nl-form nl-abschnitt" data-auto-form data-id="${m(automation.id)}">
@@ -388,7 +623,7 @@ export async function starten(ctx) {
         Bestandskunden-Ausnahme in § 7 Abs. 3 UWG. Das ist kein Rechtsrat — im Zweifel
         angehakt lassen.</p>
 
-        ${(automation.schritte || []).map((s, i) => automationSchritt(automation, s, i, felder)).join('')}
+        ${(automation.schritte || []).map((s, i) => automationSchritt(automation, s, i)).join('')}
 
         <div class="nl-knoepfe nl-abschnitt">
           <button class="knopf-gold" type="submit">Speichern</button>
@@ -479,6 +714,47 @@ export async function starten(ctx) {
       </form>`
   }
 
+  function abmeldeBlock() {
+    if (!abmeldungen) return ''
+    const a = abmeldungen
+    const inbox = String(a.ordner || '').toUpperCase() === 'INBOX'
+    return `
+      <form class="nl-form nl-abschnitt" data-abmelde-form>
+        <div class="nl-form-kopf"><h3>Abmeldungen per Mail</h3></div>
+        <p class="nl-form-text">Der Abmeldelink in jeder Kampagne ist eine Mail an
+        <strong>${m(a.abmeldeAdresse || '(noch keine Adresse)')}</strong>. Vendo liest sie hier aus
+        und sperrt die Adresse — lokal und bei Shopify. Ohne das müsstest du jede Abmeldung von
+        Hand in der Liste sperren.</p>
+        <p class="nl-form-text leise">Richte dazu bei IONOS eine Filterregel ein, die solche
+        Mails in einen eigenen Ordner legt. Vendo liest nur diesen Ordner, markiert Verarbeitetes
+        als gelesen und löscht nichts — so kommen die Mails auch deinem Kundenservice nicht in
+        die Quere.</p>
+
+        <label class="nl-haken">
+          <input type="checkbox" name="aktiv" ${a.aktiv ? 'checked' : ''} ${a.postfachBereit ? '' : 'disabled'} />
+          Abmeldungen alle zehn Minuten einlesen
+        </label>
+        ${a.postfachBereit ? '' : '<div class="nl-warnung">Dafür müssen erst die Zugangsdaten des Postfachs eingetragen sein (Reiter „Zugang“).</div>'}
+
+        <div class="nl-form-paar">
+          <label>Ordner im Postfach
+            <input name="ordner" maxlength="120" value="${m(a.ordner)}" placeholder="${m(a.standardOrdner)}" />
+            <small>Genau wie im Postfach geschrieben.</small></label>
+          <label>Posteingangsserver
+            <input name="host" maxlength="120" value="${m(a.host)}" placeholder="${m(a.standardHost)}" />
+            <small>Port ${Number(a.port)} mit SSL/TLS.</small></label>
+        </div>
+        ${inbox ? '<div class="nl-warnung">INBOX ist dein normales Postfach — dort liegen auch die Kundenmails, die Hermes beobachtet. Vendo wertet dann nur Mails aus, deren Betreff nach einer Abmeldung aussieht. Ein eigener Ordner ist sicherer.</div>' : ''}
+        ${a.letzterLauf ? `<p class="nl-form-text leise">Zuletzt geprüft: ${m(zeit(a.letzterLauf))} — ${m(a.letzterText || '')}</p>` : ''}
+
+        <div class="nl-knoepfe">
+          <button class="knopf-gold" type="submit">Speichern</button>
+          <button class="knopf-flach" data-nl="abmelde-pruefen" type="button" ${a.postfachBereit ? '' : 'disabled'}>Verbindung prüfen</button>
+          <button class="knopf-flach" data-nl="abmelde-jetzt" type="button" ${a.postfachBereit ? '' : 'disabled'}>Jetzt einlesen</button>
+        </div>
+      </form>`
+  }
+
   function kontaktZeilen() {
     if (!kontakte?.liste?.length) {
       return `<div class="nl-leer"><p class="leise">${suche ? 'Keine Adresse passt zur Suche.' : 'Noch keine Kontakte. Oben bei Shopify holen oder eine CSV einfügen.'}</p></div>`
@@ -519,6 +795,7 @@ export async function starten(ctx) {
       </div>
       ${meldungsZeile(kontaktMeldung)}
       ${shopifyBlock()}
+      ${abmeldeBlock()}
       <form class="nl-form nl-abschnitt" data-import-form>
         <div class="nl-form-kopf"><h3>Adressen einfügen (CSV)</h3></div>
         <p class="nl-form-text">Erste Zeile ist die Kopfzeile, Trennzeichen wird erkannt. Ohne
@@ -650,7 +927,20 @@ export async function starten(ctx) {
   function testmailBlock() {
     if (!zugang?.passwortGesetzt) return ''
     const an = testmail.an || zugang.testAdresseWirksam || zugang.benutzer
+    const name = testName || { vorname: zugang.testVorname || '', nachname: zugang.testNachname || '' }
     return `
+      <form class="nl-form nl-abschnitt" data-testname-form>
+        <div class="nl-form-kopf"><h3>Name in Testmails</h3></div>
+        <p class="nl-form-text">Damit Testmails dich so anreden wie später deine Kunden: Vendo setzt
+        diesen Namen für {{vorname}}, {{nachname}} und {{name}} ein. Leer steht dort „Vorname“.
+        Gilt für alle Testmails, auch die zur Freigabe.</p>
+        <div class="nl-form-paar">
+          <label>Vorname <input name="vorname" maxlength="60" value="${m(name.vorname)}" placeholder="Vorname" /></label>
+          <label>Nachname <input name="nachname" maxlength="60" value="${m(name.nachname)}" placeholder="Nachname" /></label>
+        </div>
+        <div class="nl-knoepfe"><button class="knopf-gold" type="submit">Namen merken</button></div>
+        ${meldungsZeile(testNameMeldung)}
+      </form>
       <form class="nl-form nl-abschnitt" data-test-form>
         <div class="nl-form-kopf"><h3>Testmail (freier Inhalt)</h3></div>
         <p class="nl-form-text">Eine einzelne Mail, um Absender und Zustellung zu prüfen. Sie trägt
@@ -747,35 +1037,35 @@ export async function starten(ctx) {
             ? kontakteAnsicht()
             : bereich === 'kampagnen'
               ? kampagnenAnsicht()
-              : bereich === 'automationen'
+              : bereich === 'vorlagen'
+                ? vorlagenAnsicht()
+                : bereich === 'automationen'
                 ? automationenAnsicht()
                 : bereich === 'protokoll'
                   ? protokollAnsicht()
                   : geplant(bereich)
     $('[data-inhalt]').innerHTML = inhalt
+    if (offenerEditor()) {
+      zeilennummern()
+      if (vorschauOffen) {
+        // Die Spalte ist eben neu entstanden und leer: der Rahmen muss gefüllt werden,
+        // auch wenn dasselbe HTML herauskommt wie vorher.
+        letzteVorschau = ''
+        vorschauAuffrischen({ sofort: true })
+      }
+    }
   }
 
   // Eingaben festhalten, damit sie ein Neuzeichnen überleben
   function eingabenMerken() {
     const test = $('[data-test-form]')
     if (test) testmail = { an: test.an.value, betreff: test.betreff.value, inhalt: test.inhalt.value }
+    const nameForm = $('[data-testname-form]')
+    if (nameForm) testName = { vorname: nameForm.elements.namedItem('vorname').value, nachname: nameForm.elements.namedItem('nachname').value }
     const imp = $('[data-import-form]')
     if (imp) csvText = imp.csv.value
     const kiForm = $('[data-ki-form]')
     if (kiForm) ki = { thema: kiForm.thema.value, ton: kiForm.ton.value }
-  }
-
-  const karteLesen = (karte) => {
-    const baustein = { art: karte.dataset.art }
-    for (const feld of karte.querySelectorAll('[data-feld]')) baustein[feld.dataset.feld] = feld.value
-    return baustein
-  }
-
-  // Bausteine aus dem Kampagnen-Formular einsammeln
-  function bausteineAusForm() {
-    const behaelter = $('[data-bausteine]')
-    if (!behaelter) return null
-    return [...behaelter.querySelectorAll('[data-baustein]')].map(karteLesen)
   }
 
   // Schritte einer Automation aus ihrem Formular einsammeln
@@ -786,8 +1076,23 @@ export async function starten(ctx) {
       nach: Number(block.querySelector('[data-schrittfeld="nach"]')?.value || 0) * STUNDE,
       verfallNach: Number(block.querySelector('[data-schrittfeld="verfallNach"]')?.value || 48) * STUNDE,
       betreff: block.querySelector('[data-schrittfeld="betreff"]')?.value || '',
-      bausteine: [...block.querySelectorAll('[data-baustein]')].map(karteLesen)
+      html: block.querySelector('[data-schrittfeld="html"]')?.value || '',
+      htmlRahmen: block.querySelector('[data-schrittfeld="htmlRahmen"]')?.checked !== false
     }))
+  }
+
+  // Vorlage speichern, bevor etwas anderes damit passiert
+  async function vorlageSichern() {
+    const form = $('[data-vorlage-form]')
+    if (!form || !gewaehlteVorlage) return true
+    clearTimeout(sicherungTakt)
+    const ergebnis = await holen('vorlageSpeichern', { id: gewaehlteVorlage, ...vorlageAusForm() })
+    if (!ergebnis?.ok) {
+      vorlageMeldung = { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
+      return false
+    }
+    await vorlagenHolen()
+    return true
   }
 
   // Automation speichern, bevor etwas anderes damit passiert
@@ -808,17 +1113,143 @@ export async function starten(ctx) {
     return true
   }
 
+  // Welcher Editor ist offen? Kampagnen und Vorlagen teilen sich Code-Feld, Vorschau und
+  // Autospeichern — nur das Ziel ist ein anderes.
+  function offenerEditor() {
+    if (bereich === 'kampagnen' && gewaehlt) return 'kampagne'
+    if (bereich === 'vorlagen' && gewaehlteVorlage) return 'vorlage'
+    return null
+  }
+
+  // Was gerade im Vorlagen-Editor steht
+  function vorlageAusForm() {
+    const form = $('[data-vorlage-form]')
+    if (!form) return null
+    const feld = (wie) => form.elements.namedItem(wie)
+    const rahmen = feld('htmlRahmen')
+    return {
+      art: 'vorlage',
+      name: feld('name')?.value,
+      beschreibung: feld('beschreibung')?.value,
+      html: form.querySelector('[data-html-code]')?.value ?? undefined,
+      htmlRahmen: rahmen ? rahmen.checked : undefined
+    }
+  }
+
+  // Was gerade im Kampagnen-Editor steht — die Vorlage für Speichern und für die Vorschau.
+  function kampagneAusForm() {
+    const form = $('[data-kampagne-form]')
+    if (!form) return null
+    // Über namedItem, nicht über form.name: ein Formular hat selbst eine Eigenschaft `name`,
+    // die das gleichnamige Feld verdeckt — der neue Name käme sonst nie an.
+    const feld = (wie) => form.elements.namedItem(wie)
+    const rahmen = feld('htmlRahmen')
+    return {
+      name: feld('name')?.value,
+      betreff: feld('betreff')?.value,
+      vorschauText: feld('vorschauText')?.value,
+      html: form.querySelector('[data-html-code]')?.value ?? undefined,
+      htmlRahmen: rahmen ? rahmen.checked : undefined
+    }
+  }
+
+  // Kleine Anzeige im Kopf des Editors: ungespeichert / speichert / gespeichert.
+  // Wird unmittelbar gesetzt, ohne Neuzeichnen — sonst springt der Fokus aus dem Feld.
+  function standAnzeigen(text, klasse = '') {
+    for (const stelle of ctx.element.querySelectorAll('[data-stand]')) {
+      stelle.textContent = text
+      stelle.className = `nl-stand-anzeige ${klasse}`
+    }
+  }
+
+  // Tippen speichert von selbst. Ohne das geht im HTML-Feld bei jedem Reiterwechsel
+  // Arbeit verloren, und genau dort steckt die meiste.
+  function sicherungAnstossen() {
+    const art = offenerEditor()
+    if (!art) return
+    clearTimeout(sicherungTakt)
+    standAnzeigen('ungespeichert')
+    sicherungTakt = setTimeout(async () => {
+      if (offenerEditor() !== art) return
+      const vorher = art === 'vorlage' ? gewaehlteVorlage : gewaehlt
+      const ok = art === 'vorlage' ? await vorlageSichern() : await kampagneSichern()
+      // inzwischen eine andere Kampagne oder Vorlage offen: dann gilt deren Stand
+      if ((art === 'vorlage' ? gewaehlteVorlage : gewaehlt) !== vorher) return
+      standAnzeigen(ok ? 'gespeichert' : 'nicht gespeichert', ok ? '' : 'nl-rot')
+    }, 1200)
+  }
+
+  // Vorschau neu bauen — aus dem, was im Editor steht, ohne vorher zu speichern.
+  function vorschauAuffrischen({ sofort = false } = {}) {
+    const art = offenerEditor()
+    if (!vorschauOffen || !art) return
+    clearTimeout(vorschauTakt)
+    const bauen = async () => {
+      const entwurf = art === 'vorlage' ? vorlageAusForm() : kampagneAusForm()
+      if (!entwurf) return
+      const ergebnis = await holen('mailVorschau', entwurf)
+      if (offenerEditor() !== art) return
+      if (art === 'vorlage') vorlageVorschau = ergebnis
+      else vorschauDaten = ergebnis
+      vorschauFuellen(ergebnis)
+    }
+    if (sofort) return bauen()
+    vorschauTakt = setTimeout(bauen, 350)
+  }
+
+  // Zeilennummern neben dem Code-Feld. Eigenes <pre> statt eines Editors von außen: es
+  // braucht nur die Zahlen, und die Höhe je Zeile ist dieselbe wie im Textfeld.
+  function zeilennummern() {
+    const feld = $('[data-html-code]')
+    const leiste = $('[data-code-zeilen]')
+    if (!feld || !leiste) return
+    const anzahl = feld.value.split('\n').length
+    const sollte = `${anzahl}`
+    if (leiste.dataset.anzahl !== sollte) {
+      leiste.textContent = Array.from({ length: anzahl }, (_, i) => i + 1).join('\n')
+      leiste.dataset.anzahl = sollte
+    }
+    leiste.scrollTop = feld.scrollTop
+  }
+
+  // Nur die Vorschauspalte füllen, nicht die Ansicht neu zeichnen
+  function vorschauFuellen(d) {
+    const spalte = $('[data-vorschau-spalte]')
+    if (!spalte || !d) return
+    const kopf = spalte.querySelector('[data-vorschau-kopf]')
+    const hinweise = spalte.querySelector('[data-vorschau-hinweise]')
+    const rahmen = spalte.querySelector('[data-vorschau-rahmen]')
+    const text = spalte.querySelector('[data-vorschau-text]')
+    if (!d.ok) {
+      if (kopf) kopf.textContent = d.text || 'Vorschau nicht möglich.'
+      return
+    }
+    if (kopf) kopf.textContent = `Beispielkontakt: ${d.beispielAdresse || ''}`
+    if (hinweise) {
+      hinweise.innerHTML =
+        (d.hinweise?.length ? `<div class="nl-warnung">${m(d.hinweise.join(' '))}</div>` : '') +
+        (d.gesaeubert ? `<div class="nl-vorschau-gesaeubert">${m(d.gesaeubert)}</div>` : '')
+    }
+    // Nur erneuern, wenn sich wirklich etwas geändert hat — ein frischer Rahmen fängt oben
+    // an, und die Scrollstelle in der Vorschau wäre sonst bei jedem Tastendruck weg.
+    //
+    // Und zwar ersetzt statt beschrieben: einem Rahmen, der mit leerem `srcdoc` entstanden
+    // ist, später ein neues zuzuweisen lädt nichts nach — er bleibt weiß. Beim Einsetzen
+    // aus Markup zieht derselbe Inhalt. Nachgestellt und geprüft im Browser.
+    if (rahmen && d.html !== letzteVorschau) {
+      rahmen.insertAdjacentHTML('afterend', `<iframe class="nl-vorschau-rahmen" sandbox="" data-vorschau-rahmen srcdoc="${m(d.html)}" title="Vorschau der Mail"></iframe>`)
+      rahmen.remove()
+      letzteVorschau = d.html
+    }
+    if (text) text.textContent = d.text || ''
+  }
+
   // Kampagne speichern und neu laden. Gibt zurück, ob es geklappt hat.
   async function kampagneSichern() {
     const form = $('[data-kampagne-form]')
     if (!form || !gewaehlt) return true
-    const ergebnis = await holen('kampagneSpeichern', {
-      id: gewaehlt,
-      name: form.name?.value,
-      betreff: form.betreff?.value,
-      vorschauText: form.vorschauText?.value,
-      bausteine: bausteineAusForm()
-    })
+    clearTimeout(sicherungTakt)
+    const ergebnis = await holen('kampagneSpeichern', { id: gewaehlt, ...kampagneAusForm() })
     if (!ergebnis?.ok) {
       kampagneMeldung = { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
       return false
@@ -833,15 +1264,19 @@ export async function starten(ctx) {
     const reiter = e.target.closest('[data-bereich]')
     if (reiter) {
       eingabenMerken()
+      // Erst sichern, dann weg: im HTML-Feld steckt zu viel Arbeit für ein stilles Vergessen.
+      if (bereich === 'kampagnen' && gewaehlt) await kampagneSichern()
+      if (bereich === 'vorlagen' && gewaehlteVorlage) await vorlageSichern()
       bereich = reiter.dataset.bereich
-      meldung = testMeldung = kontaktMeldung = kampagneMeldung = autoMeldung = null
+      meldung = testMeldung = testNameMeldung = kontaktMeldung = kampagneMeldung = autoMeldung = null
       vorschau = null
       vorschauDaten = null
       autoVorschau = null
       if (bereich === 'zugang' || bereich === 'uebersicht') await Promise.all([zugangHolen(), drosselHolen(), schlangeHolen(), markeHolen()])
-      if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen()])
-      if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen()])
-      if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), kampagnenHolen()])
+      if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
+      if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
+      if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
+      if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), kampagnenHolen(), vorlagenHolen()])
       if (bereich === 'protokoll') await Promise.all([protokollHolen(), schlangeHolen()])
       return zeichnen()
     }
@@ -917,7 +1352,7 @@ export async function starten(ctx) {
       zeichnen()
       const ergebnis = await holen('kontakteSynchronisieren')
       kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Sync nicht möglich.' }
-      await Promise.all([shopifyHolen(), kontakteHolen()])
+      await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
       return zeichnen()
     }
     if (aktion === 'shopify-weg') {
@@ -928,6 +1363,22 @@ export async function starten(ctx) {
       await shopifyHolen()
       return zeichnen()
     }
+    if (aktion === 'abmelde-pruefen') {
+      kontaktMeldung = { ok: true, text: 'Prüfe die Verbindung zum Postfach …' }
+      zeichnen()
+      const ergebnis = await holen('abmeldungenVerbindungPruefen')
+      kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Prüfung nicht möglich.' }
+      return zeichnen()
+    }
+    if (aktion === 'abmelde-jetzt') {
+      kontaktMeldung = { ok: true, text: 'Lese Abmeldungen …' }
+      zeichnen()
+      const ergebnis = await holen('abmeldungenPruefen')
+      kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      await Promise.all([kontakteHolen(), abmeldungenHolen()])
+      return zeichnen()
+    }
+
     if (aktion === 'sperren' && email) {
       const ja = await ctx.bestaetigen(`${email} abmelden? Die Adresse bleibt gesperrt in der Liste und wird bei Shopify auf „nicht abonniert“ gesetzt.`, { titel: 'Abmelden', ja: 'Abmelden' })
       if (!ja) return
@@ -978,14 +1429,49 @@ export async function starten(ctx) {
       await kampagnenHolen()
       return zeichnen()
     }
-    if (aktion === 'kampagne-vorschau') {
-      if (!(await kampagneSichern())) return zeichnen()
-      vorschauDaten = await holen('kampagneVorschau', gewaehlt)
+    if (aktion === 'kampagne-zu') {
+      await kampagneSichern()
+      gewaehlt = null
+      kampagneMeldung = null
+      vorschauDaten = null
+      await kampagnenHolen()
       return zeichnen()
     }
-    if (aktion === 'vorschau-zu') {
-      vorschauDaten = null
+    if (aktion === 'vorschau-umschalten') {
+      if (vorschauOffen) await kampagneSichern()
+      vorschauOffen = !vorschauOffen
       return zeichnen()
+    }
+    if (aktion === 'vorschau-breite') {
+      vorschauBreite = knopf.dataset.breite === 'mobil' ? 'mobil' : 'desktop'
+      const buehne = $('[data-vorschau-buehne]')
+      if (buehne) buehne.classList.toggle('mobil', vorschauBreite === 'mobil')
+      for (const b of ctx.element.querySelectorAll('[data-nl="vorschau-breite"]')) {
+        b.classList.toggle('gewaehlt', b.dataset.breite === vorschauBreite)
+      }
+      return
+    }
+    // Eine schlichte Startmail ins Code-Feld setzen
+    if (aktion === 'html-beispiel') {
+      const art = offenerEditor()
+      const feld = $('[data-html-code]')
+      if (!feld || !art) return
+      const melden = (text) => {
+        if (art === 'vorlage') vorlageMeldung = { ok: false, text }
+        else kampagneMeldung = { ok: false, text }
+        return zeichnen()
+      }
+      const neu = (art === 'vorlage' ? vorlagen?.beispielHtml : kampagnen?.beispielHtml) || ''
+      if (!neu) return melden('Dafür gibt es nichts zu übernehmen.')
+      if (feld.value.trim()) {
+        const ja = await ctx.bestaetigen('Das HTML-Feld überschreiben? Was darin steht, geht verloren.', { titel: 'HTML ersetzen', ja: 'Überschreiben', gefahr: true })
+        if (!ja) return
+      }
+      feld.value = neu
+      zeilennummern()
+      vorschauAuffrischen({ sofort: true })
+      sicherungAnstossen()
+      return
     }
     if (aktion === 'kampagne-test') {
       if (!(await kampagneSichern())) return zeichnen()
@@ -1024,6 +1510,29 @@ export async function starten(ctx) {
       await kampagnenHolen()
       return zeichnen()
     }
+    // Den Stand übernehmen, den ein Bot gerade gespeichert hat
+    if (aktion === 'editor-neu-laden') {
+      clearTimeout(sicherungTakt) // nicht mit dem alten Stand drüberspeichern
+      await Promise.all([kampagnenHolen(), vorlagenHolen()])
+      return zeichnen()
+    }
+    // Felix bestätigt, was ein Bot zur Freigabe gegeben hat: erst jetzt wird geplant
+    if (aktion === 'kampagne-freigeben') {
+      if (!(await kampagneSichern())) return zeichnen()
+      const wert = $('[data-freigabe-zeit]')?.value
+      if (!wert) {
+        kampagneMeldung = { ok: false, text: 'Wähl einen Zeitpunkt — oder schick sie mit „Jetzt an alle senden“ sofort.' }
+        return zeichnen()
+      }
+      const zeitpunkt = new Date(wert).getTime()
+      const anzahl = Number(kampagnen?.empfaenger) || 0
+      const ja = await ctx.bestaetigen(`Kampagne freigeben? Sie geht am ${zeit(zeitpunkt)} an ${anzahl} Empfänger. Bis dahin kannst du sie noch abbrechen.`, { titel: 'Freigeben und planen', ja: 'Freigeben' })
+      if (!ja) return
+      const ergebnis = await holen('kampagnePlanen', { id: gewaehlt, geplantAm: zeitpunkt })
+      kampagneMeldung = ergebnis?.ok ? { ok: true, text: `Freigegeben und geplant für ${zeit(zeitpunkt)}. Vendo muss dann laufen.` } : { ok: false, text: (ergebnis?.fehler || ['Freigeben nicht möglich.']).join(' ') }
+      await kampagnenHolen()
+      return zeichnen()
+    }
     if (aktion === 'kampagne-stop') {
       const ja = await ctx.bestaetigen('Kampagne abbrechen? Offene Einträge in der Warteschlange werden verworfen, bereits versendete Mails bleiben versendet.', { titel: 'Kampagne abbrechen', ja: 'Abbrechen', gefahr: true })
       if (!ja) return
@@ -1039,23 +1548,109 @@ export async function starten(ctx) {
       return zeichnen()
     }
 
-    // ── Bausteine ──
-    if (aktion === 'baustein-neu') {
-      const art = $('[data-neue-art]')?.value
-      const liste = bausteineAusForm() || []
-      const fussStelle = liste.findIndex((b) => b.art === 'fuss')
-      const neu = { art }
-      if (fussStelle >= 0) liste.splice(fussStelle, 0, neu)
-      else liste.push(neu)
-      await holen('kampagneSpeichern', { id: gewaehlt, bausteine: liste, name: $('[data-kampagne-form]')?.name?.value, betreff: $('[data-kampagne-form]')?.betreff?.value, vorschauText: $('[data-kampagne-form]')?.vorschauText?.value })
-      await kampagnenHolen()
+    // ── Vorlagen ──
+    if (aktion === 'vorlage-neu') {
+      const ergebnis = await holen('vorlageAnlegen', { name: 'Neue Vorlage' })
+      if (ergebnis?.ok) gewaehlteVorlage = ergebnis.id
+      vorlageMeldung = ergebnis?.ok ? null : { ok: false, text: ergebnis?.text || 'Nicht möglich.' }
+      vorlageVorschau = null
+      await vorlagenHolen()
       return zeichnen()
     }
+    if (aktion === 'vorlage-auf') {
+      if (gewaehlteVorlage && gewaehlteVorlage !== knopf.dataset.id) await vorlageSichern()
+      gewaehlteVorlage = knopf.dataset.id
+      vorlageMeldung = null
+      vorlageVorschau = null
+      await vorlagenHolen()
+      return zeichnen()
+    }
+    if (aktion === 'vorlage-weg') {
+      const ja = await ctx.bestaetigen('Diese Vorlage löschen? Kampagnen, die sie schon übernommen haben, bleiben unverändert.', { titel: 'Vorlage löschen', ja: 'Löschen', gefahr: true })
+      if (!ja) return
+      const ergebnis = await holen('vorlageLoeschen', gewaehlteVorlage)
+      if (ergebnis?.ok) gewaehlteVorlage = null
+      vorlageMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      vorlageVorschau = null
+      await vorlagenHolen()
+      return zeichnen()
+    }
+    if (aktion === 'vorlage-zu') {
+      await vorlageSichern()
+      gewaehlteVorlage = null
+      vorlageMeldung = null
+      vorlageVorschau = null
+      await vorlagenHolen()
+      return zeichnen()
+    }
+    if (aktion === 'vorlage-ki-neu') {
+      // Derselbe Weg wie das Formular, nur ohne Ziel: es entsteht eine neue Vorlage
+      const form = $('[data-vorlage-ki-form]')
+      if (form) {
+        form.dataset.id = ''
+        form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      }
+      return
+    }
+    if (aktion === 'vorlage-test') {
+      if (!(await vorlageSichern())) return zeichnen()
+      vorlageMeldung = { ok: true, text: 'Sende die Testmail …' }
+      zeichnen()
+      const ergebnis = await holen('vorlageTesten', gewaehlteVorlage)
+      vorlageMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Testmail nicht möglich.' }
+      await drosselHolen()
+      return zeichnen()
+    }
+    if (aktion === 'vorlage-anwenden') {
+      const ziel = knopf.dataset.ziel
+      const id = knopf.dataset.id
+      const nummer = knopf.dataset.nummer === undefined ? null : Number(knopf.dataset.nummer)
+      const kennung = `${ziel}:${id}${nummer === null ? '' : `:${nummer}`}`
+      const wahl = ctx.element.querySelector(`[data-vorlage-wahl="${kennung}"]`)?.value
+      if (!wahl) {
+        const text = { ok: false, text: 'Erst eine Vorlage auswählen.' }
+        if (ziel === 'kampagne') kampagneMeldung = text
+        else autoMeldung = text
+        return zeichnen()
+      }
+      const ja = await ctx.bestaetigen('Vorlage übernehmen? Das HTML an dieser Stelle wird dabei ersetzt.', { titel: 'Vorlage übernehmen', ja: 'Übernehmen' })
+      if (!ja) return
+      const ergebnis = await holen('vorlageAnwenden', { vorlageId: wahl, ziel, id, schritt: nummer })
+      const meldungstext = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      if (ziel === 'kampagne') {
+        kampagneMeldung = meldungstext
+        await kampagnenHolen()
+      } else {
+        autoMeldung = meldungstext
+        await autosHolen()
+      }
+      return zeichnen()
+    }
+    if (aktion === 'vorlage-sichern') {
+      const ziel = knopf.dataset.ziel
+      const id = knopf.dataset.id
+      const nummer = knopf.dataset.nummer === undefined ? null : Number(knopf.dataset.nummer)
+      // Gesichert wird, was im Feld steht: aus der Kampagne ihr HTML, aus einem
+      // Automationsschritt dessen HTML.
+      const ausKampagne = ziel === 'kampagne' ? kampagneAusForm() : null
+      const ausSchritt = ausKampagne ? null : (schritteAusForm(id) || [])[nummer]
+      const ergebnis = await holen('vorlageAusBausteinen', {
+        name: ausKampagne ? ausKampagne.name : `${autos?.liste?.find((a) => a.id === id)?.name || 'Automation'} – Schritt ${(nummer || 0) + 1}`,
+        html: ausKampagne ? ausKampagne.html : ausSchritt?.html,
+        htmlRahmen: ausKampagne ? ausKampagne.htmlRahmen : ausSchritt?.htmlRahmen
+      })
+      const meldungstext = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      if (ziel === 'kampagne') kampagneMeldung = meldungstext
+      else autoMeldung = meldungstext
+      await vorlagenHolen()
+      return zeichnen()
+    }
+
     // ── Automationen ──
     if (aktion === 'auto-neu') {
       const ergebnis = await holen('automationAnlegen', knopf.dataset.art)
       autoMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.ok ? 'Angelegt. Texte schreiben, Testmail prüfen, dann einschalten.' : ergebnis?.text || 'Nicht möglich.' }
-      await Promise.all([autosHolen(), laeufeHolen()])
+      await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
       return zeichnen()
     }
     if (aktion === 'auto-schalten') {
@@ -1067,7 +1662,7 @@ export async function starten(ctx) {
       }
       const ergebnis = await holen('automationSchalten', { id: knopf.dataset.id, aktiv: an })
       autoMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
-      await Promise.all([autosHolen(), laeufeHolen()])
+      await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
       return zeichnen()
     }
     if (aktion === 'auto-weg') {
@@ -1076,7 +1671,7 @@ export async function starten(ctx) {
       const ergebnis = await holen('automationLoeschen', knopf.dataset.id)
       autoMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
       autoVorschau = null
-      await Promise.all([autosHolen(), laeufeHolen()])
+      await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
       return zeichnen()
     }
     if (aktion === 'auto-vorschau') {
@@ -1098,48 +1693,53 @@ export async function starten(ctx) {
       return zeichnen()
     }
     if (aktion === 'auto-neu-laden') {
-      await Promise.all([autosHolen(), laeufeHolen()])
+      await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
       return zeichnen()
     }
-    if (aktion === 'auto-baustein-neu') {
-      const nummer = Number(knopf.dataset.nummer) || 0
-      const art = ctx.element.querySelector(`[data-neue-art-schritt="${nummer}"]`)?.value
-      const schritte = schritteAusForm(knopf.dataset.id) || []
-      if (schritte[nummer]) schritte[nummer].bausteine = [...(schritte[nummer].bausteine || []), { art }]
-      const form = ctx.element.querySelector(`[data-auto-form][data-id="${knopf.dataset.id}"]`)
-      await holen('automationSpeichern', { id: knopf.dataset.id, name: form?.name?.value, nurMitZustimmung: form?.nurMitZustimmung?.checked !== false, schritte })
-      await autosHolen()
-      return zeichnen()
-    }
-    if ((aktion === 'auto-baustein-hoch' || aktion === 'auto-baustein-runter' || aktion === 'auto-baustein-weg') && Number.isFinite(stelle)) {
-      const nummer = Number(knopf.dataset.nummer) || 0
-      const schritte = schritteAusForm(knopf.dataset.id) || []
-      const liste = schritte[nummer]?.bausteine || []
-      if (aktion === 'auto-baustein-weg') liste.splice(stelle, 1)
-      else {
-        const ziel = aktion === 'auto-baustein-hoch' ? stelle - 1 : stelle + 1
-        if (ziel < 0 || ziel >= liste.length) return
-        ;[liste[stelle], liste[ziel]] = [liste[ziel], liste[stelle]]
-      }
-      const form = ctx.element.querySelector(`[data-auto-form][data-id="${knopf.dataset.id}"]`)
-      await holen('automationSpeichern', { id: knopf.dataset.id, name: form?.name?.value, nurMitZustimmung: form?.nurMitZustimmung?.checked !== false, schritte })
-      await autosHolen()
-      return zeichnen()
-    }
+  })
 
-    if ((aktion === 'baustein-hoch' || aktion === 'baustein-runter' || aktion === 'baustein-weg') && Number.isFinite(stelle)) {
-      const liste = bausteineAusForm() || []
-      if (aktion === 'baustein-weg') liste.splice(stelle, 1)
-      else {
-        const ziel = aktion === 'baustein-hoch' ? stelle - 1 : stelle + 1
-        if (ziel < 0 || ziel >= liste.length) return
-        ;[liste[stelle], liste[ziel]] = [liste[ziel], liste[stelle]]
-      }
-      const form = $('[data-kampagne-form]')
-      await holen('kampagneSpeichern', { id: gewaehlt, bausteine: liste, name: form?.name?.value, betreff: form?.betreff?.value, vorschauText: form?.vorschauText?.value })
-      await kampagnenHolen()
-      return zeichnen()
-    }
+  // Tippen im Kampagnen-Editor: Vorschau folgt, und gespeichert wird von selbst.
+  ctx.element.addEventListener('input', (e) => {
+    if (!offenerEditor()) return
+    if (!e.target.closest?.('[data-kampagne-form], [data-vorlage-form]')) return
+    if (e.target.matches?.('[data-html-code]')) zeilennummern()
+    vorschauAuffrischen()
+    sicherungAnstossen()
+  })
+
+  // Die Zahlenleiste muss mit dem Textfeld mitlaufen. Scrollen steigt nicht auf, deshalb
+  // in der Erfassungsphase.
+  ctx.element.addEventListener(
+    'scroll',
+    (e) => {
+      if (!e.target.matches?.('[data-html-code]')) return
+      const leiste = $('[data-code-zeilen]')
+      if (leiste) leiste.scrollTop = e.target.scrollTop
+    },
+    true
+  )
+
+  // Karten, die kein <button> sind (Vorlagen mit Vorschaubild), mit Enter und Leertaste öffnen
+  ctx.element.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    const karte = e.target.closest?.('[role="button"][data-nl]')
+    if (!karte || karte !== e.target) return
+    e.preventDefault()
+    karte.click()
+  })
+
+  // Im HTML-Feld soll die Tabulatortaste einrücken, statt aus dem Feld zu springen.
+  // Mit Umschalt oder Escape davor kommt man weiterhin heraus.
+  ctx.element.addEventListener('keydown', (e) => {
+    const feld = e.target.closest?.('[data-html-code]')
+    if (!feld || e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.altKey) return
+    e.preventDefault()
+    const { selectionStart: von, selectionEnd: bis, value } = feld
+    feld.value = `${value.slice(0, von)}  ${value.slice(bis)}`
+    feld.selectionStart = feld.selectionEnd = von + 2
+    zeilennummern()
+    vorschauAuffrischen()
+    sicherungAnstossen()
   })
 
   ctx.element.addEventListener('submit', async (e) => {
@@ -1191,6 +1791,19 @@ export async function starten(ctx) {
       return zeichnen()
     }
 
+    if (form.matches('[data-abmelde-form]')) {
+      const ergebnis = await holen('abmeldungenEinstellen', {
+        aktiv: form.aktiv.checked,
+        ordner: form.ordner.value,
+        host: form.host.value
+      })
+      kontaktMeldung = ergebnis?.ok
+        ? { ok: true, text: form.aktiv.checked ? 'Gespeichert. Vendo liest die Abmeldungen alle zehn Minuten.' : 'Gespeichert, Einlesen ist aus.' }
+        : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
+      await abmeldungenHolen()
+      return zeichnen()
+    }
+
     if (form.matches('[data-import-form]')) {
       const ergebnis = await holen('csvImportieren', csvText)
       if (ergebnis?.ok) {
@@ -1213,6 +1826,46 @@ export async function starten(ctx) {
       return zeichnen()
     }
 
+    if (form.matches('[data-vorlage-form]')) {
+      clearTimeout(sicherungTakt)
+      const ergebnis = await holen('vorlageSpeichern', { id: form.dataset.id, ...vorlageAusForm() })
+      vorlageMeldung = ergebnis?.ok
+        ? { ok: true, text: ergebnis.hinweise?.length ? `Gespeichert. Hinweis: ${ergebnis.hinweise.join(' ')}` : 'Gespeichert.' }
+        : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
+      await vorlagenHolen()
+      return zeichnen()
+    }
+
+    if (form.matches('[data-vorlage-ki-form]')) {
+      vorlageKi = { zweck: form.zweck.value, ton: form.ton.value }
+      if (!vorlageKi.zweck.trim()) {
+        vorlageMeldung = { ok: false, text: 'Ohne Zweck weiß Luzzy nicht, wofür die Vorlage sein soll.' }
+        return zeichnen()
+      }
+      if (gewaehlteVorlage && !(await vorlageSichern())) return zeichnen()
+      vorlageMeldung = { ok: true, text: 'Luzzy entwirft … das kann eine Minute dauern.' }
+      zeichnen()
+      const auftrag = await holen('vorlageKiAuftrag', { zweck: vorlageKi.zweck, ton: vorlageKi.ton })
+      if (!auftrag?.ok) {
+        vorlageMeldung = { ok: false, text: 'Auftrag konnte nicht gebaut werden.' }
+        return zeichnen()
+      }
+      let antwort
+      try {
+        antwort = await ctx.fragen(auftrag.auftrag)
+      } catch (fehler) {
+        vorlageMeldung = { ok: false, text: `Luzzy hat nicht geantwortet: ${fehler.message}` }
+        return zeichnen()
+      }
+      const ziel = form.dataset.id || null
+      const uebernommen = await holen('vorlageKiUebernehmen', { id: ziel, text: antwort })
+      if (uebernommen?.ok && uebernommen.id) gewaehlteVorlage = uebernommen.id
+      vorlageMeldung = { ok: Boolean(uebernommen?.ok), text: uebernommen?.text || 'Antwort nicht verwertbar.' }
+      vorlageVorschau = null
+      await vorlagenHolen()
+      return zeichnen()
+    }
+
     if (form.matches('[data-auto-form]')) {
       const id = form.dataset.id
       const ergebnis = await holen('automationSpeichern', {
@@ -1229,13 +1882,8 @@ export async function starten(ctx) {
     }
 
     if (form.matches('[data-kampagne-form]')) {
-      const ergebnis = await holen('kampagneSpeichern', {
-        id: gewaehlt,
-        name: form.name?.value,
-        betreff: form.betreff?.value,
-        vorschauText: form.vorschauText?.value,
-        bausteine: bausteineAusForm()
-      })
+      clearTimeout(sicherungTakt)
+      const ergebnis = await holen('kampagneSpeichern', { id: gewaehlt, ...kampagneAusForm() })
       kampagneMeldung = ergebnis?.ok
         ? { ok: true, text: ergebnis.hinweise?.length ? `Gespeichert. Vor dem Versand fehlt noch: ${ergebnis.hinweise.join(' ')}` : 'Gespeichert.' }
         : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
@@ -1272,6 +1920,18 @@ export async function starten(ctx) {
       return zeichnen()
     }
 
+    if (form.matches('[data-testname-form]')) {
+      const gemerkt = await holen('testNameMerken', testName || {})
+      if (!gemerkt?.ok) {
+        testNameMeldung = { ok: false, text: (gemerkt?.fehler || ['Der Name ließ sich nicht merken.']).join(' ') }
+        return zeichnen()
+      }
+      testName = null
+      await zugangHolen()
+      testNameMeldung = { ok: true, text: gemerkt.testVorname ? `Testmails reden dich jetzt mit „${gemerkt.testVorname}“ an.` : 'Kein Name eingetragen: in Testmails steht „Vorname“.' }
+      return zeichnen()
+    }
+
     if (form.matches('[data-test-form]')) {
       // Nachfragen nur, wenn die Adresse weder das Postfach noch die eingetragene
       // Testadresse ist — eine Mail dorthin ist ja genau das Gewollte.
@@ -1300,5 +1960,66 @@ export async function starten(ctx) {
   })
 
   await laden()
+
+  // Freigaben im Blick behalten, auch wenn der Bereich nicht offen ist: schickt ein Bot eine
+  // Kampagne zur Freigabe, sagt Vendo Bescheid. Was beim Start schon wartet, wird einmal
+  // gemeldet, danach nur Neues.
+  const gemeldeteFreigaben = new Set()
+  const freigabenPruefen = async () => {
+    const liste = await stillHolen('freigabenLesen')
+    if (!Array.isArray(liste)) return
+    const neu = liste.filter((f) => !gemeldeteFreigaben.has(`${f.id}:${f.angefragtAm}`))
+    for (const f of liste) gemeldeteFreigaben.add(`${f.id}:${f.angefragtAm}`)
+    if (!neu.length) return
+    const text =
+      neu.length === 1
+        ? `${neu[0].von} hat die Kampagne „${neu[0].name}“ zur Freigabe geschickt. Die Testmail ist in deinem Postfach.`
+        : `${neu.length} Kampagnen warten auf deine Freigabe.`
+    ctx.melden({ titel: 'Newsletter', text, anzeige: `${text} Freigeben unter Newsletter → Kampagnen.` })
+  }
+  freigabenPruefen()
+  setInterval(freigabenPruefen, 60000)
+
+  // Was ein Bot im Hintergrund ändert, sofort zeigen — nicht erst beim nächsten Klick.
+  // Neu gezeichnet wird nur, wenn Felix gerade nichts bearbeitet: sonst verlöre er Cursor
+  // und Getipptes. Betrifft die Änderung genau das, was offen ist, kommt ein Hinweis.
+  let botStandBekannt = null
+  const botAenderungenPruefen = async () => {
+    const s = await stillHolen('standLesen')
+    if (!s || typeof s.stand !== 'number') return
+    if (botStandBekannt === null || s.stand === botStandBekannt) {
+      botStandBekannt = s.stand
+      return
+    }
+    botStandBekannt = s.stand
+    const zuletzt = s.zuletzt || []
+    await Promise.all([kampagnenHolen(), vorlagenHolen(), autosHolen()])
+    daten = { ...LEER, ...(await ctx.daten.laden()) }
+
+    const offen = offenerEditor()
+    const offenId = offen === 'kampagne' ? gewaehlt : offen === 'vorlage' ? gewaehlteVorlage : null
+    const fokus = ctx.element.ownerDocument.activeElement
+    const tippt = Boolean(fokus && ctx.element.contains(fokus) && fokus.matches('input, textarea, select'))
+    const betroffen = zuletzt.find((z) => z.id && z.id === offenId)
+    if (betroffen) return botHinweisZeigen(`${betroffen.von || 'Ein Bot'} hat das gerade geändert.`)
+    if (offen || tippt) return // Listen sind aktuell, gezeichnet wird beim nächsten Wechsel
+    zeichnen()
+  }
+  // Sofort den Ausgangsstand nehmen, nicht erst nach drei Sekunden: sonst hielte der Wächter
+  // eine Änderung aus diesen ersten Sekunden für den Ausgangsstand und zeigte sie nie.
+  botAenderungenPruefen()
+  setInterval(botAenderungenPruefen, 3000)
+
+  // Hinweis oben im offenen Editor, ohne ihn neu zu zeichnen
+  function botHinweisZeigen(text) {
+    const editor = $('.nl-kampagne')
+    if (!editor) return
+    editor.querySelector('[data-bot-hinweis]')?.remove()
+    editor.insertAdjacentHTML(
+      'afterbegin',
+      `<div class="nl-freigabe" data-bot-hinweis><div class="nl-zeile nl-freigabe-knoepfe"><span class="nl-freigabe-text">${m(text)} Neu laden zeigt den neuen Stand — was du seitdem getippt hast, ist dann weg.</span><button class="knopf-gold" data-nl="editor-neu-laden" type="button">Neu laden</button></div></div>`
+    )
+  }
+
   return { laden, takt: 60000 }
 }

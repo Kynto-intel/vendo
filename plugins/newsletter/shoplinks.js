@@ -1,0 +1,181 @@
+'use strict'
+// Newsletter-Plugin: nur echte Adressen aus dem eigenen Shop.
+//
+// Felix' Regel für Mails, die ein Bot baut: jeder Link ist eine echte Adresse aus seinem
+// Shop. Nicht erfunden, nicht zusammengesetzt, nicht „ungefähr richtig“. Deshalb:
+//   - Die öffentliche Shop-Adresse ermittelt Vendo selbst: die myshopify-Adresse leitet
+//     auf sie weiter. Kein Zugang nötig.
+//   - Produkte und Sammlungen liest Vendo aus den öffentlichen Listen des Shops
+//     (/products.json, /collections.json) und gibt dem Bot fertige Adressen. Der Bot muss
+//     nichts zusammensetzen.
+//   - Vor der Freigabe prüft Vendo jeden Link: gehört er zum Shop, und gibt es die Seite?
+//     Eine erfundene Produktseite antwortet mit 404 und sperrt.
+//
+// Netzzugriff nur über das übergebene `abrufen` (in Vendo: fetch), damit Tests ohne Netz
+// laufen.
+
+const BILD_HOSTS = ['cdn.shopify.com']
+const FRIST = 8000
+const GLEICHZEITIG = 5
+const MERKEN = 10 * 60000 // Ergebnisse zehn Minuten merken, damit der Shop nicht dauernd gefragt wird
+
+const ergebnisse = new Map() // url → { status, zeit }
+
+const sauber = (wert) => String(wert ?? '').trim()
+
+function hostVon(url) {
+  try {
+    return new URL(url).host.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+// Die Adressen, die als „eigener Shop“ gelten: öffentliche Adresse mit und ohne www, dazu
+// die myshopify-Adresse.
+function shopHosts({ primaer = '', myshopify = '' } = {}) {
+  const hosts = new Set()
+  for (const h of [primaer, myshopify].map((x) => sauber(x).toLowerCase()).filter(Boolean)) {
+    hosts.add(h)
+    hosts.add(h.startsWith('www.') ? h.slice(4) : `www.${h}`)
+  }
+  return [...hosts]
+}
+
+async function mitFrist(abrufen, url, optionen = {}) {
+  const steuerung = new AbortController()
+  const uhr = setTimeout(() => steuerung.abort(), FRIST)
+  try {
+    return await abrufen(url, { redirect: 'follow', ...optionen, signal: steuerung.signal })
+  } finally {
+    clearTimeout(uhr)
+  }
+}
+
+// Die öffentliche Adresse: wohin leitet die myshopify-Adresse weiter?
+async function primaerDomain(myshopify, abrufen) {
+  const host = sauber(myshopify).toLowerCase()
+  if (!host) return { ok: false, text: 'Es ist kein Shop eingetragen (Reiter „Kontakte“).' }
+  try {
+    const antwort = await mitFrist(abrufen, `https://${host}/`)
+    const ziel = hostVon(antwort.url) || host
+    return { ok: true, host: ziel.replace(/^www\./, '') }
+  } catch (fehler) {
+    return { ok: false, text: `Der Shop ist nicht erreichbar: ${String(fehler?.message || fehler).slice(0, 80)}` }
+  }
+}
+
+// Produkte aus der öffentlichen Liste des Shops, mit fertigen Adressen
+async function produkteLaden(domain, abrufen, { suche = '', anzahl = 30 } = {}) {
+  const alle = []
+  for (let seite = 1; seite <= 4; seite++) {
+    let daten
+    try {
+      const antwort = await mitFrist(abrufen, `https://${domain}/products.json?limit=250&page=${seite}`)
+      if (!antwort.ok) break
+      daten = await antwort.json()
+    } catch {
+      break
+    }
+    const liste = Array.isArray(daten?.products) ? daten.products : []
+    for (const p of liste) {
+      const variante = (p.variants || [])[0] || {}
+      alle.push({
+        titel: sauber(p.title),
+        url: `https://${domain}/products/${encodeURIComponent(sauber(p.handle))}`,
+        preis: variante.price ? `${String(variante.price).replace('.', ',')} €` : '',
+        vergleichspreis: variante.compare_at_price ? `${String(variante.compare_at_price).replace('.', ',')} €` : '',
+        verfuegbar: (p.variants || []).some((v) => v.available !== false),
+        bild: (p.images || [])[0]?.src || '',
+        typ: sauber(p.product_type),
+        tags: Array.isArray(p.tags) ? p.tags.slice(0, 10) : String(p.tags || '').split(',').map(sauber).filter(Boolean).slice(0, 10)
+      })
+    }
+    if (liste.length < 250) break
+  }
+  const worte = sauber(suche).toLowerCase().split(/\s+/).filter(Boolean)
+  const treffer = worte.length ? alle.filter((p) => worte.every((w) => `${p.titel} ${p.typ} ${p.tags.join(' ')}`.toLowerCase().includes(w))) : alle
+  return { gesamt: alle.length, passend: treffer.length, produkte: treffer.slice(0, anzahl) }
+}
+
+async function sammlungenLaden(domain, abrufen) {
+  try {
+    const antwort = await mitFrist(abrufen, `https://${domain}/collections.json?limit=250`)
+    if (!antwort.ok) return []
+    const daten = await antwort.json()
+    return (Array.isArray(daten?.collections) ? daten.collections : []).map((c) => ({ titel: sauber(c.title), url: `https://${domain}/collections/${encodeURIComponent(sauber(c.handle))}` }))
+  } catch {
+    return []
+  }
+}
+
+// Alle Links und Bilder einer Mail. Anker (#), mailto und Platzhalter-Links wie
+// {{warenkorbLink}} sind keine Adressen zum Prüfen.
+function adressenSammeln(html) {
+  const text = String(html ?? '')
+  const lesen = (muster) => [...text.matchAll(muster)].map((t) => sauber(t[2] ?? t[3] ?? t[4]))
+  const links = lesen(/<a\b[^>]*?\shref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi).filter((u) => u && !u.startsWith('#') && !/^mailto:/i.test(u) && !/\{\{/.test(u))
+  const bilder = lesen(/<img\b[^>]*?\ssrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi).filter((u) => u && !/\{\{/.test(u) && !/^(data|cid):/i.test(u))
+  return { links: [...new Set(links)], bilder: [...new Set(bilder)] }
+}
+
+// Ohne Netz: gehört jede Adresse zum Shop? Links auf die Shop-Adressen, Bilder dazu auf
+// Shopifys Bildserver. Alles andere ist fremd.
+function fremdeAdressen(html, hosts) {
+  const { links, bilder } = adressenSammeln(html)
+  const eigen = new Set(hosts.map((h) => h.toLowerCase()))
+  const fremd = []
+  for (const url of links) {
+    if (!/^https:\/\//i.test(url)) fremd.push({ url, grund: 'kein https-Link' })
+    else if (eigen.size && !eigen.has(hostVon(url))) fremd.push({ url, grund: 'nicht aus deinem Shop' })
+  }
+  for (const url of bilder) {
+    if (!/^https:\/\//i.test(url)) continue // fehlende Bildadressen meldet bilderOhneAdresse
+    const host = hostVon(url)
+    if (!BILD_HOSTS.includes(host) && !eigen.has(host)) fremd.push({ url, grund: 'Bild nicht aus deinem Shop' })
+  }
+  return fremd
+}
+
+async function statusVon(url, abrufen) {
+  const gemerkt = ergebnisse.get(url)
+  if (gemerkt && Date.now() - gemerkt.zeit < MERKEN) return gemerkt.status
+  let status
+  try {
+    let antwort = await mitFrist(abrufen, url, { method: 'HEAD' })
+    if (antwort.status === 405 || antwort.status === 501) antwort = await mitFrist(abrufen, url, { method: 'GET' })
+    if (antwort.status === 429) {
+      await new Promise((r) => setTimeout(r, 1500))
+      antwort = await mitFrist(abrufen, url, { method: 'HEAD' })
+    }
+    status = antwort.status
+  } catch {
+    status = 0
+  }
+  if (status) ergebnisse.set(url, { status, zeit: Date.now() })
+  return status
+}
+
+// Mit Netz: erst die Zugehörigkeit, dann ob es die Seite oder das Bild gibt
+async function adressenPruefen(html, { hosts, abrufen }) {
+  const probleme = fremdeAdressen(html, hosts)
+  const schonGemeldet = new Set(probleme.map((p) => p.url))
+  const { links, bilder } = adressenSammeln(html)
+  const offen = [...links, ...bilder].filter((u) => /^https:\/\//i.test(u) && !schonGemeldet.has(u)).slice(0, 60)
+  for (let i = 0; i < offen.length; i += GLEICHZEITIG) {
+    const stapel = offen.slice(i, i + GLEICHZEITIG)
+    const stati = await Promise.all(stapel.map((u) => statusVon(u, abrufen)))
+    stapel.forEach((url, j) => {
+      const s = stati[j]
+      if (s >= 200 && s < 400) return
+      probleme.push({ url, grund: s === 404 || s === 410 ? 'gibt es nicht (404)' : s ? `nicht erreichbar (Status ${s})` : 'nicht erreichbar' })
+    })
+  }
+  return { ok: probleme.length === 0, geprueft: links.length + bilder.length, probleme }
+}
+
+function vergessen() {
+  ergebnisse.clear()
+}
+
+module.exports = { BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }

@@ -78,15 +78,6 @@
 .nl-karte-info { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--gold-hell); }
 .nl-karte-betreff { font-size: 11px; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.nl-bausteine { display: flex; flex-direction: column; gap: 8px; }
-.nl-baustein { border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); padding: 9px 11px; display: flex; flex-direction: column; gap: 6px; background: var(--flaeche); }
-.nl-baustein-kopf { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.nl-baustein-art { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-hell); }
-.nl-baustein-knoepfe { display: flex; gap: 3px; }
-.nl-baustein label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-leise); }
-.nl-baustein input, .nl-baustein textarea { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
-.nl-baustein textarea { font-family: var(--mono); line-height: 1.5; resize: vertical; }
-.nl-baustein input:focus, .nl-baustein textarea:focus { border-color: var(--gold); }
 
 .nl-zeile { display: flex; gap: 6px; align-items: center; }
 .nl-haken { display: flex; flex-direction: row; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
@@ -94,9 +85,120 @@
 .nl-vorschau-rahmen { width: 100%; height: 520px; border: 1px solid var(--rahmen); background: #fff; margin-bottom: 10px; }
 .nl-form select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
 
+/* Kampagnen: Liste, sonst Code links und Mail rechts */
+.nl-kampagnen-liste .nl-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-top: 10px; }
+
+.nl-kampagne { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.nl-kampagne-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--linie); padding-bottom: 10px; }
+.nl-kampagne-titel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; color: var(--text); }
+.nl-marke-klein { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--auf-gold); background: var(--gold-dunkel); padding: 2px 7px; }
+
+/* Die beiden Flächen. 620 px Höhe, damit Code und Mail nebeneinander etwas zeigen. */
+.nl-kampagne-flaechen { display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 0.9fr); gap: 14px; align-items: start; }
+@media (max-width: 1240px) {
+  .nl-kampagne-flaechen { grid-template-columns: minmax(0, 1fr); }
+}
+.nl-flaeche { border: 1px solid var(--rahmen); background: var(--flaeche); display: flex; flex-direction: column; min-width: 0; }
+.nl-flaeche-kopf { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 11px; border-bottom: 1px solid var(--linie); }
+.nl-flaeche-titel { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); }
+.nl-flaeche-werkzeuge { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.nl-flaeche-inhalt { padding: 11px; display: flex; flex-direction: column; gap: 10px; max-height: 620px; overflow-y: auto; }
+.nl-flaeche-fuss { margin: 0; padding: 8px 11px; border-top: 1px solid var(--linie); font-size: 11px; line-height: 1.5; color: var(--text-leise); }
+.nl-haken.nl-klein { font-size: 11px; color: var(--text-leise); }
+/* Vorlage wählen über dem Code-Feld einer Kampagne */
+.nl-flaeche-leiste { padding: 7px 11px; border-bottom: 1px solid var(--linie); }
+.nl-flaeche-leiste select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+/* Code-Feld im Automationsschritt: niedriger als im großen Editor, dafür mit Rahmen */
+.nl-code-schritt { border: 1px solid var(--rahmen); }
+.nl-code-schritt .nl-code { height: 300px; resize: vertical; }
+/* Felder im Automationsschritt untereinander wie im übrigen Formular */
+.nl-form [data-schritt] > label:not(.nl-haken) { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-leise); margin-top: 8px; }
+.nl-form [data-schritt] > .nl-haken { margin: 8px 0 6px; }
+/* Die Fläche ist kein .nl-form mehr, die Felder darin brauchen ihr Aussehen trotzdem */
+.nl-flaeche-inhalt select, .nl-flaeche-inhalt input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-flaeche-inhalt select:focus, .nl-flaeche-inhalt input:focus { border-color: var(--gold); }
+
+.nl-rechts { display: flex; flex-direction: column; gap: 12px; min-width: 0; position: sticky; top: 0; }
+@media (max-width: 1240px) {
+  .nl-rechts { position: static; }
+}
+
+/* E-Mail-Details */
+.nl-detail-karte { border: 1px solid var(--rahmen); background: var(--flaeche); }
+.nl-detail-karte > summary { list-style: none; cursor: pointer; padding: 10px 13px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); border-bottom: 1px solid transparent; }
+.nl-detail-karte[open] > summary { border-bottom-color: var(--linie); }
+.nl-detail-karte > summary::-webkit-details-marker { display: none; }
+.nl-detail-karte > summary::after { content: '▾'; float: right; color: var(--text-leise); }
+.nl-detail-karte[open] > summary::after { content: '▴'; }
+.nl-detail-zeile { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 13px; border-bottom: 1px solid var(--linie); min-height: 38px; }
+.nl-detail-zeilen > .nl-detail-zeile:last-child { border-bottom: none; }
+.nl-detail-name { font-size: 12px; color: var(--text-leise); }
+.nl-detail-wert { font-size: 13px; color: var(--text); word-break: break-word; }
+.nl-detail-adresse { color: var(--gold-hell); }
+.nl-detail-zeile input { background: none; border: none; border-bottom: 1px solid transparent; padding: 4px 0; font-size: 13px; color: var(--text); outline: none; width: 100%; color-scheme: dark; }
+.nl-detail-zeile input:hover:not(:disabled) { border-bottom-color: var(--rahmen); }
+.nl-detail-zeile input:focus { border-bottom-color: var(--gold); }
+
+.nl-vorschau-spalte { display: flex; flex-direction: column; min-width: 0; }
+.nl-vorschau-zeile { margin: 0; padding: 7px 11px; font-size: 11px; color: var(--text-leise); border-bottom: 1px solid var(--linie); }
+.nl-vorschau-buehne { background: #d9d5cd; padding: 8px; display: flex; justify-content: center; }
+.nl-vorschau-buehne .nl-vorschau-rahmen { margin: 0; border: none; height: 560px; max-width: 100%; }
+/* Handy: 390 px breit wie ein übliches Telefon, dazu etwas mehr Höhe und ein Rand, damit
+   man sieht, wo das Gerät aufhört und die Bühne anfängt. */
+.nl-vorschau-buehne.mobil { padding: 14px 8px; }
+.nl-vorschau-buehne.mobil .nl-vorschau-rahmen { width: 390px; height: 660px; border: 6px solid #2c2a27; background: #fff; }
+.nl-vorschau-warnung { padding: 0 11px; }
+.nl-vorschau-warnung:not(:empty) { padding: 8px 11px; display: flex; flex-direction: column; gap: 6px; }
+.nl-vorschau-text { padding: 8px 11px; border-top: 1px solid var(--linie); }
+
+/* Zeitpunkt, Luzzy, Löschen */
+.nl-kampagne-fuss { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--linie); padding-top: 12px; }
+.nl-klapp > summary { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); cursor: pointer; }
+.nl-klapp-inhalt { margin-top: 8px; flex-wrap: wrap; }
+.nl-klapp-inhalt input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-klapp-inhalt .leise { font-size: 11px; }
+.nl-vorschau-warnung:empty { display: none; }
+.nl-vorschau-gesaeubert { font-size: 11px; line-height: 1.5; color: var(--text-leise); border: 1px dashed var(--rahmen); padding: 6px 8px; }
+.nl-vorschau-text summary { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); cursor: pointer; }
+.nl-vorschau-text pre { margin: 6px 0 0; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-leise); max-height: 200px; overflow-y: auto; border: 1px dashed var(--rahmen); padding: 8px; }
+
+/* Umschalter Bausteine/HTML und Rechner/Handy */
+.nl-umschalter { display: inline-flex; border: 1px solid var(--rahmen); }
+.nl-umschalt-knopf { background: none; border: none; border-right: 1px solid var(--rahmen); color: var(--text-leise); font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 11px; cursor: pointer; }
+.nl-umschalt-knopf:last-child { border-right: none; }
+.nl-umschalt-knopf:hover:not(:disabled) { color: var(--gold-hell); }
+.nl-umschalt-knopf.gewaehlt { background: var(--gold); color: var(--auf-gold); }
+.nl-umschalt-knopf:disabled { opacity: 0.5; cursor: default; }
+
+/* Das Code-Feld mit Zahlenleiste. Beide teilen Schrift, Zeilenhöhe und Innenabstand oben —
+   sonst laufen Zahlen und Zeilen auseinander. */
+.nl-code-feld { display: flex; min-height: 0; background: var(--eingabe); }
+.nl-code-zeilen { margin: 0; padding: 10px 8px 10px 11px; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--text-leise); text-align: right; background: var(--tief); border-right: 1px solid var(--linie); overflow: hidden; user-select: none; min-width: 38px; height: 620px; box-sizing: border-box; }
+.nl-code { flex: 1; min-width: 0; height: 620px; background: none; border: none; padding: 10px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--text); outline: none; resize: none; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow: auto; color-scheme: dark; box-sizing: border-box; }
+.nl-code::placeholder { color: var(--text-leise); opacity: 0.7; }
+.nl-code-feld:focus-within { outline: 1px solid var(--gold); outline-offset: -1px; }
+.nl-stand-anzeige { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-leise); align-self: center; }
+.nl-stand-anzeige.nl-rot { color: var(--rot); }
+
 /* Noch leere Bereiche */
 .nl-leer { padding: 30px 10px; max-width: 620px; }
 .nl-leer p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--text); }
 .nl-leer p:last-child { margin-bottom: 0; }
 .nl-leer code { font-family: var(--mono); font-size: 12px; color: var(--gold-hell); }
 .nl-marke { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--auf-gold); background: var(--gold-dunkel); padding: 3px 8px; margin-bottom: 10px; }
+
+/* Freigabe: ein Bot hat eine Kampagne vorbereitet, Felix bestätigt */
+.nl-freigabe { border: 1px solid var(--gold); background: var(--gold-hauch); padding: 11px 13px; display: flex; flex-direction: column; gap: 9px; }
+.nl-freigabe-text { font-size: 13px; line-height: 1.55; color: var(--text); }
+.nl-freigabe-knoepfe { flex-wrap: wrap; }
+.nl-freigabe-knoepfe input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-freigabe-knoepfe input:focus { border-color: var(--gold); }
+
+/* Vorlagen-Übersicht: oben ein Ausschnitt der fertigen Mail (640 px breit, auf 40 % verkleinert) */
+.nl-kampagnen-liste .nl-karten:has(.nl-vorlage-karte) { grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; }
+.nl-vorlage-karte { padding: 0 0 10px; overflow: hidden; }
+.nl-vorlage-karte > .nl-karte-name, .nl-vorlage-karte > .nl-karte-info, .nl-vorlage-karte > .nl-karte-betreff { padding: 0 11px; }
+.nl-mini { display: block; position: relative; height: 210px; overflow: hidden; background: #d9d5cd; border-bottom: 1px solid var(--rahmen); margin-bottom: 8px; }
+.nl-mini iframe { position: absolute; top: 0; left: 50%; width: 640px; height: 525px; margin-left: -320px; border: 0; transform: scale(0.4); transform-origin: top center; pointer-events: none; background: #fff; }
+.nl-vorlage-karte:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
+.nl-feld { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 1px 6px; margin: 1px 2px 1px 0; border: 1px solid var(--gold-leise); color: var(--gold-hell); cursor: help; }

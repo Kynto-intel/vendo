@@ -20,6 +20,7 @@
 // Alle Funktionen sind rein: die übergebene Liste wird nicht verändert.
 
 const STUNDE = 3600000
+const { fremdePlatzhalter, bilderOhneAdresse, PLATZHALTER_BASIS, PLATZHALTER_WARENKORB } = require('./html-mail.js')
 
 const AUSLOESER = {
   warenkorb: {
@@ -27,8 +28,8 @@ const AUSLOESER = {
     beschreibung: 'Jemand hat Artikel im Warenkorb gelassen, ohne zu bestellen.',
     abbruchBei: ['bestellung', 'abmeldung'],
     standardSchritte: [
-      { nach: 4 * STUNDE, verfallNach: 48 * STUNDE, betreff: 'Du hast etwas vergessen', bausteine: [] },
-      { nach: 24 * STUNDE, verfallNach: 48 * STUNDE, betreff: 'Noch da? Dein Warenkorb wartet', bausteine: [] }
+      { nach: 4 * STUNDE, verfallNach: 48 * STUNDE, betreff: 'Du hast etwas vergessen', html: '' },
+      { nach: 24 * STUNDE, verfallNach: 48 * STUNDE, betreff: 'Noch da? Dein Warenkorb wartet', html: '' }
     ]
   },
   willkommen: {
@@ -36,15 +37,15 @@ const AUSLOESER = {
     beschreibung: 'Jemand hat sich neu für den Newsletter angemeldet.',
     abbruchBei: ['abmeldung'],
     standardSchritte: [
-      { nach: STUNDE, verfallNach: 14 * 24 * STUNDE, betreff: 'Willkommen', bausteine: [] },
-      { nach: 3 * 24 * STUNDE, verfallNach: 14 * 24 * STUNDE, betreff: 'Schön, dass du da bist', bausteine: [] }
+      { nach: STUNDE, verfallNach: 14 * 24 * STUNDE, betreff: 'Willkommen', html: '' },
+      { nach: 3 * 24 * STUNDE, verfallNach: 14 * 24 * STUNDE, betreff: 'Schön, dass du da bist', html: '' }
     ]
   },
   rueckgewinnung: {
     name: 'Rückgewinnung',
     beschreibung: 'Jemand hat lange nichts gekauft. Der Auslöser dafür ist noch nicht gebaut.',
     abbruchBei: ['bestellung', 'abmeldung'],
-    standardSchritte: [{ nach: STUNDE, verfallNach: 30 * 24 * STUNDE, betreff: 'Lange nichts gehört', bausteine: [] }]
+    standardSchritte: [{ nach: STUNDE, verfallNach: 30 * 24 * STUNDE, betreff: 'Lange nichts gehört', html: '' }]
   }
 }
 
@@ -62,7 +63,7 @@ function neueAutomation(art, { jetzt = Date.now() } = {}) {
     name: vorlage.name,
     aktiv: false, // bewusst aus: erst Texte schreiben, Testmail prüfen, dann einschalten
     nurMitZustimmung: true,
-    schritte: vorlage.standardSchritte.map((s) => ({ ...s, bausteine: [] })),
+    schritte: vorlage.standardSchritte.map((s) => ({ ...s, html: '' })),
     erstelltAm: jetzt,
     geaendertAm: jetzt
   }
@@ -78,7 +79,16 @@ function automationPruefen(automation = {}) {
     const nummer = i + 1
     if (!sauber(schritt?.betreff)) fehler.push(`Schritt ${nummer}: der Betreff fehlt.`)
     if (/[\r\n]/.test(String(schritt?.betreff ?? ''))) fehler.push(`Schritt ${nummer}: der Betreff darf keinen Zeilenumbruch enthalten.`)
-    if (!Array.isArray(schritt?.bausteine) || !schritt.bausteine.length) fehler.push(`Schritt ${nummer}: der Inhalt fehlt.`)
+    // Der Inhalt ist HTML. Ältere Schritte aus der Zeit der Baustein-Oberfläche haben
+    // keines — dann zählen ihre Bausteine, bis der Schritt neu gespeichert wird.
+    const hatHtml = String(schritt?.html ?? '').trim().length > 0
+    const hatBausteine = Array.isArray(schritt?.bausteine) && schritt.bausteine.length > 0
+    if (!hatHtml && !hatBausteine) fehler.push(`Schritt ${nummer}: der Inhalt fehlt.`)
+    // Unbekannte Platzhalter kämen wörtlich an; Warenkorb-Angaben gibt es nur beim Warenkorb
+    const erlaubt = automation.art === 'warenkorb' ? [...PLATZHALTER_BASIS, ...PLATZHALTER_WARENKORB] : PLATZHALTER_BASIS
+    const fremde = fremdePlatzhalter(`${schritt?.betreff ?? ''} ${schritt?.html ?? ''}`, erlaubt)
+    if (fremde.length) fehler.push(`Schritt ${nummer}: unbekannte Platzhalter ${fremde.slice(0, 6).join(', ')}.`)
+    if (bilderOhneAdresse(schritt?.html).length) fehler.push(`Schritt ${nummer}: ein Bild hat keine gültige Adresse (https://…).`)
     if (!Number.isFinite(Number(schritt?.nach)) || Number(schritt.nach) < 0) fehler.push(`Schritt ${nummer}: die Wartezeit ist unbrauchbar.`)
     const verfall = Number(schritt?.verfallNach)
     if (!Number.isFinite(verfall) || verfall <= 0) fehler.push(`Schritt ${nummer}: das Verfallsfenster ist unbrauchbar.`)

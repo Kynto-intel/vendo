@@ -15,6 +15,7 @@
     "@tesseract.js-data/deu": "^1.0.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
+    "imapflow": "^2.11.0",
     "markdown-it": "^15.0.3",
     "node-pty": "^1.1.0",
     "nodemailer": "^10.4.0",
