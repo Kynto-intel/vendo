@@ -5,6 +5,38 @@
 Zeitplan und KI-Entwurf (`kampagnen.js`), die Einbindung in `haupt.js` und die Erweiterung
 von Vendo um `ctx.fragen`.
 
+**Gezielte Nachprüfung am 2026-11-11:** Die Kampagnen-Tests wurden nach dem Verschieben
+der Versandzeit-Auswahl in die E-Mail-Details-Karte erneut ausgeführt. Die Auswahl steht
+jetzt unter den übrigen Details; die bisherige Planung über den Button „Planen“ bleibt
+erhalten. Die Vorlage hat weiterhin keine eigene Versandplanung.
+
+**Befehle:** `node --check plugins/newsletter/ansicht.js` und
+`node --test tests/newsletter-kampagnen.test.js`
+
+**Ergebnis der Nachprüfung:** PASS — 23 von 23 Kampagnen-Tests. Zusätzlich geprüft:
+CSS-Klammern und Markup-Reihenfolge; die Planung steht am Ende der Kampagnen-Details
+und wurde aus der Fußzeile entfernt. Keine App-/Electron-Ansicht geprüft.
+
+**Nachprüfung am 2026-11-11:** Die Vorschau startet in Kampagnen- und Vorlagen-Editor
+standardmäßig in der Handy-Ansicht. Beim Öffnen oder Wechseln des Editors sowie beim
+Zurückkehren in einen offenen Editor wird die Handy-Ansicht erneut ausgewählt.
+
+**Befehle:** `node --check plugins/newsletter/ansicht.js` und
+`node --test tests/newsletter-kampagnen.test.js`
+
+**Ergebnis:** PASS — 23 von 23 Kampagnen-Tests. Initialwert und sechs Rücksetzstellen
+statisch geprüft; keine App-/Electron-Ansicht geprüft.
+
+**Nachprüfung am 2026-11-11:** Die Vorschau lässt sich in beiden Editoren nicht mehr
+ausblenden. Die Ein-/Ausblenden-Steuerung und ihr Zustand wurden entfernt; die Vorschau
+wird beim Zeichnen und bei Eingaben weiter aktualisiert.
+
+**Befehle:** `node --check plugins/newsletter/ansicht.js` und
+`node --test tests/newsletter-kampagnen.test.js tests/newsletter-vorlagen.test.js`
+
+**Ergebnis:** PASS — 40 von 40 Tests. Statisch geprüft, dass keine Ausblenden-Aktion oder
+Einblenden-Steuerung im Newsletter-Editor übrig ist. Keine App-/Electron-Ansicht geprüft.
+
 **Testbefehle:**
 
 ```
