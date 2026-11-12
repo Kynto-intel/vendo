@@ -178,4 +178,41 @@ function vergessen() {
   ergebnisse.clear()
 }
 
-module.exports = { BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }
+// Gezählte Bestellposten mit den öffentlichen Produktdaten verbinden: erst über den
+// `handle` aus der Bestellung, sonst über den Titel. Was sich nicht zuordnen lässt, bleibt
+// mit Namen und Stückzahl stehen und wird mit `imShop: false` gekennzeichnet — lieber ohne
+// Bild als stillschweigend verschwunden. So fällt auf, wenn ein Renner aus dem Shop
+// genommen wurde.
+function rennerVerbinden(liste, produkte = []) {
+  const nachHandle = new Map()
+  const nachTitel = new Map()
+  for (const p of produkte) {
+    const roh = (String(p?.url || '').split('/products/')[1] || '').toLowerCase()
+    if (roh) {
+      try {
+        nachHandle.set(decodeURIComponent(roh), p)
+      } catch {
+        nachHandle.set(roh, p)
+      }
+    }
+    if (p?.titel) nachTitel.set(String(p.titel).toLowerCase(), p)
+  }
+  return (Array.isArray(liste) ? liste : []).map((e) => {
+    const handle = String(e?.handle || '').toLowerCase()
+    const titel = String(e?.titel || '')
+    const treffer = (handle && nachHandle.get(handle)) || nachTitel.get(titel.toLowerCase()) || null
+    return {
+      titel: treffer?.titel || titel,
+      menge: Number(e?.menge) || 0,
+      url: treffer?.url || '',
+      bild: treffer?.bild || '',
+      preis: treffer?.preis || '',
+      vergleichspreis: treffer?.vergleichspreis || '',
+      verfuegbar: treffer ? treffer.verfuegbar : null,
+      imShop: Boolean(treffer)
+    }
+  })
+}
+
+module.exports = {
+  rennerVerbinden, BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }

@@ -207,7 +207,7 @@ Regeln:
 - "betreff" höchstens 60 Zeichen, ohne Zeilenumbruch.
 - "vorschauText" ist der kurze Text, den Mailprogramme neben dem Betreff zeigen.
 - Links nur, wenn sie oben genannt sind. Erfinde keine Adressen, keine Preise, keine Rabatte.
-- Kopf und Fuß der Mail werden automatisch ergänzt, lass sie weg.`
+- Kopf mit Logo und Fuß der Mail setzt Vendo selbst davor und dahinter — lass beides weg.`
 }
 
 // Die Antwort lesen. Modelle hängen gern Erklärungen an oder packen das JSON in einen

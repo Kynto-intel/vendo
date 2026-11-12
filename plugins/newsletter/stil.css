@@ -3,24 +3,48 @@
 
 .nl-raster { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
 
-.nl-reiter { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--linie); padding-bottom: 8px; }
-.nl-reiter-knopf { background: none; border: 1px solid var(--rahmen); color: var(--text-leise); font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; }
-.nl-reiter-knopf:hover { border-color: var(--gold); color: var(--gold-hell); }
-.nl-reiter-knopf.gewaehlt { border-color: var(--gold); background: var(--gold); color: var(--auf-gold); }
+.nl-reiter { align-self: flex-start; max-width: 100%; display: flex; gap: 4px; flex-wrap: wrap; border: 1px solid var(--rahmen); border-radius: 10px; padding: 3px; background: var(--flaeche); }
+.nl-reiter-knopf { background: none; border: 0; border-radius: 8px; color: var(--text-leise); font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; }
+.nl-reiter-knopf:hover { background: rgba(var(--akzent-rgb), 0.08); color: var(--gold-hell); }
+.nl-reiter-knopf.gewaehlt { background: var(--gold-flaeche); color: var(--gold-hell); }
 
-.nl-inhalt { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px; background-color: var(--tief); }
+.nl-inhalt { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px; border-radius: 10px; background-color: var(--tief); }
 
 /* Übersicht */
-.nl-kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.nl-kachel { display: flex; flex-direction: column; gap: 2px; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); padding: 11px 13px; }
-.nl-kachel-name { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-leise); }
-.nl-kachel small { font-size: 11px; color: var(--text-leise); line-height: 1.4; word-break: break-all; }
-.nl-zahl { font-size: 26px; line-height: 1.1; color: var(--gold-hell); }
-.nl-stand { font-size: 13px; line-height: 1.3; padding: 4px 0; word-break: break-all; }
+/* Alle Kacheln sind gleich gebaut und exakt gleich hoch: drei Zeilen mit fester Höhe
+   (Name, Wert, Hinweis). Jede bleibt einzeilig; was nicht passt, wird abgeschnitten und
+   steht vollständig im title. Ohne die festen Höhen wuchs eine Kachel, sobald ein Text
+   umbrach — eine lange Postfach-Adresse riss sogar mitten im Wort. */
+.nl-kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: start; }
+.nl-kachel { display: flex; flex-direction: column; gap: 3px; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); border-radius: 10px; padding: 11px 13px; min-width: 0; }
+.nl-kachel > * { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nl-kachel-name { font-family: var(--mono); font-size: 9px; height: 12px; line-height: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-leise); }
+.nl-kachel-zeile { font-size: 11px; height: 16px; line-height: 16px; color: var(--text-leise); }
+.nl-kachel-betont { color: var(--gold-hell); }
+.nl-zahl { font-size: 26px; height: 30px; line-height: 30px; color: var(--gold-hell); }
+.nl-stand { font-size: 13px; height: 30px; line-height: 30px; }
 .nl-stand.nl-an { color: var(--gruen); }
 .nl-stand.nl-aus { color: var(--text-leise); }
 
-.nl-hinweis { margin-top: 16px; border: 1px dashed var(--gold-leise); background: rgba(var(--akzent-rgb), 0.04); padding: 12px 14px; max-width: 720px; }
+/* Meistverkaufte Produkte unter den Kacheln der Übersicht */
+.nl-renner-paar { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin-top: 14px; align-items: start; }
+.nl-renner { background: var(--flaeche); border: 1px solid var(--rahmen); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.nl-renner-kopf { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.nl-renner-kopf .nl-kachel-name { margin-right: auto; }
+.nl-renner-stand { margin: 8px 0 0; font-size: 11px; color: var(--text-leise); }
+/* Was aus dem Shop genommen wurde, bleibt sichtbar, tritt aber zurück */
+.nl-renner-fort { opacity: 0.55; }
+.nl-renner-fort .nl-renner-name { text-decoration: line-through; }
+.nl-renner-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.nl-renner-zeile { display: grid; grid-template-columns: 18px 34px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 4px 0; border-top: 1px solid var(--rahmen); }
+.nl-renner-zeile:first-child { border-top: 0; }
+.nl-renner-platz { font-family: var(--mono); font-size: 11px; color: var(--text-leise); text-align: right; }
+.nl-renner-zeile img, .nl-renner-leer { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; background: var(--tief); display: block; }
+.nl-renner-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.nl-renner-preis { font-size: 12px; color: var(--text-leise); white-space: nowrap; }
+.nl-renner-menge { font-family: var(--mono); font-size: 12px; color: var(--gold-hell); white-space: nowrap; min-width: 36px; text-align: right; }
+
+.nl-hinweis { margin-top: 16px; border: 1px dashed var(--gold-leise); border-radius: 8px; background: rgba(var(--akzent-rgb), 0.04); padding: 12px 14px; max-width: 720px; }
 .nl-hinweis-titel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
 .nl-hinweis p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--text); }
 .nl-hinweis p:last-child { margin-bottom: 0; }
@@ -30,15 +54,15 @@
 .nl-form { display: flex; flex-direction: column; gap: 12px; max-width: 700px; }
 .nl-form-kopf h3 { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); }
 .nl-form-text { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-leise); }
-.nl-form > label, .nl-form-paar label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-leise); }
-.nl-form input, .nl-form select, .nl-form textarea { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 7px 9px; font-size: 13px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-form > label, .nl-form-paar label, .nl-fuss-farben label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-leise); }
+.nl-form input, .nl-form select, .nl-form textarea { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 6px; padding: 7px 9px; font-size: 13px; color: var(--text); outline: none; color-scheme: dark; }
 .nl-form textarea { font-family: var(--mono); font-size: 12px; line-height: 1.5; resize: vertical; }
 .nl-form input:focus, .nl-form select:focus, .nl-form textarea:focus { border-color: var(--gold); }
 .nl-abschnitt { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linie); }
 .nl-abschnitt-erst { margin-bottom: 4px; }
 .nl-kacheln-schmal { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 14px; }
 .nl-suche { display: flex; gap: 6px; }
-.nl-suche input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; min-width: 180px; }
+.nl-suche input { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 6px; padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; min-width: 180px; }
 .nl-suche input:focus { border-color: var(--gold); }
 .nl-aktionen { white-space: nowrap; text-align: right; }
 .nl-aktionen button { margin-left: 4px; }
@@ -47,13 +71,24 @@
 
 .nl-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 
-.nl-meldung { font-size: 12px; line-height: 1.5; padding: 9px 11px; border: 1px solid var(--rahmen); }
+/* Fußangaben der Marke: Zwischentitel und eine Zeile je Netzwerk (Name, Profil, Icon) */
+.nl-fuss-titel { margin: 10px 0 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); border-top: 1px solid var(--rahmen); padding-top: 10px; }
+.nl-fuss-netz { display: grid; grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.nl-fuss-netz > span { font-size: 12px; color: var(--text-leise); }
+.nl-fuss-farben { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+@media (max-width: 620px) {
+  .nl-fuss-netz { grid-template-columns: 84px minmax(0, 1fr); }
+  .nl-fuss-netz > input:last-child { grid-column: 2; }
+  .nl-fuss-farben { grid-template-columns: minmax(0, 1fr); }
+}
+
+.nl-meldung { font-size: 12px; line-height: 1.5; padding: 9px 11px; border: 1px solid var(--rahmen); border-radius: 8px; }
 .nl-meldung.nl-ok { border-color: var(--gruen); color: var(--gruen); }
 .nl-meldung.nl-fehler { border-color: var(--rot); color: var(--rot); }
-.nl-warnung { font-size: 12px; line-height: 1.6; padding: 9px 11px; border: 1px solid var(--rot); color: var(--rot); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.nl-warnung { font-size: 12px; line-height: 1.6; padding: 9px 11px; border: 1px solid var(--rot); border-radius: 8px; color: var(--rot); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .nl-form input[readonly] { color: var(--text-leise); border-style: dashed; }
 
-.nl-vorschau { border: 1px dashed var(--gold-leise); background: rgba(var(--akzent-rgb), 0.04); padding: 10px 12px; }
+.nl-vorschau { border: 1px dashed var(--gold-leise); border-radius: 8px; background: rgba(var(--akzent-rgb), 0.04); padding: 10px 12px; }
 .nl-vorschau-titel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
 .nl-vorschau pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-leise); max-height: 240px; overflow-y: auto; }
 
@@ -71,7 +106,7 @@
 .nl-zwei { display: grid; grid-template-columns: minmax(200px, 270px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .nl-spalte { display: flex; flex-direction: column; gap: 6px; }
 .nl-spalte-breit { min-width: 0; }
-.nl-karte { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); padding: 9px 11px; cursor: pointer; color: var(--text); }
+.nl-karte { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); border-radius: 10px; padding: 9px 11px; cursor: pointer; color: var(--text); }
 .nl-karte:hover { border-left-color: var(--gold); }
 .nl-karte.gewaehlt { border-color: var(--gold-dunkel); border-left-color: var(--gold); background: var(--gold-flaeche); }
 .nl-karte-name { font-size: 14px; }
@@ -82,7 +117,7 @@
 .nl-zeile { display: flex; gap: 6px; align-items: center; }
 .nl-haken { display: flex; flex-direction: row; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
 .nl-haken input[type='checkbox'] { accent-color: var(--gold); }
-.nl-vorschau-rahmen { width: 100%; height: 520px; border: 1px solid var(--rahmen); background: #fff; margin-bottom: 10px; }
+.nl-vorschau-rahmen { width: 100%; height: 520px; border: 1px solid var(--rahmen); border-radius: 8px; background: #fff; margin-bottom: 10px; }
 .nl-form select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
 
 /* Kampagnen: Liste, sonst Code links und Mail rechts */
@@ -96,9 +131,11 @@
 /* Die beiden Flächen. 620 px Höhe, damit Code und Mail nebeneinander etwas zeigen. */
 .nl-kampagne-flaechen { display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 0.9fr); gap: 14px; align-items: start; }
 @media (max-width: 1240px) {
-  .nl-kampagne-flaechen { grid-template-columns: minmax(0, 1fr); }
+  .nl-kampagne-flaechen[data-kampagne-form] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nl-kampagne-flaechen[data-vorlage-form] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.nl-flaeche { border: 1px solid var(--rahmen); background: var(--flaeche); display: flex; flex-direction: column; min-width: 0; }
+.nl-kampagne-flaechen > .nl-detail-karte { grid-column: 1 / -1; }
+.nl-flaeche { border: 1px solid var(--rahmen); border-radius: 10px; overflow: hidden; background: var(--flaeche); display: flex; flex-direction: column; min-width: 0; }
 .nl-flaeche-kopf { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 11px; border-bottom: 1px solid var(--linie); }
 .nl-flaeche-titel { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); }
 .nl-flaeche-werkzeuge { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
@@ -107,15 +144,15 @@
 .nl-haken.nl-klein { font-size: 11px; color: var(--text-leise); }
 /* Vorlage wählen über dem Code-Feld einer Kampagne */
 .nl-flaeche-leiste { padding: 7px 11px; border-bottom: 1px solid var(--linie); }
-.nl-flaeche-leiste select { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-flaeche-leiste select { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 6px; padding: 5px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
 /* Code-Feld im Automationsschritt: niedriger als im großen Editor, dafür mit Rahmen */
-.nl-code-schritt { border: 1px solid var(--rahmen); }
+.nl-code-schritt { border: 1px solid var(--rahmen); border-radius: 8px; overflow: hidden; }
 .nl-code-schritt .nl-code { height: 300px; resize: vertical; }
 /* Felder im Automationsschritt untereinander wie im übrigen Formular */
 .nl-form [data-schritt] > label:not(.nl-haken) { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-leise); margin-top: 8px; }
 .nl-form [data-schritt] > .nl-haken { margin: 8px 0 6px; }
 /* Die Fläche ist kein .nl-form mehr, die Felder darin brauchen ihr Aussehen trotzdem */
-.nl-flaeche-inhalt select, .nl-flaeche-inhalt input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-flaeche-inhalt select, .nl-flaeche-inhalt input { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 6px; padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
 .nl-flaeche-inhalt select:focus, .nl-flaeche-inhalt input:focus { border-color: var(--gold); }
 
 .nl-rechts { display: flex; flex-direction: column; gap: 12px; min-width: 0; position: sticky; top: 0; }
@@ -124,12 +161,14 @@
 }
 
 /* E-Mail-Details */
-.nl-detail-karte { border: 1px solid var(--rahmen); background: var(--flaeche); }
+.nl-detail-karte { border: 1px solid var(--rahmen); border-radius: 8px; overflow: hidden; background: var(--flaeche); }
 .nl-detail-karte > summary { list-style: none; cursor: pointer; padding: 10px 13px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-hell); border-bottom: 1px solid transparent; }
 .nl-detail-karte[open] > summary { border-bottom-color: var(--linie); }
 .nl-detail-karte > summary::-webkit-details-marker { display: none; }
 .nl-detail-karte > summary::after { content: '▾'; float: right; color: var(--text-leise); }
 .nl-detail-karte[open] > summary::after { content: '▴'; }
+.nl-kontakt-klapp { margin-top: 16px; }
+.nl-kontakt-klapp > form { padding: 14px; }
 .nl-detail-zeile { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 13px; border-bottom: 1px solid var(--linie); min-height: 38px; }
 .nl-detail-zeilen > .nl-detail-zeile:last-child { border-bottom: none; }
 .nl-detail-name { font-size: 12px; color: var(--text-leise); }
@@ -138,15 +177,19 @@
 .nl-detail-zeile input { background: none; border: none; border-bottom: 1px solid transparent; padding: 4px 0; font-size: 13px; color: var(--text); outline: none; width: 100%; color-scheme: dark; }
 .nl-detail-zeile input:hover:not(:disabled) { border-bottom-color: var(--rahmen); }
 .nl-detail-zeile input:focus { border-bottom-color: var(--gold); }
+.nl-detail-zeitplan { align-items: start; }
+.nl-detail-zeitplan-inhalt { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.nl-detail-zeitplan-inhalt input { flex: 0 1 220px; width: auto; border: 1px solid var(--rahmen); border-radius: 6px; background: var(--eingabe); padding: 6px 8px; }
+.nl-detail-zeitplan-inhalt > span { flex: 1 1 260px; font-size: 11px; }
 
 .nl-vorschau-spalte { display: flex; flex-direction: column; min-width: 0; }
 .nl-vorschau-zeile { margin: 0; padding: 7px 11px; font-size: 11px; color: var(--text-leise); border-bottom: 1px solid var(--linie); }
-.nl-vorschau-buehne { background: #d9d5cd; padding: 8px; display: flex; justify-content: center; }
-.nl-vorschau-buehne .nl-vorschau-rahmen { margin: 0; border: none; height: 560px; max-width: 100%; }
+.nl-vorschau-buehne { border-radius: 8px; background: #d9d5cd; padding: 8px; display: flex; justify-content: center; }
+.nl-vorschau-buehne .nl-vorschau-rahmen { margin: 0; border: none; height: 620px; max-width: 100%; }
 /* Handy: 390 px breit wie ein übliches Telefon, dazu etwas mehr Höhe und ein Rand, damit
    man sieht, wo das Gerät aufhört und die Bühne anfängt. */
 .nl-vorschau-buehne.mobil { padding: 14px 8px; }
-.nl-vorschau-buehne.mobil .nl-vorschau-rahmen { width: 390px; height: 660px; border: 6px solid #2c2a27; background: #fff; }
+.nl-vorschau-buehne.mobil .nl-vorschau-rahmen { width: 390px; height: 620px; border: 6px solid #2c2a27; background: #fff; }
 .nl-vorschau-warnung { padding: 0 11px; }
 .nl-vorschau-warnung:not(:empty) { padding: 8px 11px; display: flex; flex-direction: column; gap: 6px; }
 .nl-vorschau-text { padding: 8px 11px; border-top: 1px solid var(--linie); }
@@ -155,24 +198,24 @@
 .nl-kampagne-fuss { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--linie); padding-top: 12px; }
 .nl-klapp > summary { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); cursor: pointer; }
 .nl-klapp-inhalt { margin-top: 8px; flex-wrap: wrap; }
-.nl-klapp-inhalt input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-klapp-inhalt input { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 6px; padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
 .nl-klapp-inhalt .leise { font-size: 11px; }
 .nl-vorschau-warnung:empty { display: none; }
-.nl-vorschau-gesaeubert { font-size: 11px; line-height: 1.5; color: var(--text-leise); border: 1px dashed var(--rahmen); padding: 6px 8px; }
+.nl-vorschau-gesaeubert { font-size: 11px; line-height: 1.5; color: var(--text-leise); border: 1px dashed var(--rahmen); border-radius: 6px; padding: 6px 8px; }
 .nl-vorschau-text summary { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-leise); cursor: pointer; }
 .nl-vorschau-text pre { margin: 6px 0 0; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-leise); max-height: 200px; overflow-y: auto; border: 1px dashed var(--rahmen); padding: 8px; }
 
 /* Umschalter Bausteine/HTML und Rechner/Handy */
-.nl-umschalter { display: inline-flex; border: 1px solid var(--rahmen); }
+.nl-umschalter { display: inline-flex; border: 1px solid var(--rahmen); border-radius: 8px; overflow: hidden; }
 .nl-umschalt-knopf { background: none; border: none; border-right: 1px solid var(--rahmen); color: var(--text-leise); font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 11px; cursor: pointer; }
 .nl-umschalt-knopf:last-child { border-right: none; }
 .nl-umschalt-knopf:hover:not(:disabled) { color: var(--gold-hell); }
-.nl-umschalt-knopf.gewaehlt { background: var(--gold); color: var(--auf-gold); }
+.nl-umschalt-knopf.gewaehlt { border-radius: 6px; background: var(--gold); color: var(--auf-gold); }
 .nl-umschalt-knopf:disabled { opacity: 0.5; cursor: default; }
 
 /* Das Code-Feld mit Zahlenleiste. Beide teilen Schrift, Zeilenhöhe und Innenabstand oben —
    sonst laufen Zahlen und Zeilen auseinander. */
-.nl-code-feld { display: flex; min-height: 0; background: var(--eingabe); }
+.nl-code-feld { display: flex; min-height: 0; overflow: hidden; border-radius: 8px; background: var(--eingabe); }
 .nl-code-zeilen { margin: 0; padding: 10px 8px 10px 11px; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--text-leise); text-align: right; background: var(--tief); border-right: 1px solid var(--linie); overflow: hidden; user-select: none; min-width: 38px; height: 620px; box-sizing: border-box; }
 .nl-code { flex: 1; min-width: 0; height: 620px; background: none; border: none; padding: 10px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--text); outline: none; resize: none; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow: auto; color-scheme: dark; box-sizing: border-box; }
 .nl-code::placeholder { color: var(--text-leise); opacity: 0.7; }
@@ -185,13 +228,13 @@
 .nl-leer p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--text); }
 .nl-leer p:last-child { margin-bottom: 0; }
 .nl-leer code { font-family: var(--mono); font-size: 12px; color: var(--gold-hell); }
-.nl-marke { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--auf-gold); background: var(--gold-dunkel); padding: 3px 8px; margin-bottom: 10px; }
+.nl-marke { display: inline-block; border-radius: 4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--auf-gold); background: var(--gold-dunkel); padding: 3px 8px; margin-bottom: 10px; }
 
 /* Freigabe: ein Bot hat eine Kampagne vorbereitet, Felix bestätigt */
-.nl-freigabe { border: 1px solid var(--gold); background: var(--gold-hauch); padding: 11px 13px; display: flex; flex-direction: column; gap: 9px; }
+.nl-freigabe { border: 1px solid var(--gold); border-radius: 8px; background: var(--gold-hauch); padding: 11px 13px; display: flex; flex-direction: column; gap: 9px; }
 .nl-freigabe-text { font-size: 13px; line-height: 1.55; color: var(--text); }
 .nl-freigabe-knoepfe { flex-wrap: wrap; }
-.nl-freigabe-knoepfe input { background: var(--eingabe); border: 1px solid var(--rahmen); padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
+.nl-freigabe-knoepfe input { background: var(--eingabe); border: 1px solid var(--rahmen); border-radius: 6px; padding: 6px 8px; font-size: 12px; color: var(--text); outline: none; color-scheme: dark; }
 .nl-freigabe-knoepfe input:focus { border-color: var(--gold); }
 
 /* Vorlagen-Übersicht: oben ein Ausschnitt der fertigen Mail (640 px breit, auf 40 % verkleinert) */

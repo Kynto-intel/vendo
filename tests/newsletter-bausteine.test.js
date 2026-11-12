@@ -18,7 +18,7 @@ const bauen = (liste, extra = {}) => mailAus(liste, { marke: MARKE, abmeldeAdres
 test('der Fuß mit Abmeldelink und Impressum wird angehängt, auch wenn er fehlt', () => {
   const html = bauen([{ art: 'text', text: 'Hallo' }])
   assert.match(html, /mailto:abmelden@beispiel\.de\?subject=Abmeldung/)
-  assert.match(html, /Newsletter abbestellen/)
+  assert.match(html, /ABMELDEN/)
   assert.match(html, /Musterweg 1/)
 })
 
@@ -113,8 +113,10 @@ test('ein leeres Logo-Feld im Kopf verschluckt das Logo der Marke nicht', () => 
 test('ein eigenes Logo im Baustein gewinnt gegen das der Marke', () => {
   const marke = { ...MARKE, logo: 'https://beispiel.de/marke.png' }
   const html = mailAus([{ art: 'kopf', logo: 'https://beispiel.de/eigenes.png' }], { marke, abmeldeAdresse: ABMELDUNG })
-  assert.match(html, /eigenes\.png/)
-  assert.ok(!html.includes('marke.png'))
+  // Nur der Kopf wird geprüft: im Fuß steht das Marken-Logo absichtlich (siehe fussTeileAus).
+  const kopf = html.slice(0, html.indexOf('border-top'))
+  assert.match(kopf, /eigenes\.png/)
+  assert.ok(!kopf.includes('marke.png'))
 })
 
 test('ohne Logo in Baustein und Marke bleibt der Name als Schriftzug', () => {
@@ -128,9 +130,9 @@ test('der Vorschautext steht versteckt im HTML', () => {
   assert.match(html, /display:none[^"]*"?>Kurz angerissen/)
 })
 
-test('startVorlage liefert eine brauchbare Folge mit Kopf und Fuß', () => {
+test('startVorlage liefert nur den Inhalt — Kopf setzt Vendo selbst davor', () => {
   const vorlage = startVorlage()
-  assert.equal(vorlage[0].art, 'kopf')
+  assert.ok(!vorlage.some((b) => b.art === 'kopf'), 'der Kopf kommt aus den Markenangaben')
   assert.equal(vorlage[vorlage.length - 1].art, 'fuss')
   assert.ok(vorlage.some((b) => b.art === 'text'))
   for (const b of vorlage) assert.ok(ARTEN.includes(b.art), `${b.art} ist eine bekannte Art`)

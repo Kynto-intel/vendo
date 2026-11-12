@@ -14,7 +14,7 @@
 //   - Eingesetzte Platzhalterwerte werden maskiert (siehe personalisierenHtml in
 //     kampagnen.js): ein Nachname mit spitzer Klammer darf das Markup nicht aufbrechen.
 
-const { huelle, inhaltAus, BAUSTEINE, STANDARD_FARBEN, SCHRIFT, BREITE, maskieren } = require('./bausteine.js')
+const { huelle, inhaltAus, kopfZeile, BAUSTEINE, STANDARD_FARBEN, SCHRIFT, BREITE, maskieren } = require('./bausteine.js')
 
 const MAX_HTML = 200000
 
@@ -136,9 +136,9 @@ function koerperAus(html) {
 }
 
 // Der Fuß als eigenständige Tabelle — für ein fremdes Dokument, das seinen eigenen
-// Rahmen mitbringt und in das nur noch Abmeldelink und Impressum müssen.
-function fussTabelle({ abmeldeAdresse, abmeldeText, impressum, farben }) {
-  const zeile = BAUSTEINE.fuss({ abmeldeAdresse, abmeldeText, impressum, farben })
+// Rahmen mitbringt und in das nur noch Abmeldelink, Pflichtlinks und Impressum müssen.
+function fussTabelle({ abmeldeAdresse, abmeldeText, impressum, farben, marke = {} }) {
+  const zeile = BAUSTEINE.fuss({ abmeldeAdresse, abmeldeText, impressum, farben, marke })
   // Breite wie in der Hülle: 100 % mit absoluter Höchstbreite, damit der Fuß auf dem Handy
   // mitgeht (Begründung steht bei `huelle` in bausteine.js).
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background-color:${farben.hintergrund};">
@@ -160,15 +160,23 @@ function mailAusHtml(roh, { marke = {}, abmeldeAdresse = '', vorschauText = '', 
   const farben = { ...STANDARD_FARBEN, ...(marke.farben || {}) }
   const gesaeubert = htmlSaeubern(roh)
   gesaeubert.html = feldMarkenEntfernen(gesaeubert.html)
-  const fuss = BAUSTEINE.fuss({ abmeldeAdresse, impressum: marke.impressum, farben })
+  const fuss = BAUSTEINE.fuss({ abmeldeAdresse, impressum: marke.impressum, farben, marke })
 
   if (rahmen) {
+    // Im Vendo-Rahmen setzt Vendo den Kopf davor — aus den Markenangaben, wie den Fuß
+    // dahinter. Der Inhalt im Feld ist dann wirklich nur noch der Inhalt.
+    const kopf = kopfZeile(marke, farben)
     const inhalt = istDokument(gesaeubert.html) ? koerperAus(gesaeubert.html) : gesaeubert.html
     const zeile = `<tr><td style="padding:0;background-color:${farben.flaeche};">${inhalt}</td></tr>`
-    return { ...gesaeubert, html: huelle(`${zeile}\n      ${fuss}`, { farben, titel: marke.titel, vorschauText }) }
+    return {
+      ...gesaeubert,
+      html: huelle(`${kopf ? `${kopf}\n      ` : ''}${zeile}\n      ${fuss}`, { farben, titel: marke.titel, vorschauText })
+    }
   }
 
-  const fussBlock = fussTabelle({ abmeldeAdresse, impressum: marke.impressum, farben })
+  // Ohne Vendo-Rahmen bleibt ein fremdes Mailing, wie es ist: es bringt seinen eigenen Kopf
+  // mit, ein zweiter stünde doppelt da. Nur der Fuß kommt dazu — den verlangt das Gesetz.
+  const fussBlock = fussTabelle({ abmeldeAdresse, impressum: marke.impressum, farben, marke })
   const vorschau = vorschauText ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${maskieren(vorschauText)}</div>` : ''
 
   if (!istDokument(gesaeubert.html)) {
@@ -311,18 +319,13 @@ function unveraendertAusVorlage(html, beispiele = []) {
   })
 }
 
-// Startpunkt einer neuen Vorlage: das Gerüst mit markierten Feldern und Anweisungen. Logo
-// und Gruß sind fest, alles dazwischen wird pro Kampagne neu geschrieben.
+// Startpunkt einer neuen Vorlage: das Gerüst mit markierten Feldern und Anweisungen. Der
+// Gruß ist fest, alles dazwischen wird pro Kampagne neu geschrieben. Kein Logo: Kopf und
+// Fuß setzt Vendo beim Bauen der Mail aus den Markenangaben davor und dahinter.
 function startVorlageHtml({ marke = {} } = {}) {
   const f = { ...STANDARD_FARBEN, ...(marke.farben || {}) }
   const schrift = `font-family:${SCHRIFT};`
-  const logo = /^https:\/\//i.test(marke.logo || '')
-    ? `<img src="${maskieren(marke.logo)}" width="180" alt="${maskieren(marke.titel || '')}" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;" />`
-    : `<div style="${schrift}font-size:24px;letter-spacing:0.08em;text-transform:uppercase;color:${f.text};">${maskieren(marke.titel || '')}</div>`
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-  <tr>
-    <td align="center" style="padding:28px 32px 8px;">${logo}</td>
-  </tr>
   <tr>
     <td style="padding:20px 32px 6px;">
       <h1 data-feld="ueberschrift" data-feld-hinweis="Kurz und kraftvoll, höchstens sechs Wörter" style="margin:0;${schrift}font-size:26px;line-height:1.25;color:${f.text};">Der Sturm ist da</h1>

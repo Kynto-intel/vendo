@@ -38,7 +38,9 @@ function textAusHtml(html) {
 
 // art: 'test'      — Mail an die eigene Adresse, kein Abmeldeweg nötig
 //      'kampagne'  — Mail an Empfänger: ohne Abmeldeweg wird nicht gebaut
-function mailBauen({ art = 'kampagne', an, betreff, html, text, zugang = {}, abmeldeAdresse = '' } = {}) {
+// `anhaenge` sind eingebettete Bilder (die Social-Icons aus icons.js), kein Dateianhang
+// für den Empfänger: sie tragen eine `cid`, auf die das HTML zeigt.
+function mailBauen({ art = 'kampagne', an, betreff, html, text, zugang = {}, abmeldeAdresse = '', anhaenge = [] } = {}) {
   const fehler = []
   const sauber = (wert) => String(wert ?? '').trim()
 
@@ -75,6 +77,10 @@ function mailBauen({ art = 'kampagne', an, betreff, html, text, zugang = {}, abm
     headers: {}
   }
   if (inhaltHtml.trim()) mail.html = inhaltHtml
+  // Nur Anhänge, auf die das HTML auch zeigt — ein ungenutztes Bild hinge sonst sichtbar
+  // an der Mail. Ohne HTML-Teil gibt es nichts zum Einbetten.
+  const eingebettet = (Array.isArray(anhaenge) ? anhaenge : []).filter((a) => a?.cid && a.content && inhaltHtml.includes(`cid:${a.cid}`))
+  if (eingebettet.length) mail.attachments = eingebettet
   if (zugang.antwortAn) mail.replyTo = zugang.antwortAn
   if (art === 'kampagne') {
     // mailto statt https: ein Link bräuchte einen erreichbaren Server, den es lokal nicht gibt

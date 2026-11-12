@@ -70,6 +70,44 @@ const BESTELLUNGEN = `query($cursor: String, $filter: String!) {
   }
 }`
 
+// Bestseller: dieselben Bestellungen, aber mit den Posten darin. Eigene Abfrage, damit
+// `bestellerHolen` (läuft bei jedem Automationstakt) schlank bleibt — dort werden nur
+// Adressen gebraucht, und jedes Feld mehr kostet bei Shopify Kontingent.
+// `product { handle }` ist das Beste, was wir bekommen können: damit lässt sich der Posten
+// ohne Raten der Produktseite zuordnen. Fehlt das Recht dafür, greift die schlanke Fassung
+// und es wird über den Titel zugeordnet.
+const RENNER_REICH = `query($cursor: String, $filter: String!) {
+  orders(first: 100, after: $cursor, query: $filter) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id lineItems(first: 50) { nodes { title quantity product { handle } } } }
+  }
+}`
+
+const RENNER_SCHLANK = `query($cursor: String, $filter: String!) {
+  orders(first: 100, after: $cursor, query: $filter) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id lineItems(first: 50) { nodes { title quantity } } }
+  }
+}`
+
+// Was in abgebrochenen Warenkörben liegt. Absichtlich ohne jedes Kundenfeld: für eine
+// Rangliste von Produkten braucht es niemanden namentlich, und ohne `customer` fragt die
+// Abfrage keine geschützten Kundendaten ab. `warenkoerbeHolen` weiter unten ist der andere
+// Fall — dort wird angeschrieben, dort muss die Adresse mit.
+const KORB_RENNER_REICH = `query($cursor: String, $filter: String!) {
+  abandonedCheckouts(first: 50, after: $cursor, query: $filter) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id lineItems(first: 50) { nodes { title quantity product { handle } } } }
+  }
+}`
+
+const KORB_RENNER_SCHLANK = `query($cursor: String, $filter: String!) {
+  abandonedCheckouts(first: 50, after: $cursor, query: $filter) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id lineItems(first: 50) { nodes { title quantity } } }
+  }
+}`
+
 const ABMELDUNG = `mutation($input: CustomerEmailMarketingConsentUpdateInput!) {
   customerEmailMarketingConsentUpdate(input: $input) {
     customer { id }
@@ -282,12 +320,76 @@ async function bestellerHolen({ shop, token, seit, holen = null } = {}) {
   return { ok: true, adressen: [...adressen], seiten }
 }
 
+// Welche Produkte sich seit einem Zeitpunkt am häufigsten verkauft haben. Gezählt werden
+// Stückzahlen, nicht Bestellungen: zwei Hoodies in einer Bestellung sind zwei verkaufte
+// Hoodies. Zurück kommt die ganze Rangliste, das Kürzen auf die besten fünf macht der
+// Aufrufer — so lässt sich dieselbe Zahl auch anders schneiden.
+// Die gemeinsame Mechanik beider Ranglisten: blättern, Posten zählen, bei fehlendem Recht
+// für `product { handle }` einmal auf die schlanke Abfrage umschalten. `block` sagt, wo die
+// Knoten in der Antwort stehen (`orders` oder `abandonedCheckouts`).
+async function rangliste({ shop, token, seit, holen, reich, schlankeAbfrage, feld, standardTage }) {
+  const filter = seitFilter('created_at', seit || Date.now() - standardTage * 86400000)
+  let abfrage = reich
+  let schlank = false
+  let cursor = null
+  let seiten = 0
+  let quellen = 0
+  const gezaehlt = new Map() // Schlüssel: handle, sonst der Titel in Kleinschreibung
+
+  while (seiten < MAX_SEITEN) {
+    const { daten, fehler, graphqlFehler } = await anfrage({ shop, token, query: abfrage, variables: { cursor, filter }, holen })
+    if (fehler) {
+      if (!schlank && istFeldFehler(graphqlFehler)) {
+        schlank = true
+        abfrage = schlankeAbfrage
+        continue
+      }
+      return { ok: false, fehler, liste: [] }
+    }
+    const block = daten?.[feld]
+    if (!block) return { ok: false, fehler: 'Shopify hat nichts geliefert.', liste: [] }
+    for (const knoten of block.nodes || []) {
+      quellen++
+      for (const posten of knoten?.lineItems?.nodes || []) {
+        const titel = String(posten?.title || '').trim()
+        const handle = String(posten?.product?.handle || '').trim().toLowerCase()
+        if (!titel && !handle) continue
+        const schluessel = handle || titel.toLowerCase()
+        const vorhanden = gezaehlt.get(schluessel) || { titel, handle, menge: 0 }
+        vorhanden.menge += Math.max(Number(posten?.quantity) || 1, 1)
+        if (!vorhanden.titel && titel) vorhanden.titel = titel
+        gezaehlt.set(schluessel, vorhanden)
+      }
+    }
+    seiten++
+    if (!block.pageInfo?.hasNextPage) break
+    cursor = block.pageInfo.endCursor
+  }
+
+  const liste = [...gezaehlt.values()].sort((a, b) => b.menge - a.menge || a.titel.localeCompare(b.titel, 'de'))
+  return { ok: true, liste, quellen, seiten, schlank, abgebrochen: seiten >= MAX_SEITEN }
+}
+
+async function bestsellerHolen({ shop, token, seit, holen = null } = {}) {
+  const r = await rangliste({ shop, token, seit, holen, reich: RENNER_REICH, schlankeAbfrage: RENNER_SCHLANK, feld: 'orders', standardTage: 30 })
+  return r.ok ? { ...r, bestellungen: r.quellen } : { ...r, bestellungen: 0 }
+}
+
+// Dieselbe Zählung über abgebrochene Warenkörbe: was Leute hineinlegen und liegen lassen,
+// ist der stärkste Hinweis für eine Mail, die sie zurückholt.
+async function korbRennerHolen({ shop, token, seit, holen = null } = {}) {
+  const r = await rangliste({ shop, token, seit, holen, reich: KORB_RENNER_REICH, schlankeAbfrage: KORB_RENNER_SCHLANK, feld: 'abandonedCheckouts', standardTage: 30 })
+  return r.ok ? { ...r, koerbe: r.quellen } : { ...r, koerbe: 0 }
+}
+
 module.exports = {
   zugangPruefen,
   anfrage,
   abonnentenHolen,
   abmeldungSchreiben,
   warenkoerbeHolen,
+  bestsellerHolen,
+  korbRennerHolen,
   bestellerHolen,
   kontaktAus,
   warenkorbAus,
@@ -298,6 +400,10 @@ module.exports = {
   MAX_SEITEN,
   ABFRAGE_REICH,
   ABFRAGE_SCHLANK,
+  RENNER_REICH,
+  KORB_RENNER_REICH,
+  KORB_RENNER_SCHLANK,
+  RENNER_SCHLANK,
   WARENKOERBE_REICH,
   WARENKOERBE_SCHLANK,
   BESTELLUNGEN

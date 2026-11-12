@@ -104,7 +104,7 @@ Regeln:
 - Schreibe kein HTML. Keine Tags, keine Attribute.
 - Erfinde keine Links, Preise oder Rabatte. Lass "link" leer, wenn nichts vorgegeben ist.
 - "name" ist kurz und sagt, wofür die Vorlage ist. "beschreibung" ist ein Satz dazu.
-- Kopf und Fuß der Mail werden automatisch ergänzt, lass sie weg.`
+- Kopf mit Logo und Fuß der Mail setzt Vendo selbst davor und dahinter — lass beides weg.`
 }
 
 // Antwort lesen: dieselbe Mechanik wie bei Kampagnen, plus Name und Beschreibung

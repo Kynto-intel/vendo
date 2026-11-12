@@ -25,8 +25,8 @@ const BEREICHE = [
   { id: 'uebersicht', name: 'Übersicht' },
   { id: 'kontakte', name: 'Kontakte' },
   { id: 'kampagnen', name: 'Kampagnen' },
-  { id: 'vorlagen', name: 'Vorlagen' },
   { id: 'automationen', name: 'Automationen' },
+  { id: 'vorlagen', name: 'Vorlagen' },
   { id: 'protokoll', name: 'Protokoll' },
   { id: 'zugang', name: 'Zugang' }
 ]
@@ -50,10 +50,10 @@ export async function starten(ctx) {
   let shopify = null
   let abmeldungen = null
   let marke = null
+  let renner = null
   let kampagnen = null
   let vorschauDaten = null
-  let vorschauOffen = true // die mitlaufende Vorschau neben dem Kampagnen-Editor
-  let vorschauBreite = 'desktop' // 'desktop' oder 'mobil'
+  let vorschauBreite = 'mobil' // jeder Editor startet mit der Handy-Vorschau
   let vorschauTakt = null // Zeitgeber: nicht bei jedem Tastendruck neu bauen
   let sicherungTakt = null // Zeitgeber: Tippen speichert von selbst
   let letzteVorschau = '' // zuletzt gezeigtes HTML, damit der Rahmen nicht grundlos neu lädt
@@ -112,6 +112,7 @@ export async function starten(ctx) {
   const markeHolen = async () => (marke = await stillHolen('markeLesen'))
   const kontakteHolen = async () => (kontakte = await stillHolen('kontakteLesen', { suche, anzahl: 100 }))
   const abmeldungenHolen = async () => (abmeldungen = await stillHolen('abmeldungenLesen'))
+  const rennerHolen = async () => (renner = await stillHolen('rennerLesen'))
   const kampagnenHolen = async () => (kampagnen = await stillHolen('kampagnenLesen'))
   const autosHolen = async () => (autos = await stillHolen('automationenLesen'))
   const vorlagenHolen = async () => (vorlagen = await stillHolen('vorlagenLesen'))
@@ -124,6 +125,7 @@ export async function starten(ctx) {
     daten = { ...LEER, ...d }
     if (fehlt.length) await ctx.daten.speichern(daten)
     await Promise.all([zugangHolen(), drosselHolen(), schlangeHolen()])
+    if (bereich === 'uebersicht') await rennerHolen()
     if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
     if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
     if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
@@ -147,6 +149,19 @@ export async function starten(ctx) {
     return Number.isNaN(d.getTime()) ? String(wert).slice(0, 10) : d.toLocaleDateString('de-DE')
   }
   const zahl = (wert) => `<span class="nl-zahl">${Array.isArray(wert) ? wert.length : Number(wert) || 0}</span>`
+
+  // Eine Kachel der Übersicht. Alle werden hier gebaut, damit sie gleich aussehen: Name,
+  // ein Wert, eine Zeile darunter. Alle drei Teile bleiben einzeilig — was nicht passt,
+  // schneidet die CSS ab und steht vollständig im Titel beim Darüberfahren. Deshalb nimmt
+  // `zeile` reinen Text und kein Markup: ein <br /> oder <strong> darin würde die
+  // Kacheln wieder unterschiedlich hoch machen.
+  // `titel` ist der volle Satz beim Darüberfahren, wenn die Zeile knapp gehalten ist.
+  const kachel = (name, wert, zeile, { betont = false, titel = '' } = {}) =>
+    `<div class="nl-kachel"><span class="nl-kachel-name">${m(name)}</span>${wert}` +
+    `<small class="nl-kachel-zeile${betont ? ' nl-kachel-betont' : ''}" title="${m(titel || zeile)}">${m(zeile)}</small></div>`
+
+  // Der Wert einer Kachel, wenn es keine Zahl ist (Postfach-Adresse, „pausiert“)
+  const stand = (text, klasse = '') => `<span class="nl-stand ${klasse}" title="${m(text)}">${m(text)}</span>`
   const meldungsZeile = (eintrag) => (eintrag ? `<div class="nl-meldung ${eintrag.ok ? 'nl-ok' : 'nl-fehler'}">${m(eintrag.text)}</div>` : '')
 
   // ── Übersicht ──
@@ -158,29 +173,87 @@ export async function starten(ctx) {
   }
 
   function versandKachel() {
-    if (!drossel) return '<div class="nl-kachel"><span class="nl-kachel-name">Versand</span><span class="nl-stand nl-aus">unbekannt</span><small>Hintergrundteil nicht erreichbar.</small></div>'
+    if (!drossel) return kachel('Versand', stand('unbekannt', 'nl-aus'), 'nicht erreichbar', { titel: 'Hintergrundteil nicht erreichbar — Vendo neu starten' })
     if (drossel.pausiert) {
       const minuten = Math.max(Math.ceil((drossel.pauseBis - Date.now()) / 60000), 1)
-      return `<div class="nl-kachel"><span class="nl-kachel-name">Versand</span><span class="nl-stand nl-rot">pausiert</span><small>noch etwa ${minuten} Min., Postfach meldete ein Limit</small></div>`
+      return kachel('Versand', stand('pausiert', 'nl-rot'), `noch etwa ${minuten} Min.`, { betont: true, titel: `Das Postfach meldete ein Limit, noch etwa ${minuten} Minuten Pause` })
     }
-    return `<div class="nl-kachel"><span class="nl-kachel-name">Versand</span>${zahl(drossel.gesendet)}<small>von ${drossel.budget} in der letzten Stunde</small></div>`
+    return kachel('Versand', zahl(drossel.gesendet), `von ${drossel.budget} pro Stunde`)
   }
 
+  // Zwei Ranglisten unter den Kacheln, damit Felix und Luzzy nicht raten müssen, was in
+  // die nächste Mail gehört: was sich verkauft und was liegen bleibt. Beide Zahlen kommen
+  // aus Shopify und werden höchstens einmal am Tag geholt (siehe rennerSichern in haupt.js).
+  const RENNER_ARTEN = [
+    { art: 'bestseller', titel: 'Meistverkauft', quelle: 'Bestellungen', leer: 'Noch keine Verkäufe gezählt.' },
+    { art: 'warenkorb', titel: 'Liegt im Warenkorb', quelle: 'Körbe', leer: 'Noch keine abgebrochenen Warenkörbe gezählt.' }
+  ]
+
+  function rennerBloecke() {
+    if (!renner) return ''
+    return `<div class="nl-renner-paar">${RENNER_ARTEN.map(rennerBlock).join('')}</div>`
+  }
+
+  function rennerBlock({ art, titel, quelle, leer }) {
+    const stand = renner[art] || {}
+    // Was aus dem Shop genommen wurde, bleibt sichtbar — nur so fällt es auf.
+    const liste = stand.liste || []
+    const knopf = `<button class="knopf-flach" data-nl="renner-holen" data-art="${m(art)}" type="button">Neu holen</button>`
+    const kopf = `<div class="nl-renner-kopf">
+        <span class="nl-kachel-name">${m(titel)} · ${Number(stand.tage) || 30} Tage</span>
+        ${knopf}
+      </div>`
+
+    if (!liste.length) {
+      return `<div class="nl-renner">${kopf}
+        <p class="nl-form-text">${m(leer)} Die Zahlen kommen aus Shopify — dafür muss im Reiter
+        „Kontakte“ ein Token mit <code>read_orders</code> stehen.</p>
+      </div>`
+    }
+
+    const zeilen = liste
+      .map(
+        (e, i) => `
+        <li class="nl-renner-zeile${e.imShop ? '' : ' nl-renner-fort'}">
+          <span class="nl-renner-platz">${i + 1}</span>
+          ${e.bild ? `<img src="${m(e.bild)}" alt="" loading="lazy" />` : '<span class="nl-renner-leer"></span>'}
+          <span class="nl-renner-name" title="${m(e.titel)}${e.imShop ? '' : ' — nicht mehr im Shop'}">${m(e.titel)}</span>
+          <span class="nl-renner-preis">${m(e.preis)}</span>
+          <span class="nl-renner-menge">${Number(e.menge) || 0}×</span>
+        </li>`
+      )
+      .join('')
+
+    return `<div class="nl-renner">${kopf}
+      <ol class="nl-renner-liste">${zeilen}</ol>
+      <p class="nl-renner-stand">${stand.geholtAm ? `Stand ${datum(stand.geholtAm)}` : 'ohne Stand'} · ${Number(stand.quellen) || 0} ${m(quelle)}</p>
+    </div>`
+  }
+
+  // Fünf Kacheln, bewusst nicht mehr: so bleiben sie in einer Reihe, statt dass eine
+  // allein darunter rutscht. Die Empfängerzahl steht im Reiter „Kontakte“, dort mit den
+  // Zahlen daneben, die sie erklären (gesperrt, ohne Nachweis, gesamt).
   function uebersicht() {
     const aktiv = daten.automationen.filter((a) => a.aktiv).length
-    const empfaenger = daten.kontakte.filter((k) => !k.gesperrt && k.zustimmungAm).length
     const laufen = daten.kampagnen.filter((k) => k.zustand === 'laeuft' || k.zustand === 'geplant').length
     const freigaben = daten.kampagnen.filter((k) => k.zustand === 'freigabe').length
     const p = postfachStand()
     return `
       <div class="nl-kacheln">
-        <div class="nl-kachel"><span class="nl-kachel-name">Empfänger</span>${zahl(empfaenger)}<small>mit Zustimmung, nicht gesperrt</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Kampagnen</span>${zahl(daten.kampagnen)}<small>${laufen} geplant oder laufend${freigaben ? ` · <strong>${freigaben} warten auf deine Freigabe</strong>` : ''}</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Automationen</span>${zahl(aktiv)}<small>davon aktiv</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Postfach</span><span class="nl-stand ${p.klasse}">${m(p.text)}</span><small>${m(p.hinweis)}</small></div>
+        ${kachel(
+          'Kampagnen',
+          zahl(daten.kampagnen),
+          // Wartet etwas auf Freigabe, ist das die wichtigere Zeile — eine zweite wäre
+          // eine zweite Zeile, und dann wären die Kacheln wieder ungleich hoch.
+          freigaben ? `${freigaben} warten auf Freigabe` : `${laufen} geplant oder laufend`,
+          { betont: Boolean(freigaben) }
+        )}
+        ${kachel('Automationen', zahl(aktiv), 'davon aktiv')}
+        ${kachel('Postfach', stand(p.text, p.klasse), p.hinweis)}
         ${versandKachel()}
-        ${schlange ? `<div class="nl-kachel"><span class="nl-kachel-name">Warteschlange</span>${zahl(schlange.offen)}<small>${schlange.faellig} fällig, ${schlange.wartend} wartet${schlange.fehler ? `, ${schlange.fehler} mit Fehler` : ''}</small></div>` : ''}
+        ${schlange ? kachel('Warteschlange', zahl(schlange.offen), schlange.fehler ? `${schlange.faellig} fällig, ${schlange.fehler} mit Fehler` : `${schlange.faellig} fällig, ${schlange.wartend} wartet`, { betont: Boolean(schlange.fehler) }) : ''}
       </div>
+      ${rennerBloecke()}
       <div class="nl-hinweis">
         <div class="nl-hinweis-titel">Im Aufbau</div>
         <p>Was schon steht, was als Nächstes kommt und der Bauplan dahinter stehen in
@@ -237,8 +310,9 @@ export async function starten(ctx) {
     const absender = zugang?.benutzer
       ? `${zugang.absenderName ? `${m(zugang.absenderName)} · ` : ''}<span class="nl-detail-adresse">${m(zugang.benutzer)}</span>`
       : '<span class="leise">noch kein Postfach eingetragen</span>'
+    const geplant = k.geplantAm ? new Date(k.geplantAm - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
     return `
-      <details class="nl-detail-karte" data-detail-karte open>
+      <details class="nl-detail-karte" data-detail-karte>
         <summary><span>E-Mail-Details</span></summary>
         <div class="nl-detail-zeilen">
           <div class="nl-detail-zeile">
@@ -261,23 +335,23 @@ export async function starten(ctx) {
             <span class="nl-detail-name">Von</span>
             <span class="nl-detail-wert">${absender}</span>
           </div>
+          <div class="nl-detail-zeile nl-detail-zeitplan">
+            <span class="nl-detail-name">Versandzeitpunkt</span>
+            <div class="nl-detail-zeitplan-inhalt">
+              <input name="geplantDatum" type="date" value="${geplant.slice(0, 10)}" aria-label="Versanddatum" title="Versanddatum" ${laeuft ? 'disabled' : ''} />
+              <input name="geplantUhrzeit" type="time" value="${geplant.slice(11, 16)}" aria-label="Versanduhrzeit" title="Versanduhrzeit" ${laeuft ? 'disabled' : ''} />
+              <button class="knopf-flach" data-nl="kampagne-planen" type="button" ${laeuft ? 'disabled' : ''}>Planen</button>
+              <span class="leise">Läuft nur, solange Vendo an ist; ein verstrichener Zeitpunkt wird bis zu 24 Stunden nachgeholt.</span>
+            </div>
+          </div>
         </div>
       </details>`
   }
 
-  // Alles, was nicht ständig gebraucht wird: Zeitpunkt, Luzzy, Löschen. Unter den beiden
-  // Flächen, damit Code und Vorschau die Höhe bekommen.
+  // Alles, was nicht ständig gebraucht wird: Luzzy und Löschen. Unter den beiden Flächen.
   function kampagneFuss(k, laeuft) {
     return `
       <div class="nl-kampagne-fuss">
-        <details class="nl-klapp">
-          <summary>Zu einem Zeitpunkt senden</summary>
-          <div class="nl-zeile nl-klapp-inhalt">
-            <input name="geplantAm" type="datetime-local" form="kampagne-form" value="${k.geplantAm ? new Date(k.geplantAm - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}" ${laeuft ? 'disabled' : ''} />
-            <button class="knopf-flach" data-nl="kampagne-planen" type="button" ${laeuft ? 'disabled' : ''}>Planen</button>
-            <span class="leise">Läuft nur, solange Vendo an ist; ein verstrichener Zeitpunkt wird bis zu 24 Stunden nachgeholt.</span>
-          </div>
-        </details>
         ${kiBlock(k, laeuft)}
         <div class="nl-knoepfe">
           <button class="knopf-flach gefahr" data-nl="kampagne-weg" type="button" ${laeuft ? 'disabled' : ''}>Kampagne löschen</button>
@@ -302,7 +376,8 @@ export async function starten(ctx) {
           Ohne deine Bestätigung geht nichts raus.
         </div>
         <div class="nl-zeile nl-freigabe-knoepfe">
-          <input type="datetime-local" data-freigabe-zeit value="${lokal(f.gewuenschtAm)}" />
+          <input type="date" data-freigabe-datum value="${lokal(f.gewuenschtAm).slice(0, 10)}" aria-label="Versanddatum" title="Versanddatum" />
+          <input type="time" data-freigabe-uhrzeit value="${lokal(f.gewuenschtAm).slice(11, 16)}" aria-label="Versanduhrzeit" title="Versanduhrzeit" />
           <button class="knopf-gold" data-nl="kampagne-freigeben" type="button">Freigeben und planen</button>
           <button class="knopf-flach" data-nl="kampagne-entwurf" type="button">Zurück in den Entwurf</button>
         </div>
@@ -336,9 +411,9 @@ export async function starten(ctx) {
         ${meldungsZeile(kampagneMeldung)}
 
         <form class="nl-kampagne-flaechen" id="kampagne-form" data-kampagne-form data-id="${m(k.id)}">
+          ${detailKarte(k, laeuft)}
           ${inhaltFlaeche('kampagne', k, laeuft)}
           <aside class="nl-rechts">
-            ${detailKarte(k, laeuft)}
             ${vorschauSpalte()}
           </aside>
         </form>
@@ -369,15 +444,6 @@ export async function starten(ctx) {
   function vorschauSpalte() {
     const art = offenerEditor()
     if (!art) return ''
-    if (!vorschauOffen) {
-      return `
-        <section class="nl-flaeche nl-vorschau-spalte">
-          <div class="nl-flaeche-kopf">
-            <span class="nl-flaeche-titel">Vorschau</span>
-            <button class="knopf-mini" data-nl="vorschau-umschalten" type="button">einblenden</button>
-          </div>
-        </section>`
-    }
     const d = art === 'vorlage' ? vorlageVorschau : vorschauDaten
     return `
       <section class="nl-flaeche nl-vorschau-spalte" data-vorschau-spalte>
@@ -388,7 +454,6 @@ export async function starten(ctx) {
               <button class="nl-umschalt-knopf${vorschauBreite === 'desktop' ? ' gewaehlt' : ''}" data-nl="vorschau-breite" data-breite="desktop" type="button">Rechner</button>
               <button class="nl-umschalt-knopf${vorschauBreite === 'mobil' ? ' gewaehlt' : ''}" data-nl="vorschau-breite" data-breite="mobil" type="button">Handy</button>
             </span>
-            <button class="knopf-mini" data-nl="vorschau-umschalten" type="button">ausblenden</button>
           </span>
         </div>
         <p class="nl-vorschau-zeile" data-vorschau-kopf>${d?.ok ? `Beispielkontakt: ${m(d.beispielAdresse || '')}` : 'Wird aufgebaut …'}</p>
@@ -464,7 +529,7 @@ export async function starten(ctx) {
   // keine Empfänger — deshalb stehen hier Name, Zweck und der Weg in die Kampagne.
   function vorlageDetailKarte(v) {
     return `
-      <details class="nl-detail-karte" open>
+      <details class="nl-detail-karte">
         <summary><span>Vorlagen-Details</span></summary>
         <div class="nl-detail-zeilen">
           <label class="nl-detail-zeile">
@@ -513,9 +578,9 @@ export async function starten(ctx) {
         ${meldungsZeile(vorlageMeldung)}
 
         <form class="nl-kampagne-flaechen" id="vorlage-form" data-vorlage-form data-id="${m(v.id)}">
+          ${vorlageDetailKarte(v)}
           ${inhaltFlaeche('vorlage', v)}
           <aside class="nl-rechts">
-            ${vorlageDetailKarte(v)}
             ${vorschauSpalte()}
           </aside>
         </form>
@@ -636,10 +701,10 @@ export async function starten(ctx) {
     const fehlende = autos.arten.filter((a) => !autos.liste.some((x) => x.art === a.art))
     return `
       <div class="nl-kacheln nl-kacheln-schmal">
-        <div class="nl-kachel"><span class="nl-kachel-name">Automationen</span>${zahl(autos.liste.filter((a) => a.aktiv).length)}<small>von ${autos.liste.length} eingeschaltet</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Laufende Serien</span>${zahl(laeufe?.laufen)}<small>Personen mitten in einer Serie</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Fertig</span>${zahl(laeufe?.fertig)}<small>Serien durchgelaufen</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Abgebrochen</span>${zahl(laeufe?.abgebrochen)}<small>Bestellung, Abmeldung oder zu spät</small></div>
+        ${kachel('Automationen', zahl(autos.liste.filter((a) => a.aktiv).length), `von ${autos.liste.length} eingeschaltet`)}
+        ${kachel('Laufende Serien', zahl(laeufe?.laufen), 'Personen in Serie', { titel: 'Personen mitten in einer Serie' })}
+        ${kachel('Fertig', zahl(laeufe?.fertig), 'durchgelaufen', { titel: 'Serien durchgelaufen' })}
+        ${kachel('Abgebrochen', zahl(laeufe?.abgebrochen), 'Kauf oder Abmeldung', { titel: 'Bestellung, Abmeldung oder zu spät' })}
       </div>
       ${meldungsZeile(autoMeldung)}
       ${
@@ -692,26 +757,28 @@ export async function starten(ctx) {
   function shopifyBlock() {
     if (!shopify) return ''
     return `
-      <form class="nl-form" data-shopify-form>
-        <div class="nl-form-kopf"><h3>Shopify</h3></div>
-        <p class="nl-form-text">Geholt werden nur Kunden mit Marketing-Zustimmung
-        (<code>accepts_marketing:true</code>). Der Token braucht <code>read_customers</code>,
-        zum Zurückschreiben einer Abmeldung außerdem <code>write_customers</code>.</p>
-        <div class="nl-form-paar">
-          <label>Shop-Adresse
-            <input name="shop" maxlength="120" value="${m(shopify.shop)}" placeholder="meinshop.myshopify.com" />
-            <small>Die myshopify.com-Adresse, nicht die eigene Domain.</small></label>
-          <label>Zugriffstoken
-            <input name="token" type="password" maxlength="200" value="" placeholder="${shopify.tokenGesetzt ? 'gespeichert — leer lassen, um ihn zu behalten' : 'shpat_…'}" autocomplete="new-password" />
-            <small>Wird von Windows verschlüsselt abgelegt.</small></label>
-        </div>
-        ${shopify.letzterSync ? `<p class="nl-form-text leise">Letzter Sync: ${m(zeit(shopify.letzterSync))} — ${m(shopify.letzterSyncText || '')}</p>` : ''}
-        <div class="nl-knoepfe">
-          <button class="knopf-gold" type="submit">Zugang speichern</button>
-          <button class="knopf-flach" data-nl="sync" type="button" ${shopify.tokenGesetzt ? '' : 'disabled'}>Kontakte jetzt holen</button>
-          <button class="knopf-flach gefahr" data-nl="shopify-weg" type="button" ${shopify.shop ? '' : 'disabled'}>Zugang löschen</button>
-        </div>
-      </form>`
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Shopify</span></summary>
+        <form class="nl-form" data-shopify-form>
+          <p class="nl-form-text">Geholt werden nur Kunden mit Marketing-Zustimmung
+          (<code>accepts_marketing:true</code>). Der Token braucht <code>read_customers</code>,
+          zum Zurückschreiben einer Abmeldung außerdem <code>write_customers</code>.</p>
+          <div class="nl-form-paar">
+            <label>Shop-Adresse
+              <input name="shop" maxlength="120" value="${m(shopify.shop)}" placeholder="meinshop.myshopify.com" />
+              <small>Die myshopify.com-Adresse, nicht die eigene Domain.</small></label>
+            <label>Zugriffstoken
+              <input name="token" type="password" maxlength="200" value="" placeholder="${shopify.tokenGesetzt ? 'gespeichert — leer lassen, um ihn zu behalten' : 'shpat_…'}" autocomplete="new-password" />
+              <small>Wird von Windows verschlüsselt abgelegt.</small></label>
+          </div>
+          ${shopify.letzterSync ? `<p class="nl-form-text leise">Letzter Sync: ${m(zeit(shopify.letzterSync))} — ${m(shopify.letzterSyncText || '')}</p>` : ''}
+          <div class="nl-knoepfe">
+            <button class="knopf-gold" type="submit">Zugang speichern</button>
+            <button class="knopf-flach" data-nl="sync" type="button" ${shopify.tokenGesetzt ? '' : 'disabled'}>Kontakte jetzt holen</button>
+            <button class="knopf-flach gefahr" data-nl="shopify-weg" type="button" ${shopify.shop ? '' : 'disabled'}>Zugang löschen</button>
+          </div>
+        </form>
+      </details>`
   }
 
   function abmeldeBlock() {
@@ -719,40 +786,42 @@ export async function starten(ctx) {
     const a = abmeldungen
     const inbox = String(a.ordner || '').toUpperCase() === 'INBOX'
     return `
-      <form class="nl-form nl-abschnitt" data-abmelde-form>
-        <div class="nl-form-kopf"><h3>Abmeldungen per Mail</h3></div>
-        <p class="nl-form-text">Der Abmeldelink in jeder Kampagne ist eine Mail an
-        <strong>${m(a.abmeldeAdresse || '(noch keine Adresse)')}</strong>. Vendo liest sie hier aus
-        und sperrt die Adresse — lokal und bei Shopify. Ohne das müsstest du jede Abmeldung von
-        Hand in der Liste sperren.</p>
-        <p class="nl-form-text leise">Richte dazu bei IONOS eine Filterregel ein, die solche
-        Mails in einen eigenen Ordner legt. Vendo liest nur diesen Ordner, markiert Verarbeitetes
-        als gelesen und löscht nichts — so kommen die Mails auch deinem Kundenservice nicht in
-        die Quere.</p>
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Abmeldungen per Mail</span></summary>
+        <form class="nl-form" data-abmelde-form>
+          <p class="nl-form-text">Der Abmeldelink in jeder Kampagne ist eine Mail an
+          <strong>${m(a.abmeldeAdresse || '(noch keine Adresse)')}</strong>. Vendo liest sie hier aus
+          und sperrt die Adresse — lokal und bei Shopify. Ohne das müsstest du jede Abmeldung von
+          Hand in der Liste sperren.</p>
+          <p class="nl-form-text leise">Richte dazu bei IONOS eine Filterregel ein, die solche
+          Mails in einen eigenen Ordner legt. Vendo liest nur diesen Ordner, markiert Verarbeitetes
+          als gelesen und löscht nichts — so kommen die Mails auch deinem Kundenservice nicht in
+          die Quere.</p>
 
-        <label class="nl-haken">
-          <input type="checkbox" name="aktiv" ${a.aktiv ? 'checked' : ''} ${a.postfachBereit ? '' : 'disabled'} />
-          Abmeldungen alle zehn Minuten einlesen
-        </label>
-        ${a.postfachBereit ? '' : '<div class="nl-warnung">Dafür müssen erst die Zugangsdaten des Postfachs eingetragen sein (Reiter „Zugang“).</div>'}
+          <label class="nl-haken">
+            <input type="checkbox" name="aktiv" ${a.aktiv ? 'checked' : ''} ${a.postfachBereit ? '' : 'disabled'} />
+            Abmeldungen alle zehn Minuten einlesen
+          </label>
+          ${a.postfachBereit ? '' : '<div class="nl-warnung">Dafür müssen erst die Zugangsdaten des Postfachs eingetragen sein (Reiter „Zugang“).</div>'}
 
-        <div class="nl-form-paar">
-          <label>Ordner im Postfach
-            <input name="ordner" maxlength="120" value="${m(a.ordner)}" placeholder="${m(a.standardOrdner)}" />
-            <small>Genau wie im Postfach geschrieben.</small></label>
-          <label>Posteingangsserver
-            <input name="host" maxlength="120" value="${m(a.host)}" placeholder="${m(a.standardHost)}" />
-            <small>Port ${Number(a.port)} mit SSL/TLS.</small></label>
-        </div>
-        ${inbox ? '<div class="nl-warnung">INBOX ist dein normales Postfach — dort liegen auch die Kundenmails, die Hermes beobachtet. Vendo wertet dann nur Mails aus, deren Betreff nach einer Abmeldung aussieht. Ein eigener Ordner ist sicherer.</div>' : ''}
-        ${a.letzterLauf ? `<p class="nl-form-text leise">Zuletzt geprüft: ${m(zeit(a.letzterLauf))} — ${m(a.letzterText || '')}</p>` : ''}
+          <div class="nl-form-paar">
+            <label>Ordner im Postfach
+              <input name="ordner" maxlength="120" value="${m(a.ordner)}" placeholder="${m(a.standardOrdner)}" />
+              <small>Genau wie im Postfach geschrieben.</small></label>
+            <label>Posteingangsserver
+              <input name="host" maxlength="120" value="${m(a.host)}" placeholder="${m(a.standardHost)}" />
+              <small>Port ${Number(a.port)} mit SSL/TLS.</small></label>
+          </div>
+          ${inbox ? '<div class="nl-warnung">INBOX ist dein normales Postfach — dort liegen auch die Kundenmails, die Hermes beobachtet. Vendo wertet dann nur Mails aus, deren Betreff nach einer Abmeldung aussieht. Ein eigener Ordner ist sicherer.</div>' : ''}
+          ${a.letzterLauf ? `<p class="nl-form-text leise">Zuletzt geprüft: ${m(zeit(a.letzterLauf))} — ${m(a.letzterText || '')}</p>` : ''}
 
-        <div class="nl-knoepfe">
-          <button class="knopf-gold" type="submit">Speichern</button>
-          <button class="knopf-flach" data-nl="abmelde-pruefen" type="button" ${a.postfachBereit ? '' : 'disabled'}>Verbindung prüfen</button>
-          <button class="knopf-flach" data-nl="abmelde-jetzt" type="button" ${a.postfachBereit ? '' : 'disabled'}>Jetzt einlesen</button>
-        </div>
-      </form>`
+          <div class="nl-knoepfe">
+            <button class="knopf-gold" type="submit">Speichern</button>
+            <button class="knopf-flach" data-nl="abmelde-pruefen" type="button" ${a.postfachBereit ? '' : 'disabled'}>Verbindung prüfen</button>
+            <button class="knopf-flach" data-nl="abmelde-jetzt" type="button" ${a.postfachBereit ? '' : 'disabled'}>Jetzt einlesen</button>
+          </div>
+        </form>
+      </details>`
   }
 
   function kontaktZeilen() {
@@ -787,23 +856,25 @@ export async function starten(ctx) {
     if (!kontakte) return '<div class="nl-leer"><p>Der Hintergrundteil ist nicht erreichbar.</p><p class="leise">Vendo einmal neu starten.</p></div>'
     return `
       <div class="nl-kacheln nl-kacheln-schmal">
-        <div class="nl-kachel"><span class="nl-kachel-name">Empfänger</span>${zahl(kontakte.empfaenger)}<small>dürfen Kampagnen bekommen</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Bestätigung offen</span>${zahl(kontakte.offeneBestaetigung)}<small>Shopify: PENDING — bekommen nichts</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Gesperrt</span>${zahl(kontakte.gesperrt)}<small>abgemeldet</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Ohne Nachweis</span>${zahl(kontakte.ohneZustimmung)}<small>kein Zustimmungsdatum</small></div>
-        <div class="nl-kachel"><span class="nl-kachel-name">Gesamt</span>${zahl(kontakte.gesamt)}<small>${kontakte.ausShopify} aus Shopify, ${kontakte.ausImport} importiert</small></div>
+        ${kachel('Empfänger', zahl(kontakte.empfaenger), 'dürfen Kampagnen', { titel: 'dürfen Kampagnen bekommen' })}
+        ${kachel('Bestätigung offen', zahl(kontakte.offeneBestaetigung), 'Shopify PENDING', { titel: 'Shopify: PENDING — bekommen nichts' })}
+        ${kachel('Gesperrt', zahl(kontakte.gesperrt), 'abgemeldet')}
+        ${kachel('Ohne Nachweis', zahl(kontakte.ohneZustimmung), 'ohne Datum', { titel: 'kein Zustimmungsdatum' })}
+        ${kachel('Gesamt', zahl(kontakte.gesamt), `${kontakte.ausShopify} Shopify, ${kontakte.ausImport} Import`, { titel: `${kontakte.ausShopify} aus Shopify, ${kontakte.ausImport} importiert` })}
       </div>
       ${meldungsZeile(kontaktMeldung)}
       ${shopifyBlock()}
       ${abmeldeBlock()}
-      <form class="nl-form nl-abschnitt" data-import-form>
-        <div class="nl-form-kopf"><h3>Adressen einfügen (CSV)</h3></div>
-        <p class="nl-form-text">Erste Zeile ist die Kopfzeile, Trennzeichen wird erkannt. Ohne
-        Spalte <code>zustimmungam</code> wird eine Adresse aufgenommen, aber <strong>nicht</strong>
-        als Empfänger geführt — ohne Nachweis kein Versand.</p>
-        <label>Inhalt der CSV-Datei <textarea name="csv" rows="6" placeholder="${m(CSV_BEISPIEL)}">${m(csvText)}</textarea></label>
-        <div class="nl-knoepfe"><button class="knopf-gold" type="submit">Einfügen</button></div>
-      </form>
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Adressen einfügen (CSV)</span></summary>
+        <form class="nl-form" data-import-form>
+          <p class="nl-form-text">Erste Zeile ist die Kopfzeile, Trennzeichen wird erkannt. Ohne
+          Spalte <code>zustimmungam</code> wird eine Adresse aufgenommen, aber <strong>nicht</strong>
+          als Empfänger geführt — ohne Nachweis kein Versand.</p>
+          <label>Inhalt der CSV-Datei <textarea name="csv" rows="6" placeholder="${m(CSV_BEISPIEL)}">${m(csvText)}</textarea></label>
+          <div class="nl-knoepfe"><button class="knopf-gold" type="submit">Einfügen</button></div>
+        </form>
+      </details>
       <div class="nl-abschnitt">
         <div class="nl-form-kopf nl-protokoll-kopf">
           <h3>Liste</h3>
@@ -827,11 +898,13 @@ export async function starten(ctx) {
     const z = zugang
     const ports = (z.ports || [465, 587]).map((p) => `<option value="${p}" ${Number(z.port) === p ? 'selected' : ''}>${p}${p === 465 ? ' (SSL/TLS)' : ' (STARTTLS)'}</option>`).join('')
     return `
-      <form class="nl-form" data-zugang-form>
-        <div class="nl-form-kopf"><h3>Postfach für den Versand</h3></div>
-        <p class="nl-form-text">Dieses Plugin spricht selbst mit IONOS und lässt Hermes unberührt.
-        Beide senden über dasselbe Postfach und teilen sich dessen Stundenlimit — dafür gibt es
-        die Drossel weiter unten.</p>
+      ${meldungsZeile(meldung)}
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Postfach für den Versand</span></summary>
+        <form class="nl-form" data-zugang-form>
+          <p class="nl-form-text">Dieses Plugin spricht selbst mit IONOS und lässt Hermes unberührt.
+          Beide senden über dasselbe Postfach und teilen sich dessen Stundenlimit — dafür gibt es
+          die Drossel weiter unten.</p>
         <label>Postfach-Adresse
           <input name="benutzer" type="email" required maxlength="120" value="${m(z.benutzer)}" placeholder="z. B. info@beispiel.de" autocomplete="off" />
           <small>Die vollständige Adresse ist bei IONOS gleichzeitig der Benutzername.</small></label>
@@ -858,8 +931,8 @@ export async function starten(ctx) {
           <button class="knopf-flach" data-nl="testen" type="button" ${z.passwortGesetzt ? '' : 'disabled'}>Anmeldung prüfen</button>
           <button class="knopf-flach gefahr" data-nl="loeschen" type="button" ${z.benutzer ? '' : 'disabled'}>Zugangsdaten löschen</button>
         </div>
-        ${meldungsZeile(meldung)}
-      </form>
+        </form>
+      </details>
       ${markeBlock()}
       ${drosselBlock()}
       ${testmailBlock()}`
@@ -868,11 +941,12 @@ export async function starten(ctx) {
   function markeBlock() {
     if (!marke) return ''
     return `
-      <form class="nl-form nl-abschnitt" data-marke-form>
-        <div class="nl-form-kopf"><h3>Marke und Pflichtangaben</h3></div>
-        <p class="nl-form-text">Kopf und Fuß jeder Kampagne entstehen daraus. <strong>Ohne
-        Impressum und Abmeldeweg lässt sich keine Kampagne starten</strong> — beides ist in
-        Werbemails Pflicht.</p>
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Marke und Pflichtangaben</span></summary>
+        <form class="nl-form" data-marke-form>
+          <p class="nl-form-text">Kopf und Fuß jeder Kampagne entstehen daraus. <strong>Ohne
+          Impressum und Abmeldeweg lässt sich keine Kampagne starten</strong> — beides ist in
+          Werbemails Pflicht.</p>
         <div class="nl-form-paar">
           <label>Name im Kopf <input name="titel" maxlength="80" value="${m(marke.titel)}" placeholder="z. B. Donnerwolf" /></label>
           <label>Logo-Adresse (optional)
@@ -883,7 +957,11 @@ export async function starten(ctx) {
           <input name="abmeldeAdresse" type="email" maxlength="120" value="${m(marke.abmeldeAdresse)}" placeholder="leer = Postfach-Adresse" />
           <small>Dorthin geht der Abmeldelink als Mail. Diese Mails am besten per Filterregel in einen eigenen Ordner sortieren.</small></label>
         <label>Impressum im Fuß
-          <textarea name="impressum" rows="4" placeholder="Firma, Straße, Ort, Vertretung, Kontakt">${m(marke.impressum)}</textarea></label>
+          <textarea name="impressum" rows="4" placeholder="Firma, Straße, Ort, Vertretung, Kontakt">${m(marke.impressum)}</textarea>
+          <small>Jede Zeile wird ein Teil; im Fuß stehen sie mit „ | “ hintereinander und
+          brechen von selbst um. Eine freie Zeile dazwischen erzwingt einen festen Umbruch.</small></label>
+        ${kopfFelder()}
+        ${fussFelder()}
         <div class="nl-knoepfe">
           <button class="knopf-gold" type="submit">Marke speichern</button>
           <button class="knopf-flach" data-nl="marke-test" type="button" ${zugang?.passwortGesetzt ? '' : 'disabled'}>Beispielmail mit Logo an mich</button>
@@ -891,7 +969,115 @@ export async function starten(ctx) {
         <p class="nl-form-text leise">Die Beispielmail zeigt Kopf, Logo und Fuß so, wie sie in
         jeder Kampagne aussehen. Die freie Testmail weiter unten schickt dagegen genau das, was
         in ihrem Feld steht — ohne Rahmen und ohne Logo.</p>
-      </form>`
+        </form>
+      </details>`
+  }
+
+  // Ein Farbfeld, wie es Kopf und Fuß beide brauchen
+  function farbfeld(bereich, name, beschriftung, standard, hinweis) {
+    const wert = (marke[bereich] || {})[name] || ''
+    return `
+          <label>${m(beschriftung)}
+            <input name="${m(bereich)}_${m(name)}" maxlength="9" value="${m(wert)}" placeholder="${m(standard)}" />
+            <small>${m(hinweis)}</small></label>`
+  }
+
+  // Die Felder für den Kopf: Vendo setzt ihn vor jede Mail, damit im Editor und in der
+  // KI-Antwort nur noch der Inhalt steht. Das Logo kommt aus der Marke, lässt sich hier
+  // aber überschreiben und in der Größe stellen.
+  function kopfFelder() {
+    const k = marke.kopf || {}
+    return `
+        <p class="nl-fuss-titel">Kopf jeder Mail</p>
+        <p class="nl-form-text">Vendo setzt den Kopf <strong>vor jede Mail</strong> — genau
+        wie den Fuß dahinter. Kampagnen, Vorlagen und Luzzy brauchen das Logo deshalb nicht
+        mehr mitzuliefern, sie schreiben nur noch den Inhalt. Ohne eigene Adresse nimmt der
+        Kopf das Logo von oben; ohne Logo steht der Name als Schriftzug da.</p>
+        <label class="nl-haken nl-klein"><input type="checkbox" name="kopf_zeigen" ${k.zeigen === false ? '' : 'checked'} /> Kopf vor jede Mail setzen</label>
+        <div class="nl-form-paar">
+          <label>Logo-Adresse im Kopf
+            <input name="kopf_logo" maxlength="300" value="${m(k.logo || '')}" placeholder="leer = Logo von oben" /></label>
+          <label>Breite in Pixel
+            <input name="kopf_logoBreite" type="number" min="40" max="560" step="10" value="${Number(k.logoBreite) || marke.logoBreiteKopfStandard || 180}" />
+            <small>Höchstens 560 — so breit ist die Mail.</small></label>
+        </div>
+        <div class="nl-fuss-farben">
+          ${farbfeld('kopf', 'hintergrund', 'Grund im Kopf', 'wie die Mail', 'z. B. #17304f')}
+          ${farbfeld('kopf', 'text', 'Schriftzug', 'wie die Mail', 'nur ohne Logo')}
+        </div>
+        <p class="nl-form-text leise">Hat eine ältere Vorlage noch ein Logo im Inhalt, steht
+        es jetzt doppelt da — nimm es dort heraus oder schalte den Kopf hier ab.</p>`
+  }
+
+  // Die Felder für den Fuß: Pflichtlinks, Social-Icons, Logo und der Abmeldetext. Alles
+  // Adressen — einmal eingetragen, stehen sie in jeder Mail. Die Listen kommen aus
+  // bausteine.js (über markeLesen), damit die Reihenfolge nur an einer Stelle steht.
+  function fussFelder() {
+    const f = marke.fuss || {}
+    const wert = (name) => m(f[name] || '')
+    const breite = Number(f.logoBreite) || marke.logoBreiteFussStandard || 120
+
+    const rechtslinks = (marke.rechtslinks || [])
+      .map(
+        (l) => `
+          <label>${m(l.name)}-Adresse
+            <input name="fuss_${m(l.id)}" maxlength="300" value="${wert(l.id)}" placeholder="https://…" /></label>`
+      )
+      .join('')
+
+    const social = (marke.netzwerke || [])
+      .map(
+        (n) => `
+          <div class="nl-fuss-netz">
+            <span>${m(n.name)}</span>
+            <input name="fuss_${m(n.id)}" maxlength="300" value="${wert(n.id)}" placeholder="https://… (Profil-Adresse)" />
+            <input name="fuss_${m(n.id)}Icon" maxlength="300" value="${wert(`${n.id}Icon`)}" placeholder="${n.mitBild ? 'anderes Icon-Bild (https://…)' : 'https://… (Icon-Bild fehlt)'}" />
+          </div>`
+      )
+      .join('')
+
+    return `
+        <p class="nl-fuss-titel">Fuß jeder Mail</p>
+        <p class="nl-form-text">Hier nur Adressen eintragen — Vendo baut daraus den Fuß und
+        hängt ihn an <strong>jede</strong> Mail: Logo, Social-Icons, die Pflichtlinks und
+        darunter mittig den Abmeldelink. Leere Felder bleiben im Fuß weg. Alle Adressen
+        müssen mit <code>https://</code> beginnen.</p>
+        ${rechtslinks}
+        <p class="nl-fuss-titel">Social-Media-Icons</p>
+        <p class="nl-form-text">Nur die Profil-Adresse eintragen — das Icon nimmt Vendo aus
+        <code>plugins/newsletter/social media icons</code>, verkleinert es und
+        <strong>schickt es mit der Mail mit</strong>. Du musst nichts hochladen. Weiße
+        Silhouetten bekommen dabei die Schriftfarbe des Fußes. Das zweite Feld ist nur für
+        den Fall, dass du für ein Netzwerk ein anderes Bild aus dem Netz einsetzen willst.</p>
+        ${social}
+        <div class="nl-form-paar">
+          <label>Überschrift über den Icons
+            <input name="fuss_socialTitel" maxlength="40" value="${wert('socialTitel')}" placeholder="${m(marke.socialTitelStandard || 'FOLGE UNS HIER')}" />
+            <small>Leer lassen und speichern heißt: keine Überschrift.</small></label>
+          <label>Icon-Größe in Pixel
+            <input name="fuss_iconBreite" type="number" min="${Number(marke.iconBreiteMin) || 14}" max="${Number(marke.iconBreiteMax) || 40}" step="1" value="${Number(f.iconBreite) || marke.iconBreiteStandard || 22}" />
+            <small>${Number(marke.iconBreiteMin) || 14} bis ${Number(marke.iconBreiteMax) || 40}.</small></label>
+        </div>
+        <p class="nl-fuss-titel">Logo, Text und Farben im Fuß</p>
+        <div class="nl-form-paar">
+          <label>Logo-Adresse im Fuß
+            <input name="fuss_logo" maxlength="300" value="${wert('logo')}" placeholder="leer = Logo aus dem Kopf" /></label>
+          <label>Breite in Pixel
+            <input name="fuss_logoBreite" type="number" min="40" max="300" step="10" value="${breite}" /></label>
+        </div>
+        <label class="nl-haken nl-klein"><input type="checkbox" name="fuss_logoZeigen" ${f.logoZeigen === false ? '' : 'checked'} /> Logo im Fuß zeigen</label>
+        <label>Zeile unter dem Impressum
+          <input name="fuss_zusatz" maxlength="160" value="${wert('zusatz')}" placeholder="Preisangabe, z. B. zzgl. Versandkosten" />
+          <small>Für den Preishinweis. Als Kleinunternehmer nach § 19 UStG gehört hier der
+          Hinweis hin, dass keine Umsatzsteuer ausgewiesen wird.</small></label>
+        <label>Text des Abmeldelinks
+          <input name="fuss_abmeldeText" maxlength="40" value="${wert('abmeldeText')}" placeholder="${m(marke.abmeldeTextStandard || 'ABMELDEN')}" />
+          <small>Steht ganz unten, mittig. Leer heißt „${m(marke.abmeldeTextStandard || 'ABMELDEN')}“.</small></label>
+        <div class="nl-fuss-farben">
+          ${farbfeld('fuss', 'hintergrund', 'Grund im Fuß', 'wie die Mail', 'z. B. #17304f')}
+          ${farbfeld('fuss', 'text', 'Schrift und Icons', 'gedämpft', 'auch für die Icons')}
+          ${farbfeld('fuss', 'akzent', 'Abmeldelink', 'wie die Schrift', 'z. B. #e8622a')}
+        </div>`
   }
 
   function drosselBlock() {
@@ -902,11 +1088,12 @@ export async function starten(ctx) {
          <button class="knopf-flach" data-nl="pause-aus" type="button">Pause beenden</button></div>`
       : ''
     return `
-      <form class="nl-form nl-abschnitt" data-drossel-form>
-        <div class="nl-form-kopf"><h3>Drossel</h3></div>
-        <p class="nl-form-text">IONOS erlaubt bei Mail Basic und Business 500 Mails pro Stunde,
-        und dieses Limit teilt sich der Newsletter mit deinem Kundenservice. Was hier steht, ist
-        die Obergrenze für den Newsletter.</p>
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Drossel</span></summary>
+        <form class="nl-form" data-drossel-form>
+          <p class="nl-form-text">IONOS erlaubt bei Mail Basic und Business 500 Mails pro Stunde,
+          und dieses Limit teilt sich der Newsletter mit deinem Kundenservice. Was hier steht, ist
+          die Obergrenze für den Newsletter.</p>
         <div class="nl-form-paar">
           <label>Mails pro Stunde
             <input name="budget" type="number" min="1" max="${drossel.budgetMax}" value="${Number(drossel.budget)}" />
@@ -921,7 +1108,8 @@ export async function starten(ctx) {
           <button class="knopf-gold" type="submit">Budget speichern</button>
           <button class="knopf-flach" data-nl="drossel-neu" type="button">Stand neu laden</button>
         </div>
-      </form>`
+        </form>
+      </details>`
   }
 
   function testmailBlock() {
@@ -929,22 +1117,26 @@ export async function starten(ctx) {
     const an = testmail.an || zugang.testAdresseWirksam || zugang.benutzer
     const name = testName || { vorname: zugang.testVorname || '', nachname: zugang.testNachname || '' }
     return `
-      <form class="nl-form nl-abschnitt" data-testname-form>
-        <div class="nl-form-kopf"><h3>Name in Testmails</h3></div>
-        <p class="nl-form-text">Damit Testmails dich so anreden wie später deine Kunden: Vendo setzt
-        diesen Namen für {{vorname}}, {{nachname}} und {{name}} ein. Leer steht dort „Vorname“.
-        Gilt für alle Testmails, auch die zur Freigabe.</p>
+      ${meldungsZeile(testNameMeldung)}
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Name in Testmails</span></summary>
+        <form class="nl-form" data-testname-form>
+          <p class="nl-form-text">Damit Testmails dich so anreden wie später deine Kunden: Vendo setzt
+          diesen Namen für {{vorname}}, {{nachname}} und {{name}} ein. Leer steht dort „Vorname“.
+          Gilt für alle Testmails, auch die zur Freigabe.</p>
         <div class="nl-form-paar">
           <label>Vorname <input name="vorname" maxlength="60" value="${m(name.vorname)}" placeholder="Vorname" /></label>
           <label>Nachname <input name="nachname" maxlength="60" value="${m(name.nachname)}" placeholder="Nachname" /></label>
         </div>
         <div class="nl-knoepfe"><button class="knopf-gold" type="submit">Namen merken</button></div>
-        ${meldungsZeile(testNameMeldung)}
-      </form>
-      <form class="nl-form nl-abschnitt" data-test-form>
-        <div class="nl-form-kopf"><h3>Testmail (freier Inhalt)</h3></div>
-        <p class="nl-form-text">Eine einzelne Mail, um Absender und Zustellung zu prüfen. Sie trägt
-        keinen Abmeldelink, weil sie keine Werbung ist — bei Kampagnen ist er Pflicht.</p>
+        </form>
+      </details>
+      ${meldungsZeile(testMeldung)}
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Testmail (freier Inhalt)</span></summary>
+        <form class="nl-form" data-test-form>
+          <p class="nl-form-text">Eine einzelne Mail, um Absender und Zustellung zu prüfen. Sie trägt
+          keinen Abmeldelink, weil sie keine Werbung ist — bei Kampagnen ist er Pflicht.</p>
         <div class="nl-form-paar">
           <label>An
             <input name="an" type="email" required maxlength="120" value="${m(an)}" />
@@ -958,9 +1150,9 @@ export async function starten(ctx) {
           <button class="knopf-gold" type="submit">Testmail senden</button>
           <button class="knopf-flach" data-nl="vorschau" type="button">Textteil ansehen</button>
         </div>
-        ${vorschau != null ? `<div class="nl-vorschau"><div class="nl-vorschau-titel">So sieht der Textteil aus</div><pre>${m(vorschau)}</pre></div>` : ''}
-        ${meldungsZeile(testMeldung)}
-      </form>`
+        </form>
+      </details>
+      ${vorschau != null ? `<div class="nl-vorschau nl-abschnitt"><div class="nl-vorschau-titel">So sieht der Textteil aus</div><pre>${m(vorschau)}</pre></div>` : ''}`
   }
 
   // ── Protokoll und Warteschlange ──
@@ -1047,12 +1239,10 @@ export async function starten(ctx) {
     $('[data-inhalt]').innerHTML = inhalt
     if (offenerEditor()) {
       zeilennummern()
-      if (vorschauOffen) {
-        // Die Spalte ist eben neu entstanden und leer: der Rahmen muss gefüllt werden,
-        // auch wenn dasselbe HTML herauskommt wie vorher.
-        letzteVorschau = ''
-        vorschauAuffrischen({ sofort: true })
-      }
+      // Die Spalte ist eben neu entstanden und leer: den Rahmen auch dann füllen,
+      // wenn dasselbe HTML herauskommt wie vorher.
+      letzteVorschau = ''
+      vorschauAuffrischen({ sofort: true })
     }
   }
 
@@ -1182,7 +1372,7 @@ export async function starten(ctx) {
   // Vorschau neu bauen — aus dem, was im Editor steht, ohne vorher zu speichern.
   function vorschauAuffrischen({ sofort = false } = {}) {
     const art = offenerEditor()
-    if (!vorschauOffen || !art) return
+    if (!art) return
     clearTimeout(vorschauTakt)
     const bauen = async () => {
       const entwurf = art === 'vorlage' ? vorlageAusForm() : kampagneAusForm()
@@ -1264,6 +1454,9 @@ export async function starten(ctx) {
     const reiter = e.target.closest('[data-bereich]')
     if (reiter) {
       eingabenMerken()
+      if ((reiter.dataset.bereich === 'kampagnen' && gewaehlt) || (reiter.dataset.bereich === 'vorlagen' && gewaehlteVorlage)) {
+        vorschauBreite = 'mobil'
+      }
       // Erst sichern, dann weg: im HTML-Feld steckt zu viel Arbeit für ein stilles Vergessen.
       if (bereich === 'kampagnen' && gewaehlt) await kampagneSichern()
       if (bereich === 'vorlagen' && gewaehlteVorlage) await vorlageSichern()
@@ -1273,6 +1466,7 @@ export async function starten(ctx) {
       vorschauDaten = null
       autoVorschau = null
       if (bereich === 'zugang' || bereich === 'uebersicht') await Promise.all([zugangHolen(), drosselHolen(), schlangeHolen(), markeHolen()])
+      if (bereich === 'uebersicht') await rennerHolen()
       if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
       if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
       if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
@@ -1308,6 +1502,16 @@ export async function starten(ctx) {
       vorschau = (await stillHolen('textVorschau', testmail.inhalt)) ?? 'Vorschau nicht möglich.'
       return zeichnen()
     }
+    if (aktion === 'renner-holen') {
+      const art = knopf?.dataset.art === 'warenkorb' ? 'warenkorb' : 'bestseller'
+      meldung = { ok: true, text: art === 'warenkorb' ? 'Frage Shopify nach den Warenkörben …' : 'Frage Shopify nach den Bestellungen …' }
+      zeichnen()
+      const ergebnis = await holen('rennerHolen', { art })
+      meldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      await rennerHolen()
+      return zeichnen()
+    }
+
     if (aktion === 'marke-test') {
       meldung = { ok: true, text: 'Sende die Beispielmail …' }
       zeichnen()
@@ -1405,7 +1609,10 @@ export async function starten(ctx) {
     // ── Kampagnen ──
     if (aktion === 'kampagne-neu') {
       const ergebnis = await holen('kampagneAnlegen', 'Neue Kampagne')
-      if (ergebnis?.ok) gewaehlt = ergebnis.id
+      if (ergebnis?.ok) {
+        gewaehlt = ergebnis.id
+        vorschauBreite = 'mobil'
+      }
       kampagneMeldung = null
       vorschauDaten = null
       await kampagnenHolen()
@@ -1414,6 +1621,7 @@ export async function starten(ctx) {
     if (aktion === 'kampagne-auf') {
       if (gewaehlt && gewaehlt !== knopf.dataset.id) await kampagneSichern()
       gewaehlt = knopf.dataset.id
+      vorschauBreite = 'mobil'
       kampagneMeldung = null
       vorschauDaten = null
       await kampagnenHolen()
@@ -1435,11 +1643,6 @@ export async function starten(ctx) {
       kampagneMeldung = null
       vorschauDaten = null
       await kampagnenHolen()
-      return zeichnen()
-    }
-    if (aktion === 'vorschau-umschalten') {
-      if (vorschauOffen) await kampagneSichern()
-      vorschauOffen = !vorschauOffen
       return zeichnen()
     }
     if (aktion === 'vorschau-breite') {
@@ -1500,13 +1703,20 @@ export async function starten(ctx) {
     if (aktion === 'kampagne-planen') {
       if (!(await kampagneSichern())) return zeichnen()
       const form = $('[data-kampagne-form]')
-      const wert = form?.geplantAm?.value
+      const datum = form?.elements.namedItem('geplantDatum')?.value
+      const uhrzeit = form?.elements.namedItem('geplantUhrzeit')?.value
+      const wert = datum && uhrzeit ? `${datum}T${uhrzeit}` : ''
       if (!wert) {
-        kampagneMeldung = { ok: false, text: 'Kein Zeitpunkt gewählt.' }
+        kampagneMeldung = { ok: false, text: 'Bitte Versanddatum und Uhrzeit auswählen.' }
         return zeichnen()
       }
-      const ergebnis = await holen('kampagnePlanen', { id: gewaehlt, geplantAm: new Date(wert).getTime() })
-      kampagneMeldung = ergebnis?.ok ? { ok: true, text: `Geplant für ${zeit(new Date(wert).getTime())}. Vendo muss dann laufen.` } : { ok: false, text: (ergebnis?.fehler || ['Planen nicht möglich.']).join(' ') }
+      const zeitpunkt = new Date(wert).getTime()
+      if (Number.isNaN(zeitpunkt)) {
+        kampagneMeldung = { ok: false, text: 'Der gewählte Zeitpunkt ist ungültig.' }
+        return zeichnen()
+      }
+      const ergebnis = await holen('kampagnePlanen', { id: gewaehlt, geplantAm: zeitpunkt })
+      kampagneMeldung = ergebnis?.ok ? { ok: true, text: `Geplant für ${zeit(zeitpunkt)}. Vendo muss dann laufen.` } : { ok: false, text: (ergebnis?.fehler || ['Planen nicht möglich.']).join(' ') }
       await kampagnenHolen()
       return zeichnen()
     }
@@ -1519,12 +1729,18 @@ export async function starten(ctx) {
     // Felix bestätigt, was ein Bot zur Freigabe gegeben hat: erst jetzt wird geplant
     if (aktion === 'kampagne-freigeben') {
       if (!(await kampagneSichern())) return zeichnen()
-      const wert = $('[data-freigabe-zeit]')?.value
+      const datum = $('[data-freigabe-datum]')?.value
+      const uhrzeit = $('[data-freigabe-uhrzeit]')?.value
+      const wert = datum && uhrzeit ? `${datum}T${uhrzeit}` : ''
       if (!wert) {
-        kampagneMeldung = { ok: false, text: 'Wähl einen Zeitpunkt — oder schick sie mit „Jetzt an alle senden“ sofort.' }
+        kampagneMeldung = { ok: false, text: 'Wähl Datum und Uhrzeit — oder schick sie mit „Jetzt an alle senden“ sofort.' }
         return zeichnen()
       }
       const zeitpunkt = new Date(wert).getTime()
+      if (Number.isNaN(zeitpunkt)) {
+        kampagneMeldung = { ok: false, text: 'Der gewählte Zeitpunkt ist ungültig.' }
+        return zeichnen()
+      }
       const anzahl = Number(kampagnen?.empfaenger) || 0
       const ja = await ctx.bestaetigen(`Kampagne freigeben? Sie geht am ${zeit(zeitpunkt)} an ${anzahl} Empfänger. Bis dahin kannst du sie noch abbrechen.`, { titel: 'Freigeben und planen', ja: 'Freigeben' })
       if (!ja) return
@@ -1551,7 +1767,10 @@ export async function starten(ctx) {
     // ── Vorlagen ──
     if (aktion === 'vorlage-neu') {
       const ergebnis = await holen('vorlageAnlegen', { name: 'Neue Vorlage' })
-      if (ergebnis?.ok) gewaehlteVorlage = ergebnis.id
+      if (ergebnis?.ok) {
+        gewaehlteVorlage = ergebnis.id
+        vorschauBreite = 'mobil'
+      }
       vorlageMeldung = ergebnis?.ok ? null : { ok: false, text: ergebnis?.text || 'Nicht möglich.' }
       vorlageVorschau = null
       await vorlagenHolen()
@@ -1560,6 +1779,7 @@ export async function starten(ctx) {
     if (aktion === 'vorlage-auf') {
       if (gewaehlteVorlage && gewaehlteVorlage !== knopf.dataset.id) await vorlageSichern()
       gewaehlteVorlage = knopf.dataset.id
+      vorschauBreite = 'mobil'
       vorlageMeldung = null
       vorlageVorschau = null
       await vorlagenHolen()
@@ -1764,13 +1984,32 @@ export async function starten(ctx) {
     }
 
     if (form.matches('[data-marke-form]')) {
+      // Alle Felder mit dem Vorsatz „fuss_“ gehen gesammelt als Fußangaben mit, damit ein
+      // neues Netzwerk in bausteine.js hier nichts nach sich zieht.
+      const fuss = {}
+      const kopf = {}
+      for (const [vorsatz, ziel] of [['fuss_', fuss], ['kopf_', kopf]]) {
+        for (const feld of form.querySelectorAll(`[name^="${vorsatz}"]`)) {
+          ziel[feld.name.slice(vorsatz.length)] = feld.type === 'checkbox' ? feld.checked : feld.value
+        }
+      }
       const ergebnis = await holen('markeSpeichern', {
         titel: form.titel.value,
         logo: form.logo.value,
         abmeldeAdresse: form.abmeldeAdresse.value,
-        impressum: form.impressum.value
+        impressum: form.impressum.value,
+        fuss,
+        kopf
       })
-      meldung = ergebnis?.ok ? { ok: true, text: 'Markenangaben gespeichert.' } : { ok: false, text: 'Nicht gespeichert.' }
+      const verworfen = ergebnis?.verworfen || []
+      meldung = ergebnis?.ok
+        ? {
+            ok: verworfen.length === 0,
+            text: verworfen.length
+              ? `Gespeichert. Ohne https-Adresse und darum nicht übernommen: ${verworfen.join(', ')}.`
+              : 'Markenangaben gespeichert.'
+          }
+        : { ok: false, text: 'Nicht gespeichert.' }
       await markeHolen()
       return zeichnen()
     }

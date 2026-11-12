@@ -302,14 +302,140 @@ Letzte Änderung: 2026-11-11
   Tests: newsletter-zugang.test.js (32), newsletter-html.test.js (36) — **306 insgesamt**.
   Bericht: test-results/newsletter-zugang.result.md (Nachtrag).
 
-**Gesamtstand der Tests: 306 in dreizehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Vollständiger Fuß aus dem Reiter „Zugang"** (2026-11-11): Der Fuß hatte nur Abmeldelink
+  und Impressumtext. Jetzt stehen im Reiter „Zugang", Abschnitt „Marke und Pflichtangaben",
+  die Fußangaben als reine Adressfelder: Impressum-, Datenschutz- und AGB-Adresse, pro
+  Netzwerk (Instagram, Facebook, TikTok, Pinterest, YouTube, X, WhatsApp) die Profil-Adresse
+  und optional ein eigenes Icon-Bild, Logo im Fuß mit Breite, dazu der Text des Abmeldelinks.
+  Vendo baut daraus den Fuß und hängt ihn an **jede** Mail — Kampagne, Automation, Vorlage,
+  Testmail, Bausteine wie freies HTML, mit und ohne Vendo-Rahmen. Reihenfolge: Logo, Icons,
+  „Impressum | Datenschutzerklärung | AGB", Impressumtext, ganz unten mittig „ABMELDEN".
+  Gespeichert wird in `marke.fuss`; die Listen der Netzwerke und Pflichtlinks stehen nur in
+  `bausteine.js` (`NETZWERKE`, `RECHTSLINKS`), die Oberfläche baut ihre Felder daraus.
+  Nur `https`-Adressen kommen durch, Verworfenes wird beim Speichern benannt statt verschluckt.
+  Ein Netzwerk ohne eigenes Icon-Bild bekommt ein Kästchen mit Kürzel aus Tabelle und Text —
+  SVG und eingebettete `data:`-Bilder werfen Gmail und Outlook weg. Ein `markeSpeichern` ohne
+  `fuss` (so ruft die Bot-Aktion `marke_aendern` auf) lässt die Fußangaben stehen.
+  Tests: newsletter-fuss.test.js (26).
+  Bericht: test-results/newsletter-fuss.result.md.
+
+- **Echte Social-Icons, mit der Mail mitgeschickt** (2026-11-11): Erst zeichnete Vendo die
+  Icons selbst — das sah nicht gut genug aus. Jetzt liegen die Bilder als PNG in
+  `plugins/newsletter/social media icons`, und `icons.js` liest sie beim Start einmal ein,
+  verkleinert sie auf 56 px, legt sie mittig in ein Quadrat (die Vorlagen haben
+  unterschiedliche Seitenverhältnisse, im Fuß stehen sie trotzdem gleich hoch) und schickt
+  sie als eingebettetes Bild mit der Mail (`cid:`). Alle vier zusammen wiegen rund 1,9 kB
+  pro Mail statt 380 kB roh. Eine einfarbige Vorlage bekommt die Schriftfarbe des Fußes —
+  die Bilder sind weiße Silhouetten und wären auf einem hellen Fuß sonst unsichtbar; ein
+  mehrfarbiges Bild bleibt, wie es ist. Der Dateiname darf sich verschreiben: `Faceboook.png`
+  findet `facebook`, weil doppelte Buchstaben beim Vergleich zusammengezogen werden.
+  Angeboten werden die vier Netzwerke, zu denen es ein Bild gibt (Instagram, Facebook,
+  Pinterest, TikTok); ein Test hält `NETZWERKE` und die Bilddateien zusammen. Eine eigene
+  Icon-Adresse hat weiter Vorrang. `mail.js` hängt nur an, worauf das HTML auch zeigt; für
+  die Vorschau im Fenster tauscht `icons.alsDatenAdressen` `cid:` gegen `data:` — jede
+  Stelle, die Mail-HTML an die Oberfläche gibt, geht durch `fuerAnsicht` in `haupt.js`, und
+  ein Test hält das fest. Dazu nach dem Bild von Felix: Überschrift „FOLGE UNS HIER“ über
+  den Icons, eine freie Zeile unter dem Impressum (etwa „Alle Preise inkl. MwSt. und zzgl.
+  Versandkosten“) und eigene Fußfarben (Grund, Schrift, Abmeldelink) — mit eigenem Grund
+  entfällt die Trennlinie, die Farbe trennt. Tests: newsletter-fuss.test.js (44).
+  Bericht: test-results/newsletter-fuss.result.md.
+
+- **Impressum fließt im Fuß** (2026-11-11): Jede eingetippte Zeile stand im Fuß untereinander
+  und stapelte das Impressum zu einem Block. Jetzt werden die Zeilen eines Absatzes mit
+  „ | “ verbunden und brechen von selbst um, wie in Shop-Fußzeilen üblich; eine freie Zeile
+  im Feld erzwingt weiterhin einen festen Umbruch, ein schon getipptes „|“ am Zeilenende
+  wird nicht verdoppelt. Dazu richtig gestellt: die drei Farbfelder im Reiter „Zugang“
+  standen als Zeile statt als Spalte, weil `.nl-fuss-farben label` nicht von der
+  Spalten-Regel in `stil.css` erfasst war — Eingabefeld und Hinweistext liefen ineinander.
+  Tests: newsletter-fuss.test.js (48).
+  Bericht: test-results/newsletter-fuss.result.md.
+
+- **Kopf automatisch, Größen einstellbar** (2026-11-11): Der Auftrag an die KI sagte seit je
+  „Kopf und Fuß der Mail werden automatisch ergänzt, lass sie weg“ — gestimmt hat das nur
+  für den Fuß. Jetzt setzt `kopfZeile` aus `bausteine.js` den Kopf aus `marke.kopf` vor jede
+  Mail: im Baustein-Weg (`mailAus`) und im HTML-Modus mit Vendo-Rahmen (`mailAusHtml`).
+  Ohne Rahmen bleibt es beim Fuß allein — ein fremdes Mailing bringt seinen eigenen Kopf mit.
+  Einstellbar im Reiter „Zugang“: Kopf an/aus, eigene Logo-Adresse (leer = Logo der Marke),
+  Breite 40–560 px (Standard 180), Grund und Schriftzugfarbe. Ohne Logo steht der Name als
+  Schriftzug, ohne beides bleibt der Kopf ganz weg statt eine leere Fläche zu zeigen.
+  Damit nichts doppelt steht: `startVorlageHtml` enthält kein Logo mehr, `startVorlage` kein
+  `kopf`-Baustein, und `zeilenAus` überspringt `kopf` wie schon `fuss` — eine ältere Liste
+  mit Kopf darin ergibt also kein zweites Logo. Eine Baustein-Liste mit eigenem `kopf`
+  bekommt in `mailAus` keinen zweiten davor. Dazu ist die Größe der Social-Icons einstellbar
+  (`fuss.iconBreite`, 14–40 px) und der Standard von 28 auf 22 px gesenkt.
+  Tests: newsletter-fuss.test.js (59) — **365 insgesamt**.
+  Bericht: test-results/newsletter-fuss.result.md.
+  Nachgezogen: Die Aufträge an die KI in `kampagnen.js` und `vorlagen.js` nennen das Logo
+  jetzt ausdrücklich („Kopf mit Logo und Fuß der Mail setzt Vendo selbst davor und
+  dahinter — lass beides weg"). Dieselbe Regel steht im Hermes-Plugin `vendo-newsletter`
+  im Profil des Newsletter-Bots; dort stand in der Adressen-Regel noch „Logo: ueberblick →
+  marke.logo", was die KI gerade dazu eingeladen hat, es ins HTML zu schreiben. Vor der
+  Änderung wurde eine Sicherung angelegt
+  (`__init__.py.vor-automatischem-kopf-20261111.bak`). Hermes-Programmcode selbst bleibt
+  unberührt.
+
+- **Kacheln exakt gleich, Anweisungen an die KI nachgezogen** (2026-11-11): Die Zahlen-Kacheln
+  in Übersicht, Kontakten und Automationen waren unterschiedlich hoch, weil lange Hinweise
+  umbrachen — eine Postfach-Adresse riss sogar mitten im Wort (`overflow-wrap: anywhere`).
+  Jetzt baut ein gemeinsames `kachel()` in `ansicht.js` jede Kachel, und `stil.css` gibt den
+  drei Zeilen feste Höhen (12 / 30 / 16 px) mit `white-space: nowrap` und Auslassungspunkten:
+  jede Kachel ist 88 px hoch, egal was drinsteht, und der volle Text steht im `title`. Das
+  Raster der Übersicht bricht statt starrer sechs Spalten jetzt um
+  (`repeat(auto-fit, minmax(140px, 1fr))`), die Hinweistexte sind gekürzt. Die Übersicht
+  zeigt außerdem nur noch fünf Kacheln: die Empfängerzahl stand doppelt (im Reiter
+  „Kontakte“ mit den Zahlen daneben, die sie erklären) und rutschte als sechste allein in
+  eine zweite Reihe. Nachgemessen im Browser von 800 bis 1400 px: überall 88 px, eine
+  Reihe je Abschnitt, nichts abgeschnitten. Die Reiter stehen außerdem in der Reihenfolge,
+  in der gearbeitet wird: „Automationen" vor „Vorlagen". `BEREICHE` in `ansicht.js` ist die
+  einzige Stelle dafür; an der Reihenfolge hängt sonst nichts (der Startreiter steht als
+  Kennung da, nicht als Nummer).
+  Dazu die Anweisungen an die KI: der Skill `vendo-newsletter` im Profil des Newsletter-Bots
+  ließ die Vorlage mit einem Logo-Block beginnen (`data-feld="logo"`) und nannte
+  `marke.logo` als Quelle — beides raus, der Standard-Aufbau fängt jetzt beim Hero-Bild an.
+  Dasselbe im Hermes-Plugin `vendo-newsletter`. Beide vorher gesichert
+  (`*.vor-automatischem-kopf-20261111.bak`). Der Vertrag des Plugins wurde gegen
+  `bots.js` geprüft: Aktionen, Felder und die Liste der langsamen Aktionen sind
+  deckungsgleich, der Systemprompt bleibt mit 3520 Zeichen unter der Grenze von 4000.
+
+- **Meistverkaufte Produkte** (2026-11-11): Die KI musste bisher raten oder sich durch 280
+  Produkte suchen, welche in eine Verkaufsmail gehören. Jetzt zählt `bestsellerHolen` in
+  `shopify.js` die Posten aus Felix' Bestellungen (Stückzahlen, nicht Bestellungen),
+  `shoplinks.rennerVerbinden` hängt Adresse, Bild, Preis und Vergleichspreis aus der
+  öffentlichen Produktliste an, und `haupt.js` hält das Ergebnis höchstens 20 Stunden lang —
+  die Bestellabfrage ist langsam und zählt auf Shopifys Kontingent. In der Übersicht steht
+  die Liste unter den Kacheln, mit Knopf „Neu holen"; der Bot holt sie mit der neuen Aktion
+  `shop_bestseller` (Feld `tage`, 7 bis 365, Standard 30) und bekommt fünf fertige Produkte
+  statt eines Katalogs. Gegen einen eigenen Shopify-Zugang für den Bot sprach, dass der
+  Token schon in Vendo liegt und der Bot damit auch an Kundendaten käme, die er heute
+  bewusst nicht sieht. **Meist angeklickte Produkte gibt es nicht** — Vendo misst keine
+  Klicks, das bräuchte einen erreichbaren Server (siehe „Nicht Teil des Ziels").
+  Fehlt dem Token das Recht für `product { handle }`, fällt die Abfrage auf die schlanke
+  Fassung zurück und ordnet über den Titel zu — derselbe Mechanismus wie bei den
+  Warenkörben.
+
+- **Warenkorb-Renner dazu** (2026-11-12): Dieselbe Rangliste über abgebrochene Warenkörbe —
+  was Leute hineinlegen und liegen lassen, ist der bessere Aufhänger für eine
+  Rückhol-Mail als die Bestseller. Beide Listen teilen sich jetzt die Mechanik:
+  `rangliste()` in `shopify.js` blättert und zählt, `rennerSichern(art)` in `haupt.js`
+  speichert; unterschiedlich sind nur die Abfragen. Die Warenkorb-Abfrage holt **kein
+  einziges Kundenfeld** (nur `lineItems`), rührt also keine geschützten Kundendaten an —
+  anders als `warenkoerbeHolen`, das anschreibt und die Adresse braucht. In der Übersicht
+  stehen beide Listen nebeneinander; was aus dem Shop genommen wurde, bleibt
+  durchgestrichen sichtbar, kommt aber nicht in eine Mail. Bot-Aktion: `shop_warenkorb`.
+  Tests: newsletter-renner.test.js (20) — **389 insgesamt**.
+  Bericht: test-results/newsletter-renner.result.md.
+
+**Gesamtstand der Tests: 389 in sechzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 
 1. **Postfach eintragen** (Reiter „Zugang") → „Anmeldung prüfen" → Testmail an dich selbst.
    Damit sind DPAPI, IONOS-Anmeldung und der Versandweg belegt oder eben nicht.
 2. **Marke füllen**: Impressum und Abmeldeadresse. Ohne beides lässt sich keine Kampagne
-   starten und keine Automation einschalten.
+   starten und keine Automation einschalten. Im selben Abschnitt die Fußangaben: Adressen
+   für Impressum, Datenschutzerklärung und AGB, die Profil-Adressen der Netzwerke (die Icons
+   bringt Vendo mit), die Überschrift darüber, eine freie Zeile unter dem Impressum, die
+   Fußfarben und, wenn gewünscht, ein eigenes Logo für den Fuß.
 3. **Shopify-Token** (Reiter „Kontakte") mit `read_customers`, `write_customers`,
    `read_orders` und der Freigabe für geschützte Kundendaten → „Kontakte jetzt holen".
 4. **Eine Kampagne von Luzzy entwerfen lassen**, Vorschau ansehen, Testmail schicken und in

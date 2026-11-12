@@ -54,21 +54,23 @@ const AKTIONEN = {
   automation_zur_probe: ['id', 'schritt'],
   kontakte_abgleichen: [],
   shop_produkte: ['suche'],
+  shop_bestseller: ['tage'],
+  shop_warenkorb: ['tage'],
   links_pruefen: ['id'],
   marke_aendern: ['titel', 'logo', 'farben']
 }
 
 // Nur lesend: ändern nichts, also auch kein Neuzeichnen in Vendo
-const NUR_LESEN = ['ueberblick', 'auswertung', 'kampagne_zeigen', 'vorlage_zeigen', 'automation_zeigen', 'shop_produkte', 'links_pruefen']
+const NUR_LESEN = ['ueberblick', 'auswertung', 'kampagne_zeigen', 'vorlage_zeigen', 'automation_zeigen', 'shop_produkte', 'shop_bestseller', 'shop_warenkorb', 'links_pruefen']
 
 // Diese Aktionen schicken eine Testmail oder fragen Shopify; der Bot wartet darauf länger
-const MIT_MAIL = ['kampagne_zur_freigabe', 'automation_zur_probe', 'kontakte_abgleichen', 'shop_produkte', 'links_pruefen']
+const MIT_MAIL = ['kampagne_zur_freigabe', 'automation_zur_probe', 'kontakte_abgleichen', 'shop_produkte', 'shop_bestseller', 'shop_warenkorb', 'links_pruefen']
 
 // Zustände, in denen ein Bot eine Kampagne noch ändern oder löschen darf
 const BOT_AENDERBAR = ['entwurf', 'freigabe']
 
 const LAENGEN = { id: 64, name: 80, betreff: 200, vorschauText: 200, beschreibung: 200, html: MAX_HTML, zeitpunkt: 40, vorlage_id: 64, suche: 100, art: 30, titel: 80, logo: 500 }
-const GANZZAHLEN = { schritt: [1, 20], nach_stunden: [0, 2160], verfall_stunden: [1, 2160] }
+const GANZZAHLEN = { schritt: [1, 20], nach_stunden: [0, 2160], verfall_stunden: [1, 2160], tage: [7, 365] }
 
 const ID_FORM = /^[A-Za-z0-9_-]{6,64}$/
 

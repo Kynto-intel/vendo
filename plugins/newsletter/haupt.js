@@ -33,7 +33,27 @@ const imap = require('./imap.js')
 const kampagnen = require('./kampagnen.js')
 const vorlagen = require('./vorlagen.js')
 const automationen = require('./automationen.js')
-const { startVorlage, inhaltAus, STANDARD_FARBEN, maskieren: maskierenHtml } = require('./bausteine.js')
+const icons = require('./icons.js')
+const {
+  startVorlage,
+  inhaltAus,
+  fussPruefen,
+  fussTeileAus,
+  kopfPruefen,
+  STANDARD_FARBEN,
+  RECHTSLINKS,
+  NETZWERKE,
+  FUSS_FARBEN,
+  KOPF_FARBEN,
+  ABMELDE_TEXT,
+  SOCIAL_TITEL,
+  LOGO_BREITE_FUSS,
+  LOGO_BREITE_KOPF,
+  ICON_BREITE,
+  ICON_BREITE_MIN,
+  ICON_BREITE_MAX,
+  maskieren: maskierenHtml
+} = require('./bausteine.js')
 const bots = require('./bots.js')
 const { mailAusHtml, beispielHtml, hatInhalt, fremdePlatzhalter, felderLesen, unveraendertAusVorlage, MAX_HTML } = require('./html-mail.js')
 const shoplinks = require('./shoplinks.js')
@@ -81,6 +101,23 @@ module.exports = (ctx) => {
 
   // Abmeldeweg: eigene Adresse, sonst das Postfach selbst
   const abmeldeAdresseVon = (daten) => daten.marke.abmeldeAdresse || daten.zugang.benutzer || ''
+
+  // Die Icon-Bilder einmal einlesen und auf Mailgröße bringen. Läuft beim Start los, damit
+  // Vorschauen sie gleich zeigen; `einzelSenden` wartet zur Sicherheit noch einmal darauf.
+  icons.vorbereiten().then(
+    (bereit) => console.log(`Newsletter: ${bereit.length} Social-Icons bereit.`),
+    () => console.warn('Newsletter: die Social-Icons liessen sich nicht lesen.')
+  )
+
+  // In welcher Farbe die Social-Icons erscheinen: in der Schriftfarbe des Fußes.
+  const fussTinte = (daten) => fussTeileAus(daten.marke, { ...STANDARD_FARBEN, ...(daten.marke.farben || {}) }).farben.text
+
+  // Die gezeichneten Icons als eingebettete Bilder für den Versand …
+  const iconAnhaenge = (daten, html) => icons.anhaengeFuer(html, { farbe: fussTinte(daten) })
+
+  // … und für die Vorschau im Fenster, das `cid:` nicht kennt, als data:-Adressen.
+  // Jede Stelle, die Mail-HTML an die Oberfläche gibt, muss hier durch.
+  const fuerAnsicht = (daten, html) => icons.alsDatenAdressen(html, { farbe: fussTinte(daten) })
 
   // Wohin Testmails gehen: die eingetragene Testadresse, sonst das Postfach selbst.
   // Gilt für alle vier Wege (freie Testmail, Beispielmail, Kampagne, Automation).
@@ -260,7 +297,8 @@ module.exports = (ctx) => {
       return { ok: false, gedrosselt: true, grund: erlaubt.grund, wartenMs: erlaubt.wartenMs, text: `${erlaubt.text} Nächster Versuch in etwa ${wann}.` }
     }
 
-    const gebaut = mailBauen({ art, an, betreff, html, text, zugang: z, abmeldeAdresse })
+    await icons.vorbereiten() // beim ersten Mal nach dem Start: die Icon-Bilder zu Ende lesen
+    const gebaut = mailBauen({ art, an, betreff, html, text, zugang: z, abmeldeAdresse, anhaenge: iconAnhaenge(daten, html) })
     if (!gebaut.ok) return { ok: false, text: gebaut.fehler.join(' ') }
 
     const { passwort, fehler } = passwortHolen(z)
@@ -592,7 +630,24 @@ module.exports = (ctx) => {
       impressum: marke.impressum || '',
       abmeldeAdresse: marke.abmeldeAdresse || '',
       farben: { ...STANDARD_FARBEN, ...(marke.farben || {}) },
-      standardFarben: STANDARD_FARBEN
+      standardFarben: STANDARD_FARBEN,
+      // Der Fuß: gespeicherte Adressen, dazu die Listen, aus denen die Oberfläche ihre
+      // Felder baut. So steht die Reihenfolge der Icons nur an einer Stelle (bausteine.js).
+      fuss: { ...(marke.fuss || {}) },
+      kopf: { ...(marke.kopf || {}) },
+      rechtslinks: RECHTSLINKS,
+      // `gezeichnet`: für dieses Netzwerk zeichnet Vendo das Icon selbst, ein eigenes
+      // Icon-Bild ist dann nur noch die Ausnahme.
+      netzwerke: NETZWERKE.map(({ id, name }) => ({ id, name, mitBild: icons.MIT_BILD.includes(id) })),
+      fussFarben: FUSS_FARBEN,
+      kopfFarben: KOPF_FARBEN,
+      abmeldeTextStandard: ABMELDE_TEXT,
+      socialTitelStandard: SOCIAL_TITEL,
+      logoBreiteFussStandard: LOGO_BREITE_FUSS,
+      logoBreiteKopfStandard: LOGO_BREITE_KOPF,
+      iconBreiteStandard: ICON_BREITE,
+      iconBreiteMin: ICON_BREITE_MIN,
+      iconBreiteMax: ICON_BREITE_MAX
     }
   })
 
@@ -621,16 +676,22 @@ module.exports = (ctx) => {
       const wert = String(eingabe.farben?.[name] || '').trim()
       if (/^#[0-9a-f]{3,8}$/i.test(wert)) nurFarben[name] = wert
     }
+    // Fußangaben: ohne `fuss` im Aufruf bleiben die gespeicherten stehen. Sonst würde ein
+    // Aufruf, der nur den Titel ändert (etwa von einem Bot), Pflichtlinks und Icons leeren.
+    const fuss = eingabe.fuss === undefined ? { ...(daten.marke.fuss || {}) } : fussPruefen(eingabe.fuss)
+    const kopf = eingabe.kopf === undefined ? { ...(daten.marke.kopf || {}) } : kopfPruefen(eingabe.kopf)
     daten.marke = {
       titel: String(eingabe.titel || '').trim().slice(0, 80),
       logo: /^https?:\/\//i.test(String(eingabe.logo || '').trim()) ? String(eingabe.logo).trim() : '',
       impressum: String(eingabe.impressum || '').trim().slice(0, 600),
       abmeldeAdresse: String(eingabe.abmeldeAdresse || '').trim().toLowerCase(),
-      farben: nurFarben
+      farben: nurFarben,
+      fuss: fuss.wert || fuss,
+      kopf: kopf.wert || kopf
     }
     ctx.datenSpeichern(daten)
     console.log('Newsletter: Markenangaben gespeichert.')
-    return { ok: true }
+    return { ok: true, verworfen: [...(fuss.verworfen || []), ...(kopf.verworfen || [])] }
   })
 
   // ── Kampagnen ──
@@ -724,7 +785,7 @@ module.exports = (ctx) => {
     const geprueft = kampagnePruefenMitMarke(daten, id)
     return {
       ok: true,
-      html: gebaut.html,
+      html: fuerAnsicht(daten, gebaut.html),
       text: textAusHtml(gebaut.html),
       betreff: kampagnen.personalisieren(kampagne.betreff, beispiel),
       hinweise: geprueft.fehler,
@@ -756,7 +817,7 @@ module.exports = (ctx) => {
     if (!daten.marke.impressum) fehler.push('Im Fuß fehlt das Impressum (unter „Marke“ eintragen).')
     return {
       ok: true,
-      html: gebaut.html,
+      html: fuerAnsicht(daten, gebaut.html),
       text: textAusHtml(gebaut.html),
       betreff: kampagnen.personalisieren(entwurf.betreff, beispiel),
       hinweise: fehler,
@@ -916,7 +977,7 @@ module.exports = (ctx) => {
           hinweise: geprueft.fehler,
           felder: geprueft.felder.map(({ name, hinweis, art }) => ({ name, hinweis, art })),
           // Die fertige Mail für das kleine Vorschaubild in der Übersicht
-          vorschau: mailBauenAus(daten, v, beispiel, BEISPIEL_KORB).html
+          vorschau: fuerAnsicht(daten, mailBauenAus(daten, v, beispiel, BEISPIEL_KORB).html)
         }
       })
     }
@@ -961,7 +1022,7 @@ module.exports = (ctx) => {
     if (!vorlage) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
     const beispiel = { ...testKontakt(daten), email: testAdresseVon(daten) || 'empfaenger@beispiel.de' }
     const gebaut = mailBauenAus(daten, vorlage, beispiel, BEISPIEL_KORB)
-    return { ok: true, html: gebaut.html, text: textAusHtml(gebaut.html), gesaeubert: gebaut.hinweis, hinweise: vorlagen.vorlagePruefen(vorlage, { marke: daten.marke }).fehler }
+    return { ok: true, html: fuerAnsicht(daten, gebaut.html), text: textAusHtml(gebaut.html), gesaeubert: gebaut.hinweis, hinweise: vorlagen.vorlagePruefen(vorlage, { marke: daten.marke }).fehler }
   })
 
   bereitstellen('vorlageTesten', async (id) => {
@@ -1192,7 +1253,7 @@ module.exports = (ctx) => {
     const beispiel = { ...testKontakt(daten), email: testAdresseVon(daten) || 'empfaenger@beispiel.de' }
     const gebaut = automationMailBauen(daten, automation, Number(eingabe.schritt) || 0, beispiel, BEISPIEL_KORB)
     if (gebaut.fehler) return { ok: false, text: gebaut.fehler }
-    return { ok: true, html: gebaut.html, text: textAusHtml(gebaut.html), betreff: gebaut.betreff, hinweise: automationen.automationPruefen(automation).fehler }
+    return { ok: true, html: fuerAnsicht(daten, gebaut.html), text: textAusHtml(gebaut.html), betreff: gebaut.betreff, hinweise: automationen.automationPruefen(automation).fehler }
   })
 
   bereitstellen('automationTesten', async (eingabe = {}) => {
@@ -1584,6 +1645,85 @@ module.exports = (ctx) => {
   const shopHostsVon = (daten) => shoplinks.shopHosts({ primaer: daten.shopify?.primaerDomain, myshopify: daten.shopify?.shop })
 
   // Die öffentliche Adresse des Shops einmal ermitteln und merken
+  // ── Renner: was sich verkauft und was liegen bleibt ──
+  // Beide Listen kommen aus Shopify und beide sind teuer: die Abfragen blättern über
+  // Bestellungen bzw. Warenkörbe und zählen auf Shopifys Kontingent. Deshalb wird das
+  // Ergebnis gespeichert und höchstens einmal am Tag erneuert — eine Rangliste ändert sich
+  // nicht stündlich. Beide teilen sich hier alles außer der Abfrage.
+  const RENNER_FRISCH = 20 * 3600000 // 20 Stunden
+  const RENNER_TAGE = 30
+  const RENNER_ANZAHL = 5
+
+  const RENNER = {
+    bestseller: {
+      feld: 'bestseller',
+      holen: (angaben) => shopify.bestsellerHolen(angaben),
+      // Wie die Quelle heißt — für Meldungen und die Oberfläche
+      quelle: 'Bestellungen',
+      ohneZugang: 'Bestseller kommen aus den Bestellungen bei Shopify.'
+    },
+    warenkorb: {
+      feld: 'korbRenner',
+      holen: (angaben) => shopify.korbRennerHolen(angaben),
+      quelle: 'abgebrochenen Warenkörben',
+      ohneZugang: 'Die Warenkorb-Renner kommen aus den abgebrochenen Warenkörben bei Shopify.'
+    }
+  }
+
+  const rennerStand = (daten, art) => daten[RENNER[art].feld] || {}
+
+  // Holt eine Rangliste, wenn der gespeicherte Stand alt ist. `erzwingen` holt sofort.
+  const rennerSichern = async (art, { tage = RENNER_TAGE, erzwingen = false } = {}) => {
+    const sorte = RENNER[art]
+    if (!sorte) return { ok: false, text: 'Diese Rangliste gibt es nicht.' }
+
+    const stand = rennerStand(datenLesen(), art)
+    const frisch = stand.geholtAm && Date.now() - stand.geholtAm < RENNER_FRISCH && stand.tage === tage
+    if (frisch && !erzwingen) return { ok: true, ...stand, ausSpeicher: true }
+
+    const zugang = shopifyZugang()
+    if (zugang.fehler) return { ok: false, text: `${zugang.fehler} ${sorte.ohneZugang}` }
+
+    const geholt = await sorte.holen({ shop: zugang.shop, token: zugang.token, seit: Date.now() - tage * 86400000, holen: abrufen })
+    if (!geholt.ok) return { ok: false, text: geholt.fehler }
+
+    const domain = await shopAdresseSichern()
+    const produkte = domain ? (await shoplinks.produkteLaden(domain, abrufen, { anzahl: 500 })).produkte : []
+    const neu = {
+      geholtAm: Date.now(),
+      tage,
+      // Aus wie vielen Bestellungen bzw. Warenkörben gezählt wurde
+      quellen: geholt.quellen || 0,
+      // Ganze Rangliste gekürzt gespeichert: mehr als die besten zwanzig braucht niemand,
+      // und die Datei soll nicht wachsen.
+      liste: shoplinks.rennerVerbinden(geholt.liste.slice(0, 20), produkte)
+    }
+    feldSpeichern(sorte.feld, neu)
+    console.log(`Newsletter: ${art} aus ${neu.quellen} ${sorte.quelle} der letzten ${tage} Tage.`)
+    return { ok: true, ...neu, ausSpeicher: false }
+  }
+
+  bereitstellen('rennerLesen', () => {
+    const daten = datenLesen()
+    const lesen = (art) => {
+      const stand = rennerStand(daten, art)
+      return {
+        geholtAm: stand.geholtAm || null,
+        tage: stand.tage || RENNER_TAGE,
+        quellen: stand.quellen || 0,
+        liste: (stand.liste || []).slice(0, RENNER_ANZAHL)
+      }
+    }
+    return { anzahl: RENNER_ANZAHL, bestseller: lesen('bestseller'), warenkorb: lesen('warenkorb') }
+  })
+
+  bereitstellen('rennerHolen', async (eingabe = {}) => {
+    const art = eingabe.art === 'warenkorb' ? 'warenkorb' : 'bestseller'
+    const r = await rennerSichern(art, { tage: Number(eingabe.tage) || RENNER_TAGE, erzwingen: true })
+    if (!r.ok) return r
+    return { ok: true, text: `${r.liste.length} Produkte aus ${r.quellen} ${RENNER[art].quelle} der letzten ${r.tage} Tage.` }
+  })
+
   const shopAdresseSichern = async () => {
     const daten = datenLesen()
     if (daten.shopify?.primaerDomain) return daten.shopify.primaerDomain
@@ -1998,7 +2138,9 @@ module.exports = (ctx) => {
     if (aktion === 'marke_aendern') {
       if (a.logo && !/^https:\/\//i.test(a.logo)) return { ok: false, text: 'Das Logo braucht eine https-Adresse.' }
       const alt = marke || {}
-      // Impressum und Abmeldeadresse bleiben, wie Felix sie eingetragen hat
+      // Impressum, Abmeldeadresse sowie die Kopf- und Fußangaben (Pflichtlinks, Social-Icons, Logo im
+      // Kopf und Fuß) bleiben, wie Felix sie eingetragen hat — ohne `fuss` und `kopf` im Aufruf rührt
+      // markeSpeichern sie nicht an.
       eigene.get('markeSpeichern')({
         titel: a.titel ?? alt.titel,
         logo: a.logo ?? alt.logo,
@@ -2012,6 +2154,26 @@ module.exports = (ctx) => {
         ok: true,
         text: `Marke gespeichert.${verworfen.length ? ` Nicht übernommen (unbekannter Name oder keine Hexfarbe wie #8a6a3b): ${verworfen.join(', ')}.` : ''}`,
         daten: { titel: neu.titel || '', logo: neu.logo || '', farben: { ...STANDARD_FARBEN, ...(neu.farben || {}) } }
+      }
+    }
+
+    if (aktion === 'shop_bestseller' || aktion === 'shop_warenkorb') {
+      const art = aktion === 'shop_warenkorb' ? 'warenkorb' : 'bestseller'
+      const r = await rennerSichern(art, { tage: Number(a.tage) || RENNER_TAGE })
+      if (!r.ok) return r
+      // Nur, was es noch gibt: ein Renner, der aus dem Shop genommen wurde, gehört in
+      // Felix' Übersicht, aber nicht in eine Mail.
+      const liste = r.liste.filter((e) => e.imShop && e.verfuegbar !== false).slice(0, RENNER_ANZAHL)
+      const wasser = art === 'warenkorb' ? 'liegen geblieben' : 'verkauft'
+      if (!liste.length) return { ok: false, text: `In den letzten ${r.tage} Tagen ist nichts ${wasser}, was noch im Shop steht.` }
+      const satz =
+        art === 'warenkorb'
+          ? `Die ${liste.length} Produkte, die am häufigsten in abgebrochenen Warenkörben lagen (letzte ${r.tage} Tage, ${r.quellen} Körbe)`
+          : `Die ${liste.length} meistverkauften Produkte der letzten ${r.tage} Tage, aus ${r.quellen} Bestellungen`
+      return {
+        ok: true,
+        text: `${satz}${r.ausSpeicher ? ' (Stand von heute)' : ''}. Adressen, Bilder und Preise unverändert übernehmen.`,
+        daten: { tage: r.tage, quellen: r.quellen, produkte: liste }
       }
     }
 
