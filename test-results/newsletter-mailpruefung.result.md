@@ -2,7 +2,8 @@
 
 **Plugin-ID:** `newsletter`
 **Datum:** 2026-11-12
-**Gegenstand:** Zwei neue Prüfungen in `plugins/newsletter/shoplinks.js`
+**Gegenstand:** Vier Prüfungen gegen halbfertige und erfundene Mailinhalte. Zwei neu in
+`plugins/newsletter/shoplinks.js`
 (`doppelteBilder`, `erfundenePreise`, `preisKern`) und ihre Einbindung in
 `plugins/newsletter/haupt.js` (`shopHinweise` als Hinweis, `shopAdressenPruefen` als
 Sperre vor der Freigabe). Außerhalb von Vendo nachgeschärft: der Skill
@@ -24,8 +25,8 @@ node --test tests/newsletter-mailpruefung.test.js tests/newsletter-renner.test.j
 **Fixture:** keine Datei. Alle Preise, Produkte und Bildadressen im Test sind erfunden.
 Kein Netzzugriff, keine geschriebene Datei.
 
-**Ergebnis: PASS — 14 von 14 Tests in `tests/newsletter-mailpruefung.test.js`, 403 von 403
-im Regressionslauf.** Gesamtstand: **403 Tests in siebzehn Dateien.**
+**Ergebnis: PASS — 24 von 24 Tests in `tests/newsletter-mailpruefung.test.js`, 413 von 413
+im Regressionslauf.** Gesamtstand: **413 Tests in siebzehn Dateien.**
 `git diff --check` ohne Befund.
 
 ## Anlass: eine echte Vorlage, die Vala gebaut hat
@@ -96,6 +97,46 @@ Die Vorlage war nicht nur Valas Fehler — die Baustein-Referenz ließ drei davo
 
 In `SKILL.md` stehen die vier harten Regeln jetzt gleich im Kopf, mit dem Hinweis, welche
 davon Vendo selbst erzwingt.
+
+## Nachtrag 2026-11-12: zwei Lücken in der Prüfung
+
+Felix zeigte die nächste Vorlage: statt Produktbildern kaputte Bildsymbole mit den
+Alt-Texten „Produkt 1" und „Produkt 2", dazu Produktnamen („FENRIR Hoodie 69,90 €",
+„ODINS ERBE Shirt 34,90 €"), die es in seinem Shop nicht gibt. Dazu die Frage, ob der Bot
+überhaupt die richtigen Daten bekommt.
+
+**Der Bot bekommt die richtigen Daten.** Gemessen: `fn.botAuftrag` mit
+`{aktion: 'shop_produkte', suche: 'hoodie'}` gegen den echten Shop liefert **30 Produkte,
+davon 30 mit Bild**, dazu 13 Sammlungen, 17 520 Zeichen — weit unter der Grenze von
+150 000, ab der das Hermes-Plugin kürzt. Die Kette Auftrag → Vendo → Antwort → Bot ist in
+Ordnung; die KI hat die Daten schlicht nicht abgefragt.
+
+**Zwei Lücken, die das bis in die Vorschau durchließen:**
+
+1. `bilderOhneAdresse` sah nur Bilder an, die überhaupt ein `src` hatten. Ein
+   `<img alt="Produkt 1" />` **ganz ohne** `src` kam ungeprüft durch. Jetzt wird jedes
+   `<img>`-Tag geprüft; fehlt die Adresse, zählt es als Bild ohne Adresse.
+2. Für Links gab es gar keine solche Prüfung. `<a>ANSEHEN</a>` ohne `href`, mit leerem
+   `href` oder mit `#` kam durch — in einer Kampagne ein toter Knopf. Neu:
+   `linksOhneZiel(html)` in `html-mail.js`, eingehängt in `kampagnePruefen` und
+   `vorlagePruefen`, meldet jeden mit seinem Knopftext.
+
+**Zehn neue Tests.** Bild ohne `src`, mit leerem `src`, mit Platzhalter, mit `http`; echte
+Bilder, mitgeschickte `cid:`-Icons und `data:`-Bilder gehen durch; mehrere leere Bilder
+werden einzeln gezählt. Knopf ohne `href`, mit leerem `href`, mit Leerzeichen, mit `#`;
+`https`, `mailto` und `tel` gehen durch; ein Knopf, der nur ein Bild enthält, wird als
+„(ohne Text)" gemeldet; derselbe Knopftext nur einmal. Dazu zwei Tests, die ein
+ungefülltes Gerüst durch `kampagnePruefen` und `vorlagePruefen` schicken und beide
+Meldungen erwarten, und einer, der das gefüllte Gerüst durchlässt.
+
+**Nebenwirkung, geprüft und gewollt:** Eine frisch angelegte Vorlage aus
+`startVorlageHtml` meldet jetzt zwei Punkte — das Hauptbild hat `src=""` und der Knopf
+`href=""`. Genau das fehlt dort auch; die Meldung sagt, was zu füllen ist, statt es bis
+zur Vorschau zu verschleppen.
+
+**Was Vendo weiter nicht prüfen kann:** ob ein Produktname echt ist. „FENRIR Hoodie" sieht
+aus wie ein Produkt. Erfundene **Adressen** sperrt Vendo vor der Freigabe, erfundene
+**Namen** nicht — dagegen hilft nur, dass die KI `shop_produkte` benutzt.
 
 ## Nicht geprüft
 

@@ -15,7 +15,7 @@
 // das im Browser gut aussieht und in Outlook auseinanderfällt.
 
 const { ARTEN, FELDER, startVorlage, inhaltAus, maskieren } = require('./bausteine.js')
-const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, MAX_HTML } = require('./html-mail.js')
+const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, MAX_HTML } = require('./html-mail.js')
 
 // 'freigabe': ein Bot hat die Kampagne vorbereitet und Felix eine Testmail geschickt; sie
 // wartet auf seine Bestätigung in Vendo. Gesendet wird aus diesem Zustand nie.
@@ -95,6 +95,9 @@ function kampagnePruefen(kampagne = {}, { marke = {} } = {}) {
   if (fremde.length) fehler.push(`Unbekannte Platzhalter: ${fremde.slice(0, 8).join(', ')}${fremde.length > 8 ? ' …' : ''} — die kämen so bei den Empfängern an. Vendo ersetzt nur {{vorname}}, {{nachname}}, {{name}} und {{email}}.`)
   const ohneAdresse = bilderOhneAdresse(html)
   if (ohneAdresse.length) fehler.push(`${ohneAdresse.length === 1 ? 'Ein Bild hat' : `${ohneAdresse.length} Bilder haben`} keine gültige Adresse (nötig: https://…).`)
+  // Ein Knopf ohne Ziel ist in einer Mail nicht reparierbar: der Empfänger klickt ins Leere.
+  const tot = linksOhneZiel(html)
+  if (tot.length) fehler.push(`${tot.length === 1 ? 'Ein Knopf führt' : `${tot.length} Knöpfe führen`} nirgendwohin: ${tot.slice(0, 4).map((t) => `„${t}“`).join(', ')}. Jeder Knopf braucht eine echte Adresse aus dem Shop.`)
 
   if (kampagne.geplantAm && !Number.isFinite(Number(kampagne.geplantAm))) fehler.push('Der Zeitpunkt ist unbrauchbar.')
 

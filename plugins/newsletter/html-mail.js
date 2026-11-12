@@ -258,10 +258,32 @@ function fremdePlatzhalter(text, erlaubt = PLATZHALTER_BASIS) {
 
 // Bilder, deren Adresse beim Empfänger nicht laden kann: leer, ein Platzhalter, ein
 // relativer Pfad oder http statt https.
+//
+// Geprüft wird jedes `<img>`, auch eines **ganz ohne** `src`. Vorher sah die Prüfung nur
+// Bilder an, die überhaupt eine Adresse hatten — ein Gerüst mit `<img alt="Produkt 1" />`
+// kam dadurch bis in die Vorschau durch und zeigte dort ein kaputtes Bild.
 function bilderOhneAdresse(html) {
-  return [...String(html ?? '').matchAll(/<img\b[^>]*?\ssrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
-    .map((t) => (t[2] ?? t[3] ?? t[4] ?? '').trim())
+  return [...String(html ?? '').matchAll(/<img\b[^>]*>/gi)]
+    .map((t) => {
+      const treffer = t[0].match(/\ssrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i)
+      return treffer ? (treffer[2] ?? treffer[3] ?? treffer[4] ?? '').trim() : ''
+    })
     .filter((src) => !/^(https:\/\/[^\s{}]+|cid:\S+|data:image\/[a-z+]+;base64,)/i.test(src))
+}
+
+// Knöpfe und Links, die nirgendwo hinführen: kein `href`, ein leeres `href` oder nur `#`.
+// In einer Kampagne ist das ein toter Knopf — der Empfänger klickt und nichts passiert.
+// `mailto:` und `tel:` sind erlaubte Ziele, `{{warenkorbLink}}` auch (den setzt Vendo ein).
+function linksOhneZiel(html) {
+  const tot = []
+  for (const t of String(html ?? '').matchAll(/<a\b[^>]*>([\s\S]*?)<\/a\s*>/gi)) {
+    const treffer = t[0].match(/\shref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i)
+    const ziel = treffer ? (treffer[2] ?? treffer[3] ?? treffer[4] ?? '').trim() : ''
+    if (ziel && ziel !== '#') continue
+    const text = nurText(t[1]).slice(0, 40)
+    tot.push(text || '(ohne Text)')
+  }
+  return [...new Set(tot)]
 }
 
 // ── Felder einer Vorlage ──
@@ -376,4 +398,4 @@ function hatInhalt(html) {
   return ohne.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim().length > 0
 }
 
-module.exports = { htmlSaeubern, mailAusHtml, htmlAusBausteinen, beispielHtml, hatInhalt, istDokument, koerperAus, fussTabelle, fremdePlatzhalter, bilderOhneAdresse, felderLesen, feldMarkenEntfernen, unveraendertAusVorlage, nurText, startVorlageHtml, PLATZHALTER_BASIS, PLATZHALTER_WARENKORB, MAX_HTML }
+module.exports = { htmlSaeubern, mailAusHtml, htmlAusBausteinen, beispielHtml, hatInhalt, istDokument, koerperAus, fussTabelle, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, felderLesen, feldMarkenEntfernen, unveraendertAusVorlage, nurText, startVorlageHtml, PLATZHALTER_BASIS, PLATZHALTER_WARENKORB, MAX_HTML }

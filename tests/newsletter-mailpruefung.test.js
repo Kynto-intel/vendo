@@ -9,8 +9,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import shoplinks from '../plugins/newsletter/shoplinks.js'
+import htmlMail from '../plugins/newsletter/html-mail.js'
+import kampagnenModul from '../plugins/newsletter/kampagnen.js'
+import vorlagenModul from '../plugins/newsletter/vorlagen.js'
 
 const { doppelteBilder, erfundenePreise, preisKern } = shoplinks
+const { bilderOhneAdresse, linksOhneZiel } = htmlMail
 
 const bild = (url, extra = '') => `<img ${extra} src="${url}" width="252" alt="x" style="display:block;" />`
 const strich = (preis) => `<span style="color:#6b6560;text-decoration:line-through;">${preis}</span>`
@@ -124,4 +128,89 @@ test('die beanstandete Vorlage fällt in beiden Prüfungen auf', () => {
   assert.equal(doppelt[0].anzahl, 3, 'das Shirt-Foto steht dreimal')
 
   assert.deepEqual(erfundenePreise(html, PRODUKTE), ['31,95 €', '58,95 €'])
+})
+
+// ── Gerüste, die niemand gefüllt hat ──
+// Eine Mail mit <img alt="Produkt 1" /> ohne src zeigt beim Empfänger ein kaputtes Bild,
+// ein Knopf ohne href führt ins Leere. Beides blieb bis zur Vorschau unbemerkt, weil die
+// Prüfung nur Bilder ansah, die überhaupt eine Adresse hatten.
+
+test('ein Bild ganz ohne src wird gemeldet, nicht nur ein leeres', () => {
+  assert.equal(bilderOhneAdresse('<img alt="Produkt 1" width="252" />').length, 1, 'ohne src')
+  assert.equal(bilderOhneAdresse('<img src="" alt="x" />').length, 1, 'leeres src')
+  assert.equal(bilderOhneAdresse('<img src="CDN_BILD_URL" alt="x" />').length, 1, 'Platzhalter aus der Referenz')
+  assert.equal(bilderOhneAdresse('<img src="http://alt.de/a.png" alt="x" />').length, 1, 'http statt https')
+})
+
+test('echte Bilder und mitgeschickte Icons gehen durch', () => {
+  assert.deepEqual(bilderOhneAdresse('<img src="https://cdn.shopify.com/a.png" alt="x" />'), [])
+  assert.deepEqual(bilderOhneAdresse('<img src="cid:vendo-nl-instagram" width="22" alt="Instagram" />'), [])
+  assert.deepEqual(bilderOhneAdresse('<img src="data:image/png;base64,AAA" alt="x" />'), [])
+  assert.deepEqual(bilderOhneAdresse(''), [])
+})
+
+test('mehrere leere Bilder werden einzeln gezählt', () => {
+  const html = '<img alt="Produkt 1" /><img alt="Produkt 2" /><img src="https://cdn.shopify.com/a.png" alt="echt" />'
+  assert.equal(bilderOhneAdresse(html).length, 2)
+})
+
+test('ein Knopf ohne Ziel wird mit seinem Text gemeldet', () => {
+  assert.deepEqual(linksOhneZiel('<a>ANSEHEN</a>'), ['ANSEHEN'])
+  assert.deepEqual(linksOhneZiel('<a href="">JETZT KAUFEN</a>'), ['JETZT KAUFEN'])
+  assert.deepEqual(linksOhneZiel('<a href="   ">Zum Shop</a>'), ['Zum Shop'])
+  assert.deepEqual(linksOhneZiel('<a href="#">Zum Shop</a>'), ['Zum Shop'], 'eine Raute ist kein Ziel')
+})
+
+test('echte Ziele, mailto und tel gehen durch', () => {
+  assert.deepEqual(linksOhneZiel('<a href="https://donnerwolf.de/products/x">Zum Produkt</a>'), [])
+  assert.deepEqual(linksOhneZiel('<a href="mailto:info@beispiel.de?subject=Abmeldung">ABMELDEN</a>'), [])
+  assert.deepEqual(linksOhneZiel('<a href="tel:+4900000">Anrufen</a>'), [])
+  assert.deepEqual(linksOhneZiel(''), [])
+})
+
+test('ein Knopf, der nur ein Bild enthält, wird trotzdem erkannt', () => {
+  assert.deepEqual(linksOhneZiel('<a href=""><img src="https://cdn.shopify.com/a.png" alt="x" /></a>'), ['(ohne Text)'])
+})
+
+test('derselbe tote Knopftext wird nur einmal gemeldet', () => {
+  assert.deepEqual(linksOhneZiel('<a href="">ANSEHEN</a><a href="">ANSEHEN</a>'), ['ANSEHEN'])
+})
+
+// ── Beides sperrt Kampagne und Vorlage ──
+
+const GERUEST = [
+  '<table role="presentation"><tr><td>',
+  '<img data-feld="produkt1_bild" alt="Produkt 1" width="252" />',
+  '<span data-feld="produkt1_name">FENRIR Hoodie</span>',
+  '<a data-feld="produkt1_knopf">ANSEHEN</a>',
+  '</td></tr></table>'
+].join('')
+
+test('eine Kampagne mit ungefülltem Gerüst wird gesperrt', () => {
+  const geprueft = kampagnenModul.kampagnePruefen({ name: 'Test', betreff: 'Test', html: GERUEST })
+  assert.equal(geprueft.ok, false)
+  assert.ok(
+    geprueft.fehler.some((f) => /Bild hat keine gültige Adresse/.test(f)),
+    'das leere Bild fehlt in den Meldungen'
+  )
+  assert.ok(
+    geprueft.fehler.some((f) => /Knopf führt nirgendwohin.*ANSEHEN/.test(f)),
+    'der tote Knopf fehlt in den Meldungen'
+  )
+})
+
+test('eine Vorlage mit ungefülltem Gerüst wird ebenso beanstandet', () => {
+  const geprueft = vorlagenModul.vorlagePruefen({ name: 'Test', html: GERUEST })
+  assert.equal(geprueft.ok, false)
+  assert.ok(geprueft.fehler.some((f) => /Bild hat noch keine gültige Adresse/.test(f)))
+  assert.ok(geprueft.fehler.some((f) => /Knopf führt nirgendwohin/.test(f)))
+})
+
+test('eine gefüllte Kampagne geht durch', () => {
+  const gut = GERUEST.replace('alt="Produkt 1"', 'src="https://cdn.shopify.com/a.png" alt="Hoodie"').replace(
+    '<a data-feld="produkt1_knopf">',
+    '<a data-feld="produkt1_knopf" href="https://donnerwolf.de/products/x">'
+  )
+  const geprueft = kampagnenModul.kampagnePruefen({ name: 'Test', betreff: 'Test', html: gut })
+  assert.equal(geprueft.ok, true, geprueft.fehler.join(' '))
 })

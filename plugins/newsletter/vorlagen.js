@@ -10,7 +10,7 @@
 
 const { bausteineSaeubern, kiAntwortLesen, htmlVon } = require('./kampagnen.js')
 const { ARTEN, FELDER, startVorlage, inhaltAus } = require('./bausteine.js')
-const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, felderLesen, startVorlageHtml, MAX_HTML } = require('./html-mail.js')
+const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, felderLesen, startVorlageHtml, MAX_HTML } = require('./html-mail.js')
 
 const MAX_VORLAGEN = 50
 const INHALT_ARTEN = ['titel', 'text', 'bild', 'produkt', 'knopf']
@@ -43,6 +43,10 @@ function vorlagePruefen(vorlage = {}, { marke = {} } = {}) {
   if (fremde.length) fehler.push(`Lücken, die in der Kampagne gefüllt werden müssen: ${fremde.slice(0, 8).join(', ')}${fremde.length > 8 ? ' …' : ''}.`)
   const ohneAdresse = bilderOhneAdresse(html)
   if (ohneAdresse.length) fehler.push(`${ohneAdresse.length === 1 ? 'Ein Bild hat' : `${ohneAdresse.length} Bilder haben`} noch keine gültige Adresse (https://…).`)
+  // Auch in einer Vorlage: ein Knopf ohne Ziel bleibt beim Anwenden ohne Ziel, weil dort
+  // nur die markierten Felder neu geschrieben werden.
+  const tot = linksOhneZiel(html)
+  if (tot.length) fehler.push(`${tot.length === 1 ? 'Ein Knopf führt' : `${tot.length} Knöpfe führen`} nirgendwohin: ${tot.slice(0, 4).map((t) => `„${t}“`).join(', ')}. Auch im Beispiel gehört eine echte Adresse aus dem Shop hinein.`)
   // Eine Vorlage ist keine fertige Mail: ohne markierte Felder weiß niemand, was beim
   // Anwenden neu geschrieben werden muss
   const felder = felderLesen(html)

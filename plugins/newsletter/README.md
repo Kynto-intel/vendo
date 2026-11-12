@@ -437,10 +437,20 @@ Letzte Änderung: 2026-11-11
   ohne Fehlalarme messen und stehen als Regeln im Skill. Dort wurde auch nachgebessert, was
   die Vorlage erst möglich machte: die Zieltabelle ohne eigenes `max-width`, das
   Rabatt-Abzeichen ohne `data-feld` (ein Feld, das man leeren soll, bleibt stehen) und ein
-  Abschnitt über Abwechslung. Tests: newsletter-mailpruefung.test.js (14) — **403 insgesamt**.
+  Abschnitt über Abwechslung.
+
+- **Halbfertige Gerüste fallen auf** (2026-11-12): Die nächste Vorlage zeigte kaputte
+  Bildsymbole statt Produktbildern. Gemessen, dass der Bot die Daten sehr wohl bekommt
+  (30 Produkte, alle mit Bild, 17 kB — weit unter der Kürzungsgrenze); die KI hatte sie
+  nicht abgefragt. Zwei Lücken ließen das bis in die Vorschau durch: `bilderOhneAdresse`
+  sah nur Bilder an, die überhaupt ein `src` hatten — ein `<img alt="Produkt 1" />` ohne
+  Adresse kam ungeprüft durch; und für Links gab es gar keine Prüfung, ein `<a>ANSEHEN</a>`
+  ohne Ziel wurde in einer Kampagne zum toten Knopf. Beides prüft jetzt `kampagnePruefen`
+  und `vorlagePruefen` (`bilderOhneAdresse` erweitert, `linksOhneZiel` neu).
+  Tests: newsletter-mailpruefung.test.js (24) — **413 insgesamt**.
   Bericht: test-results/newsletter-mailpruefung.result.md.
 
-**Gesamtstand der Tests: 403 in siebzehn Dateien, alle bestanden, plus der App-Lauf.**
+**Gesamtstand der Tests: 413 in siebzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 
