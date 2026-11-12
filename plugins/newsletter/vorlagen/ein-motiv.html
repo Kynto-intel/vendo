@@ -4,10 +4,9 @@
 <!--
   Vorlage für Vendos Newsletter. Gewöhnliches HTML, von Hand änderbar.
 
-  %TOKEN% werden beim Anlegen ersetzt: %SCHRIFT% %FLAECHE% %TEXT% %LEISE% %AKZENT%
-  %AUFAKZENT% %LINIE% kommen aus den Markenangaben, %SHOP% ist die Shop-Adresse,
-  %BILD1%..%BILD4% %URL1%..%URL4% %NAME1%..%NAME4% %PREIS1%..%PREIS4% sind
-  Beispielprodukte und werden pro Kampagne ersetzt.
+  Die Farben werden beim Anlegen durch deine Markenangaben ersetzt (Wert für Wert),
+  die Shop-Adresse ebenso. Beispielprodukte und Platzhalterbilder schreibt die KI pro
+  Kampagne neu. Die Datei lässt sich so, wie sie ist, im Browser öffnen.
 
   Kein Logo und kein Fuß: die setzt Vendo aus den Markenangaben davor und dahinter.
   Keine eigene äußere Hülle mit max-width: die macht Vendo auch.
@@ -15,43 +14,43 @@
 -->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
   <tr>
-    <td align="center" style="padding:34px 32px 26px;background-color:%FLAECHE%;">
-      <h1 data-feld="ueberschrift" data-feld-hinweis="Höchstens sechs Wörter, konkreter Haken, keine Werbefloskel" style="margin:0 0 12px;font-family:%SCHRIFT%;font-size:30px;line-height:1.18;font-weight:700;color:%TEXT%;">Der Hammer bleibt</h1>
-      <p data-feld="einleitung" data-feld-hinweis="Zwei bis drei Sätze, Du-Form, ruhig. Keine Gedankenstriche." style="margin:0 0 22px;font-family:%SCHRIFT%;font-size:16px;line-height:1.65;color:%LEISE%;">Ein Motiv, das keine Erklärung braucht. Und trotzdem eine hat.</p>
+    <td align="center" style="padding:34px 32px 26px;background-color:#1A1A1A;">
+      <h1 data-feld="ueberschrift" data-feld-hinweis="Höchstens sechs Wörter, konkreter Haken, keine Werbefloskel" style="margin:0 0 12px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:30px;line-height:1.18;font-weight:700;color:#D9CBB4;">Der Hammer bleibt</h1>
+      <p data-feld="einleitung" data-feld-hinweis="Zwei bis drei Sätze, Du-Form, ruhig. Keine Gedankenstriche." style="margin:0 0 22px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:1.65;color:#9A8F7C;">Ein Motiv, das keine Erklärung braucht. Und trotzdem eine hat.</p>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-        <tr><td bgcolor="%AKZENT%" style="padding:15px 34px;">
-          <a data-feld="haupt_knopf" data-feld-hinweis="Adresse der passenden Sammlung oder des Shops" href="%SHOP%/collections/all" style="font-family:%SCHRIFT%;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:%AUFAKZENT%;text-decoration:none;display:inline-block;">Zum Motiv</a>
+        <tr><td bgcolor="#C29A40" style="padding:15px 34px;">
+          <a data-feld="haupt_knopf" data-feld-hinweis="Adresse der passenden Sammlung oder des Shops" href="https://donnerwolf.de/collections/all" style="font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15120B;text-decoration:none;display:inline-block;">Zum Motiv</a>
         </td></tr>
       </table>
     </td>
   </tr>
   <tr>
     <td style="padding:0;">
-      <a data-feld="bild1_link" data-feld-hinweis="Adresse des Produkts oder der Sammlung" href="%URL1%" style="text-decoration:none;">
-        <img data-feld="bild1" data-feld-hinweis="Stimmungs- oder Produktbild über die volle Breite, 1200 px breit hochladen" src="%BILD1%" width="600" alt="Das Motiv" style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
+      <a data-feld="bild1_link" data-feld-hinweis="Adresse des Produkts oder der Sammlung" href="https://donnerwolf.de/products/sturmfest-fluffy-boxcut-hoodie" style="text-decoration:none;">
+        <img data-feld="bild1" data-feld-hinweis="Stimmungs- oder Produktbild über die volle Breite, 1200 px breit hochladen" src="cid:vendo-nl-bild" width="600" alt="Das Motiv" style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
       </a>
     </td>
   </tr>
   <tr>
-    <td style="padding:28px 32px 0;background-color:%FLAECHE%;font-family:%SCHRIFT%;font-size:16px;line-height:1.75;color:%TEXT%;">
+    <td style="padding:28px 32px 0;background-color:#1A1A1A;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:1.75;color:#D9CBB4;">
       <p data-feld="geschichte" data-feld-hinweis="Drei bis vier Sätze zur Idee hinter dem Motiv. Konkret, kein Pathos." style="margin:0;">Hier steht, warum es dieses Motiv gibt.</p>
     </td>
   </tr>
   <tr>
-    <td align="center" style="padding:22px 32px 0;background-color:%FLAECHE%;font-family:%SCHRIFT%;">
-      <div data-feld="produkt1_name" data-feld-hinweis="Produktname genau wie im Shop" style="font-size:19px;font-weight:600;color:%TEXT%;">%NAME1%</div>
-      <div data-feld="produkt1_preis" data-feld-hinweis="Preis genau wie im Shop" style="margin-top:6px;font-size:15px;color:%LEISE%;">%PREIS1%</div>
+    <td align="center" style="padding:22px 32px 0;background-color:#1A1A1A;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div data-feld="produkt1_name" data-feld-hinweis="Produktname genau wie im Shop" style="font-size:19px;font-weight:600;color:#D9CBB4;">Sturmfest Thorshammer Hoodie</div>
+      <div data-feld="produkt1_preis" data-feld-hinweis="Preis genau wie im Shop" style="margin-top:6px;font-size:15px;color:#9A8F7C;">59,99 €</div>
     </td>
   </tr>
   <tr>
-    <td align="center" style="padding:30px 32px 34px;background-color:%FLAECHE%;">
-      <p data-feld="abschluss" data-feld-hinweis="Ein Satz zum Abschluss, ruhig. Kein Pathos." style="margin:0 0 20px;font-family:%SCHRIFT%;font-size:16px;line-height:1.65;color:%TEXT%;">Mehr davon steht im Shop.</p>
+    <td align="center" style="padding:30px 32px 34px;background-color:#1A1A1A;">
+      <p data-feld="abschluss" data-feld-hinweis="Ein Satz zum Abschluss, ruhig. Kein Pathos." style="margin:0 0 20px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:1.65;color:#D9CBB4;">Mehr davon steht im Shop.</p>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-        <tr><td bgcolor="%AKZENT%" style="padding:15px 34px;">
-          <a data-feld="schluss_knopf" data-feld-hinweis="Shop oder Sammlung" href="%SHOP%" style="font-family:%SCHRIFT%;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:%AUFAKZENT%;text-decoration:none;display:inline-block;">Zum Produkt</a>
+        <tr><td bgcolor="#C29A40" style="padding:15px 34px;">
+          <a data-feld="schluss_knopf" data-feld-hinweis="Shop oder Sammlung" href="https://donnerwolf.de" style="font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15120B;text-decoration:none;display:inline-block;">Zum Produkt</a>
         </td></tr>
       </table>
-      <p data-feld="gruss" data-feld-hinweis="Grußzeile, persönlich" style="margin:22px 0 0;font-family:%SCHRIFT%;font-size:15px;line-height:1.6;color:%LEISE%;">Bleib standhaft.<br />Felix</p>
+      <p data-feld="gruss" data-feld-hinweis="Grußzeile, persönlich" style="margin:22px 0 0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:15px;line-height:1.6;color:#9A8F7C;">Bleib standhaft.<br />Felix</p>
     </td>
   </tr>
 </table>

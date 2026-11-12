@@ -19,24 +19,25 @@ const { STANDARD_FARBEN, SCHRIFT } = require('./bausteine.js')
 
 const ORDNER = path.join(__dirname, 'vorlagen')
 
-// Donnerwolfs Farbwelt als Rückfall, wenn unter „Marke" nichts eingetragen ist: Anthrazit
-// und Gold sind immer dabei, Beige ist der helle Kontrast. Vendos helle Grundeinstellung
-// wäre hier falsch — das Design-System der Marke sagt dunkel und keine bunten Farben.
+// Die Farben, die in den Dateien stehen. Sie sind Donnerwolfs Farbwelt — Anthrazit und
+// Gold, Beige als heller Kontrast — und zugleich die Marken, nach denen ersetzt wird:
+// trägt Felix eigene Farben ein, tauscht `ersetzen` Wert für Wert. Deshalb muss jeder
+// Wert hier einmalig sein, sonst bekämen zwei Rollen dieselbe neue Farbe.
 const DUNKEL = {
   hintergrund: '#111111',
   flaeche: '#1A1A1A',
   text: '#D9CBB4',
   leise: '#9A8F7C',
   akzent: '#C29A40',
-  aufAkzent: '#1A1A1A',
+  aufAkzent: '#15120B',
   linie: '#333333'
 }
 
 const SHOP = 'https://donnerwolf.de'
 
-// Beispielprodukte. Sie stehen in der Vorlage, damit sie in Vendos Übersicht wie eine
-// echte Mail aussieht und Vendos Prüfungen durchläuft. Die Bildadressen zeigen bewusst auf
-// nichts Echtes: eine fertig aussehende Vorlage bliebe sonst so stehen.
+// Beispielprodukte, wie sie in den Dateien stehen. Die Bildflächen zeigen auf das
+// gezeichnete Platzhalterbild (icons.js): in der Vorschau sieht man einen Rahmen mit
+// „BILD" statt eines kaputten Bildsymbols, und Vendos Prüfung lässt `cid:` durch.
 const BEISPIEL = [
   { name: 'Sturmfest Thorshammer Hoodie', preis: '59,99 €', pfad: 'sturmfest-fluffy-boxcut-hoodie' },
   { name: 'Sturmfest Thorshammer T-Shirt', preis: '24,95 €', pfad: 'sturmfest-premium-shirt' },
@@ -93,29 +94,20 @@ function farbenAus(marke = {}) {
   return { ...STANDARD_FARBEN, ...DUNKEL, ...eigene }
 }
 
-// Die Platzhalter einer Datei füllen. Absichtlich %TOKEN% und nicht {{token}}: Vendo prüft
-// {{…}} gegen seine eigene Platzhalterliste und würde unbekannte sperren.
+// Die Dateien enthalten gültiges HTML mit echten Werten — kein `%TOKEN%`, sonst meldet
+// jeder Editor ungültiges CSS und die Datei lässt sich nicht im Browser ansehen. Ersetzt
+// wird deshalb Wert für Wert: die sieben Farben und die Shop-Adresse.
 function ersetzen(roh, { marke = {}, shop = SHOP } = {}) {
-  const f = farbenAus(marke)
-  const werte = {
-    SCHRIFT,
-    SHOP: shop.replace(/\/$/, ''),
-    HINTERGRUND: f.hintergrund,
-    FLAECHE: f.flaeche,
-    TEXT: f.text,
-    LEISE: f.leise,
-    AKZENT: f.akzent,
-    AUFAKZENT: f.aufAkzent,
-    LINIE: f.linie
+  const ziel = farbenAus(marke)
+  let text = String(roh)
+  for (const [rolle, standard] of Object.entries(DUNKEL)) {
+    if (!ziel[rolle] || ziel[rolle].toLowerCase() === standard.toLowerCase()) continue
+    text = text.split(standard).join(ziel[rolle])
+    text = text.split(standard.toUpperCase()).join(ziel[rolle])
   }
-  BEISPIEL.forEach((p, i) => {
-    const n = i + 1
-    werte[`NAME${n}`] = p.name
-    werte[`PREIS${n}`] = p.preis
-    werte[`URL${n}`] = `${werte.SHOP}/products/${p.pfad}`
-    werte[`BILD${n}`] = `${werte.SHOP}/cdn/shop/files/donnerwolf-beispiel-${n}.png`
-  })
-  return String(roh).replace(/%([A-Z0-9]+)%/g, (ganz, name) => (name in werte ? werte[name] : ganz))
+  const eigenerShop = String(shop || '').replace(/\/$/, '')
+  if (eigenerShop && eigenerShop !== SHOP) text = text.split(SHOP).join(eigenerShop)
+  return text
 }
 
 // Ein Muster als fertiges HTML. Unbekannte Kennung gibt null, damit der Aufrufer es merkt.

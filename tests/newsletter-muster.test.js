@@ -127,6 +127,40 @@ for (const mu of musterListe()) {
   })
 }
 
+// ── Die Dateien sind gültiges HTML ──
+// Vorher standen %TOKEN% in den style-Attributen; jeder Editor meldete dort ungültiges CSS.
+
+test('in keinem style-Attribut steht ein Platzhalter', () => {
+  for (const datei of fs.readdirSync(ORDNER).filter((n) => n.endsWith('.html'))) {
+    const roh = fs.readFileSync(path.join(ORDNER, datei), 'utf8')
+    const schlecht = [...roh.matchAll(/style="([^"]*)"/g)].map((t) => t[1]).filter((w) => /%[A-Z0-9]+%|\{\{/.test(w))
+    assert.deepEqual(schlecht, [], `${datei}: ungültiges CSS`)
+  }
+})
+
+test('die Dateien enthalten überhaupt keine Platzhalter mehr', () => {
+  for (const datei of fs.readdirSync(ORDNER).filter((n) => n.endsWith('.html'))) {
+    const roh = fs.readFileSync(path.join(ORDNER, datei), 'utf8')
+    assert.equal(roh.match(/%[A-Z0-9]+%/g), null, `${datei}: Platzhalter übrig`)
+  }
+})
+
+test('jede Farbe der Standardwelt kommt nur in einer Rolle vor', () => {
+  // Ersetzt wird Wert für Wert; zwei Rollen mit derselben Farbe bekämen beide die neue
+  const werte = Object.values(DUNKEL).map((w) => w.toLowerCase())
+  assert.equal(new Set(werte).size, werte.length, 'zwei Rollen teilen sich eine Farbe')
+})
+
+test('die Bildflächen zeigen auf das mitgeschickte Platzhalterbild', () => {
+  for (const mu of musterListe()) {
+    const html = musterHtml(mu.id, { marke: MARKE })
+    const bilder = [...html.matchAll(/<img[^>]*src="([^"]+)"/g)].map((t) => t[1])
+    for (const src of bilder) {
+      assert.match(src, /^cid:vendo-nl-bild$/, `${mu.id}: ${src} ist kein Platzhalter`)
+    }
+  }
+})
+
 // ── Farben ──
 
 test('ohne eigene Markenfarben nimmt ein Muster die dunkle Welt der Marke', () => {

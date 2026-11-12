@@ -24,8 +24,8 @@ node --test tests/newsletter-muster.test.js tests/newsletter-mailpruefung.test.j
 **Fixture:** keine Datei. Markenangaben, Impressum und Beispielprodukte im Test sind
 erfunden. Kein Netzzugriff, keine geschriebene Datei.
 
-**Ergebnis: PASS — 59 von 59 Tests in `tests/newsletter-muster.test.js`, 474 von 474 im
-Regressionslauf.** Gesamtstand: **474 Tests in achtzehn Dateien.**
+**Ergebnis: PASS — 63 von 63 Tests in `tests/newsletter-muster.test.js`, 478 von 478 im
+Regressionslauf.** Gesamtstand: **478 Tests in achtzehn Dateien.**
 `git diff --check` ohne Befund.
 
 ## Warum es die Muster gibt
@@ -127,6 +127,34 @@ ungefüllt (ein unbekannter bleibt absichtlich stehen), keine Anleitung und kein
 landet in der Mail, `musterLesen` liefert je Muster eine Vorschau ohne `cid:`. Die Prüfung
 auf die äußere Hülle wurde präzisiert: ein randloses Bild darf 600 px breit sein, nur eine
 Tabelle mit dieser Höchstbreite wäre die Hülle.
+
+## Nachtrag 2026-11-12, abends: gültiges HTML, getrennte Muster, Platzhalterbild
+
+Drei Mängel gemeldet.
+
+**Alles rot in VS Code.** Nachgezählt: **141 `style`-Attribute** enthielten `%TOKEN%`, also
+ungültiges CSS — jeder Editor markiert das. Die Dateien enthalten jetzt echte Werte
+(`background-color:#1A1A1A`), und `muster.js` ersetzt **Wert für Wert**: die sieben Farben
+und die Shop-Adresse. Nebeneffekt: die Dateien lassen sich so, wie sie sind, im Browser
+öffnen. Bedingung dafür ist, dass jede Standardfarbe einmalig ist, sonst bekämen zwei
+Rollen dieselbe neue Farbe; `aufAkzent` wurde deshalb von `#1A1A1A` auf `#15120B` geändert
+und ein Test prüft die Einmaligkeit.
+
+**Alles doppelt.** Die Musterkarten hatten dieselbe Gestalt wie die eigenen Vorlagen und
+standen darüber — sieben Muster plus die daraus angelegten Vorlagen sahen aus wie eine
+doppelte Liste. Die Muster stehen jetzt **unter** der Vorlagenliste in einem Klappblock,
+der zugeht, sobald es eigene Vorlagen gibt. Der Text sagt ausdrücklich, dass ein Klick
+eine **neue** Vorlage anlegt und die Muster stehen bleiben.
+
+**Kaputte Bildsymbole.** Die Beispielbilder zeigten auf Adressen, die nicht laden. Jetzt
+zeichnet `icons.js` ein Platzhalterbild (Rahmen, Diagonalen, „BILD / 1200 × 600 px") in der
+Schriftfarbe des Fußes und schickt es wie die Social-Icons als `cid:vendo-nl-bild` mit.
+Die Vorschau zeigt damit eine erkennbare Bildfläche statt eines Fehlersymbols, und Vendos
+Bildprüfung lässt `cid:` ohnehin durch.
+
+**Vier neue Tests:** kein Platzhalter in einem `style`-Attribut, überhaupt kein `%TOKEN%`
+mehr in den Dateien, jede Standardfarbe einmalig, und jede Bildfläche zeigt auf das
+mitgeschickte Platzhalterbild.
 
 ## Entscheidungen
 

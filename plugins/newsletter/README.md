@@ -487,7 +487,21 @@ Letzte Änderung: 2026-11-11
   Tests: newsletter-muster.test.js (59) — **474 insgesamt**.
   Bericht: test-results/newsletter-muster.result.md.
 
-**Gesamtstand der Tests: 474 in achtzehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Vorlagen gültig, Muster getrennt, Platzhalterbild** (2026-11-12): Drei gemeldete
+  Mängel. Erstens waren alle Vorlagendateien in VS Code rot: in 141 `style`-Attributen
+  stand `%TOKEN%`, also ungültiges CSS. Die Dateien enthalten jetzt **echte Werte**, und
+  `muster.js` ersetzt Wert für Wert (die sieben Farben, die Shop-Adresse) — dadurch sind
+  sie gültiges HTML und lassen sich direkt im Browser öffnen. Damit das trägt, muss jede
+  Standardfarbe einmalig sein; ein Test hält das fest. Zweitens sahen die Musterkarten
+  aus wie die eigenen Vorlagen und standen darüber, als hätte man alles doppelt: sie
+  stehen jetzt **unter** der Liste in einem Klappblock, der zugeht, sobald es eigene
+  Vorlagen gibt. Drittens zeigten die Bildflächen ein kaputtes Bildsymbol; `icons.js`
+  zeichnet jetzt ein Platzhalterbild (Rahmen, Diagonalen, „BILD 1200 × 600 px") und
+  schickt es wie die Social-Icons als `cid:` mit.
+  Tests: newsletter-muster.test.js (63) — **478 insgesamt**.
+  Bericht: test-results/newsletter-muster.result.md.
+
+**Gesamtstand der Tests: 478 in achtzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 

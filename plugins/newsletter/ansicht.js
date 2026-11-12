@@ -203,12 +203,18 @@ export async function starten(ctx) {
         </div>`
       )
       .join('')
-    return `<div class="nl-muster-block">
-      <p class="nl-fuss-titel">Fertige Muster</p>
-      <p class="nl-form-text">Ein Klick legt eine Vorlage daraus an. Farben kommen aus deinen
-      Markenangaben, Beispielprodukte sind Platzhalter — die schreibt Luzzy pro Kampagne neu.</p>
-      <div class="nl-karten nl-muster-reihe">${karten}</div>
-    </div>`
+    // Zugeklappt, sobald es eigene Vorlagen gibt: sonst stehen oben sieben Muster und
+    // darunter die eigenen, und beides sieht gleich aus — als hätte man alles doppelt.
+    const hatEigene = Boolean(vorlagen?.liste?.length)
+    return `
+      <details class="nl-muster-block"${hatEigene ? '' : ' open'}>
+        <summary><span>Fertige Muster</span><span class="nl-muster-zahl">${liste.length}</span></summary>
+        <p class="nl-form-text">Ein Klick legt eine <strong>neue Vorlage</strong> daraus an; die
+        Muster selbst bleiben hier stehen. Farben kommen aus deinen Markenangaben,
+        Beispielprodukte und Bildflächen sind Platzhalter und werden pro Kampagne ersetzt.
+        Die Dateien dazu liegen in <code>plugins/newsletter/vorlagen/</code>.</p>
+        <div class="nl-karten nl-muster-reihe">${karten}</div>
+      </details>`
   }
 
   // Zwei Ranglisten unter den Kacheln, damit Felix und Luzzy nicht raten müssen, was in
@@ -648,8 +654,8 @@ export async function starten(ctx) {
         ${meldungsZeile(vorlageMeldung)}
         <p class="nl-form-text leise">Vorlagen legen fest, wie eine Mail aufgebaut ist.
         In Kampagnen und in jedem Automationsschritt lässt sich eine auswählen.</p>
-        ${musterBlock()}
         <div class="nl-karten">${vorlagenListe()}</div>
+        ${musterBlock()}
         ${vorlageKiBlock(null)}
       </div>`
   }

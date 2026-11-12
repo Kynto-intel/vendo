@@ -63,9 +63,48 @@ function dateienSuchen() {
 
 const DATEIEN = dateienSuchen()
 
+// Ein Platzhalter für Bildflächen in den Mustervorlagen. Ohne ihn zeigt die Vorschau ein
+// kaputtes Bildsymbol, und eine Vorlage sieht schlechter aus, als sie ist. Gezeichnet statt
+// als Datei, weil er sich nach den Farben des Fußes richtet.
+const PLATZHALTER = 'bild'
+const PLATZHALTER_BREITE = 1200
+const PLATZHALTER_HOEHE = 600
+
+function platzhalterZeichnen(canvas, farbe) {
+  const flaeche = canvas.createCanvas(PLATZHALTER_BREITE, PLATZHALTER_HOEHE)
+  const k = flaeche.getContext('2d')
+  k.fillStyle = 'rgba(0,0,0,0)'
+  k.clearRect(0, 0, PLATZHALTER_BREITE, PLATZHALTER_HOEHE)
+  // Rahmen und Diagonalen: sieht nach Platzhalter aus, nicht nach kaputtem Bild
+  k.strokeStyle = farbe
+  k.globalAlpha = 0.45
+  k.lineWidth = 4
+  k.strokeRect(2, 2, PLATZHALTER_BREITE - 4, PLATZHALTER_HOEHE - 4)
+  k.globalAlpha = 0.18
+  k.beginPath()
+  k.moveTo(0, 0)
+  k.lineTo(PLATZHALTER_BREITE, PLATZHALTER_HOEHE)
+  k.moveTo(PLATZHALTER_BREITE, 0)
+  k.lineTo(0, PLATZHALTER_HOEHE)
+  k.stroke()
+  k.globalAlpha = 0.8
+  k.fillStyle = farbe
+  k.font = "600 44px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  k.textAlign = 'center'
+  k.textBaseline = 'middle'
+  k.fillText('BILD', PLATZHALTER_BREITE / 2, PLATZHALTER_HOEHE / 2 - 26)
+  k.font = "400 24px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  k.globalAlpha = 0.55
+  k.fillText('1200 × 600 px', PLATZHALTER_BREITE / 2, PLATZHALTER_HOEHE / 2 + 28)
+  return flaeche
+}
+
 // Für welche Netzwerke es ein Bild gibt. Ein Netzwerk ohne Bild bekommt im Fuß keinen
 // Icon-Platz (siehe `fehlende` und die Prüfung in bausteine.js über die Tests).
 const MIT_BILD = NETZWERKE.map((n) => n.id).filter((id) => DATEIEN[id])
+
+// Alles, was als cid: in einer Mail stehen kann: die Netzwerke plus der Platzhalter.
+const ALLE_CIDS = [...MIT_BILD, PLATZHALTER]
 
 // ── Laden ──
 
@@ -126,7 +165,10 @@ function vorbereiten(groesse = ICON_PIXEL) {
   if (laden) return laden
   laden = (async () => {
     for (const id of MIT_BILD) VORLAGEN.set(id, await vorlageLaden(id, groesse))
-    return MIT_BILD.filter((id) => VORLAGEN.get(id))
+    // Der Platzhalter wird gezeichnet, nicht geladen, und nie eingefärbt — er bekommt
+    // seine Farbe schon beim Zeichnen.
+    VORLAGEN.set(PLATZHALTER, { gezeichnet: true })
+    return ALLE_CIDS.filter((id) => VORLAGEN.get(id))
   })()
   return laden
 }
@@ -146,6 +188,15 @@ function iconPng(id, { farbe = '#ffffff' } = {}) {
 
   const canvas = canvasHolen()
   if (!canvas) return null
+  if (vorlage.gezeichnet) {
+    try {
+      const puffer = platzhalterZeichnen(canvas, farbe).toBuffer('image/png')
+      FERTIG.set(schluessel, puffer)
+      return puffer
+    } catch {
+      return null
+    }
+  }
   try {
     const groesse = vorlage.flaeche.width
     const flaeche = canvas.createCanvas(groesse, groesse)
@@ -172,7 +223,7 @@ function iconPng(id, { farbe = '#ffffff' } = {}) {
 // Welche mitgeschickten Icons ein HTML anfordert, in der Reihenfolge des Vorkommens
 function iconsImHtml(html) {
   const text = String(html ?? '')
-  return NETZWERKE.map((n) => n.id).filter((id) => text.includes(`cid:${cidVon(id)}`))
+  return ALLE_CIDS.filter((id) => text.includes(`cid:${cidVon(id)}`))
 }
 
 // Die Anhänge für eine Mail: ein eingebettetes Bild je angefordertem Icon. Form wie
@@ -210,6 +261,8 @@ module.exports = {
   zusammenziehen,
   DATEIEN,
   MIT_BILD,
+  ALLE_CIDS,
+  PLATZHALTER,
   ORDNER,
   ICON_ANZEIGE,
   ICON_PIXEL,
