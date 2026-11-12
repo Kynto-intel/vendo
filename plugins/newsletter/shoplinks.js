@@ -214,5 +214,52 @@ function rennerVerbinden(liste, produkte = []) {
   })
 }
 
+// ── Zwei Prüfungen gegen das, was eine KI gern falsch macht ──
+
+// Dasselbe Bild mehrfach in einer Mail. Kein Fehler, aber fast immer Faulheit: dann steht
+// das Shirt-Foto im Aufmacher, beim ersten Produkt und nochmal auf dem Sammlungsband, und
+// die Mail wirkt, als hätte der Shop drei Artikel. Verglichen wird ohne Abfrageteil
+// (`?v=…`), denn das ist dasselbe Bild.
+const BILD_SRC = /<img[^>]*?[\s"']src\s*=\s*"([^"]+)"/gi
+
+function doppelteBilder(html) {
+  const gezaehlt = new Map()
+  for (const t of String(html ?? '').matchAll(BILD_SRC)) {
+    const ohneVersion = t[1].split('?')[0].trim()
+    if (!ohneVersion || !/^https?:/i.test(ohneVersion)) continue
+    gezaehlt.set(ohneVersion, (gezaehlt.get(ohneVersion) || 0) + 1)
+  }
+  return [...gezaehlt.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([url, anzahl]) => ({ url, anzahl }))
+    .sort((a, b) => b.anzahl - a.anzahl)
+}
+
+// Durchgestrichene Preise, die es im Shop nicht gibt. Ein durchgestrichener Preis behauptet
+// „war teurer" — steht dahinter kein echter Vergleichspreis, ist das irreführende Werbung,
+// nicht bloß ein Schönheitsfehler. Deshalb wird jeder gefundene Preis gegen die
+// Vergleichspreise des Shops gehalten; was dort nicht vorkommt, ist erfunden.
+// Preise werden auf die Ziffern reduziert verglichen, damit „31,95 €" und „31,95€" gleich sind.
+const preisKern = (text) => String(text ?? '').replace(/[^\d,.]/g, '').replace(',', '.').replace(/\.(?=.*\.)/g, '')
+
+function erfundenePreise(html, produkte = []) {
+  const echte = new Set()
+  for (const p of Array.isArray(produkte) ? produkte : []) {
+    if (p?.vergleichspreis) echte.add(preisKern(p.vergleichspreis))
+  }
+  const gefunden = new Set()
+  // Ein durchgestrichener Preis steht entweder im Element mit `line-through` oder direkt
+  // dahinter; beide Schreibweisen kommen in Mail-HTML vor.
+  for (const t of String(html ?? '').matchAll(/line-through[^>]*>([^<]{0,40})</gi)) {
+    const kern = preisKern(t[1])
+    if (!kern || Number(kern) <= 0) continue // leeres Feld ist kein erfundener Preis
+    if (!echte.has(kern)) gefunden.add(t[1].trim())
+  }
+  return [...gefunden]
+}
+
 module.exports = {
+  doppelteBilder,
+  erfundenePreise,
+  preisKern,
   rennerVerbinden, BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }

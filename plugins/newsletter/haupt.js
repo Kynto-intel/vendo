@@ -1740,10 +1740,23 @@ module.exports = (ctx) => {
 
   // Ohne Netz: Adressen, die nicht zum Shop gehören
   const shopHinweise = (daten, html) => {
+    const hinweise = []
     const hosts = shopHostsVon(daten)
-    if (!hosts.length) return []
-    const fremd = shoplinks.fremdeAdressen(html, hosts)
-    return fremd.length ? [`Adressen, die nicht aus deinem Shop sind: ${fremd.slice(0, 6).map((f) => `${f.url} (${f.grund})`).join(', ')}. Nur Adressen aus shop_produkte verwenden.`] : []
+    if (hosts.length) {
+      const fremd = shoplinks.fremdeAdressen(html, hosts)
+      if (fremd.length) {
+        hinweise.push(`Adressen, die nicht aus deinem Shop sind: ${fremd.slice(0, 6).map((f) => `${f.url} (${f.grund})`).join(', ')}. Nur Adressen aus shop_produkte verwenden.`)
+      }
+    }
+    // Dasselbe Bild mehrfach: kein Fehler, aber die Mail wirkt dann, als hätte der Shop
+    // drei Artikel. Als Hinweis, nicht als Sperre — manchmal ist es gewollt.
+    const doppelt = shoplinks.doppelteBilder(html)
+    if (doppelt.length) {
+      hinweise.push(
+        `Dasselbe Bild mehrfach: ${doppelt.slice(0, 4).map((b) => `${b.anzahl}× ${b.url.split('/').pop()}`).join(', ')}. Jede Stelle verdient ein eigenes Bild, sonst sieht die Mail nach einem einzigen Artikel aus.`
+      )
+    }
+    return hinweise
   }
 
   // Was aus der Vorlage einer Kampagne noch unverändert drinsteht
@@ -1758,6 +1771,22 @@ module.exports = (ctx) => {
     await shopAdresseSichern()
     const hosts = shopHostsVon(datenLesen())
     if (!hosts.length) return { ok: false, text: 'Vendo kennt die Adresse deines Shops nicht und kann die Links nicht prüfen. Felix muss im Reiter „Kontakte“ den Shop eintragen.' }
+    // Durchgestrichene Preise, die es im Shop nicht gibt, sperren wie eine erfundene
+    // Adresse: ein erfundener Streichpreis behauptet „war teurer“ und ist irreführende
+    // Werbung. Geprüft wird gegen die echten Vergleichspreise aus der Produktliste.
+    const domain = datenLesen().shopify?.primaerDomain
+    if (domain) {
+      const geladen = await shoplinks.produkteLaden(domain, abrufen, { anzahl: 500 })
+      const erfunden = shoplinks.erfundenePreise(html, geladen.produkte)
+      if (erfunden.length) {
+        return {
+          ok: false,
+          probleme: erfunden.map((preis) => ({ url: preis, grund: 'Streichpreis ohne Vergleichspreis im Shop' })),
+          text: `Durchgestrichene Preise, die es im Shop nicht gibt: ${erfunden.slice(0, 6).join(', ')}. Ein erfundener Streichpreis ist irreführende Werbung — entweder steht der alte Preis als Vergleichspreis im Shop, oder er kommt raus (samt Rabatt-Abzeichen).`
+        }
+      }
+    }
+
     const ergebnis = await shoplinks.adressenPruefen(html, { hosts, abrufen })
     if (ergebnis.ok) return { ok: true, geprueft: ergebnis.geprueft }
     return { ok: false, probleme: ergebnis.probleme, text: `Keine echten Adressen aus deinem Shop: ${ergebnis.probleme.slice(0, 8).map((p) => `${p.url} — ${p.grund}`).join('; ')}. Nimm die Adressen aus shop_produkte.` }

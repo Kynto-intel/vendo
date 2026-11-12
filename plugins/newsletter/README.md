@@ -425,7 +425,22 @@ Letzte Änderung: 2026-11-11
   Tests: newsletter-renner.test.js (20) — **389 insgesamt**.
   Bericht: test-results/newsletter-renner.result.md.
 
-**Gesamtstand der Tests: 389 in sechzehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Erfundene Rabatte und doppelte Bilder werden geprüft** (2026-11-12): Die erste Vorlage,
+  die Vala mit den neuen Bausteinen baute, trug zwei durchgestrichene Preise, die es im
+  Shop nicht gibt (von 280 Produkten hat genau eines einen Vergleichspreis), dasselbe
+  Shirt-Foto dreimal und viermal denselben schwarzen Hoodie. `shoplinks.erfundenePreise`
+  hält jeden Streichpreis gegen die echten Vergleichspreise und **sperrt die Freigabe** —
+  ein erfundener Streichpreis ist irreführende Werbung, dieselbe Klasse wie eine erfundene
+  Produktadresse. `shoplinks.doppelteBilder` meldet mehrfach verwendete Bilder als Hinweis
+  (ohne Abfrageteil verglichen, `?v=…` ist dieselbe Datei). Die drei übrigen Befunde
+  (gleiches Kleidungsstück, Rückansichten, Produktfoto als Sammlungsband) ließen sich nicht
+  ohne Fehlalarme messen und stehen als Regeln im Skill. Dort wurde auch nachgebessert, was
+  die Vorlage erst möglich machte: die Zieltabelle ohne eigenes `max-width`, das
+  Rabatt-Abzeichen ohne `data-feld` (ein Feld, das man leeren soll, bleibt stehen) und ein
+  Abschnitt über Abwechslung. Tests: newsletter-mailpruefung.test.js (14) — **403 insgesamt**.
+  Bericht: test-results/newsletter-mailpruefung.result.md.
+
+**Gesamtstand der Tests: 403 in siebzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 
