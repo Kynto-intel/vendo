@@ -212,7 +212,7 @@ const PRODUKTE = {
   ]
 }
 
-function hauptStarten({ bestellungen = null } = {}) {
+function hauptStarten({ bestellungen = null, bestseller = null } = {}) {
   const seiten = bestellungen || [
     [
       bestellung([posten('Hoodie', 3, 'hoodie'), posten('Shirt', 1, 'shirt')]),
@@ -232,7 +232,8 @@ function hauptStarten({ bestellungen = null } = {}) {
     vorlagen: [],
     automationen: [],
     laeufe: [],
-    warteschlange: []
+    warteschlange: [],
+    ...(bestseller ? { bestseller } : {})
   }
   const fn = {}
   const abrufen = async (url, optionen = {}) => {
@@ -279,6 +280,44 @@ test('rennerLesen gibt beide Listen, hoechstens fuenf, mit ihrem Stand', () => {
     assert.equal(gelesen[art].geholtAm, null)
     assert.equal(gelesen[art].quellen, 0)
   }
+})
+
+// ── Die Bestseller stehen schon im ueberblick ──
+// Der Bot ruft ueberblick ohnehin als Erstes auf. Stehen die Produkte dort schon drin,
+// braucht er keinen zweiten Aufruf — und hat keinen Grund, welche zu erfinden.
+
+const RENNER_STAND = {
+  geholtAm: Date.now(),
+  tage: 30,
+  quellen: 42,
+  liste: [
+    { titel: 'Hoodie', menge: 9, url: 'https://beispiel.de/products/hoodie', bild: 'https://cdn.shopify.com/h.jpg', preis: '59,99 €', vergleichspreis: '', verfuegbar: true, imShop: true },
+    { titel: 'Shirt', menge: 6, url: 'https://beispiel.de/products/shirt', bild: 'https://cdn.shopify.com/s.jpg', preis: '24,95 €', vergleichspreis: '34,95 €', verfuegbar: true, imShop: true },
+    { titel: 'Ausverkauft', menge: 20, url: 'https://beispiel.de/products/weg', bild: '', preis: '', vergleichspreis: '', verfuegbar: false, imShop: true },
+    { titel: 'Vom Markt genommen', menge: 30, url: '', bild: '', preis: '', vergleichspreis: '', verfuegbar: null, imShop: false }
+  ]
+}
+
+test('ueberblick trägt die Bestseller fertig mit Adresse, Bild und Preis', async () => {
+  const { fn } = hauptStarten({ bestseller: RENNER_STAND })
+  const a = await fn.botAuftrag({ aktion: 'ueberblick', argumente: {} })
+  assert.equal(a.ok, true)
+  assert.deepEqual(
+    a.daten.bestseller.map((e) => e.titel),
+    ['Hoodie', 'Shirt'],
+    'Ausverkauftes und aus dem Shop Genommenes gehört nicht in eine Mail'
+  )
+  const erstes = a.daten.bestseller[0]
+  for (const feld of ['url', 'bild', 'preis']) assert.ok(erstes[feld], `${feld} fehlt`)
+  assert.match(a.text, /Meistverkauft gerade: Hoodie, Shirt/)
+})
+
+test('ohne geholte Bestseller sagt der Text, was der Bot tun soll', async () => {
+  const { fn } = hauptStarten()
+  const a = await fn.botAuftrag({ aktion: 'ueberblick', argumente: {} })
+  assert.deepEqual(a.daten.bestseller, [])
+  assert.match(a.text, /shop_bestseller/)
+  assert.match(a.text, /niemals Produkte erfinden/)
 })
 
 // ── Die Bot-Aktion ──

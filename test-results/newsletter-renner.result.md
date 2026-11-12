@@ -31,8 +31,8 @@ Abfragen mitschreibt; die öffentliche Produktliste ebenso. Alle Namen, Preise u
 Bestellungen sind erfunden (`beispiel.de`, „Hoodie", „Shirt"). Kein Netzzugriff, keine
 geschriebene Datei, keine echten Zugangsdaten.
 
-**Ergebnis: PASS — 20 von 20 Tests in `tests/newsletter-renner.test.js`, 389 von 389
-im Regressionslauf.** Gesamtstand: **389 Tests in sechzehn Dateien.**
+**Ergebnis: PASS — 22 von 22 Tests in `tests/newsletter-renner.test.js`, 415 von 415
+im Regressionslauf.** Gesamtstand: **415 Tests in siebzehn Dateien.**
 `git diff --check` ohne Befund.
 
 ## Warum ins Plugin und nicht als eigener Shopify-Zugang für den Bot
@@ -111,6 +111,27 @@ die Bot-Aktion filtert auf `imShop` und `verfuegbar`.
 **Der Systemprompt des Hermes-Plugins** misst jetzt 3924 von 4000 erlaubten Zeichen. Viel
 mehr passt nicht mehr hinein; die nächste Regel für den Bot gehört in den Skill, nicht in
 den Prompt.
+
+## Nachtrag 2026-11-12: die Bestseller stehen schon im `ueberblick`
+
+Felix: „der bot soll ja die produkte nehmen die in vendo angezeigt werden, das doch die
+bestseller". Bisher musste der Bot sie mit einem zweiten Aufruf holen — und baute statt
+dessen ein Gerüst mit erfundenen Produkten.
+
+Jetzt trägt die Antwort von `ueberblick`, die der Bot ohnehin als Erstes abruft, die
+Liste unter `bestseller` mit: dieselben fünf, die Felix in seiner Übersicht sieht, jede
+mit `url`, `bild`, `preis`, `vergleichspreis` und verkaufter Stückzahl. Ausverkauftes und
+aus dem Shop Genommenes ist aussortiert — das gehört in Felix' Übersicht, aber nicht in
+eine Mail. Der Antworttext nennt die ersten drei beim Namen; ist die Liste leer, sagt er
+stattdessen, dass `shop_bestseller` zu rufen ist und Produkte niemals erfunden werden.
+
+**Zwei neue Tests:** die Liste kommt fertig mit Adresse, Bild und Preis und ohne die
+beiden ungeeigneten Einträge; ohne geholte Bestseller steht die Anweisung im Text.
+
+Im Hermes-Plugin ersetzt eine Regel `PRODUKTE` die alte Adressregel teilweise: „NIE
+erfinden, auch keine Namen und keine Preise … stehen schon in der Antwort von ueberblick".
+Der Systemprompt war damit kurz über der Grenze von 4000 Zeichen (4015) — die
+Adressregel wurde zusammengezogen, jetzt sind es 3781.
 
 ## Entscheidungen
 

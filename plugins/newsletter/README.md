@@ -450,7 +450,15 @@ Letzte Änderung: 2026-11-11
   Tests: newsletter-mailpruefung.test.js (24) — **413 insgesamt**.
   Bericht: test-results/newsletter-mailpruefung.result.md.
 
-**Gesamtstand der Tests: 413 in siebzehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Bestseller schon im `ueberblick` des Bots** (2026-11-12): Der Bot musste sie bisher
+  mit einem zweiten Aufruf holen und baute stattdessen Gerüste mit erfundenen Produkten.
+  Jetzt trägt `ueberblick` — der erste Aufruf jedes Bots — die fünf Produkte mit Adresse,
+  Bild und Preis gleich mit, dieselben, die Felix in seiner Übersicht sieht. Ausverkauftes
+  und aus dem Shop Genommenes ist aussortiert. Ist die Liste leer, sagt der Antworttext,
+  was zu tun ist. Tests: newsletter-renner.test.js (22) — **415 insgesamt**.
+  Bericht: test-results/newsletter-renner.result.md.
+
+**Gesamtstand der Tests: 415 in siebzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 

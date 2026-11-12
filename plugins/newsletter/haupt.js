@@ -1852,11 +1852,19 @@ module.exports = (ctx) => {
     const marke = daten.marke
 
     if (aktion === 'ueberblick') {
+      // Die Produkte, die Felix in seiner Übersicht sieht, gehen gleich mit: Namen, Preise,
+      // Bilder und Adressen, fertig zum Einsetzen. Sonst baut der Bot ein Gerüst und füllt
+      // es mit erfundenen Produkten, weil ihm ein zweiter Aufruf zu umständlich war.
+      const renner = (rennerStand(daten, 'bestseller').liste || []).filter((e) => e.imShop && e.verfuegbar !== false).slice(0, RENNER_ANZAHL)
+      const rennerSatz = renner.length
+        ? ` Meistverkauft gerade: ${renner.map((e) => e.titel).slice(0, 3).join(', ')}${renner.length > 3 ? ' …' : ''} — die stehen mit Adresse, Bild und Preis unter "bestseller", nimm die für eine Verkaufsmail.`
+        : ' Es sind keine Bestseller geholt. Für eine Verkaufsmail aktion=shop_bestseller aufrufen, sonst aktion=shop_produkte — niemals Produkte erfinden.'
       return {
         ok: true,
-        text: `${daten.kampagnen.length} Kampagnen, ${daten.vorlagen.length} Vorlagen, ${daten.automationen.length} Automationen.`,
+        text: `${daten.kampagnen.length} Kampagnen, ${daten.vorlagen.length} Vorlagen, ${daten.automationen.length} Automationen.${rennerSatz}`,
         daten: {
           marke: { titel: marke.titel || '', logo: marke.logo || '', farben: { ...STANDARD_FARBEN, ...(marke.farben || {}) } },
+          bestseller: renner,
           empfaenger: kontakte.empfaenger(daten.kontakte).length,
           platzhalter: ['{{vorname}}', '{{nachname}}', '{{name}}', '{{email}}'],
           platzhalterWarenkorb: ['{{warenkorb}}', '{{warenkorbLink}}', '{{summe}}'],
