@@ -474,7 +474,20 @@ Letzte Änderung: 2026-11-11
   Automationsschritt gedacht sein kann. Tests: newsletter-muster.test.js (49) —
   **464 insgesamt**. Bericht: test-results/newsletter-muster.result.md.
 
-**Gesamtstand der Tests: 464 in achtzehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Muster als eigene HTML-Dateien, mit Vorschau** (2026-11-12): Die Muster lagen als
+  Zeichenketten in `muster.js`. Jetzt liegt je Muster eine Datei in
+  `plugins/newsletter/vorlagen/`, gewöhnliches HTML, von Hand änderbar — `muster.js` ist
+  nur noch der Lader. Name, Art und Beschreibung stehen als Kommentar im Kopf der Datei,
+  Farben und Beispielprodukte als `%TOKEN%` (nicht `{{…}}`, das prüft Vendo gegen seine
+  eigene Platzhalterliste). Eine neue Datei im Ordner ist ein neues Muster, ohne
+  Codeänderung. Im Reiter „Vorlagen" zeigt jede Musterkarte jetzt dieselbe verkleinerte
+  Vorschau wie die eigenen Vorlagen. Dazu ein siebtes Muster („Drei Sammlungen") und ein
+  Gestaltungsdurchgang näher am Vorbild: Bilder randlos über die volle Breite statt mit
+  32 px Rand, Produktkarten mit Rahmen und Knopf über die ganze Kartenbreite.
+  Tests: newsletter-muster.test.js (59) — **474 insgesamt**.
+  Bericht: test-results/newsletter-muster.result.md.
+
+**Gesamtstand der Tests: 474 in achtzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 

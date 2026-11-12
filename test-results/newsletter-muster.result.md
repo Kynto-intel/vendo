@@ -24,8 +24,8 @@ node --test tests/newsletter-muster.test.js tests/newsletter-mailpruefung.test.j
 **Fixture:** keine Datei. Markenangaben, Impressum und Beispielprodukte im Test sind
 erfunden. Kein Netzzugriff, keine geschriebene Datei.
 
-**Ergebnis: PASS — 49 von 49 Tests in `tests/newsletter-muster.test.js`, 464 von 464 im
-Regressionslauf.** Gesamtstand: **464 Tests in achtzehn Dateien.**
+**Ergebnis: PASS — 59 von 59 Tests in `tests/newsletter-muster.test.js`, 474 von 474 im
+Regressionslauf.** Gesamtstand: **474 Tests in achtzehn Dateien.**
 `git diff --check` ohne Befund.
 
 ## Warum es die Muster gibt
@@ -93,6 +93,40 @@ Platzhalter werden davor ersetzt, wie Vendo es auch beim Versand tut — sonst v
 Vorlage mit Namen und Beschreibung an; ein unbekanntes Muster legt nichts an; der Bot
 sieht die Muster im `ueberblick` und legt eines über `vorlage_aus_muster` an, bei falscher
 Kennung bekommt er die gültigen genannt.
+
+## Nachtrag 2026-11-12: eigene Dateien, Vorschau, näher am Vorbild
+
+Felix: die Vorlagen gehören in einen eigenen Ordner als .html, die Karten brauchen eine
+Vorschau, und keine sieht so gut aus wie sein Vorbild.
+
+**Eigene Dateien.** Je Muster eine Datei in `plugins/newsletter/vorlagen/`, gewöhnliches
+HTML. `muster.js` ist nur noch der Lader: Name, Art und Beschreibung liest es aus
+Kommentaren im Kopf der Datei, Farben und Beispielprodukte setzt es für `%TOKEN%` ein.
+Bewusst `%TOKEN%` und nicht `{{token}}` — letzteres prüft Vendo gegen seine eigene
+Platzhalterliste und würde unbekannte sperren. Eine neue Datei im Ordner ist ein neues
+Muster, ohne Codeänderung; Felix kann die Dateien selbst ändern.
+
+**Vorschau.** Die Musterkarten nutzen dieselbe verkleinerte Darstellung wie die eigenen
+Vorlagen (`nl-mini` mit `srcdoc`). `musterLesen` baut dafür je Muster die ganze Mail mit
+Kopf und Fuß und tauscht `cid:` gegen `data:`, wie jede andere Vorschau auch.
+
+**Gestaltung.** Drei Unterschiede zum Vorbild waren im Markup zu beheben: Bilder laufen
+jetzt **randlos** über die volle Breite statt mit 32 px Rand (das war der auffälligste
+Unterschied), Produktkarten haben einen Rahmen und einen Knopf über die **ganze
+Kartenbreite** statt eines schmalen in der Mitte, und es gibt ein siebtes Muster „Drei
+Sammlungen" für Bänder in den Shop.
+
+**Was im Markup nicht zu beheben ist.** Das Vorbild lebt von Lifestyle-Fotos mit Menschen,
+einem Aufmacher mit eingerechneter Schrift und Sammlungsbändern mit Text im Bild. Das sind
+Bilder, keine Auszeichnung — in HTML nicht nachbaubar (siehe „Text im Bild" in
+`references/mail-bausteine.md`). Die Muster lassen Platz dafür: `%BILD1%` im Aufmacher und
+in den Sammlungsbändern erwartet genau so ein Bild, 1200 px breit.
+
+**Zehn neue Tests:** je Datei ein Muster, Kopfzeilen vollständig, kein Token bleibt
+ungefüllt (ein unbekannter bleibt absichtlich stehen), keine Anleitung und kein Kommentar
+landet in der Mail, `musterLesen` liefert je Muster eine Vorschau ohne `cid:`. Die Prüfung
+auf die äußere Hülle wurde präzisiert: ein randloses Bild darf 600 px breit sein, nur eine
+Tabelle mit dieser Höchstbreite wäre die Hülle.
 
 ## Entscheidungen
 

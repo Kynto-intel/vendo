@@ -1,0 +1,94 @@
+<!-- name: Neue Motive -->
+<!-- art: kampagne -->
+<!-- beschreibung: Drop-Newsletter: großes Bild, zwei Motive, Abschluss. -->
+<!--
+  Vorlage für Vendos Newsletter. Gewöhnliches HTML, von Hand änderbar.
+
+  %TOKEN% werden beim Anlegen ersetzt: %SCHRIFT% %FLAECHE% %TEXT% %LEISE% %AKZENT%
+  %AUFAKZENT% %LINIE% kommen aus den Markenangaben, %SHOP% ist die Shop-Adresse,
+  %BILD1%..%BILD4% %URL1%..%URL4% %NAME1%..%NAME4% %PREIS1%..%PREIS4% sind
+  Beispielprodukte und werden pro Kampagne ersetzt.
+
+  Kein Logo und kein Fuß: die setzt Vendo aus den Markenangaben davor und dahinter.
+  Keine eigene äußere Hülle mit max-width: die macht Vendo auch.
+  Kein durchgestrichener Preis und kein Rabatt-Abzeichen ohne echten Vergleichspreis.
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+  <tr>
+    <td align="center" style="padding:34px 32px 26px;background-color:%FLAECHE%;">
+      <h1 data-feld="ueberschrift" data-feld-hinweis="Höchstens sechs Wörter, konkreter Haken, keine Werbefloskel" style="margin:0 0 12px;font-family:%SCHRIFT%;font-size:30px;line-height:1.18;font-weight:700;color:%TEXT%;">Zwei neue Motive</h1>
+      <p data-feld="einleitung" data-feld-hinweis="Zwei bis drei Sätze, Du-Form, ruhig. Keine Gedankenstriche." style="margin:0 0 22px;font-family:%SCHRIFT%;font-size:16px;line-height:1.65;color:%LEISE%;">Schwerer Stoff, klare Ansage. Beide ab sofort im Shop.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+        <tr><td bgcolor="%AKZENT%" style="padding:15px 34px;">
+          <a data-feld="haupt_knopf" data-feld-hinweis="Adresse der passenden Sammlung oder des Shops" href="%SHOP%/collections/all" style="font-family:%SCHRIFT%;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:%AUFAKZENT%;text-decoration:none;display:inline-block;">Jetzt ansehen</a>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:0;">
+      <a data-feld="bild1_link" data-feld-hinweis="Adresse des Produkts oder der Sammlung" href="%URL1%" style="text-decoration:none;">
+        <img data-feld="bild1" data-feld-hinweis="Stimmungs- oder Produktbild über die volle Breite, 1200 px breit hochladen" src="%BILD1%" width="600" alt="Neues Motiv" style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="padding:32px 32px 0;background-color:%FLAECHE%;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+        <tr><td bgcolor="%AKZENT%" style="padding:5px 16px;font-family:%SCHRIFT%;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:%AUFAKZENT%;">Neu</td></tr>
+      </table>
+      <div data-feld="abschnitt1" data-feld-hinweis="Unterzeile zum Abschnitt, eine Zeile" style="margin-top:12px;font-family:%SCHRIFT%;font-size:21px;line-height:1.3;font-weight:600;color:%TEXT%;">Unterzeile für diesen Abschnitt</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:18px 32px 0;background-color:%FLAECHE%;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+        <tr>
+          <td width="50%" valign="top" style="padding:0 6px 0 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border:1px solid %LINIE%;">
+              <tr><td style="padding:0;">
+                <a data-feld="produkt2_bild_link" data-feld-hinweis="Adresse genau dieses Produkts" href="%URL2%" style="text-decoration:none;"><img data-feld="produkt2_bild" data-feld-hinweis="Bild genau dieses Produkts, jedes Bild nur einmal in der Mail" src="%BILD2%" width="268" alt="%NAME2%" style="display:block;width:100%;max-width:268px;height:auto;border:0;" /></a>
+              </td></tr>
+              <tr><td align="center" style="padding:12px 10px 0;font-family:%SCHRIFT%;font-size:14px;line-height:1.35;font-weight:600;color:%TEXT%;">
+                <span data-feld="produkt2_name" data-feld-hinweis="Produktname genau wie im Shop">%NAME2%</span>
+              </td></tr>
+              <tr><td align="center" style="padding:6px 10px 12px;font-family:%SCHRIFT%;font-size:14px;color:%LEISE%;">
+                <span data-feld="produkt2_preis" data-feld-hinweis="Preis genau wie im Shop. Kein Streichpreis ohne echten Vergleichspreis.">%PREIS2%</span>
+              </td></tr>
+              <tr><td align="center" bgcolor="%AKZENT%" style="padding:0;">
+                <a data-feld="produkt2_knopf" data-feld-hinweis="Adresse genau dieses Produkts" href="%URL2%" style="display:block;padding:12px 8px;font-family:%SCHRIFT%;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:%AUFAKZENT%;text-decoration:none;">Jetzt ansehen</a>
+              </td></tr>
+            </table>
+          </td>
+          <td width="50%" valign="top" style="padding:0 0 0 6px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border:1px solid %LINIE%;">
+              <tr><td style="padding:0;">
+                <a data-feld="produkt3_bild_link" data-feld-hinweis="Adresse genau dieses Produkts" href="%URL3%" style="text-decoration:none;"><img data-feld="produkt3_bild" data-feld-hinweis="Bild genau dieses Produkts, jedes Bild nur einmal in der Mail" src="%BILD3%" width="268" alt="%NAME3%" style="display:block;width:100%;max-width:268px;height:auto;border:0;" /></a>
+              </td></tr>
+              <tr><td align="center" style="padding:12px 10px 0;font-family:%SCHRIFT%;font-size:14px;line-height:1.35;font-weight:600;color:%TEXT%;">
+                <span data-feld="produkt3_name" data-feld-hinweis="Produktname genau wie im Shop">%NAME3%</span>
+              </td></tr>
+              <tr><td align="center" style="padding:6px 10px 12px;font-family:%SCHRIFT%;font-size:14px;color:%LEISE%;">
+                <span data-feld="produkt3_preis" data-feld-hinweis="Preis genau wie im Shop. Kein Streichpreis ohne echten Vergleichspreis.">%PREIS3%</span>
+              </td></tr>
+              <tr><td align="center" bgcolor="%AKZENT%" style="padding:0;">
+                <a data-feld="produkt3_knopf" data-feld-hinweis="Adresse genau dieses Produkts" href="%URL3%" style="display:block;padding:12px 8px;font-family:%SCHRIFT%;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:%AUFAKZENT%;text-decoration:none;">Jetzt ansehen</a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="padding:30px 32px 34px;background-color:%FLAECHE%;">
+      <p data-feld="abschluss" data-feld-hinweis="Ein Satz zum Abschluss, ruhig. Kein Pathos." style="margin:0 0 20px;font-family:%SCHRIFT%;font-size:16px;line-height:1.65;color:%TEXT%;">Welches davon passt zu dir?</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+        <tr><td bgcolor="%AKZENT%" style="padding:15px 34px;">
+          <a data-feld="schluss_knopf" data-feld-hinweis="Shop oder Sammlung" href="%SHOP%" style="font-family:%SCHRIFT%;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:%AUFAKZENT%;text-decoration:none;display:inline-block;">Zum Shop</a>
+        </td></tr>
+      </table>
+      <p data-feld="gruss" data-feld-hinweis="Grußzeile, persönlich" style="margin:22px 0 0;font-family:%SCHRIFT%;font-size:15px;line-height:1.6;color:%LEISE%;">Bleib standhaft.<br />Felix</p>
+    </td>
+  </tr>
+</table>

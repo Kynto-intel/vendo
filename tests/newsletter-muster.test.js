@@ -6,6 +6,8 @@
 // kommen. Alle Daten sind erfunden, es geht nichts nach außen.
 
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 import musterModul from '../plugins/newsletter/muster.js'
 import vorlagenModul from '../plugins/newsletter/vorlagen.js'
@@ -15,7 +17,7 @@ import shoplinks from '../plugins/newsletter/shoplinks.js'
 import bots from '../plugins/newsletter/bots.js'
 import starten from '../plugins/newsletter/haupt.js'
 
-const { musterListe, musterHtml, DUNKEL } = musterModul
+const { musterListe, musterHtml, DUNKEL, ORDNER, kopfLesen, ersetzen } = musterModul
 const { vorlagePruefen } = vorlagenModul
 const { bilderOhneAdresse, linksOhneZiel, felderLesen, mailAusHtml } = htmlMail
 const { personalisierenHtml } = kampagnenModul
@@ -24,9 +26,43 @@ const MARKE = { titel: 'Donnerwolf', impressum: 'Beispiel GmbH, Musterweg 1, 123
 
 // ── Es sind sechs, und sie decken die drei Fälle ab ──
 
-test('es gibt sechs Muster für Newsletter, Warenkorb und Willkommen', () => {
+test('die Muster kommen aus eigenen HTML-Dateien', () => {
+  const dateien = fs.readdirSync(ORDNER).filter((n) => n.endsWith('.html'))
+  assert.equal(dateien.length, musterListe().length, 'je Datei ein Muster')
+  for (const mu of musterListe()) {
+    assert.ok(dateien.includes(`${mu.id}.html`), `${mu.id}.html fehlt`)
+  }
+})
+
+test('jede Datei nennt Name, Art und Beschreibung im Kopf', () => {
+  for (const datei of fs.readdirSync(ORDNER).filter((n) => n.endsWith('.html'))) {
+    const roh = fs.readFileSync(path.join(ORDNER, datei), 'utf8')
+    for (const feld of ['name', 'art', 'beschreibung']) {
+      assert.ok(kopfLesen(roh, feld), `${datei}: ${feld} fehlt im Kopf`)
+    }
+  }
+})
+
+test('kein Platzhalter bleibt ungefüllt', () => {
+  for (const mu of musterListe()) {
+    const offen = musterHtml(mu.id, { marke: MARKE }).match(/%[A-Z0-9]+%/g)
+    assert.equal(offen, null, `${mu.id}: ${offen && offen.join(', ')}`)
+  }
+  // Ein unbekannter Token bleibt stehen, statt still zu verschwinden
+  assert.match(ersetzen('<p>%GIBTSNICHT%</p>', {}), /%GIBTSNICHT%/)
+})
+
+test('die Anleitung aus den Dateien landet nicht in der Mail', () => {
+  for (const mu of musterListe()) {
+    const html = musterHtml(mu.id, { marke: MARKE })
+    assert.doesNotMatch(html, /<!--/, `${mu.id}: Kommentar in der Mail`)
+    assert.doesNotMatch(html, /%TOKEN%|von Hand änderbar/, `${mu.id}: Anleitung in der Mail`)
+  }
+})
+
+test('es gibt Muster für Newsletter, Warenkorb und Willkommen', () => {
   const liste = musterListe()
-  assert.equal(liste.length, 6)
+  assert.ok(liste.length >= 6, `nur ${liste.length} Muster`)
   const arten = liste.map((x) => x.art)
   assert.ok(arten.filter((a) => a === 'kampagne').length >= 3, 'mindestens drei Newsletter')
   assert.ok(arten.includes('warenkorb'), 'ein Warenkorb-Muster fehlt')
@@ -34,7 +70,7 @@ test('es gibt sechs Muster für Newsletter, Warenkorb und Willkommen', () => {
   for (const x of liste) {
     assert.ok(x.id && x.name && x.beschreibung, `${x.id} ist unvollständig beschrieben`)
   }
-  assert.equal(new Set(liste.map((x) => x.id)).size, 6, 'die Kennungen sind eindeutig')
+  assert.equal(new Set(liste.map((x) => x.id)).size, liste.length, 'die Kennungen sind eindeutig')
 })
 
 test('ein unbekanntes Muster gibt null statt eines halben HTML', () => {
@@ -73,7 +109,13 @@ for (const mu of musterListe()) {
   test(`Muster „${mu.id}" bringt weder Logo noch Fuß mit`, () => {
     const html = musterHtml(mu.id, { marke: MARKE })
     assert.doesNotMatch(html, /abmeld/i, 'der Fuß kommt von Vendo')
-    assert.doesNotMatch(html, /max-width:\s*600px/, 'die äußere Hülle macht Vendo')
+    // Ein randloses Bild darf 600 px breit sein; eine Tabelle mit dieser Höchstbreite wäre
+    // dagegen die äußere Hülle, und die macht Vendo.
+    assert.deepEqual(
+      [...html.matchAll(/<table[^>]*>/gi)].map((t) => t[0]).filter((t) => /max-width/i.test(t)),
+      [],
+      'eine Tabelle bringt eine eigene Höchstbreite mit'
+    )
     assert.doesNotMatch(html, /Impressum/i)
   })
 
@@ -175,9 +217,14 @@ function hauptStarten() {
   return { fn, daten: () => daten }
 }
 
-test('musterLesen gibt die Liste an die Oberfläche', () => {
+test('musterLesen gibt die Liste mit fertiger Vorschau an die Oberfläche', () => {
   const { fn } = hauptStarten()
-  assert.equal(fn.musterLesen().liste.length, 6)
+  const liste = fn.musterLesen().liste
+  assert.equal(liste.length, musterListe().length)
+  for (const x of liste) {
+    assert.ok(x.vorschau && x.vorschau.includes('<html'), `${x.id}: keine Vorschau`)
+    assert.doesNotMatch(x.vorschau, /cid:/, `${x.id}: cid gehört nicht in die Oberfläche`)
+  }
 })
 
 test('vorlageAusMuster legt eine fertige Vorlage an', () => {
@@ -200,7 +247,7 @@ test('ein unbekanntes Muster legt nichts an', () => {
 test('der Bot sieht die Muster im ueberblick und kann eines anlegen', async () => {
   const { fn, daten } = hauptStarten()
   const ueberblick = await fn.botAuftrag({ aktion: 'ueberblick', argumente: {} })
-  assert.equal(ueberblick.daten.muster.length, 6, 'die Muster stehen schon im ueberblick')
+  assert.equal(ueberblick.daten.muster.length, musterListe().length, 'die Muster stehen schon im ueberblick')
 
   const falsch = await fn.botAuftrag({ aktion: 'vorlage_aus_muster', argumente: { id: 'gibtsnicht' } })
   assert.equal(falsch.ok, false)

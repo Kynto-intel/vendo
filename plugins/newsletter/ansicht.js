@@ -188,21 +188,26 @@ export async function starten(ctx) {
   function musterBlock() {
     const liste = muster?.liste || []
     if (!liste.length) return ''
+    // Wie bei den eigenen Vorlagen: oben ein Ausschnitt der fertigen Mail. Ein Element mit
+    // Rolle „button" statt <button>, weil ein Rahmen in einem Knopf nicht vorgesehen ist.
     const karten = liste
       .map(
         (x) => `
-        <button class="nl-muster" data-nl="muster-neu" data-id="${m(x.id)}" type="button">
+        <div class="nl-karte nl-vorlage-karte nl-muster" data-nl="muster-neu" data-id="${m(x.id)}" role="button" tabindex="0" aria-label="Vorlage ${m(x.name)} aus Muster anlegen">
+          <span class="nl-mini" aria-hidden="true">
+            ${x.vorschau ? `<iframe sandbox="" tabindex="-1" loading="lazy" title="" srcdoc="${m(x.vorschau)}"></iframe>` : ''}
+          </span>
           <span class="nl-muster-art">${m(x.art)}</span>
-          <span class="nl-muster-name">${m(x.name)}</span>
+          <span class="nl-karte-name">${m(x.name)}</span>
           <span class="nl-muster-text">${m(x.beschreibung)}</span>
-        </button>`
+        </div>`
       )
       .join('')
     return `<div class="nl-muster-block">
       <p class="nl-fuss-titel">Fertige Muster</p>
       <p class="nl-form-text">Ein Klick legt eine Vorlage daraus an. Farben kommen aus deinen
       Markenangaben, Beispielprodukte sind Platzhalter — die schreibt Luzzy pro Kampagne neu.</p>
-      <div class="nl-muster-reihe">${karten}</div>
+      <div class="nl-karten nl-muster-reihe">${karten}</div>
     </div>`
   }
 

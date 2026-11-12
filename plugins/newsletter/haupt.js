@@ -988,7 +988,21 @@ module.exports = (ctx) => {
   // Sechs fertige Vorlagen im Stil der Marke. Sie sind der Gegenentwurf zum leeren Feld:
   // wer bei null anfängt, baut ein Gerüst und füllt es mit erfundenen Produkten.
 
-  bereitstellen('musterLesen', () => ({ liste: muster.musterListe() }))
+  bereitstellen('musterLesen', () => {
+    const daten = datenLesen()
+    const beispiel = { ...testKontakt(daten), email: testAdresseVon(daten) || 'empfaenger@beispiel.de' }
+    return {
+      liste: muster.musterListe().map((x) => ({
+        ...x,
+        // Dieselbe verkleinerte Vorschau wie bei den eigenen Vorlagen: die fertige Mail
+        // mit Kopf und Fuß, damit man sieht, was man anlegt, statt nur den Namen zu lesen.
+        vorschau: fuerAnsicht(
+          daten,
+          mailBauenAus(daten, { html: muster.musterHtml(x.id, { marke: daten.marke }) }, beispiel, BEISPIEL_KORB).html
+        )
+      }))
+    }
+  })
 
   bereitstellen('vorlageAusMuster', (eingabe = {}) => {
     const daten = datenLesen()
