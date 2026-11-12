@@ -41,6 +41,7 @@ const AKTIONEN = {
   kampagne_zur_freigabe: ['id', 'zeitpunkt'],
   vorlage_zeigen: ['id'],
   vorlage_neu: ['name', 'beschreibung', 'html', 'htmlRahmen'],
+  vorlage_aus_muster: ['id'],
   vorlage_aendern: ['id', 'name', 'beschreibung', 'html', 'htmlRahmen'],
   vorlage_aus_kampagne: ['id', 'name', 'beschreibung'],
   vorlage_loeschen: ['id'],

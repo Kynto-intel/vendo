@@ -32,6 +32,7 @@ const kontakte = require('./kontakte.js')
 const imap = require('./imap.js')
 const kampagnen = require('./kampagnen.js')
 const vorlagen = require('./vorlagen.js')
+const muster = require('./muster.js')
 const automationen = require('./automationen.js')
 const icons = require('./icons.js')
 const {
@@ -983,6 +984,26 @@ module.exports = (ctx) => {
     }
   })
 
+  // ── Mustervorlagen ──
+  // Sechs fertige Vorlagen im Stil der Marke. Sie sind der Gegenentwurf zum leeren Feld:
+  // wer bei null anfängt, baut ein Gerüst und füllt es mit erfundenen Produkten.
+
+  bereitstellen('musterLesen', () => ({ liste: muster.musterListe() }))
+
+  bereitstellen('vorlageAusMuster', (eingabe = {}) => {
+    const daten = datenLesen()
+    if (daten.vorlagen.length >= vorlagen.MAX_VORLAGEN) return { ok: false, text: `Mehr als ${vorlagen.MAX_VORLAGEN} Vorlagen sind nicht vorgesehen.` }
+    const gewaehlt = muster.musterListe().find((x) => x.id === eingabe.id)
+    const html = muster.musterHtml(eingabe.id, { marke: daten.marke })
+    if (!gewaehlt || !html) return { ok: false, text: 'Dieses Muster gibt es nicht.' }
+
+    const neu = vorlagen.neueVorlage({ name: gewaehlt.name, beschreibung: gewaehlt.beschreibung, html, marke: daten.marke })
+    daten.vorlagen = [...daten.vorlagen, neu]
+    ctx.datenSpeichern(daten)
+    console.log(`Newsletter: Vorlage aus Muster „${gewaehlt.id}" angelegt.`)
+    return { ok: true, id: neu.id, text: `Vorlage „${gewaehlt.name}" angelegt. Jedes Feld für die Kampagne neu schreiben, Produkte aus dem Shop.` }
+  })
+
   bereitstellen('vorlageAnlegen', (eingabe = {}) => {
     const daten = datenLesen()
     if (daten.vorlagen.length >= vorlagen.MAX_VORLAGEN) return { ok: false, text: `Mehr als ${vorlagen.MAX_VORLAGEN} Vorlagen sind nicht vorgesehen.` }
@@ -1748,6 +1769,13 @@ module.exports = (ctx) => {
         hinweise.push(`Adressen, die nicht aus deinem Shop sind: ${fremd.slice(0, 6).map((f) => `${f.url} (${f.grund})`).join(', ')}. Nur Adressen aus shop_produkte verwenden.`)
       }
     }
+    // Dasselbe Produkt mehrfach: drei Kacheln auf dieselbe Seite sind zwei zu viel.
+    const produkte = shoplinks.doppelteProdukte(html)
+    if (produkte.length) {
+      hinweise.push(
+        `Dasselbe Produkt mehrfach verlinkt: ${produkte.slice(0, 3).map((p) => p.url.split('/products/')[1]).join(', ')}. Nimm verschiedene Produkte — aus ueberblick oder shop_bestseller.`
+      )
+    }
     // Dasselbe Bild mehrfach: kein Fehler, aber die Mail wirkt dann, als hätte der Shop
     // drei Artikel. Als Hinweis, nicht als Sperre — manchmal ist es gewollt.
     const doppelt = shoplinks.doppelteBilder(html)
@@ -1865,6 +1893,9 @@ module.exports = (ctx) => {
         daten: {
           marke: { titel: marke.titel || '', logo: marke.logo || '', farben: { ...STANDARD_FARBEN, ...(marke.farben || {}) } },
           bestseller: renner,
+          // Die fertigen Muster stehen hier, weil vorlage_aus_muster immer eine Kennung
+          // braucht — eine Aktion ohne id lehnt die Auftragsprüfung grundsätzlich ab.
+          muster: muster.musterListe(),
           empfaenger: kontakte.empfaenger(daten.kontakte).length,
           platzhalter: ['{{vorname}}', '{{nachname}}', '{{name}}', '{{email}}'],
           platzhalterWarenkorb: ['{{warenkorb}}', '{{warenkorbLink}}', '{{summe}}'],
@@ -2192,6 +2223,13 @@ module.exports = (ctx) => {
         text: `Marke gespeichert.${verworfen.length ? ` Nicht übernommen (unbekannter Name oder keine Hexfarbe wie #8a6a3b): ${verworfen.join(', ')}.` : ''}`,
         daten: { titel: neu.titel || '', logo: neu.logo || '', farben: { ...STANDARD_FARBEN, ...(neu.farben || {}) } }
       }
+    }
+
+    if (aktion === 'vorlage_aus_muster') {
+      const r = eigene.get('vorlageAusMuster')({ id: a.id })
+      // Bei falscher Kennung die gültigen mitschicken, statt den Bot raten zu lassen
+      if (!r.ok) return { ...r, text: `${r.text} Vorhanden: ${muster.musterListe().map((x) => x.id).join(', ')}.`, daten: { muster: muster.musterListe() } }
+      return { ok: true, text: r.text, daten: { id: r.id } }
     }
 
     if (aktion === 'shop_bestseller' || aktion === 'shop_warenkorb') {

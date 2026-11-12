@@ -458,7 +458,23 @@ Letzte Änderung: 2026-11-11
   was zu tun ist. Tests: newsletter-renner.test.js (22) — **415 insgesamt**.
   Bericht: test-results/newsletter-renner.result.md.
 
-**Gesamtstand der Tests: 415 in siebzehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Sechs fertige Muster im Stil der Marke** (2026-11-12): Vor einem leeren Feld baut auch
+  eine gute KI nur ein Gerüst und füllt es mit denselben drei Produkten. `muster.js`
+  liefert jetzt sechs fertige Vorlagen — drei Newsletter (Neue Motive, Meistverkauft, Ein
+  Motiv groß), zwei für abgebrochene Warenkörbe und eine Willkommensmail. Im Reiter
+  „Vorlagen" legt ein Klick eine davon an, der Bot sieht sie im `ueberblick` und legt sie
+  mit `vorlage_aus_muster` an. Der Stil kommt aus Felix' Design-System
+  (`Documents/Donnerwolf/Donnerwolf-Shop/00_Kontext`): Anthrazit `#1A1A1A` plus Gold
+  `#C29A40`, Beige als heller Kontrast, **dunkel statt Vendos heller Grundeinstellung** —
+  eigene Markenfarben gewinnen weiterhin. Jedes Muster besteht Vendos eigene Prüfungen:
+  kein Bild ohne Adresse, kein toter Knopf, kein erfundener Streichpreis, kein doppeltes
+  Bild, kein doppeltes Produkt, kein Logo und kein Fuß. Neu dazu
+  `shoplinks.doppelteProdukte` (meldet dasselbe Produkt ab dem dritten Vorkommen) und eine
+  Lockerung: Warenkorb-Platzhalter sind in Vorlagen erlaubt, weil eine Vorlage für einen
+  Automationsschritt gedacht sein kann. Tests: newsletter-muster.test.js (49) —
+  **464 insgesamt**. Bericht: test-results/newsletter-muster.result.md.
+
+**Gesamtstand der Tests: 464 in achtzehn Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 

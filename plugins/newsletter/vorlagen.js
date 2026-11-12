@@ -10,7 +10,7 @@
 
 const { bausteineSaeubern, kiAntwortLesen, htmlVon } = require('./kampagnen.js')
 const { ARTEN, FELDER, startVorlage, inhaltAus } = require('./bausteine.js')
-const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, felderLesen, startVorlageHtml, MAX_HTML } = require('./html-mail.js')
+const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, felderLesen, startVorlageHtml, PLATZHALTER_BASIS, PLATZHALTER_WARENKORB, MAX_HTML } = require('./html-mail.js')
 
 const MAX_VORLAGEN = 50
 const INHALT_ARTEN = ['titel', 'text', 'bild', 'produkt', 'knopf']
@@ -38,8 +38,11 @@ function vorlagePruefen(vorlage = {}, { marke = {} } = {}) {
   const html = htmlVon(vorlage, { marke })
   if (!hatInhalt(html)) fehler.push('Die Vorlage hat noch keinen sichtbaren Inhalt.')
   if (html.length > MAX_HTML) fehler.push(`Das HTML ist zu lang (höchstens ${MAX_HTML} Zeichen).`)
-  // In einer Vorlage dürfen Lücken stehen — in der Kampagne sperren sie dann den Versand
-  const fremde = fremdePlatzhalter(html)
+  // In einer Vorlage dürfen Lücken stehen — in der Kampagne sperren sie dann den Versand.
+  // Die Warenkorb-Platzhalter gelten hier mit: eine Vorlage kann für einen
+  // Automationsschritt gedacht sein, und dort setzt Vendo sie ein. Ob sie an der Stelle
+  // erlaubt sind, entscheidet beim Anwenden kampagnePruefen bzw. automationPruefen.
+  const fremde = fremdePlatzhalter(html, [...PLATZHALTER_BASIS, ...PLATZHALTER_WARENKORB])
   if (fremde.length) fehler.push(`Lücken, die in der Kampagne gefüllt werden müssen: ${fremde.slice(0, 8).join(', ')}${fremde.length > 8 ? ' …' : ''}.`)
   const ohneAdresse = bilderOhneAdresse(html)
   if (ohneAdresse.length) fehler.push(`${ohneAdresse.length === 1 ? 'Ein Bild hat' : `${ohneAdresse.length} Bilder haben`} noch keine gültige Adresse (https://…).`)

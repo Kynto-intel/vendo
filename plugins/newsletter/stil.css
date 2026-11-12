@@ -26,6 +26,15 @@
 .nl-stand.nl-an { color: var(--gruen); }
 .nl-stand.nl-aus { color: var(--text-leise); }
 
+/* Fertige Muster im Reiter „Vorlagen" */
+.nl-muster-block { margin: 14px 0 18px; }
+.nl-muster-reihe { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin-top: 8px; }
+.nl-muster { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--flaeche); border: 1px solid var(--rahmen); border-left: 2px solid var(--gold-leise); border-radius: 8px; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; }
+.nl-muster:hover { border-color: var(--gold); }
+.nl-muster-art { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+.nl-muster-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.nl-muster-text { font-size: 11px; line-height: 1.45; color: var(--text-leise); }
+
 /* Meistverkaufte Produkte unter den Kacheln der Übersicht */
 .nl-renner-paar { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin-top: 14px; align-items: start; }
 .nl-renner { background: var(--flaeche); border: 1px solid var(--rahmen); border-radius: 10px; padding: 12px 14px; min-width: 0; }

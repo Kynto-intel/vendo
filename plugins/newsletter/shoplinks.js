@@ -258,8 +258,30 @@ function erfundenePreise(html, produkte = []) {
   return [...gefunden]
 }
 
+// Dasselbe Produkt mehrfach in einer Mail: drei Kacheln, die auf dieselbe Seite zeigen,
+// sind drei Kacheln zu viel. Gezählt werden nur Produktadressen (/products/…), damit ein
+// Shop-Link im Aufmacher und im Schluss nicht als Dopplung gilt.
+const LINK_HREF = /<a[^>]*?[\s"']href\s*=\s*"([^"]+)"/gi
+const PRODUKT_URL = /^https?:\/\/[^\s/]+\/products\/.+/i
+
+function doppelteProdukte(html) {
+  const gezaehlt = new Map()
+  for (const t of String(html ?? '').matchAll(LINK_HREF)) {
+    const url = t[1].split('?')[0].trim().replace(/\/$/, '')
+    if (!PRODUKT_URL.test(url)) continue
+    gezaehlt.set(url, (gezaehlt.get(url) || 0) + 1)
+  }
+  // Bild und Knopf derselben Kachel zeigen absichtlich beide auf das Produkt: erst ab
+  // drei Vorkommen ist es wirklich zweimal dasselbe Produkt.
+  return [...gezaehlt.entries()]
+    .filter(([, n]) => n > 2)
+    .map(([url, anzahl]) => ({ url, anzahl }))
+    .sort((a, b) => b.anzahl - a.anzahl)
+}
+
 module.exports = {
   doppelteBilder,
+  doppelteProdukte,
   erfundenePreise,
   preisKern,
   rennerVerbinden, BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }

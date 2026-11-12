@@ -51,6 +51,7 @@ export async function starten(ctx) {
   let abmeldungen = null
   let marke = null
   let renner = null
+  let muster = null
   let kampagnen = null
   let vorschauDaten = null
   let vorschauBreite = 'mobil' // jeder Editor startet mit der Handy-Vorschau
@@ -113,6 +114,7 @@ export async function starten(ctx) {
   const kontakteHolen = async () => (kontakte = await stillHolen('kontakteLesen', { suche, anzahl: 100 }))
   const abmeldungenHolen = async () => (abmeldungen = await stillHolen('abmeldungenLesen'))
   const rennerHolen = async () => (renner = await stillHolen('rennerLesen'))
+  const musterHolen = async () => (muster = await stillHolen('musterLesen'))
   const kampagnenHolen = async () => (kampagnen = await stillHolen('kampagnenLesen'))
   const autosHolen = async () => (autos = await stillHolen('automationenLesen'))
   const vorlagenHolen = async () => (vorlagen = await stillHolen('vorlagenLesen'))
@@ -129,7 +131,7 @@ export async function starten(ctx) {
     if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
     if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
     if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
-    if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
+    if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen(), musterHolen()])
     if (bereich === 'zugang') await markeHolen()
     if (bereich === 'protokoll') await protokollHolen()
     // Vendo ruft laden() jede Minute auf, solange der Bereich offen ist. Bei offenem Editor
@@ -179,6 +181,29 @@ export async function starten(ctx) {
       return kachel('Versand', stand('pausiert', 'nl-rot'), `noch etwa ${minuten} Min.`, { betont: true, titel: `Das Postfach meldete ein Limit, noch etwa ${minuten} Minuten Pause` })
     }
     return kachel('Versand', zahl(drossel.gesendet), `von ${drossel.budget} pro Stunde`)
+  }
+
+  // Fertige Vorlagen im Stil der Marke. Ein Klick legt eine an — besser als bei null
+  // anzufangen, denn vor einem leeren Feld baut auch die KI nur ein Gerüst.
+  function musterBlock() {
+    const liste = muster?.liste || []
+    if (!liste.length) return ''
+    const karten = liste
+      .map(
+        (x) => `
+        <button class="nl-muster" data-nl="muster-neu" data-id="${m(x.id)}" type="button">
+          <span class="nl-muster-art">${m(x.art)}</span>
+          <span class="nl-muster-name">${m(x.name)}</span>
+          <span class="nl-muster-text">${m(x.beschreibung)}</span>
+        </button>`
+      )
+      .join('')
+    return `<div class="nl-muster-block">
+      <p class="nl-fuss-titel">Fertige Muster</p>
+      <p class="nl-form-text">Ein Klick legt eine Vorlage daraus an. Farben kommen aus deinen
+      Markenangaben, Beispielprodukte sind Platzhalter — die schreibt Luzzy pro Kampagne neu.</p>
+      <div class="nl-muster-reihe">${karten}</div>
+    </div>`
   }
 
   // Zwei Ranglisten unter den Kacheln, damit Felix und Luzzy nicht raten müssen, was in
@@ -618,6 +643,7 @@ export async function starten(ctx) {
         ${meldungsZeile(vorlageMeldung)}
         <p class="nl-form-text leise">Vorlagen legen fest, wie eine Mail aufgebaut ist.
         In Kampagnen und in jedem Automationsschritt lässt sich eine auswählen.</p>
+        ${musterBlock()}
         <div class="nl-karten">${vorlagenListe()}</div>
         ${vorlageKiBlock(null)}
       </div>`
@@ -1469,7 +1495,7 @@ export async function starten(ctx) {
       if (bereich === 'uebersicht') await rennerHolen()
       if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
       if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
-      if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
+      if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen(), musterHolen()])
       if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), kampagnenHolen(), vorlagenHolen()])
       if (bereich === 'protokoll') await Promise.all([protokollHolen(), schlangeHolen()])
       return zeichnen()
@@ -1765,6 +1791,18 @@ export async function starten(ctx) {
     }
 
     // ── Vorlagen ──
+    if (aktion === 'muster-neu') {
+      const ergebnis = await holen('vorlageAusMuster', { id: knopf?.dataset.id })
+      if (ergebnis?.ok) {
+        gewaehlteVorlage = ergebnis.id
+        vorschauBreite = 'mobil'
+      }
+      vorlageMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      vorlageVorschau = null
+      await vorlagenHolen()
+      return zeichnen()
+    }
+
     if (aktion === 'vorlage-neu') {
       const ergebnis = await holen('vorlageAnlegen', { name: 'Neue Vorlage' })
       if (ergebnis?.ok) {
