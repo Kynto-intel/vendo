@@ -253,13 +253,7 @@ export async function starten(ctx) {
         ${versandKachel()}
         ${schlange ? kachel('Warteschlange', zahl(schlange.offen), schlange.fehler ? `${schlange.faellig} fällig, ${schlange.fehler} mit Fehler` : `${schlange.faellig} fällig, ${schlange.wartend} wartet`, { betont: Boolean(schlange.fehler) }) : ''}
       </div>
-      ${rennerBloecke()}
-      <div class="nl-hinweis">
-        <div class="nl-hinweis-titel">Stand</div>
-        <p>Der Bauplan ist abgearbeitet, auch Rückgewinnung und Abmeldungen per Mail stehen.
-        Was davon noch am echten Postfach und Shop zu prüfen ist, steht in
-        <code>README.md</code> im Plugin-Ordner.</p>
-      </div>`
+      ${rennerBloecke()}`
   }
 
   // ── Kampagnen ──
