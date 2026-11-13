@@ -427,6 +427,27 @@ const ARTEN = Object.keys(BAUSTEINE)
 // Das Grundgerüst jeder Mail: Dokument, Hintergrundfläche und die 600-px-Spalte.
 // Liegt eigens hier, weil es der HTML-Modus (html-mail.js) genauso braucht — ein zweites
 // Skelett wäre eines zu viel, das beim Ändern vergessen wird.
+// Handy-Stil im Kopf jeder Mail im Vendo-Rahmen. Inline-CSS allein kann zwei Zellen
+// nebeneinander auf dem Handy nicht untereinander setzen — Produkte in `width="50%"`
+// blieben auf 375 px zweispaltig, je rund 150 px breit (gemeldet mit Bildschirmfoto).
+// Darum gibt es wenige feste Klassen, die Muster und KI benutzen:
+//   spalte     Zelle neben einer anderen: auf dem Handy volle Breite, untereinander
+//   bild-voll  Bild auf dem Handy über die volle Breite
+//   nur-gross  auf dem Handy ausblenden (z. B. ein Abstandhalter)
+//   aussen     der äußere Rand der Hülle: auf dem Handy schmal
+// Apple Mail, iOS, Gmail (App und Web), Outlook für iOS/Android und Samsung Mail lesen das.
+// Ein Programm ohne Media Queries (Outlook am Rechner, manche Webmailer) zeigt weiter zwei
+// Spalten — so wie vorher, also nichts schlechter. Gmail verwirft einen ganzen <style>-Block,
+// wenn eine Regel darin ungültig ist: deshalb nur einfache Klassen-Selektoren.
+const HANDY_STIL = `<style type="text/css">
+  @media only screen and (max-width: ${BREITE + 20}px) {
+    .aussen { padding: 0 !important; }
+    .spalte { display: block !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 24px !important; }
+    .spalte img, .bild-voll { width: 100% !important; max-width: 100% !important; height: auto !important; }
+    .nur-gross { display: none !important; max-height: 0 !important; overflow: hidden !important; }
+  }
+</style>`
+
 // `zeilen` sind fertige <tr>-Zeilen der inneren Tabelle.
 //
 // Warum `width="100%"` mit `max-width:600px` und nicht `width="600"` mit `max-width:100%`:
@@ -447,11 +468,12 @@ function huelle(zeilen, { farben = STANDARD_FARBEN, titel = '', vorschauText = '
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${m(titel || '')}</title>
+${HANDY_STIL}
 </head>
 <body style="margin:0;padding:0;background-color:${farben.hintergrund};">
 ${vorschau}
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background-color:${farben.hintergrund};">
-  <tr><td align="center" style="padding:24px 12px;">
+  <tr><td class="aussen" align="center" style="padding:24px 12px;">
     <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${BREITE}"><tr><td><![endif]-->
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:${BREITE}px;margin:0 auto;background-color:${farben.flaeche};">
       ${zeilen}
@@ -565,6 +587,7 @@ function startVorlage() {
 }
 
 module.exports = {
+  HANDY_STIL,
   mailAus,
   huelle,
   zeilenAus,

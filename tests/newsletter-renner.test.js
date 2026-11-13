@@ -343,3 +343,12 @@ test('ein unbekanntes Feld fällt aus dem Auftrag', () => {
   assert.equal(geprueft.ok, true, geprueft.fehler)
   assert.deepEqual(Object.keys(geprueft.argumente), ['tage'])
 })
+
+test('Renner tragen die Produktbeschreibung aus dem Shop mit — sonst schreibt die KI nur Floskeln', () => {
+  const produkte = [{ titel: 'Hoodie', url: 'https://beispielshop.de/products/hoodie', bild: '', preis: '59,99 €', beschreibung: 'Schwere Baumwolle, 320 g/m².' }]
+  const [e] = shoplinks.rennerVerbinden([{ titel: 'Hoodie', handle: 'hoodie', menge: 3 }], produkte)
+  assert.equal(e.beschreibung, 'Schwere Baumwolle, 320 g/m².')
+  const [ohne] = shoplinks.rennerVerbinden([{ titel: 'Weg', handle: 'weg', menge: 1 }], produkte)
+  assert.equal(ohne.beschreibung, '')
+  assert.ok(shoplinks.kurzText('<p>' + 'Ein Satz über das Motiv. '.repeat(40) + '</p>').length <= shoplinks.BESCHREIBUNG_MAX)
+})

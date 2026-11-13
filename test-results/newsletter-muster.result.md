@@ -1,13 +1,17 @@
-# Newsletter-Plugin: sechs fertige Vorlagen im Stil der Marke
+# Newsletter-Plugin: die Muster im Stil der Marke — zugleich die Grundvorlagen
 
 **Plugin-ID:** `newsletter`
-**Datum:** 2026-11-12
-**Gegenstand:** `plugins/newsletter/muster.js` (neu) mit sechs Vorlagen, ihre Anbindung in
-`plugins/newsletter/haupt.js` (`musterLesen`, `vorlageAusMuster`, Bot-Aktion
-`vorlage_aus_muster`, Muster im `ueberblick`), `plugins/newsletter/bots.js`,
-`plugins/newsletter/ansicht.js` (Auswahl im Reiter „Vorlagen"),
-`plugins/newsletter/stil.css`. Dazu `shoplinks.doppelteProdukte` und eine Lockerung in
-`vorlagen.js` (Warenkorb-Platzhalter sind in Vorlagen erlaubt).
+**Datum:** 2026-11-12 (letzter Lauf nachmittags, nach dem Umbau „Muster sind Vorlagen“)
+**Gegenstand:** `plugins/newsletter/muster.js` mit den Mustern aus `plugins/newsletter/vorlagen/`,
+ihre Anbindung in `plugins/newsletter/haupt.js` (`alleVorlagen`, `musterAlsVorlage`,
+`musterVon`, `vorlageZumAendern`, `vorlageEntfernen`, `vorlageAusMuster`, Bot-Aktionen
+`vorlage_zeigen`, `vorlage_aendern`, `vorlage_loeschen`, `vorlage_aus_muster`,
+`links_pruefen`, `ueberblick`, Entwurfsdateien), `plugins/newsletter/ansicht.js` (eine
+Liste im Reiter „Vorlagen“), `plugins/newsletter/stil.css`. Dazu `shoplinks.doppelteProdukte`
+und die Lockerung in `vorlagen.js` (Warenkorb-Platzhalter in Vorlagen erlaubt).
+Außerhalb von Vendo: Systemprompt (3981 von 4000 Zeichen) und Skill (0.6.0) im
+Hermes-Profil der Newsletter-Texterin, vorher gesichert als
+`*.vor-muster-als-vorlagen-20261112.bak`.
 
 **Testbefehl:**
 
@@ -18,15 +22,64 @@ node --test tests/newsletter-muster.test.js
 **Regressionslauf:**
 
 ```
-node --test tests/newsletter-muster.test.js tests/newsletter-mailpruefung.test.js tests/newsletter-renner.test.js tests/newsletter-fuss.test.js tests/newsletter-bausteine.test.js tests/newsletter-html.test.js tests/newsletter-kampagnen.test.js tests/newsletter-vorlagen.test.js tests/newsletter-versand.test.js tests/newsletter-automationen.test.js tests/newsletter-bots.test.js tests/newsletter-kontakte.test.js tests/newsletter-shopify.test.js tests/newsletter-zugang.test.js tests/newsletter-drossel.test.js tests/newsletter-warteschlange.test.js tests/newsletter-imap.test.js tests/werkstatt.test.js
+node --test tests/newsletter-*.test.js tests/werkstatt.test.js
 ```
 
 **Fixture:** keine Datei. Markenangaben, Impressum und Beispielprodukte im Test sind
 erfunden. Kein Netzzugriff, keine geschriebene Datei.
 
-**Ergebnis: PASS — 63 von 63 Tests in `tests/newsletter-muster.test.js`, 478 von 478 im
-Regressionslauf.** Gesamtstand: **478 Tests in achtzehn Dateien.**
+**Ergebnis: PASS — 65 von 65 Tests in `tests/newsletter-muster.test.js`, 495 von 495 im
+Regressionslauf** (491 Newsletter-Tests in achtzehn Dateien plus 4 Werkstatt-Tests), Lauf
+vom 2026-11-12 abends.
 `git diff --check` ohne Befund.
+
+**App-Lauf (Vendos Testmodus, `VENDO_TEST_JS` + `VENDO_SCREENSHOT`, Skript im
+Arbeitsordner, nicht im Repo):** Vorher geprüft, dass der Start nichts verschickt
+(Warteschlange leer, keine Automation an, nichts geplant). Der Reiter „Vorlagen“ zeigt
+eine Liste, keinen Muster-Block mehr; jede alte Kopie trägt „Angepasst“. Editor öffnen und
+schließen legt keine Kopie an (weiter 11 eigene Vorlagen). Beim Schließen speicherte der
+schon vorher vorhandene Weg „Neue Motive“ mit gleichem Inhalt und neuer Änderungszeit.
+Die Konsole meldete nur Bilder, die Vendos Sicherheitsregel sperrt — aus den alten
+Kopien von heute Nacht (`donnerwolf.de/cdn/...beispiel-N.png`), nicht aus den Mustern.
+
+## Muster sind Vorlagen (2026-11-12, nachmittags)
+
+Felix: „warum habe ich 11 vorlagen aber nur 7 im vorlagen ordner und warum wird mir
+beides in vendo angezeigt das ist doch sinnlos“. Ursache: jeder Klick auf eine
+Musterkarte legte ohne Rückfrage eine Kopie an (Neue Motive ×2, Drei Sammlungen ×2,
+Meistverkauft ×3), die Muster standen trotzdem daneben, und keine Kopie folgte einer
+späteren Änderung der Datei.
+
+Jetzt:
+
+- Die Muster stehen **selbst** in der Vorlagenliste (`muster: true`), anwendbar, testbar,
+  ohne Kopie. Ihre ID ist der Dateiname.
+- Eine eigene Fassung (`musterId`) entsteht erst beim echten Ändern — in Vendo, über
+  `vorlage_aendern` oder über die .html-Datei — und steht dann **an Stelle** des Musters.
+  Selbstspeichern mit unverändertem Inhalt legt keine an.
+- Löschen einer Fassung = „Auf Muster zurücksetzen“; ein Muster selbst lässt sich nicht
+  löschen. Alte Kopien ohne `musterId` werden über den gleichen Namen zugeordnet.
+- `vorlage_aus_muster` legt nichts mehr an, sondern nennt die passende ID.
+- `muster.js` liest die Dateien neu, sobald sich eine ändert (höchstens alle zwei
+  Sekunden geprüft) — kein Neustart mehr nötig.
+
+Neue Tests: Muster in der Liste ohne Kopie; ansehen/anwenden/unverändert speichern legt
+nichts an; Ändern ergibt eine Fassung an Stelle des Musters; Zurücksetzen; alte Kopien
+per Name; `vorlageAusMuster` ohne Kopie; der Bot über `ueberblick`, `vorlage_zeigen`,
+`vorlage_aendern`, `kampagne_neu` und `vorlage_loeschen`.
+Nicht automatisch getestet: das Neueinlesen geänderter Muster-Dateien (der Test müsste
+eine versionierte Datei im Plugin-Ordner ändern).
+
+## Nur Muster für die KI (2026-11-12, abends)
+
+Felix: „nur die [Muster in] plugins/newsletter/vorlagen darf die KI nutzen um daraus
+Entwürfe zu bauen“. Seitdem sieht ein Bot in `ueberblick` nur die Muster, `vorlage_zeigen`
+und `kampagne_neu` nehmen nur Muster-IDs — immer das Original aus der Datei, auch wenn Felix
+eine angepasste Fassung hat —, und `vorlage_neu`, `vorlage_aendern`,
+`vorlage_aus_kampagne`, `vorlage_aus_muster` und `vorlage_loeschen` stehen nicht mehr im
+Bot-Vertrag. `vorlageAusMuster` ist aus dem Hintergrundteil entfernt (die Oberfläche
+brauchte es seit dem Umbau nicht mehr). Neue bzw. ersetzte Tests: der Bot nimmt nur Muster,
+auch bei angepasster Fassung; die Vorlagen-Aktionen fehlen im Vertrag.
 
 ## Warum es die Muster gibt
 

@@ -51,7 +51,6 @@ export async function starten(ctx) {
   let abmeldungen = null
   let marke = null
   let renner = null
-  let muster = null
   let kampagnen = null
   let vorschauDaten = null
   let vorschauBreite = 'mobil' // jeder Editor startet mit der Handy-Vorschau
@@ -114,7 +113,6 @@ export async function starten(ctx) {
   const kontakteHolen = async () => (kontakte = await stillHolen('kontakteLesen', { suche, anzahl: 100 }))
   const abmeldungenHolen = async () => (abmeldungen = await stillHolen('abmeldungenLesen'))
   const rennerHolen = async () => (renner = await stillHolen('rennerLesen'))
-  const musterHolen = async () => (muster = await stillHolen('musterLesen'))
   const kampagnenHolen = async () => (kampagnen = await stillHolen('kampagnenLesen'))
   const autosHolen = async () => (autos = await stillHolen('automationenLesen'))
   const vorlagenHolen = async () => (vorlagen = await stillHolen('vorlagenLesen'))
@@ -131,7 +129,7 @@ export async function starten(ctx) {
     if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
     if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
     if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
-    if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen(), musterHolen()])
+    if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
     if (bereich === 'zugang') await markeHolen()
     if (bereich === 'protokoll') await protokollHolen()
     // Vendo ruft laden() jede Minute auf, solange der Bereich offen ist. Bei offenem Editor
@@ -181,40 +179,6 @@ export async function starten(ctx) {
       return kachel('Versand', stand('pausiert', 'nl-rot'), `noch etwa ${minuten} Min.`, { betont: true, titel: `Das Postfach meldete ein Limit, noch etwa ${minuten} Minuten Pause` })
     }
     return kachel('Versand', zahl(drossel.gesendet), `von ${drossel.budget} pro Stunde`)
-  }
-
-  // Fertige Vorlagen im Stil der Marke. Ein Klick legt eine an — besser als bei null
-  // anzufangen, denn vor einem leeren Feld baut auch die KI nur ein Gerüst.
-  function musterBlock() {
-    const liste = muster?.liste || []
-    if (!liste.length) return ''
-    // Wie bei den eigenen Vorlagen: oben ein Ausschnitt der fertigen Mail. Ein Element mit
-    // Rolle „button" statt <button>, weil ein Rahmen in einem Knopf nicht vorgesehen ist.
-    const karten = liste
-      .map(
-        (x) => `
-        <div class="nl-karte nl-vorlage-karte nl-muster" data-nl="muster-neu" data-id="${m(x.id)}" role="button" tabindex="0" aria-label="Vorlage ${m(x.name)} aus Muster anlegen">
-          <span class="nl-mini" aria-hidden="true">
-            ${x.vorschau ? `<iframe sandbox="" tabindex="-1" loading="lazy" title="" srcdoc="${m(x.vorschau)}"></iframe>` : ''}
-          </span>
-          <span class="nl-muster-art">${m(x.art)}</span>
-          <span class="nl-karte-name">${m(x.name)}</span>
-          <span class="nl-muster-text">${m(x.beschreibung)}</span>
-        </div>`
-      )
-      .join('')
-    // Zugeklappt, sobald es eigene Vorlagen gibt: sonst stehen oben sieben Muster und
-    // darunter die eigenen, und beides sieht gleich aus — als hätte man alles doppelt.
-    const hatEigene = Boolean(vorlagen?.liste?.length)
-    return `
-      <details class="nl-muster-block"${hatEigene ? '' : ' open'}>
-        <summary><span>Fertige Muster</span><span class="nl-muster-zahl">${liste.length}</span></summary>
-        <p class="nl-form-text">Ein Klick legt eine <strong>neue Vorlage</strong> daraus an; die
-        Muster selbst bleiben hier stehen. Farben kommen aus deinen Markenangaben,
-        Beispielprodukte und Bildflächen sind Platzhalter und werden pro Kampagne ersetzt.
-        Die Dateien dazu liegen in <code>plugins/newsletter/vorlagen/</code>.</p>
-        <div class="nl-karten nl-muster-reihe">${karten}</div>
-      </details>`
   }
 
   // Zwei Ranglisten unter den Kacheln, damit Felix und Luzzy nicht raten müssen, was in
@@ -291,11 +255,10 @@ export async function starten(ctx) {
       </div>
       ${rennerBloecke()}
       <div class="nl-hinweis">
-        <div class="nl-hinweis-titel">Im Aufbau</div>
-        <p>Was schon steht, was als Nächstes kommt und der Bauplan dahinter stehen in
+        <div class="nl-hinweis-titel">Stand</div>
+        <p>Der Bauplan ist abgearbeitet, auch Rückgewinnung und Abmeldungen per Mail stehen.
+        Was davon noch am echten Postfach und Shop zu prüfen ist, steht in
         <code>README.md</code> im Plugin-Ordner.</p>
-        <p class="leise">Postfach, Drossel, Warteschlange, Kontakte und Kampagnen stehen. Als
-        Nächstes kommen die Automationen: Willkommensserie und Warenkorbabbruch.</p>
       </div>`
   }
 
@@ -534,12 +497,16 @@ export async function starten(ctx) {
       <div class="nl-zeile">
         <select data-vorlage-wahl="${m(kennung)}">
           <option value="">Vorlage wählen …</option>
-          ${vorlagen.liste.map((v) => `<option value="${m(v.id)}">${m(v.name)}</option>`).join('')}
+          ${vorlagen.liste.map((v) => `<option value="${m(v.id)}">${m(v.name)}${v.muster ? ' (Muster)' : ''}</option>`).join('')}
         </select>
         <button class="knopf-flach" data-nl="vorlage-anwenden" data-ziel="${m(ziel)}" data-id="${m(id)}"${schritt === null ? '' : ` data-nummer="${schritt}"`} type="button">Übernehmen</button>
         <button class="knopf-flach" data-nl="vorlage-sichern" data-ziel="${m(ziel)}" data-id="${m(id)}"${schritt === null ? '' : ` data-nummer="${schritt}"`} type="button">Als Vorlage sichern</button>
       </div>`
   }
+
+  // Muster aus dem Plugin-Ordner und eigene Fassungen stehen in einer Liste; die kleine
+  // Marke sagt, was was ist. Ein Muster wird erst beim Ändern zur eigenen Vorlage.
+  const herkunftText = (v) => (v.muster ? '<span class="nl-herkunft">Muster</span> · ' : v.ausMuster ? `<span class="nl-herkunft">angepasst</span> · ` : '')
 
   function vorlagenListe() {
     if (!vorlagen?.liste?.length) return '<p class="nl-form-text leise">Noch keine Vorlage.</p>'
@@ -554,7 +521,7 @@ export async function starten(ctx) {
             ${v.vorschau ? `<iframe sandbox="" tabindex="-1" loading="lazy" title="" srcdoc="${m(v.vorschau)}"></iframe>` : ''}
           </span>
           <span class="nl-karte-name">${m(v.name)}</span>
-          <span class="nl-karte-info">${v.felder?.length ? `${v.felder.length} Felder` : 'ohne Felder'} · ${v.geaendertAm ? zeit(v.geaendertAm) : 'neu'}${v.hinweise?.length ? ' · unvollständig' : ''}</span>
+          <span class="nl-karte-info">${herkunftText(v)}${v.felder?.length ? `${v.felder.length} Felder` : 'ohne Felder'}${v.muster ? '' : ` · ${v.geaendertAm ? zeit(v.geaendertAm) : 'neu'}`}${v.hinweise?.length ? ' · unvollständig' : ''}</span>
           <span class="nl-karte-betreff">${m(v.beschreibung || '')}</span>
         </div>`
       )
@@ -606,10 +573,11 @@ export async function starten(ctx) {
           <span class="nl-knoepfe">
             <button class="knopf-flach" type="submit" form="vorlage-form">Speichern</button>
             <button class="knopf-flach" data-nl="vorlage-test" type="button" ${zugang?.passwortGesetzt ? '' : 'disabled'}>Testmail an mich</button>
-            <button class="knopf-flach gefahr" data-nl="vorlage-weg" type="button">Löschen</button>
+            <button class="knopf-flach gefahr" data-nl="vorlage-weg" type="button"${v.muster ? ' hidden' : ''}>${v.ausMuster ? 'Auf Muster zurücksetzen' : 'Löschen'}</button>
           </span>
         </div>
 
+        ${v.muster ? `<p class="nl-form-text leise" data-muster-hinweis>Muster aus <code>plugins/newsletter/vorlagen/</code>. Sobald du hier etwas änderst, legt Vendo daraus deine eigene Vorlage an; das Muster selbst bleibt unverändert.</p>` : ''}
         ${v.hinweise?.length ? `<div class="nl-warnung">${m(v.hinweise.join(' '))}</div>` : ''}
         ${meldungsZeile(vorlageMeldung)}
 
@@ -653,9 +621,10 @@ export async function starten(ctx) {
         </div>
         ${meldungsZeile(vorlageMeldung)}
         <p class="nl-form-text leise">Vorlagen legen fest, wie eine Mail aufgebaut ist.
-        In Kampagnen und in jedem Automationsschritt lässt sich eine auswählen.</p>
+        In Kampagnen und in jedem Automationsschritt lässt sich eine auswählen. Was mit
+        „Muster“ markiert ist, kommt unverändert aus <code>plugins/newsletter/vorlagen/</code>;
+        sobald du eines änderst, wird daraus deine eigene, „angepasste“ Vorlage.</p>
         <div class="nl-karten">${vorlagenListe()}</div>
-        ${musterBlock()}
         ${vorlageKiBlock(null)}
       </div>`
   }
@@ -693,6 +662,21 @@ export async function starten(ctx) {
       </div>`
   }
 
+  // Wen die Rückgewinnung anschreibt: letzte Bestellung zwischen „ab“ und „bis“ Tagen her
+  function rueckFensterFelder(automation) {
+    const geprueft = laeufe?.ausloeser?.rueckgewinnungAm
+    return `
+        <div class="nl-form-paar">
+          <label>Letzte Bestellung mindestens … Tage her
+            <input name="abTage" type="number" min="30" max="1825" step="1" value="${Number(automation.abTage) || ''}" /></label>
+          <label>und höchstens … Tage her
+            <input name="bisTage" type="number" min="31" max="1825" step="1" value="${Number(automation.bisTage) || ''}" /></label>
+        </div>
+        <p class="nl-form-text leise">Vendo sieht einmal am Tag bei Shopify nach, startet höchstens 100 neue
+        Serien pro Tag und schreibt niemanden zweimal zur selben letzten Bestellung an.
+        ${geprueft ? `Zuletzt geprüft: ${m(zeit(geprueft))}.` : 'Noch nicht geprüft.'}</p>`
+  }
+
   function automationKarte(automation) {
     const art = autos.arten.find((a) => a.art === automation.art)
     const platzhalter = automation.art === 'warenkorb' ? ' Zusätzlich: {{warenkorb}}, {{warenkorbLink}}, {{summe}}.' : ''
@@ -710,12 +694,14 @@ export async function starten(ctx) {
 
         ${automation.hinweise?.length ? `<div class="nl-warnung">Noch nicht sendefertig: ${m(automation.hinweise.join(' '))}</div>` : ''}
         ${automation.art === 'warenkorb' && !autos.shopifyBereit ? '<div class="nl-warnung">Für den Warenkorbabbruch fehlt der Shopify-Zugang (Reiter „Kontakte“).</div>' : ''}
+        ${automation.art === 'rueckgewinnung' && !autos.shopifyBereit ? '<div class="nl-warnung">Für die Rückgewinnung fehlt der Shopify-Zugang (Reiter „Kontakte“).</div>' : ''}
 
         <div class="nl-form-paar">
           <label>Name <input name="name" maxlength="80" value="${m(automation.name)}" /></label>
           <label>Läufe
             <input value="${automation.stand.laufen} laufen, ${automation.stand.fertig} fertig, ${automation.stand.abgebrochen} abgebrochen" readonly /></label>
         </div>
+        ${automation.art === 'rueckgewinnung' ? rueckFensterFelder(automation) : ''}
         <label class="nl-haken">
           <input type="checkbox" name="nurMitZustimmung" ${automation.nurMitZustimmung ? 'checked' : ''} />
           Nur an Kontakte mit Marketing-Zustimmung
@@ -1318,8 +1304,29 @@ export async function starten(ctx) {
       vorlageMeldung = { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
       return false
     }
+    vorlageKopieUebernehmen(ergebnis)
     await vorlagenHolen()
     return true
+  }
+
+  // Aus einem Muster ist beim Speichern eine eigene Vorlage geworden: ab jetzt deren ID.
+  // Ohne Neuzeichnen, sonst wären Cursor und Getipptes weg — nur Formular und Knöpfe
+  // werden umgestellt.
+  let letzteKopie = null
+  function vorlageKopieUebernehmen(ergebnis) {
+    if (!ergebnis?.id || ergebnis.id === gewaehlteVorlage) return
+    letzteKopie = { von: gewaehlteVorlage, nach: ergebnis.id }
+    gewaehlteVorlage = ergebnis.id
+    for (const form of ctx.element.querySelectorAll('[data-vorlage-form], [data-vorlage-ki-form][data-id]')) {
+      if (form.dataset.id) form.dataset.id = ergebnis.id
+    }
+    ctx.element.querySelector('[data-muster-hinweis]')?.remove()
+    const weg = ctx.element.querySelector('[data-nl="vorlage-weg"]')
+    if (weg) {
+      weg.hidden = false
+      weg.textContent = 'Auf Muster zurücksetzen'
+    }
+    if (ergebnis.kopiert) vorlageMeldung = { ok: true, text: 'Aus dem Muster ist deine eigene Vorlage geworden. Das Muster selbst bleibt unverändert.' }
   }
 
   // Automation speichern, bevor etwas anderes damit passiert
@@ -1330,6 +1337,8 @@ export async function starten(ctx) {
       id,
       name: form.name?.value,
       nurMitZustimmung: form.nurMitZustimmung?.checked !== false,
+      abTage: form.abTage?.value,
+      bisTage: form.bisTage?.value,
       schritte: schritteAusForm(id)
     })
     if (!ergebnis?.ok) {
@@ -1398,8 +1407,10 @@ export async function starten(ctx) {
     standAnzeigen('ungespeichert')
     sicherungTakt = setTimeout(async () => {
       if (offenerEditor() !== art) return
-      const vorher = art === 'vorlage' ? gewaehlteVorlage : gewaehlt
+      let vorher = art === 'vorlage' ? gewaehlteVorlage : gewaehlt
       const ok = art === 'vorlage' ? await vorlageSichern() : await kampagneSichern()
+      // Aus dem offenen Muster wurde gerade die eigene Vorlage: das ist dieselbe
+      if (art === 'vorlage' && letzteKopie?.von === vorher) vorher = letzteKopie.nach
       // inzwischen eine andere Kampagne oder Vorlage offen: dann gilt deren Stand
       if ((art === 'vorlage' ? gewaehlteVorlage : gewaehlt) !== vorher) return
       standAnzeigen(ok ? 'gespeichert' : 'nicht gespeichert', ok ? '' : 'nl-rot')
@@ -1506,7 +1517,7 @@ export async function starten(ctx) {
       if (bereich === 'uebersicht') await rennerHolen()
       if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
       if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
-      if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen(), musterHolen()])
+      if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
       if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), kampagnenHolen(), vorlagenHolen()])
       if (bereich === 'protokoll') await Promise.all([protokollHolen(), schlangeHolen()])
       return zeichnen()
@@ -1802,18 +1813,6 @@ export async function starten(ctx) {
     }
 
     // ── Vorlagen ──
-    if (aktion === 'muster-neu') {
-      const ergebnis = await holen('vorlageAusMuster', { id: knopf?.dataset.id })
-      if (ergebnis?.ok) {
-        gewaehlteVorlage = ergebnis.id
-        vorschauBreite = 'mobil'
-      }
-      vorlageMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
-      vorlageVorschau = null
-      await vorlagenHolen()
-      return zeichnen()
-    }
-
     if (aktion === 'vorlage-neu') {
       const ergebnis = await holen('vorlageAnlegen', { name: 'Neue Vorlage' })
       if (ergebnis?.ok) {
@@ -1835,7 +1834,11 @@ export async function starten(ctx) {
       return zeichnen()
     }
     if (aktion === 'vorlage-weg') {
-      const ja = await ctx.bestaetigen('Diese Vorlage löschen? Kampagnen, die sie schon übernommen haben, bleiben unverändert.', { titel: 'Vorlage löschen', ja: 'Löschen', gefahr: true })
+      const v = vorlagen?.liste?.find((x) => x.id === gewaehlteVorlage)
+      const zuruecksetzen = Boolean(v?.ausMuster)
+      const ja = zuruecksetzen
+        ? await ctx.bestaetigen(`Deine Änderungen an „${v.name}“ verwerfen? Danach steht wieder das unveränderte Muster in der Liste. Kampagnen, die die Vorlage schon übernommen haben, bleiben unverändert.`, { titel: 'Auf Muster zurücksetzen', ja: 'Zurücksetzen', gefahr: true })
+        : await ctx.bestaetigen('Diese Vorlage löschen? Kampagnen, die sie schon übernommen haben, bleiben unverändert.', { titel: 'Vorlage löschen', ja: 'Löschen', gefahr: true })
       if (!ja) return
       const ergebnis = await holen('vorlageLoeschen', gewaehlteVorlage)
       if (ergebnis?.ok) gewaehlteVorlage = null
@@ -2117,8 +2120,10 @@ export async function starten(ctx) {
     if (form.matches('[data-vorlage-form]')) {
       clearTimeout(sicherungTakt)
       const ergebnis = await holen('vorlageSpeichern', { id: form.dataset.id, ...vorlageAusForm() })
+      if (ergebnis?.ok && ergebnis.id) gewaehlteVorlage = ergebnis.id
+      const wieGespeichert = ergebnis?.kopiert ? 'Als deine eigene Vorlage gespeichert, das Muster bleibt unverändert.' : 'Gespeichert.'
       vorlageMeldung = ergebnis?.ok
-        ? { ok: true, text: ergebnis.hinweise?.length ? `Gespeichert. Hinweis: ${ergebnis.hinweise.join(' ')}` : 'Gespeichert.' }
+        ? { ok: true, text: ergebnis.hinweise?.length ? `${wieGespeichert} Hinweis: ${ergebnis.hinweise.join(' ')}` : wieGespeichert }
         : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
       await vorlagenHolen()
       return zeichnen()
@@ -2160,6 +2165,8 @@ export async function starten(ctx) {
         id,
         name: form.name?.value,
         nurMitZustimmung: form.nurMitZustimmung?.checked !== false,
+        abTage: form.abTage?.value,
+        bisTage: form.bisTage?.value,
         schritte: schritteAusForm(id)
       })
       autoMeldung = ergebnis?.ok

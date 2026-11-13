@@ -71,12 +71,19 @@ test('ein Bild ohne brauchbare Quelle wird weggelassen', () => {
 
 // ── Aufbau ──
 
-test('das HTML ist Tabellen-Layout mit fester Breite und Inline-CSS', () => {
+test('das HTML ist Tabellen-Layout mit fester Breite und Inline-CSS, dazu nur der Handy-Stil im Kopf', () => {
   const html = bauen([{ art: 'text', text: 'Hallo' }])
   assert.match(html, /^<!DOCTYPE html/)
   assert.match(html, new RegExp(`width="${BREITE}"`))
   assert.match(html, /role="presentation"/)
-  assert.ok(!/<style[\s>]/.test(html), 'kein style-Block: den ignoriert Outlook teils')
+  // Das Layout hängt nur an Inline-CSS. Einziger <style>-Block ist Vendos Handy-Stil im
+  // Kopf: nur eine Media Query, die Spalten auf dem Handy untereinander setzt. Wer ihn
+  // nicht liest (Outlook am Rechner), sieht die Mail wie vorher.
+  const bloecke = html.match(/<style[\s>][\s\S]*?<\/style>/g) || []
+  assert.equal(bloecke.length, 1, 'genau ein style-Block: der Handy-Stil')
+  assert.match(bloecke[0], /^<style type="text\/css">\s*@media only screen and \(max-width: \d+px\) \{/)
+  assert.match(bloecke[0], /\.spalte \{ display: block !important; width: 100% !important;/)
+  assert.ok(html.indexOf(bloecke[0]) < html.indexOf('</head>'), 'im Kopf, nicht im Körper')
   assert.ok(!/display:\s*flex|display:\s*grid/.test(html), 'kein Flexbox und kein Grid')
   assert.ok(!/<script/.test(html), 'kein JavaScript')
 })

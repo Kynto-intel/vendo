@@ -1,6 +1,6 @@
 # Newsletter-Plugin: Abmeldungen per Mail
 
-**Datum:** 2026-11-09
+**Datum:** 2026-11-09, erneut ausgeführt am 2026-11-13
 **Gegenstand:** `plugins/newsletter/imap.js` — eingehende Abmeldungen aus einem Postfach-Ordner
 lesen und die Adressen sperren. Damit wirkt der `List-Unsubscribe`-Link ohne Handarbeit.
 
@@ -14,7 +14,15 @@ node --test tests/newsletter-imap.test.js
 Ordner geöffnet und welche Flags gesetzt wurden. Es wird **nie** eine echte Verbindung
 aufgebaut und kein Postfach berührt.
 
-**Ergebnis: PASS — 17 von 17 Tests.** Gesamtstand: **212 Tests in zehn Dateien.**
+**Ergebnis: PASS — 17 von 17 Tests.** Gesamtstand am 2026-11-09: 212 Tests in zehn Dateien.
+
+**Nachlauf 2026-11-13:** unverändert 17 von 17 bestanden. Anlass: Die Übersicht und die
+„Als Nächstes“-Liste im README führten die Abmeldung per Mail noch als offen, obwohl sie seit
+dem 2026-11-09 steht (Lesen, Sperren, Gelesen-Markieren, alle zehn Minuten im Takt, wenn der
+Schalter im Reiter „Kontakte“ an ist). Am Code wurde nichts geändert, nur die Hinweise.
+**Weiterhin offen (BLOCKED, braucht das echte Postfach):** die Filterregel bei IONOS, die
+Abmeldemails in den Ordner `Abmeldungen` legt, und ein echter Durchlauf mit „Verbindung
+prüfen“ und „Jetzt einlesen“.
 
 ## Die Regeln, um die es hier geht
 

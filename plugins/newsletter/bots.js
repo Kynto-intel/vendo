@@ -7,9 +7,12 @@
 //     Felix: planen, starten, eine Automation einschalten. Eine Kampagne kann der Bot nur
 //     **zur Freigabe** geben: dann geht eine Testmail an Felix' eigene Adresse, und erst
 //     Felix' Bestätigung in Vendo plant den Versand.
-//   - Ein Bot darf Kampagnen-Entwürfe, Vorlagen und ausgeschaltete Automationen anlegen,
-//     ändern und löschen, die Marke (Name, Logo, Farben) pflegen, Kontakte bei Shopify
-//     abgleichen und alles auswerten.
+//   - Ein Bot darf Kampagnen-Entwürfe und ausgeschaltete Automationen anlegen, ändern und
+//     löschen, die Marke (Name, Logo, Farben) pflegen, Kontakte bei Shopify abgleichen und
+//     alles auswerten.
+//   - Als Grundlage für einen Entwurf darf ein Bot nur die Muster aus
+//     plugins/newsletter/vorlagen/ nehmen. Vorlagen anlegen, ändern oder löschen kann er
+//     nicht, und Felix' eigene Vorlagen in Vendo sieht er nicht.
 //   - Ein Bot sieht keine einzelnen Kontakte (nur Zahlen), keine Zugangsdaten, ändert weder
 //     Impressum noch Abmeldeweg, Postfach oder Stundenbudget, und rührt nichts an, was
 //     geplant ist, läuft oder schon verschickt wurde.
@@ -39,12 +42,8 @@ const AKTIONEN = {
   kampagne_kopieren: ['id', 'name'],
   kampagne_loeschen: ['id'],
   kampagne_zur_freigabe: ['id', 'zeitpunkt'],
+  // Vorlagen nur lesen, und nur die Muster aus plugins/newsletter/vorlagen/ (Felix' Regel)
   vorlage_zeigen: ['id'],
-  vorlage_neu: ['name', 'beschreibung', 'html', 'htmlRahmen'],
-  vorlage_aus_muster: ['id'],
-  vorlage_aendern: ['id', 'name', 'beschreibung', 'html', 'htmlRahmen'],
-  vorlage_aus_kampagne: ['id', 'name', 'beschreibung'],
-  vorlage_loeschen: ['id'],
   automation_neu: ['art', 'name'],
   automation_zeigen: ['id'],
   automation_aendern: ['id', 'name'],

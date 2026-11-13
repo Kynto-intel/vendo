@@ -13,6 +13,7 @@ import os from 'node:os'
 import path from 'node:path'
 import botsModul from '../plugins/newsletter/bots.js'
 import starten from '../plugins/newsletter/haupt.js'
+import musterModul from '../plugins/newsletter/muster.js'
 
 const { auftragPruefen, zeitpunktLesen, eingangLesen, auftragNehmen, antwortSchreiben, aufraeumen, AKTIONEN } = botsModul
 
@@ -31,7 +32,7 @@ function shopSpielen(url) {
       products:
         u.searchParams.get('page') === '1'
           ? [
-              { title: 'Sturm Hoodie', handle: 'sturm-hoodie', product_type: 'Hoodie', tags: ['Wikinger'], variants: [{ price: '59.99', available: true }], images: [{ src: 'https://cdn.shopify.com/s/files/sturm.png' }] },
+              { title: 'Sturm Hoodie', handle: 'sturm-hoodie', product_type: 'Hoodie', tags: ['Wikinger'], body_html: '<p>Schwere Baumwolle, 320&nbsp;g/m&sup2;.</p><ul><li>Unisex</li></ul>', variants: [{ price: '59.99', available: true }], images: [{ src: 'https://cdn.shopify.com/s/files/sturm.png' }] },
               { title: 'Rabe Shirt', handle: 'rabe-shirt', product_type: 'Shirt', tags: '', variants: [{ price: '29.95' }], images: [] }
             ]
           : []
@@ -39,6 +40,14 @@ function shopSpielen(url) {
   }
   if (u.pathname === '/collections.json') return antwort(200, { collections: [{ title: 'Neu', handle: 'neu' }] })
   return antwort(u.pathname.includes('gibt-es-nicht') ? 404 : 200)
+}
+
+// Wie Felix' Freigabe in Vendo: die Kampagne ist danach geplant, kein Entwurf mehr
+function fn_planen(daten, id) {
+  const k = daten().kampagnen.find((x) => x.id === id)
+  if (!k) return false
+  k.zustand = 'geplant'
+  return true
 }
 
 function ordnerNeu(name) {
@@ -176,33 +185,45 @@ test('erfundene Platzhalter und Bilder ohne Adresse: Hinweis in der Antwort, Fre
   assert.equal(daten().kampagnen[0].zustand, 'entwurf')
 })
 
-test('ein Entwurf aus einer Vorlage übernimmt ihr HTML', async () => {
-  const { bot } = hauptStarten()
-  const v = await bot('vorlage_neu', { name: 'Produkt', html: '<p data-feld="text">Aus der Vorlage</p>' })
-  assert.equal(v.ok, true, v.text)
-  const k = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: v.daten.id })
-  assert.equal(k.daten.html, '<p data-feld="text">Aus der Vorlage</p>')
+test('ein Entwurf aus einem Muster übernimmt dessen HTML — Felix’ eigene Vorlagen gibt es für den Bot nicht', async () => {
+  const { bot, fn, daten } = hauptStarten()
+  const k = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: 'willkommen' })
+  assert.equal(k.ok, true, k.text)
+  assert.equal(k.daten.html, musterModul.musterHtml('willkommen', { marke: daten().marke }))
+
+  const eigene = fn.vorlageAnlegen({ name: 'Felix eigene' }).id
+  const abgelehnt = await bot('kampagne_neu', { ...GUT, name: 'Zweite', betreff: 'Zweiter Betreff', html: undefined, vorlage_id: eigene })
+  assert.equal(abgelehnt.ok, false)
+  assert.match(abgelehnt.text, /nur die Muster aus dem Plugin-Ordner/)
+  assert.equal((await bot('vorlage_zeigen', { id: eigene })).ok, false)
+
+  const ueberblick = await bot('ueberblick')
+  assert.deepEqual(ueberblick.daten.vorlagen.map((v) => v.id), musterModul.musterListe().map((x) => x.id), 'nur die Muster, nicht Felix’ Vorlage')
 })
 
-test('kopieren, aus einer Kampagne eine Vorlage machen, löschen', async () => {
+test('kopieren und löschen; Vorlagen anlegen, ändern oder löschen kann ein Bot nicht', async () => {
   const { bot, daten } = hauptStarten()
   const { daten: k } = await bot('kampagne_neu', GUT)
   const kopie = await bot('kampagne_kopieren', { id: k.id })
   assert.equal(kopie.ok, true)
   assert.equal(daten().kampagnen.length, 2)
   assert.equal(daten().kampagnen[1].betreff, GUT.betreff)
-
-  const v = await bot('vorlage_aus_kampagne', { id: k.id, name: 'Aus Herbst' })
-  assert.equal(v.ok, true)
-  assert.equal(daten().vorlagen[0].html, GUT.html)
-
   assert.equal((await bot('kampagne_loeschen', { id: kopie.daten.id })).ok, true)
-  assert.equal((await bot('vorlage_loeschen', { id: v.daten.id })).ok, true)
   assert.equal(daten().kampagnen.length, 1)
+
+  for (const [aktion, argumente] of [
+    ['vorlage_neu', { name: 'X', html: '<p data-feld="a">x</p>' }],
+    ['vorlage_aendern', { id: 'willkommen', name: 'X' }],
+    ['vorlage_aus_kampagne', { id: k.id }],
+    ['vorlage_aus_muster', { id: 'willkommen' }],
+    ['vorlage_loeschen', { id: 'willkommen' }]
+  ]) {
+    const r = await bot(aktion, argumente)
+    assert.equal(r.ok, false, aktion)
+    assert.match(r.text, /nicht erlaubte Aktion/, aktion)
+  }
   assert.equal(daten().vorlagen.length, 0)
 })
-
-// ── Freigabe ──
 
 test('zur Freigabe: Zustand „freigabe“, Wunschtermin gemerkt, nichts in der Warteschlange', async () => {
   const { bot, daten } = hauptStarten()
@@ -367,6 +388,7 @@ test('shop_produkte liefert fertige Adressen aus dem Shop, auch gefiltert', asyn
   assert.deepEqual(r.daten.produkte.map((p) => p.url), ['https://beispielshop.de/products/sturm-hoodie'])
   assert.equal(r.daten.produkte[0].preis, '59,99 €')
   assert.equal(r.daten.produkte[0].bild, 'https://cdn.shopify.com/s/files/sturm.png')
+  assert.match(r.daten.produkte[0].beschreibung, /^Schwere Baumwolle, 320 g\/m.*Unisex\.$/, 'die Beschreibung aus dem Shop als Klartext')
   assert.equal(r.daten.sammlungen[0].url, 'https://beispielshop.de/collections/neu')
 })
 
@@ -378,13 +400,13 @@ test('Links auf fremde Seiten oder erfundene Produkte sperren die Freigabe', asy
   assert.equal(r1.ok, false)
   assert.match(r1.text, /fremd\.de.*nicht aus deinem Shop/)
 
-  const erfunden = await bot('kampagne_neu', { ...GUT, html: '<a href="https://beispielshop.de/products/gibt-es-nicht">Zum Produkt</a>' })
+  const erfunden = await bot('kampagne_neu', { ...GUT, name: 'Erfunden', betreff: 'Erfundenes Produkt', html: '<a href="https://beispielshop.de/products/gibt-es-nicht">Zum Produkt</a>' })
   const r2 = await bot('kampagne_zur_freigabe', { id: erfunden.daten.id })
   assert.equal(r2.ok, false)
   assert.match(r2.text, /gibt es nicht \(404\)/)
   assert.ok(daten().kampagnen.every((k) => k.zustand === 'entwurf'))
 
-  const echt = await bot('kampagne_neu', { ...GUT, html: '<a href="https://beispielshop.de/products/sturm-hoodie"><img src="https://cdn.shopify.com/s/files/sturm.png" alt="Sturm" /></a>' })
+  const echt = await bot('kampagne_neu', { ...GUT, name: 'Echt', betreff: 'Echtes Produkt', html: '<a href="https://beispielshop.de/products/sturm-hoodie"><img src="https://cdn.shopify.com/s/files/sturm.png" alt="Sturm" /></a>' })
   const r3 = await bot('kampagne_zur_freigabe', { id: echt.daten.id })
   assert.equal(r3.ok, true, r3.text)
 })
@@ -405,30 +427,111 @@ test('links_pruefen meldet jede unechte Adresse einzeln', async () => {
   assert.deepEqual(r.daten.probleme.map((p) => p.grund).sort(), ['Bild nicht aus deinem Shop', 'gibt es nicht (404)', 'kein https-Link'])
 })
 
-// ── Richtige Vorlagen ──
+// ── Keine Dopplungen: Fehler im selben Entwurf beheben ──
 
-test('eine Vorlage ohne markierte Felder ist eine fertige Mail und wird abgelehnt', async () => {
+test('ein zweiter Entwurf mit gleichem Namen, gleichem Betreff oder aus demselben Muster wird abgelehnt', async () => {
   const { bot, daten } = hauptStarten()
-  const r = await bot('vorlage_neu', { name: 'Fertige Mail', html: '<h1>Herbst-Drop</h1><p>Zwei Motive.</p>' })
-  assert.equal(r.ok, false)
-  assert.match(r.text, /fertige Mail, keine Vorlage/)
-  assert.equal(daten().vorlagen.length, 0)
+  const erster = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: 'willkommen' })
+  assert.equal(erster.ok, true, erster.text)
+
+  for (const versuch of [
+    { ...GUT, betreff: 'Anderer Betreff' }, // gleicher Name
+    { ...GUT, name: 'Anderer Name' }, // gleicher Betreff
+    { ...GUT, name: 'Noch ein Name', betreff: 'Noch ein Betreff', html: undefined, vorlage_id: 'willkommen' } // gleiches Muster
+  ]) {
+    const r = await bot('kampagne_neu', versuch)
+    assert.equal(r.ok, false, JSON.stringify(versuch))
+    assert.match(r.text, /Den Entwurf gibt es schon/)
+    assert.match(r.text, /kampagne_aendern/)
+    assert.equal(r.daten.id, erster.daten.id, 'die ID des vorhandenen Entwurfs kommt mit')
+  }
+  assert.equal(daten().kampagnen.length, 1)
+
+  // Was Felix plant, ist kein offener Entwurf mehr — dann darf ein neuer her
+  assert.equal(fn_planen(daten, erster.daten.id), true)
+  const danach = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: 'willkommen' })
+  assert.equal(danach.ok, true, danach.text)
 })
 
-test('eine Kampagne aus einer Vorlage: übrig gebliebener Beispieltext sperrt die Freigabe', async () => {
+test('ein Entwurf, der nur Inhalte im Muster tauscht, geht nicht zur Freigabe', async () => {
   const { bot } = hauptStarten()
-  const vorlage = '<h1 data-feld="ueberschrift">Der Sturm ist da</h1><p data-feld="einleitung" data-feld-hinweis="Zwei Sätze">Zwei neue Motive aus schwerer Baumwolle, limitiert.</p>'
-  const v = await bot('vorlage_neu', { name: 'Drop', html: vorlage })
-  assert.deepEqual(v.daten.felder.map((f) => f.name), ['ueberschrift', 'einleitung'])
-  assert.equal(v.daten.felder[1].hinweis, 'Zwei Sätze')
+  const k = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: 'willkommen' })
+  // Alle Felder neu, aber Aufbau 1:1: nur Text in den Feldern ersetzt
+  const nurGetauscht = k.daten.html.replace(/(data-feld="[^"]+"[^>]*>)([^<]{3,})</g, (_, auf, alt) => `${auf}Neu ${alt.length}<`)
+  const geaendert = await bot('kampagne_aendern', { id: k.daten.id, html: nurGetauscht })
+  assert.match(geaendert.text, /Der Aufbau ist noch \d+ % das Muster „Willkommen“/)
+  const r = await bot('kampagne_zur_freigabe', { id: k.daten.id })
+  assert.equal(r.ok, false)
+  assert.match(r.text, /Aufbau ist noch/)
+})
 
-  const k = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: v.daten.id })
-  assert.match(k.text, /Noch Beispielinhalt aus der Vorlage in: ueberschrift, einleitung/)
-  const nurMinimum = await bot('kampagne_aendern', { id: k.daten.id, html: vorlage.replace('Der Sturm ist da', 'Herbst ist da') })
-  assert.match(nurMinimum.text, /Noch Beispielinhalt aus der Vorlage in: einleitung/, 'nur die Überschrift zu ändern reicht nicht')
+// ── Handy: Spalten müssen umbrechen ──
+
+test('Zellen nebeneinander ohne class="spalte" sperren die Freigabe, mit der Klasse nicht', async () => {
+  const { bot } = hauptStarten()
+  const zweiSpalten = (klasse) =>
+    `<table role="presentation" width="100%"><tr><td${klasse} width="50%"><p>Links</p></td><td${klasse} width="50%"><p>Rechts</p></td></tr></table>`
+  const k = await bot('kampagne_neu', { ...GUT, html: zweiSpalten('') })
+  assert.match(k.text, /2 Zellen stehen nebeneinander .* ohne class="spalte"/)
+  const r = await bot('kampagne_zur_freigabe', { id: k.daten.id })
+  assert.equal(r.ok, false)
+  assert.match(r.text, /class="spalte"/)
+
+  const gut = await bot('kampagne_aendern', { id: k.daten.id, html: zweiSpalten(' class="spalte"') })
+  assert.doesNotMatch(gut.text, /class="spalte"/)
+  assert.equal((await bot('kampagne_zur_freigabe', { id: k.daten.id })).ok, true)
+})
+
+// ── Felix' Hausregeln für Texte ──
+
+test('Gedankenstriche und Floskeln sperren die Freigabe — Produktnamen mit Strich nicht', async () => {
+  const { bot } = hauptStarten()
+  const k = await bot('kampagne_neu', { ...GUT, betreff: 'Neu im Shop – zwei Motive', html: '<p>Jetzt zuschlagen, das ist stark — wirklich.</p>' })
+  assert.match(k.text, /Gedankenstriche .* 2× gefunden/)
+  assert.match(k.text, /Floskeln aus Felix' Vermeiden-Liste: Jetzt zuschlagen/)
   assert.equal((await bot('kampagne_zur_freigabe', { id: k.daten.id })).ok, false)
 
-  await bot('kampagne_aendern', { id: k.daten.id, html: '<h1 data-feld="ueberschrift">Herbst ist da</h1><p data-feld="einleitung">Der Rabe und der Sturm, beide jetzt im Shop.</p>' })
+  const sauber = await bot('kampagne_aendern', {
+    id: k.daten.id,
+    betreff: 'Neu im Shop: zwei Motive',
+    html: '<p><span data-feld="produkt1_name">Rabe – Wikinger Shirt</span></p><p data-feld="produkt1_text">Der Rabe sieht alles. Schwere Baumwolle, normal geschnitten, bis 5XL.</p>'
+  })
+  assert.doesNotMatch(sauber.text, /Gedankenstriche|Floskeln/)
+  assert.equal((await bot('kampagne_zur_freigabe', { id: k.daten.id })).ok, true)
+})
+
+test('Produkte nur mit Name und Preis sperren die Freigabe; Automationsschritte bekommen dieselben Hinweise', async () => {
+  const h = hauptStarten()
+  const ohne = '<p><span data-feld="produkt1_name">Rabe Shirt</span></p><p>29,95 €</p>'
+  const k = await h.bot('kampagne_neu', { ...GUT, html: ohne })
+  assert.match(k.text, /Produkte ohne eigenen Text \(nur Name und Preis\): produkt1/)
+  assert.equal((await h.bot('kampagne_zur_freigabe', { id: k.daten.id })).ok, false)
+  const mit = await h.bot('kampagne_aendern', { id: k.daten.id, html: ohne.replace('<p>29,95', '<p data-feld="produkt1_text">Der Rabe sieht alles. Schwere Baumwolle, normal geschnitten.</p><p>29,95') })
+  assert.doesNotMatch(mit.text, /ohne eigenen Text/)
+
+  const a = await h.bot('automation_neu', { art: 'warenkorb' })
+  const id = a.daten.id
+  const schritt = await h.bot('automation_schritt_aendern', { id, schritt: 1, betreff: 'Noch da – dein Korb', html: '<table><tr><td width="50%">' + ohne + '</td><td width="50%"><p>b</p></td></tr></table>' })
+  const hinweise = schritt.daten.hinweise.join(' | ')
+  assert.match(hinweise, /Schritt 1: Gedankenstriche/)
+  assert.match(hinweise, /Schritt 1: 2 Zellen nebeneinander ohne class="spalte"/)
+  assert.match(hinweise, /Schritt 1: Produkte ohne eigenen Text: produkt1/)
+})
+
+// ── Kampagne aus einem Muster ──
+
+test('eine Kampagne aus einem Muster: übrig gebliebener Beispieltext sperrt die Freigabe', async () => {
+  const { bot } = hauptStarten()
+  const v = await bot('vorlage_zeigen', { id: 'willkommen' })
+  assert.equal(v.ok, true, v.text)
+  assert.equal(v.daten.muster, true)
+  assert.ok(v.daten.felder.length, 'die Felder des Musters stehen in der Antwort')
+
+  const k = await bot('kampagne_neu', { ...GUT, html: undefined, vorlage_id: 'willkommen' })
+  assert.match(k.text, /Noch Beispielinhalt aus der Vorlage in:/)
+  assert.equal((await bot('kampagne_zur_freigabe', { id: k.daten.id })).ok, false)
+
+  await bot('kampagne_aendern', { id: k.daten.id, html: '<h1>Herbst ist da</h1><p>Der Rabe und der Sturm, beide jetzt im Shop.</p>' })
   const freigabe = await bot('kampagne_zur_freigabe', { id: k.daten.id })
   assert.equal(freigabe.ok, true, freigabe.text)
 })

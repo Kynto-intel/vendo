@@ -12,6 +12,7 @@ import shoplinks from '../plugins/newsletter/shoplinks.js'
 import htmlMail from '../plugins/newsletter/html-mail.js'
 import kampagnenModul from '../plugins/newsletter/kampagnen.js'
 import vorlagenModul from '../plugins/newsletter/vorlagen.js'
+import musterModul from '../plugins/newsletter/muster.js'
 
 const { doppelteBilder, erfundenePreise, preisKern } = shoplinks
 const { bilderOhneAdresse, linksOhneZiel } = htmlMail
@@ -213,4 +214,79 @@ test('eine gefüllte Kampagne geht durch', () => {
   )
   const geprueft = kampagnenModul.kampagnePruefen({ name: 'Test', betreff: 'Test', html: gut })
   assert.equal(geprueft.ok, true, geprueft.fehler.join(' '))
+})
+
+// ── Aufbau gegenüber dem Muster ──
+
+test('aufbauAehnlichkeit: nur Inhalte getauscht ergibt 1, verschiedene Muster bleiben deutlich darunter', () => {
+  const { aufbauAehnlichkeit } = htmlMail
+  const { musterListe, musterHtml } = musterModul
+  const basis = musterHtml('bestseller')
+  const getauscht = basis.replace(/>([^<]{3,})</g, '>Anderer Text<').replace(/href="[^"]*"/g, 'href="https://beispielshop.de/products/x"')
+  assert.equal(aufbauAehnlichkeit(getauscht, basis), 1)
+  for (const x of musterListe()) {
+    if (x.id === 'bestseller') continue
+    assert.ok(aufbauAehnlichkeit(musterHtml(x.id), basis) < 0.9, `${x.id} gilt fälschlich als Nachbau`)
+  }
+  const halb = basis.split('<tr>').slice(0, 6).join('<tr>')
+  assert.ok(aufbauAehnlichkeit(halb, basis) < 0.9, 'kräftig gekürzt ist ein anderer Aufbau')
+  assert.equal(aufbauAehnlichkeit('', basis), 0)
+})
+
+// ── Spalten, die auf dem Handy umbrechen ──
+
+test('starreSpalten: nebeneinander gesetzte Zellen ohne class="spalte" fallen auf, die Muster nicht', () => {
+  const { starreSpalten } = htmlMail
+  assert.equal(starreSpalten('<table><tr><td width="50%">a</td><td width="50%">b</td></tr></table>'), 2)
+  assert.equal(starreSpalten('<td style="padding:0;width:40%;">a</td>'), 1)
+  assert.equal(starreSpalten('<td width="268">a</td>'), 1)
+  assert.equal(starreSpalten('<td class="karte spalte" width="50%">a</td>'), 0)
+  assert.equal(starreSpalten('<td width="100%">a</td><td width="600">b</td><td>c</td>'), 0, 'volle Breite ist keine Spalte')
+  for (const x of musterModul.musterListe()) assert.equal(starreSpalten(musterModul.musterHtml(x.id)), 0, x.id)
+})
+
+// ── Hausregeln für Texte ──
+
+test('hausregelVerstoesse: Gedankenstriche überall, Ausnahmen für Produktnamen, Floskeln der Vermeiden-Liste', () => {
+  const { hausregelVerstoesse } = htmlMail
+  assert.deepEqual(hausregelVerstoesse({ betreff: 'Zwei neue Motive', vorschauText: 'Schwer, limitiert', html: '<p>Sauberer Text, ohne Strich.</p>' }), [])
+  const striche = hausregelVerstoesse({ betreff: 'A – B', vorschauText: 'C — D', html: '<p>E – F</p>' })
+  assert.equal(striche.length, 1)
+  assert.match(striche[0], /3× gefunden: Betreff: „A – B“; Vorschautext: „C — D“; Text: „E – F“/)
+  assert.deepEqual(hausregelVerstoesse({ html: '<p>Das Mysteriöses Symbol – Wikinger Shirt ist da.</p>' }, { ausnahmen: ['Mysteriöses Symbol – Wikinger Shirt'] }), [], 'Produktname aus dem Shop')
+  assert.deepEqual(hausregelVerstoesse({ html: '<span data-feld="produkt1_name">Rabe – Shirt</span>' }), [], 'Name in einem Namensfeld')
+  assert.equal(hausregelVerstoesse({ html: '<p>Bindestrich-Wörter sind erlaubt.</p>' }).length, 0)
+  const floskeln = hausregelVerstoesse({ betreff: 'Willkommen bei Beispielshop!', html: '<p>Verpasse nicht die letzte Chance, nur für dich. Tauche ein in die Welt.</p>' })
+  assert.match(floskeln[0], /Verpasse nicht …, nur für dich, letzte Chance, Tauche ein in …, „Willkommen bei …“ als ganzer Betreff/)
+})
+
+test('produkteOhneText: jedes markierte Produkt braucht eigenen Text, die Muster haben ein Feld dafür', () => {
+  const { produkteOhneText } = htmlMail
+  assert.deepEqual(produkteOhneText('<span data-feld="produkt1_name">A</span><span data-feld="produkt2_name">B</span>'), ['produkt1', 'produkt2'])
+  assert.deepEqual(produkteOhneText('<span data-feld="produkt1_name">A</span><p data-feld="produkt1_text">zu kurz</p>'), ['produkt1'])
+  assert.deepEqual(produkteOhneText('<span data-feld="produkt1_name">A</span><p data-feld="produkt1_text">Schwere Baumwolle, <strong>280 g/m²</strong>, normal geschnitten.</p>'), [])
+  assert.deepEqual(produkteOhneText('<p>Frei gebaut, ohne markierte Felder.</p>'), [], 'ohne Namensfelder wird nichts geprüft')
+  for (const x of musterModul.musterListe()) {
+    const html = musterModul.musterHtml(x.id)
+    const namen = [...html.matchAll(/data-feld="(produkt\d+)_name"/g)].map((t) => t[1])
+    const texte = [...html.matchAll(/data-feld="(produkt\d+)_text"/g)].map((t) => t[1])
+    // ein-motiv erzählt sein Produkt im Feld „geschichte“
+    if (x.id !== 'ein-motiv') assert.deepEqual(texte, namen, `${x.id}: jedes Produkt hat ein Textfeld`)
+  }
+})
+
+test('eine 429 von Shopify wird nicht gemerkt: der nächste Versuch kann durchgehen', async () => {
+  shoplinks.vergessen()
+  let anfragen = 0
+  const abrufen = async (url) => {
+    anfragen += 1
+    return { status: anfragen <= 2 ? 429 : 200, ok: anfragen > 2, url }
+  }
+  const html = '<a href="https://beispielshop.de/products/rabe">Rabe</a>'
+  const erst = await shoplinks.adressenPruefen(html, { hosts: ['beispielshop.de'], abrufen })
+  assert.equal(erst.ok, false)
+  assert.match(erst.probleme[0].grund, /Status 429/)
+  const dann = await shoplinks.adressenPruefen(html, { hosts: ['beispielshop.de'], abrufen })
+  assert.equal(dann.ok, true, 'nicht aus dem Gedächtnis gesperrt')
+  shoplinks.vergessen()
 })

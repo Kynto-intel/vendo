@@ -1,4 +1,4 @@
-// Newsletter-Plugin: die sechs fertigen Vorlagen im Stil der Marke.
+// Newsletter-Plugin: die fertigen Muster im Stil der Marke — zugleich die Grundvorlagen.
 //
 // Geprüft wird, dass jedes Muster Vendos eigene Prüfungen besteht — kein Bild ohne
 // Adresse, kein Knopf ohne Ziel, kein erfundener Streichpreis, kein doppeltes Bild, kein
@@ -251,49 +251,123 @@ function hauptStarten() {
   return { fn, daten: () => daten }
 }
 
-test('musterLesen gibt die Liste mit fertiger Vorschau an die Oberfläche', () => {
-  const { fn } = hauptStarten()
-  const liste = fn.musterLesen().liste
-  assert.equal(liste.length, musterListe().length)
-  for (const x of liste) {
-    assert.ok(x.vorschau && x.vorschau.includes('<html'), `${x.id}: keine Vorschau`)
-    assert.doesNotMatch(x.vorschau, /cid:/, `${x.id}: cid gehört nicht in die Oberfläche`)
+// ── Muster sind Vorlagen: eine Liste, Kopie erst beim Ändern ──
+// Vorher legte jeder Klick auf ein Muster eine Kopie an, und die Muster standen zusätzlich
+// daneben: aus sieben Mustern wurden elf Vorlagen plus sieben Muster.
+
+test('jede fertige Muster-Mail trägt den Handy-Stil, und kein Muster hat starre Spalten', () => {
+  const { starreSpalten } = htmlMail
+  for (const x of musterListe()) {
+    const html = musterHtml(x.id, { marke: MARKE })
+    assert.equal(starreSpalten(html), 0, `${x.id}: Zelle ohne class="spalte"`)
+    const mail = mailAusHtml(html, { marke: MARKE, abmeldeAdresse: 'abmelden@beispiel.de' }).html
+    assert.match(mail, /@media only screen and \(max-width: \d+px\)[\s\S]*\.spalte \{ display: block !important/, x.id)
   }
 })
 
-test('vorlageAusMuster legt eine fertige Vorlage an', () => {
+test('ohne eigene Vorlagen stehen alle Muster in der Vorlagenliste, mit fertiger Vorschau', () => {
   const { fn, daten } = hauptStarten()
-  const r = fn.vorlageAusMuster({ id: 'willkommen' })
-  assert.equal(r.ok, true, r.text)
-  assert.equal(daten().vorlagen.length, 1)
-  const angelegt = daten().vorlagen[0]
-  assert.equal(angelegt.name, 'Willkommen')
-  assert.ok(angelegt.beschreibung)
-  assert.equal(vorlagePruefen(angelegt).ok, true, 'die angelegte Vorlage ist nicht sauber')
+  const liste = fn.vorlagenLesen().liste
+  assert.deepEqual(liste.map((v) => v.id), musterListe().map((x) => x.id))
+  for (const v of liste) {
+    assert.equal(v.muster, true)
+    assert.ok(v.felder.length, `${v.id}: ohne Felder`)
+    assert.ok(v.vorschau && v.vorschau.includes('<html'), `${v.id}: keine Vorschau`)
+    assert.doesNotMatch(v.vorschau, /cid:/, `${v.id}: cid gehört nicht in die Oberfläche`)
+  }
+  assert.equal(daten().vorlagen.length, 0, 'nur ansehen legt nichts an')
+  assert.equal(fn.musterLesen, undefined, 'keine zweite Liste mehr')
 })
 
-test('ein unbekanntes Muster legt nichts an', () => {
+test('ein Muster lässt sich ansehen, testen und anwenden, ohne dass eine Kopie entsteht', () => {
   const { fn, daten } = hauptStarten()
-  assert.equal(fn.vorlageAusMuster({ id: 'gibtsnicht' }).ok, false)
+  assert.equal(fn.vorlageVorschau('willkommen').ok, true)
+  const kId = fn.kampagneAnlegen('Aus Muster').id
+  const r = fn.vorlageAnwenden({ vorlageId: 'willkommen', ziel: 'kampagne', id: kId })
+  assert.equal(r.ok, true, r.text)
+  assert.equal(daten().kampagnen[0].html, musterHtml('willkommen', { marke: MARKE }))
+  // Selbstspeichern beim Reiterwechsel mit unverändertem Inhalt: keine Kopie
+  const gleich = fn.vorlagenLesen().liste.find((v) => v.id === 'willkommen')
+  const s = fn.vorlageSpeichern({ id: 'willkommen', name: gleich.name, beschreibung: gleich.beschreibung, html: gleich.html, htmlRahmen: true })
+  assert.equal(s.ok, true)
+  assert.equal(s.id, 'willkommen')
   assert.equal(daten().vorlagen.length, 0)
 })
 
-test('der Bot sieht die Muster im ueberblick und kann eines anlegen', async () => {
+test('wer ein Muster ändert, bekommt eine eigene Fassung — und die steht an seiner Stelle', () => {
   const { fn, daten } = hauptStarten()
-  const ueberblick = await fn.botAuftrag({ aktion: 'ueberblick', argumente: {} })
-  assert.equal(ueberblick.daten.muster.length, musterListe().length, 'die Muster stehen schon im ueberblick')
-
-  const falsch = await fn.botAuftrag({ aktion: 'vorlage_aus_muster', argumente: { id: 'gibtsnicht' } })
-  assert.equal(falsch.ok, false)
-  assert.match(falsch.text, /willkommen/, 'die gültigen Kennungen stehen im Text')
-
-  const angelegt = await fn.botAuftrag({ aktion: 'vorlage_aus_muster', argumente: { id: 'bestseller' } })
-  assert.equal(angelegt.ok, true, angelegt.text)
+  const html = musterHtml('willkommen', { marke: MARKE }).replace('</table>', '</table><p>Eigener Zusatz</p>')
+  const s = fn.vorlageSpeichern({ id: 'willkommen', html })
+  assert.equal(s.ok, true)
+  assert.equal(s.kopiert, true)
+  assert.notEqual(s.id, 'willkommen')
   assert.equal(daten().vorlagen.length, 1)
-  assert.equal(daten().vorlagen[0].name, 'Meistverkauft')
+  assert.equal(daten().vorlagen[0].musterId, 'willkommen')
+  assert.equal(daten().vorlagen[0].name, 'Willkommen')
+
+  const liste = fn.vorlagenLesen().liste
+  assert.equal(liste.length, musterListe().length, 'nicht eins mehr — die Fassung ersetzt das Muster')
+  assert.ok(!liste.some((v) => v.id === 'willkommen'))
+  const eigene = liste.find((v) => v.id === s.id)
+  assert.equal(eigene.ausMuster, 'Willkommen')
+  assert.equal(eigene.muster, false)
+
+  // Weiter ändern trifft die Fassung, keine zweite Kopie
+  assert.equal(fn.vorlageSpeichern({ id: s.id, html: `${html}<p>noch mehr</p>` }).kopiert, undefined)
+  assert.equal(daten().vorlagen.length, 1)
 })
 
-test('die Aktion steht im Bot-Vertrag und ändert etwas', () => {
-  assert.deepEqual(bots.AKTIONEN.vorlage_aus_muster, ['id'])
-  assert.ok(!bots.NUR_LESEN.includes('vorlage_aus_muster'), 'sie legt etwas an, Vendo muss neu zeichnen')
+test('zurücksetzen löscht die Fassung, das Muster ist wieder da; ein Muster selbst bleibt', () => {
+  const { fn, daten } = hauptStarten()
+  assert.equal(fn.vorlageLoeschen('willkommen').ok, false, 'ein Muster löscht man nicht')
+  const s = fn.vorlageSpeichern({ id: 'willkommen', name: 'Hallo neu' })
+  const r = fn.vorlageLoeschen(s.id)
+  assert.equal(r.ok, true)
+  assert.match(r.text, /wieder als Muster/)
+  assert.equal(daten().vorlagen.length, 0)
+  assert.ok(fn.vorlagenLesen().liste.some((v) => v.id === 'willkommen'))
+})
+
+test('alte Kopien ohne musterId verdecken ihr Muster über den Namen', () => {
+  const { fn, daten } = hauptStarten()
+  // so legte die frühere Fassung von vorlageAusMuster Kopien an
+  fn.vorlageAnlegen({ name: 'Meistverkauft' })
+  assert.equal(daten().vorlagen[0].musterId, undefined)
+  const liste = fn.vorlagenLesen().liste
+  assert.ok(!liste.some((v) => v.id === 'bestseller'), 'kein Muster neben seiner Kopie')
+  assert.equal(liste.find((v) => v.id === daten().vorlagen[0].id).ausMuster, 'Meistverkauft')
+})
+
+test('der Bot nimmt nur die Muster aus dem Ordner — auch wenn Felix eines angepasst hat', async () => {
+  const { fn, daten } = hauptStarten()
+  const bot = (aktion, argumente = {}) => fn.botAuftrag({ aktion, argumente, von: 'Vala' })
+  // Felix passt in Vendo das Muster „Meistverkauft" an
+  const s = fn.vorlageSpeichern({ id: 'bestseller', html: '<p data-feld="eigen">Felix’ Fassung</p>' })
+  assert.equal(s.kopiert, true)
+
+  const ueberblick = await bot('ueberblick')
+  assert.equal(ueberblick.daten.muster, undefined, 'keine zweite Liste')
+  assert.deepEqual(ueberblick.daten.vorlagen.map((v) => v.id), musterListe().map((x) => x.id))
+
+  const gezeigt = await bot('vorlage_zeigen', { id: 'bestseller' })
+  assert.equal(gezeigt.ok, true, gezeigt.text)
+  assert.equal(gezeigt.daten.muster, true)
+  assert.equal(gezeigt.daten.html, musterHtml('bestseller', { marke: MARKE }), 'das Muster aus der Datei, nicht Felix’ Fassung')
+  assert.equal((await bot('vorlage_zeigen', { id: s.id })).ok, false, 'Felix’ Fassung sieht der Bot nicht')
+
+  const k = await bot('kampagne_neu', { vorlage_id: 'bestseller', betreff: 'Die Renner', vorschauText: 'Was gerade geht' })
+  assert.equal(k.ok, true, k.text)
+  assert.equal(daten().kampagnen[0].html, musterHtml('bestseller', { marke: MARKE }))
+
+  const falsch = await bot('kampagne_neu', { name: 'Falsch', vorlage_id: 'gibtsnicht', betreff: 'x', vorschauText: 'y' })
+  assert.equal(falsch.ok, false)
+  assert.match(falsch.text, /willkommen/, 'die gültigen Kennungen stehen im Text')
+})
+
+test('Vorlagen anlegen, ändern oder löschen steht nicht im Bot-Vertrag', () => {
+  for (const aktion of ['vorlage_neu', 'vorlage_aendern', 'vorlage_aus_kampagne', 'vorlage_aus_muster', 'vorlage_loeschen']) {
+    assert.equal(bots.AKTIONEN[aktion], undefined, aktion)
+  }
+  assert.deepEqual(bots.AKTIONEN.vorlage_zeigen, ['id'])
+  assert.ok(bots.NUR_LESEN.includes('vorlage_zeigen'))
 })

@@ -135,6 +135,58 @@ Ausschnitt der gerenderten Vorlage (verkleinert, nicht anklickbar, Bilder nach d
 Sicherheitsregel wie die Vorschau), darunter Name und markierte Felder. Bildschirmfoto in
 Ordnung, Karten per Tastatur bedienbar.
 
+## Nachtrag 2026-11-12 abends: ein Entwurf, und das Muster verbessern
+
+**Befehl:** `node --test tests/newsletter-bots.test.js tests/newsletter-mailpruefung.test.js`,
+Regressionslauf `node --test tests/newsletter-*.test.js tests/werkstatt.test.js`.
+**Ergebnis: PASS — 33 von 33 (Bots), 25 von 25 (Mailprüfung), 498 von 498 im
+Regressionslauf.** Fixture: erfundene Daten im Speicher, gespielter Shop, kein Netz.
+
+Gemeldet: Die Texterin legt bei einem Fehler einen neuen Entwurf an, statt den vorhandenen
+zu reparieren, und tauscht im Muster nur Produkte. Belegt im Hermes-Log: dreimal
+`kampagne_neu` mit vollem HTML um 16:21, 16:23 und 16:24 in einer Sitzung; ihre Kampagne
+„Meistverkauft November“ hatte dieselben 122 Zeilen wie `vorlagen/bestseller.html`, nur
+21 Zeilen mit Texten, Preisen und Links anders (Aufbau-Ähnlichkeit 99,8 %).
+
+Jetzt:
+
+- `kampagne_neu` eines Bots wird abgelehnt, wenn es schon einen offenen Entwurf einer KI
+  mit gleichem Namen oder Betreff gibt oder aus demselben Muster innerhalb von zwei
+  Stunden. Die Antwort nennt ID und Datei des vorhandenen und sagt, dass Fehler dort
+  behoben werden.
+- `aufbauAehnlichkeit` (html-mail.js) vergleicht die Folge der Elemente mit dem Muster.
+  Ab 90 % steht bei einem Entwurf der KI „Der Aufbau ist noch … das Muster“ unter
+  „Noch offen“, und `kampagne_zur_freigabe` ist gesperrt. Gemessen: verschiedene Muster
+  gleichen sich höchstens zu 78 %.
+- Systemprompt (3944 Zeichen) und Skill (0.8.0) der Texterin: „EIN ENTWURF“ und
+  „Aufbau verbessern“, vorher gesichert als `*.vor-ein-entwurf-20261112.bak`.
+
+Neue Tests: Ablehnung bei gleichem Namen, Betreff und Muster mit Rückgabe der ID; nach
+dem Planen ist ein neuer Entwurf wieder möglich; nur getauschte Inhalte sperren die
+Freigabe; `aufbauAehnlichkeit` an den echten Mustern. Ältere Tests, die absichtlich
+mehrere gleichnamige Entwürfe anlegten, haben eigene Namen bekommen.
+Nicht geprüft: mit der echten Texterin (braucht eine neue Hermes-Sitzung).
+
+## Nachtrag 2026-11-12, später Abend: Umbauten über kampagne_aendern
+
+Gemeldet: der nächste Entwurf (`kmwdqm86vzbkc`) war wieder das unveränderte Muster. Im
+Hermes-Log: die Texterin las die Entwurfsdatei, schrieb zwei Minuten an einem Umbau (5605
+Ausgabe-Tokens) und speicherte ihn mit `write_file` — Hermes lehnte ab („Refusing to
+overwrite …“, Schutz in `tools/file_tools_write_guards.py`: ganze Datei nur nach
+vollständigem, aktuellem Lesen). Vendo hatte die Datei in der Zeit nicht geändert (Zeit
+17:03:32 unverändert); Schwärzung und gekürzte Zeilen schieden aus (mit Hermes' eigener
+`redact_sensitive_text` nachgestellt, nur lesend). Außerdem lief Hermes noch mit dem
+Systemprompt vom Morgen (3973 Zeichen) — Plugins lädt Hermes nur beim Start.
+
+Jetzt: Umbauten gehen als komplettes HTML über `kampagne_aendern`, kleine Stellen per
+`patch` in die Datei, nie `write_file`; bei einer Ablehnung sofort `kampagne_aendern`.
+So steht es in Skill (0.9.0), Systemprompt (3933 Zeichen), im Antworttext von
+`kampagne_neu` und im Kopfkommentar der Datei. Hermes-Dateien vorher gesichert als
+`*.vor-umbau-weg-20261112.bak`.
+**Befehl:** `node --test tests/newsletter-*.test.js tests/werkstatt.test.js` —
+**PASS, 498 von 498.** Nicht geprüft: mit der echten Texterin; Hermes muss dafür neu
+starten.
+
 ## Nicht geprüft (BLOCKED in dieser Umgebung)
 
 - **Vala im Gespräch mit dem neuen Werkzeug** (auch Shop-Produkte, Linkprüfung und

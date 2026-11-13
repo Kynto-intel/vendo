@@ -5,6 +5,10 @@
 // kann sie dort von Hand ändern, ohne Code anzufassen; dieses Modul liest sie nur ein und
 // setzt die Platzhalter. Eine neue Datei im Ordner ist ein neues Muster, ohne Codeänderung.
 //
+// In Vendo erscheinen die Muster direkt als Vorlagen, nicht als zweite Liste daneben. Eine
+// eigene Kopie in den Plugin-Daten entsteht erst, wenn jemand eine davon wirklich ändert
+// (siehe `vorlageZumAendern` in haupt.js) — dann steht die Kopie an Stelle des Musters.
+//
 // Warum es die Muster überhaupt gibt: Vor einem leeren Feld baut auch eine gute KI nur ein
 // Gerüst und füllt es mit denselben drei Produkten. Mit einer fertigen Vorlage bleibt ihr
 // das, was sie kann — Texte schreiben und echte Produkte einsetzen.
@@ -80,9 +84,36 @@ function dateienLesen() {
   return gefunden.sort((a, b) => (rang[a.art] ?? 9) - (rang[b.art] ?? 9) || a.name.localeCompare(b.name, 'de'))
 }
 
-// Einmal beim Start lesen. Wer eine Datei ändert, startet Vendo neu — so wie bei jeder
-// anderen Plugin-Datei auch.
-const GELESEN = dateienLesen()
+// Die Muster sind in Vendo zugleich Vorlagen — eine geänderte Datei soll also ohne
+// Neustart wirken. Neu gelesen wird nur, wenn sich Name, Zeit oder Größe einer Datei
+// geändert haben, und das wird höchstens alle zwei Sekunden nachgesehen.
+const PRUEF_ABSTAND = 2000
+let zwischen = { schluessel: null, liste: [], geprueftAm: 0 }
+
+function stempel() {
+  try {
+    return fs
+      .readdirSync(ORDNER)
+      .filter((n) => n.toLowerCase().endsWith('.html'))
+      .sort()
+      .map((n) => {
+        const s = fs.statSync(path.join(ORDNER, n))
+        return `${n}:${s.mtimeMs}:${s.size}`
+      })
+      .join('|')
+  } catch {
+    return ''
+  }
+}
+
+function gelesen() {
+  const jetzt = Date.now()
+  if (zwischen.schluessel !== null && jetzt - zwischen.geprueftAm < PRUEF_ABSTAND) return zwischen.liste
+  const schluessel = stempel()
+  if (schluessel !== zwischen.schluessel) zwischen = { schluessel, liste: dateienLesen(), geprueftAm: jetzt }
+  else zwischen.geprueftAm = jetzt
+  return zwischen.liste
+}
 
 const hexOk = (wert) => (/^#[0-9a-f]{3,8}$/i.test(String(wert || '').trim()) ? String(wert).trim() : '')
 
@@ -112,12 +143,12 @@ function ersetzen(roh, { marke = {}, shop = SHOP } = {}) {
 
 // Ein Muster als fertiges HTML. Unbekannte Kennung gibt null, damit der Aufrufer es merkt.
 function musterHtml(id, angaben = {}) {
-  const muster = GELESEN.find((x) => x.id === id)
+  const muster = gelesen().find((x) => x.id === id)
   if (!muster) return null
   return ersetzen(kommentareWeg(muster.roh), angaben)
 }
 
 // Die Liste für die Oberfläche und für den Bot — ohne das rohe HTML.
-const musterListe = () => GELESEN.map(({ id, name, art, beschreibung }) => ({ id, name, art, beschreibung }))
+const musterListe = () => gelesen().map(({ id, name, art, beschreibung }) => ({ id, name, art, beschreibung }))
 
 module.exports = { musterListe, musterHtml, ersetzen, farbenAus, kopfLesen, kommentareWeg, ORDNER, DUNKEL, BEISPIEL, SHOP }

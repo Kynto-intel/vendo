@@ -78,7 +78,7 @@ function platzhalterZeichnen(canvas, farbe) {
   // Rahmen und Diagonalen: sieht nach Platzhalter aus, nicht nach kaputtem Bild
   k.strokeStyle = farbe
   k.globalAlpha = 0.45
-  k.lineWidth = 4
+  k.lineWidth = 8
   k.strokeRect(2, 2, PLATZHALTER_BREITE - 4, PLATZHALTER_HOEHE - 4)
   k.globalAlpha = 0.18
   k.beginPath()
@@ -89,13 +89,13 @@ function platzhalterZeichnen(canvas, farbe) {
   k.stroke()
   k.globalAlpha = 0.8
   k.fillStyle = farbe
-  k.font = "600 44px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  k.font = "600 120px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
   k.textAlign = 'center'
   k.textBaseline = 'middle'
-  k.fillText('BILD', PLATZHALTER_BREITE / 2, PLATZHALTER_HOEHE / 2 - 26)
-  k.font = "400 24px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  k.fillText('BILD', PLATZHALTER_BREITE / 2, PLATZHALTER_HOEHE / 2 - 54)
+  k.font = "400 56px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
   k.globalAlpha = 0.55
-  k.fillText('1200 × 600 px', PLATZHALTER_BREITE / 2, PLATZHALTER_HOEHE / 2 + 28)
+  k.fillText('1200 × 600 px', PLATZHALTER_BREITE / 2, PLATZHALTER_HOEHE / 2 + 62)
   return flaeche
 }
 

@@ -26,21 +26,9 @@
 .nl-stand.nl-an { color: var(--gruen); }
 .nl-stand.nl-aus { color: var(--text-leise); }
 
-/* Fertige Muster im Reiter „Vorlagen" */
+/* Vorlagen: Muster aus dem Plugin-Ordner oder angepasste Fassung */
 
-.nl-muster-block { margin-top: 18px; border-top: 1px solid var(--rahmen); padding-top: 12px; }
-.nl-muster-block > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); list-style: none; }
-.nl-muster-block > summary::-webkit-details-marker { display: none; }
-.nl-muster-block > summary::before { content: '▸'; font-size: 10px; }
-.nl-muster-block[open] > summary::before { content: '▾'; }
-.nl-muster-zahl { font-size: 10px; color: var(--text-leise); }
-.nl-muster-block > .nl-form-text { margin: 8px 0 0; }
-.nl-muster-reihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 10px; }
-.nl-muster { cursor: pointer; }
-.nl-muster:hover { border-color: var(--gold); }
-.nl-muster .nl-mini { height: 180px; background: #16181c; }
-.nl-muster-art { padding: 0 11px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
-.nl-muster-text { padding: 0 11px; margin-top: 2px; font-size: 11px; line-height: 1.45; color: var(--text-leise); }
+.nl-herkunft { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
 
 /* Meistverkaufte Produkte unter den Kacheln der Übersicht */
 .nl-renner-paar { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin-top: 14px; align-items: start; }

@@ -341,6 +341,157 @@ function unveraendertAusVorlage(html, beispiele = []) {
   })
 }
 
+// ── UTM-Parameter ──
+// Vendo-Mails sind eigenes HTML. Ohne UTM-Parameter ordnet Shopify Analytics die Besuche
+// keiner Mail zu (bei Felix im September an einem Custom-Liquid-Newsletter nachgewiesen:
+// 2,2 % Klicks, 0 Sitzungen), und Vendo misst selbst keine Klicks. Darum hängt Vendo beim
+// Bauen jeder Kampagnen- und Automationsmail an jeden Link in den eigenen Shop
+// utm_source=vendo, utm_medium=email und utm_campaign=<Kurzname> an. Andere Adressen,
+// mailto-Links, Platzhalter wie {{warenkorbLink}} und Links, die schon utm_source tragen,
+// bleiben unberührt.
+const UTM_QUELLE = 'vendo'
+const UTM_MEDIUM = 'email'
+
+// Aus einem Kampagnennamen ein Kurzname: klein, ohne Umlaute, Bindestriche statt Leerzeichen
+function utmName(name) {
+  return String(name ?? '')
+    .toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/g, '')
+}
+
+function utmAnhaengen(html, { hosts = [], kampagne = '' } = {}) {
+  const name = utmName(kampagne)
+  const erlaubt = new Set((hosts || []).map((h) => String(h).toLowerCase()))
+  if (!name || !erlaubt.size) return String(html ?? '')
+  return String(html ?? '').replace(/(<a\b[^>]*?\shref\s*=\s*)(["'])([^"']*)\2/gi, (ganz, vor, zeichen, adresse) => {
+    const roh = adresse.replace(/&amp;/gi, '&').trim()
+    let ziel
+    try {
+      ziel = new URL(roh)
+    } catch {
+      return ganz // Platzhalter, relative Adressen, mailto: nicht anfassen
+    }
+    if (!/^https?:$/.test(ziel.protocol) || !erlaubt.has(ziel.host.toLowerCase())) return ganz
+    if (/[?&]utm_source=/i.test(roh)) return ganz
+    const [vorAnker, ...anker] = adresse.split('#')
+    const trenner = vorAnker.includes('?') ? '&amp;' : '?'
+    const neu = `${vorAnker}${trenner}utm_source=${UTM_QUELLE}&amp;utm_medium=${UTM_MEDIUM}&amp;utm_campaign=${name}${anker.length ? `#${anker.join('#')}` : ''}`
+    return `${vor}${zeichen}${neu}${zeichen}`
+  })
+}
+
+// ── Hausregeln für Texte (Felix' Markenstimme) ──
+// Was eine Maschine sicher erkennen kann, prüft Vendo selbst, statt sich darauf zu
+// verlassen, dass eine KI ihre Regeln liest: Gedankenstriche („dumme KI-Gedankenstriche“)
+// und die Floskeln der Vermeiden-Liste samt falscher Dringlichkeit. Quelle ist Felix'
+// Hausregel-Datei voice.md im Text-Skill der Newsletter-Texterin (Stand 2026-11-12); wird
+// die Liste dort geändert, hier nachziehen. Ob ein Satz in jeder beliebigen Mail stehen
+// könnte, prüft nur ein Mensch oder die KI selbst.
+const FLOSKELN = [
+  [/\bverpasse?\s+(es\s+)?nicht\b/i, 'Verpasse nicht …'],
+  [/\bjetzt\s+zuschlagen\b/i, 'Jetzt zuschlagen'],
+  [/\bexklusiv\w*\s+angebot/i, 'Exklusives Angebot'],
+  [/\bnur\s+f(ü|ue)r\s+dich\b/i, 'nur für dich'],
+  [/\blimitierte\s+zeit\b/i, 'Limitierte Zeit'],
+  [/\bletzte\s+chance\b/i, 'letzte Chance'],
+  [/\bnur\s+(noch\s+)?heute\b/i, 'nur heute'],
+  [/\bl(ä|ae)uft\s+(bald\s+)?ab\b/i, 'läuft ab'],
+  [/\bliebe\s+kundin\b|\blieber\s+kunde\b/i, 'Liebe Kundin, lieber Kunde'],
+  [/\btauche?\s+ein\s+in\b/i, 'Tauche ein in …'],
+  [/\bentdecke\s+die\s+welt\b/i, 'Entdecke die Welt von …'],
+  [/\bin\s+der\s+heutigen\s+zeit\b/i, 'In der heutigen Zeit'],
+  [/\bwir\s+freuen\s+uns,?\s+(dir|euch|ihnen)\s+mitteilen/i, 'Wir freuen uns, dir mitteilen zu können']
+]
+const STRICH = /[–—]/
+
+// `teile`: { betreff, vorschauText, html }. `ausnahmen`: Texte, die so bleiben müssen, wie
+// sie sind — Produktnamen aus dem Shop enthalten selbst manchmal einen Gedankenstrich.
+// Namen in Elementen mit data-feld="…name…" gelten immer als Ausnahme.
+function hausregelVerstoesse({ betreff = '', vorschauText = '', html = '' } = {}, { ausnahmen = [] } = {}) {
+  const namen = [...String(html).matchAll(/<[^>]*\bdata-feld\s*=\s*"[^"]*name[^"]*"[^>]*>([^<]+)</gi)].map((t) => t[1].trim())
+  const frei = [...namen, ...ausnahmen].map((x) => String(x || '').trim()).filter((x) => x.length > 2).sort((a, b) => b.length - a.length)
+  const ohneAusnahmen = (text) => frei.reduce((t, a) => t.split(a).join(' '), String(text))
+  const stellen = [
+    ['Betreff', ohneAusnahmen(betreff)],
+    ['Vorschautext', ohneAusnahmen(vorschauText)],
+    ['Text', ohneAusnahmen(nurText(html))]
+  ]
+  const verstoesse = []
+  const striche = []
+  for (const [wo, text] of stellen) {
+    for (const t of text.matchAll(/[^–—]{0,25}[–—][^–—]{0,25}/g)) striche.push(`${wo}: „${t[0].trim()}“`)
+  }
+  if (striche.length) {
+    verstoesse.push(`Gedankenstriche (– oder —) sind nach Felix' Hausregeln verboten, ${striche.length}× gefunden: ${striche.slice(0, 4).join('; ')}. Durch Punkt oder Komma ersetzen. Produktnamen aus dem Shop bleiben, wie sie sind.`)
+  }
+  const floskeln = new Set()
+  for (const [, text] of stellen) for (const [muster, name] of FLOSKELN) if (muster.test(text)) floskeln.add(name)
+  if (/^\s*willkommen\s+bei\s+[^.!?]{1,40}[.!?]?\s*$/i.test(betreff)) floskeln.add('„Willkommen bei …“ als ganzer Betreff')
+  if (floskeln.size) {
+    verstoesse.push(`Floskeln aus Felix' Vermeiden-Liste: ${[...floskeln].join(', ')}. Direkt und konkret sagen, was da ist; Dringlichkeit nur mit echtem Datum.`)
+  }
+  return verstoesse
+}
+
+// Produkte, die nur mit Name und Preis dastehen. Felix' Beobachtung am Handy-Bild: die KI
+// beschreibt das Produkt nicht. Jedes Produkt mit einem Feld produktN_name braucht ein
+// Feld produktN_text mit mindestens PRODUKTTEXT_MIN Zeichen Text. Ohne markierte Namen
+// (frei gebautes HTML) wird nichts geprüft — lieber still als falsch.
+const PRODUKTTEXT_MIN = 40
+function produkteOhneText(html) {
+  const text = String(html ?? '')
+  const inhaltVon = (feld) => {
+    const auf = text.match(new RegExp(`<([a-z][a-z0-9]*)\\b[^>]*\\bdata-feld\\s*=\\s*"${feld}"[^>]*>`, 'i'))
+    if (!auf) return null
+    const rest = text.slice(auf.index + auf[0].length)
+    const ende = rest.search(new RegExp(`</${auf[1]}\\s*>`, 'i'))
+    return nurText(ende >= 0 ? rest.slice(0, ende) : rest)
+  }
+  const nummern = [...new Set([...text.matchAll(/\bdata-feld\s*=\s*"produkt(\d+)_name"/gi)].map((t) => t[1]))]
+  return nummern.filter((nr) => (inhaltVon(`produkt${nr}_text`) || '').trim().length < PRODUKTTEXT_MIN).map((nr) => `produkt${nr}`)
+}
+
+// Zellen, die neben einer anderen stehen und auf dem Handy nicht umbrechen: eine Breite
+// von 20 bis 80 % (oder 120 bis 480 px) ohne die Klasse „spalte“, die Vendos Handy-Stil
+// (bausteine.js, HANDY_STIL) untereinander setzt. Gibt die Zahl solcher Zellen zurück.
+function starreSpalten(html) {
+  let anzahl = 0
+  for (const [tag] of String(html ?? '').matchAll(/<td\b[^>]*>/gi)) {
+    if (/\bclass\s*=\s*["'][^"']*\bspalte\b/i.test(tag)) continue
+    const prozent = Number((tag.match(/\swidth\s*=\s*["']?(\d+)%/i) || tag.match(/[\s;"']width\s*:\s*(\d+)%/i) || [])[1])
+    const pixel = Number((tag.match(/\swidth\s*=\s*["']?(\d+)["'\s>]/i) || [])[1])
+    if ((prozent >= 20 && prozent <= 80) || (pixel >= 120 && pixel <= 480)) anzahl += 1
+  }
+  return anzahl
+}
+
+// Wie sehr der Aufbau einer Mail dem eines Musters gleicht, von 0 bis 1. Verglichen wird
+// nur die Folge der Elemente (table, tr, td, h1, img, a …), nicht Texte, Adressen oder
+// Stile: wer im Muster nur Namen, Preise, Bilder und Links tauscht, kommt auf 1.
+// Gemessen über die längste gemeinsame Teilfolge, also unempfindlich dagegen, ob ein
+// Abschnitt vorne oder hinten dazukommt.
+function aufbauAehnlichkeit(html, musterHtml) {
+  const folge = (text) => (String(text ?? '').replace(/<!--[\s\S]*?-->/g, '').match(/<\/?[a-z][a-z0-9]*/gi) || []).map((t) => t.toLowerCase())
+  const a = folge(html)
+  const b = folge(musterHtml)
+  if (!a.length || !b.length) return 0
+  if (a.length > 4000 || b.length > 4000) return 0 // so große Mails baut niemand aus einem Muster
+  let vorher = new Uint16Array(b.length + 1)
+  let jetzt = new Uint16Array(b.length + 1)
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      jetzt[j] = a[i - 1] === b[j - 1] ? vorher[j - 1] + 1 : Math.max(vorher[j], jetzt[j - 1])
+    }
+    ;[vorher, jetzt] = [jetzt, vorher]
+  }
+  return (2 * vorher[b.length]) / (a.length + b.length)
+}
+
 // Startpunkt einer neuen Vorlage: das Gerüst mit markierten Feldern und Anweisungen. Der
 // Gruß ist fest, alles dazwischen wird pro Kampagne neu geschrieben. Kein Logo: Kopf und
 // Fuß setzt Vendo beim Bauen der Mail aus den Markenangaben davor und dahinter.
@@ -398,4 +549,4 @@ function hatInhalt(html) {
   return ohne.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim().length > 0
 }
 
-module.exports = { htmlSaeubern, mailAusHtml, htmlAusBausteinen, beispielHtml, hatInhalt, istDokument, koerperAus, fussTabelle, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, felderLesen, feldMarkenEntfernen, unveraendertAusVorlage, nurText, startVorlageHtml, PLATZHALTER_BASIS, PLATZHALTER_WARENKORB, MAX_HTML }
+module.exports = { htmlSaeubern, mailAusHtml, htmlAusBausteinen, beispielHtml, hatInhalt, istDokument, koerperAus, fussTabelle, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, felderLesen, feldMarkenEntfernen, unveraendertAusVorlage, aufbauAehnlichkeit, starreSpalten, hausregelVerstoesse, FLOSKELN, produkteOhneText, PRODUKTTEXT_MIN, utmName, utmAnhaengen, nurText, startVorlageHtml, PLATZHALTER_BASIS, PLATZHALTER_WARENKORB, MAX_HTML }

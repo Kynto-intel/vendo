@@ -21,6 +21,7 @@
 //   - Ein Sync hebt keine Sperre auf.
 //   - Hermes und sein ionos-mail-Plugin werden nicht angefasst.
 
+const path = require('node:path')
 const { tresorMachen } = require('./tresor.js')
 const { zugangPruefen, kuerzen, SMTP_STANDARD, PORTS } = require('./zugang.js')
 const { mailBauen, textAusHtml } = require('./mail.js')
@@ -56,13 +57,15 @@ const {
   maskieren: maskierenHtml
 } = require('./bausteine.js')
 const bots = require('./bots.js')
-const { mailAusHtml, beispielHtml, hatInhalt, fremdePlatzhalter, felderLesen, unveraendertAusVorlage, MAX_HTML } = require('./html-mail.js')
+const entwurfsdateien = require('./entwurfsdateien.js')
+const { mailAusHtml, beispielHtml, hatInhalt, fremdePlatzhalter, felderLesen, unveraendertAusVorlage, aufbauAehnlichkeit, starreSpalten, hausregelVerstoesse, produkteOhneText, PRODUKTTEXT_MIN, utmAnhaengen, MAX_HTML } = require('./html-mail.js')
 const shoplinks = require('./shoplinks.js')
 const { protokollSchreiben, protokollLesen } = require('./protokoll.js')
 
 const TAKT = 15000 // so oft schaut der Hintergrundteil in die Warteschlange
 const AUFRAEUM_TAKT = 3600000 // einmal pro Stunde Erledigtes wegräumen
 const AUSLOESER_TAKT = 600000 // alle zehn Minuten bei Shopify nach Warenkörben und Bestellungen sehen
+const RUECK_TAKT = 86400000 // die Käufer für die Rückgewinnung nur einmal am Tag
 
 // Vendo ruft diese Aufbaufunktion bei jedem Laden der Plugin-Liste erneut auf, das Modul
 // bleibt dabei im require-Cache. Ohne diesen Schutz liefen mehrere Zeitgeber gleichzeitig
@@ -70,6 +73,8 @@ const AUSLOESER_TAKT = 600000 // alle zehn Minuten bei Shopify nach Warenkörben
 let taktLaeuft = false
 // Dasselbe für den Eingangskorb der Bots: genau ein Zeitgeber, sonst liefe ein Auftrag doppelt
 let eingangLaeuft = false
+// … und für den Abgleich der Entwurfsdateien
+let entwurfLaeuft = false
 
 module.exports = (ctx) => {
   // Alles, was die Ansicht aufrufen kann, ist auch für die Bot-Aufträge greifbar — so gibt
@@ -340,8 +345,13 @@ module.exports = (ctx) => {
   // dazu optional `htmlRahmen` und `vorschauText`.
   // `extra` sind Platzhalter, die nur in einem Zusammenhang gelten — bei Vorlagen und
   // Automationen etwa der Beispiel-Warenkorb.
-  const mailBauenAus = (daten, stueck = {}, kontakt = {}, extra = {}) => {
-    const gebaut = mailAusHtml(kampagnen.personalisierenHtml(kampagnen.htmlVon(stueck, { marke: daten.marke }), kontakt, extra), {
+  // `utm`: Kurzname für die UTM-Parameter an Shop-Links (Kampagnen und Automationen; siehe
+  // utmAnhaengen in html-mail.js). Angehängt wird vor den Platzhaltern, damit der
+  // Warenkorb-Link unverändert bleibt, und vor dem Fuß, der ohne Parameter bleibt.
+  const mailBauenAus = (daten, stueck = {}, kontakt = {}, extra = {}, { utm = '' } = {}) => {
+    const roh = kampagnen.htmlVon(stueck, { marke: daten.marke })
+    const mitUtm = utm ? utmAnhaengen(roh, { hosts: shopHostsVon(daten), kampagne: utm }) : roh
+    const gebaut = mailAusHtml(kampagnen.personalisierenHtml(mitUtm, kontakt, extra), {
       marke: daten.marke,
       abmeldeAdresse: abmeldeAdresseVon(daten),
       vorschauText: kampagnen.personalisieren(stueck.vorschauText, kontakt, extra),
@@ -362,7 +372,7 @@ module.exports = (ctx) => {
     const kontakt = kontakte.finden(daten.kontakte, eintrag.an) || { email: eintrag.an }
     return {
       betreff: kampagnen.personalisieren(kampagne.betreff, kontakt),
-      html: mailBauenAus(daten, kampagne, kontakt).html
+      html: mailBauenAus(daten, kampagne, kontakt, {}, { utm: kampagne.name }).html
     }
   }
 
@@ -782,7 +792,7 @@ module.exports = (ctx) => {
     const kampagne = kampagneHolen(daten, id)
     if (!kampagne) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
     const beispiel = kontakte.empfaenger(daten.kontakte)[0] || { ...testKontakt(daten), email: testAdresseVon(daten) || 'empfaenger@beispiel.de' }
-    const gebaut = mailBauenAus(daten, kampagne, beispiel)
+    const gebaut = mailBauenAus(daten, kampagne, beispiel, {}, { utm: kampagne.name })
     const geprueft = kampagnePruefenMitMarke(daten, id)
     return {
       ok: true,
@@ -811,7 +821,7 @@ module.exports = (ctx) => {
     }
     // Eine Vorlage hat keinen Betreff und keine Empfänger — sie darf nicht nach beidem
     // gefragt werden. Dafür zeigt sie den Beispiel-Warenkorb wie im Automationsschritt.
-    const gebaut = mailBauenAus(daten, entwurf, beispiel, alsVorlage ? BEISPIEL_KORB : {})
+    const gebaut = mailBauenAus(daten, entwurf, beispiel, alsVorlage ? BEISPIEL_KORB : {}, alsVorlage ? {} : { utm: entwurf.name })
     const geprueft = alsVorlage ? vorlagen.vorlagePruefen(entwurf, { marke: daten.marke }) : kampagnen.kampagnePruefen(entwurf, { marke: daten.marke })
     const fehler = [...geprueft.fehler]
     if (!abmeldeAdresseVon(daten)) fehler.push('Es fehlt eine Adresse für die Abmeldung (Postfach eintragen oder unter „Marke“ angeben).')
@@ -840,7 +850,7 @@ module.exports = (ctx) => {
       art: 'test',
       an: testAdresseVon(daten),
       betreff: `[Test] ${kampagnen.personalisieren(kampagne.betreff, beispiel) || kampagne.name}`,
-      html: mailBauenAus(daten, kampagne, beispiel).html,
+      html: mailBauenAus(daten, kampagne, beispiel, {}, { utm: kampagne.name }).html,
       kampagneId: kampagne.id
     })
   })
@@ -958,16 +968,61 @@ module.exports = (ctx) => {
   // Eine Vorlage ist eine gespeicherte Bausteinfolge. Angewendet wird sie auf eine Kampagne
   // oder einen Automationsschritt; dort wird weiter bearbeitet, ohne die Vorlage zu ändern.
 
-  const vorlageHolen = (daten, id) => daten.vorlagen.find((v) => v.id === id) || null
+  // ── Muster und eigene Vorlagen: eine Liste ──
+  // Die Muster aus plugins/newsletter/vorlagen/ sind selbst Vorlagen — anwendbar, zu sehen,
+  // zu testen, ohne Kopie. Erst wer eines ändert, bekommt eine eigene Vorlage in den
+  // Plugin-Daten (mit `musterId`), und die steht dann an Stelle des Musters. Vorher legte
+  // jeder Klick auf ein Muster eine Kopie an: aus sieben Mustern wurden elf Vorlagen plus
+  // die sieben Muster daneben, und keine Kopie folgte einer späteren Änderung der Datei.
+
+  const musterAlsVorlage = (daten, id) => {
+    const x = muster.musterListe().find((m) => m.id === id)
+    const html = x && muster.musterHtml(x.id, { marke: daten.marke })
+    if (!html) return null
+    return { id: x.id, name: x.name, beschreibung: x.beschreibung || '', html, htmlRahmen: true, muster: x.id, art: x.art }
+  }
+
+  // Aus welchem Muster eine eigene Vorlage stammt. Ältere Kopien haben noch kein `musterId`
+  // — die erkennt der gleiche Name, sonst stünde das Muster neben seiner eigenen Kopie.
+  const musterVon = (v) => v.musterId || muster.musterListe().find((x) => x.name === v.name)?.id || null
+
+  const vorlageHolen = (daten, id) => daten.vorlagen.find((v) => v.id === id) || musterAlsVorlage(daten, id)
+
+  // Erst die eigenen (daran wird gearbeitet), dann die Muster, die noch niemand geändert hat
+  const alleVorlagen = (daten) => {
+    const abgedeckt = new Set(daten.vorlagen.map(musterVon).filter(Boolean))
+    const unberuehrt = muster
+      .musterListe()
+      .filter((x) => !abgedeckt.has(x.id))
+      .map((x) => musterAlsVorlage(daten, x.id))
+      .filter(Boolean)
+    return [...daten.vorlagen, ...unberuehrt]
+  }
+
+  // Wer eine Vorlage ändert, ändert bei einem Muster eine frische eigene Kopie. `daten`
+  // wird dabei ergänzt, gespeichert wird beim Aufrufer.
+  const vorlageZumAendern = (daten, id) => {
+    const eigene = daten.vorlagen.find((v) => v.id === id)
+    if (eigene) return { ok: true, vorlage: eigene }
+    const m = musterAlsVorlage(daten, id)
+    if (!m) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
+    if (daten.vorlagen.length >= vorlagen.MAX_VORLAGEN) return { ok: false, text: `Mehr als ${vorlagen.MAX_VORLAGEN} Vorlagen sind nicht vorgesehen.` }
+    const neu = { ...vorlagen.neueVorlage({ name: m.name, beschreibung: m.beschreibung, html: m.html, marke: daten.marke }), musterId: m.muster }
+    daten.vorlagen = [...daten.vorlagen, neu]
+    console.log(`Newsletter: Muster "${m.muster}" geaendert - eigene Vorlage angelegt.`)
+    return { ok: true, vorlage: neu, kopiert: true }
+  }
 
   bereitstellen('vorlagenLesen', () => {
     const daten = datenLesen()
     const beispiel = { ...testKontakt(daten), email: testAdresseVon(daten) || 'empfaenger@beispiel.de' }
+    const namen = Object.fromEntries(muster.musterListe().map((x) => [x.id, x.name]))
     return {
       maxHtml: MAX_HTML,
       beispielHtml: beispielHtml({ marke: daten.marke }),
-      liste: daten.vorlagen.map((v) => {
+      liste: alleVorlagen(daten).map((v) => {
         const geprueft = vorlagen.vorlagePruefen(v, { marke: daten.marke })
+        const herkunft = v.muster ? null : musterVon(v)
         return {
           id: v.id,
           name: v.name,
@@ -975,6 +1030,9 @@ module.exports = (ctx) => {
           html: kampagnen.htmlVon(v, { marke: daten.marke }),
           htmlRahmen: v.htmlRahmen !== false,
           geaendertAm: v.geaendertAm || null,
+          // unverändertes Muster aus dem Ordner bzw. eigene Fassung eines Musters
+          muster: Boolean(v.muster),
+          ...(herkunft ? { ausMuster: namen[herkunft] || herkunft } : {}),
           hinweise: geprueft.fehler,
           felder: geprueft.felder.map(({ name, hinweis, art }) => ({ name, hinweis, art })),
           // Die fertige Mail für das kleine Vorschaubild in der Übersicht
@@ -982,40 +1040,6 @@ module.exports = (ctx) => {
         }
       })
     }
-  })
-
-  // ── Mustervorlagen ──
-  // Sechs fertige Vorlagen im Stil der Marke. Sie sind der Gegenentwurf zum leeren Feld:
-  // wer bei null anfängt, baut ein Gerüst und füllt es mit erfundenen Produkten.
-
-  bereitstellen('musterLesen', () => {
-    const daten = datenLesen()
-    const beispiel = { ...testKontakt(daten), email: testAdresseVon(daten) || 'empfaenger@beispiel.de' }
-    return {
-      liste: muster.musterListe().map((x) => ({
-        ...x,
-        // Dieselbe verkleinerte Vorschau wie bei den eigenen Vorlagen: die fertige Mail
-        // mit Kopf und Fuß, damit man sieht, was man anlegt, statt nur den Namen zu lesen.
-        vorschau: fuerAnsicht(
-          daten,
-          mailBauenAus(daten, { html: muster.musterHtml(x.id, { marke: daten.marke }) }, beispiel, BEISPIEL_KORB).html
-        )
-      }))
-    }
-  })
-
-  bereitstellen('vorlageAusMuster', (eingabe = {}) => {
-    const daten = datenLesen()
-    if (daten.vorlagen.length >= vorlagen.MAX_VORLAGEN) return { ok: false, text: `Mehr als ${vorlagen.MAX_VORLAGEN} Vorlagen sind nicht vorgesehen.` }
-    const gewaehlt = muster.musterListe().find((x) => x.id === eingabe.id)
-    const html = muster.musterHtml(eingabe.id, { marke: daten.marke })
-    if (!gewaehlt || !html) return { ok: false, text: 'Dieses Muster gibt es nicht.' }
-
-    const neu = vorlagen.neueVorlage({ name: gewaehlt.name, beschreibung: gewaehlt.beschreibung, html, marke: daten.marke })
-    daten.vorlagen = [...daten.vorlagen, neu]
-    ctx.datenSpeichern(daten)
-    console.log(`Newsletter: Vorlage aus Muster „${gewaehlt.id}" angelegt.`)
-    return { ok: true, id: neu.id, text: `Vorlage „${gewaehlt.name}" angelegt. Jedes Feld für die Kampagne neu schreiben, Produkte aus dem Shop.` }
   })
 
   bereitstellen('vorlageAnlegen', (eingabe = {}) => {
@@ -1031,25 +1055,47 @@ module.exports = (ctx) => {
     const daten = datenLesen()
     const vorhanden = vorlageHolen(daten, eingabe.id)
     if (!vorhanden) return { ok: false, fehler: ['Diese Vorlage gibt es nicht.'] }
-    const geaendert = vorlagen.vorlageAendern(daten.vorlagen, eingabe.id, {
+    const aenderung = {
       name: String(eingabe.name ?? vorhanden.name).trim().slice(0, 80) || 'Vorlage',
       beschreibung: String(eingabe.beschreibung ?? vorhanden.beschreibung ?? '').trim().slice(0, 200),
       // Roh speichern, gesäubert wird beim Bauen der Mail — wie bei Kampagnen
       html: String(eingabe.html ?? kampagnen.htmlVon(vorhanden, { marke: daten.marke })).slice(0, MAX_HTML),
       htmlRahmen: eingabe.htmlRahmen === undefined ? vorhanden.htmlRahmen !== false : Boolean(eingabe.htmlRahmen)
-    })
-    daten.vorlagen = geaendert.liste
+    }
+    // Ein Muster nur ansehen ist kein Ändern: das Selbstspeichern beim Reiterwechsel legt
+    // sonst eine Kopie an, ohne dass jemand etwas getippt hat.
+    if (vorhanden.muster) {
+      const gleich =
+        aenderung.html.trim() === vorhanden.html.trim() && aenderung.name === vorhanden.name && aenderung.beschreibung === vorhanden.beschreibung && aenderung.htmlRahmen
+      if (gleich) return { ok: true, id: vorhanden.id, hinweise: vorlagen.vorlagePruefen(vorhanden, { marke: daten.marke }).fehler }
+    }
+    const ziel = vorlageZumAendern(daten, eingabe.id)
+    if (!ziel.ok) return { ok: false, fehler: [ziel.text] }
+    daten.vorlagen = vorlagen.vorlageAendern(daten.vorlagen, ziel.vorlage.id, aenderung).liste
     ctx.datenSpeichern(daten)
-    return { ok: true, hinweise: vorlagen.vorlagePruefen(vorlageHolen(datenLesen(), eingabe.id), { marke: daten.marke }).fehler }
+    return {
+      ok: true,
+      id: ziel.vorlage.id,
+      ...(ziel.kopiert ? { kopiert: true } : {}),
+      hinweise: vorlagen.vorlagePruefen(vorlageHolen(datenLesen(), ziel.vorlage.id), { marke: daten.marke }).fehler
+    }
   })
 
-  bereitstellen('vorlageLoeschen', (id) => {
+  // Eine eigene Vorlage löschen. Ist sie die Fassung eines Musters, steht danach wieder das
+  // Muster in der Liste — also „zurücksetzen“. Ein Muster selbst gehört zum Plugin.
+  const vorlageEntfernen = (id) => {
     const daten = datenLesen()
-    if (!vorlageHolen(daten, id)) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
-    daten.vorlagen = daten.vorlagen.filter((v) => v.id !== id)
+    const v = vorlageHolen(daten, id)
+    if (!v) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
+    if (v.muster) return { ok: false, text: `„${v.name}" ist ein Muster aus dem Plugin-Ordner und lässt sich hier nicht löschen. Ungeändert bleibt es einfach stehen.` }
+    const herkunft = musterVon(v)
+    daten.vorlagen = daten.vorlagen.filter((x) => x.id !== id)
     ctx.datenSpeichern(daten)
-    return { ok: true, text: 'Vorlage gelöscht.' }
-  })
+    const nochKopien = daten.vorlagen.some((x) => musterVon(x) === herkunft)
+    return { ok: true, name: v.name, text: herkunft && !nochKopien ? `Eigene Fassung gelöscht — „${v.name}" steht wieder als Muster da.` : 'Vorlage gelöscht.' }
+  }
+
+  bereitstellen('vorlageLoeschen', (id) => vorlageEntfernen(id))
 
   bereitstellen('vorlageVorschau', (id) => {
     const daten = datenLesen()
@@ -1141,8 +1187,9 @@ module.exports = (ctx) => {
       return { ok: true, id: neu.id, text: `Vorlage „${neu.name}“ angelegt, als HTML im Code-Feld. Vorschau prüfen.` }
     }
 
-    const vorlage = vorlageHolen(daten, eingabe.id)
-    if (!vorlage) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
+    const ziel = vorlageZumAendern(daten, eingabe.id)
+    if (!ziel.ok) return { ok: false, text: ziel.text }
+    const vorlage = ziel.vorlage
     daten.vorlagen = vorlagen.vorlageAendern(daten.vorlagen, vorlage.id, {
       name: gelesen.name || vorlage.name,
       beschreibung: gelesen.beschreibung || vorlage.beschreibung,
@@ -1173,6 +1220,7 @@ module.exports = (ctx) => {
         name: a.name,
         aktiv: Boolean(a.aktiv),
         nurMitZustimmung: a.nurMitZustimmung !== false,
+        ...(a.art === 'rueckgewinnung' ? automationen.rueckFenster(a) : {}),
         schritte: (a.schritte || []).map((s) => ({
           nach: s.nach,
           verfallNach: s.verfallNach,
@@ -1209,12 +1257,26 @@ module.exports = (ctx) => {
       htmlRahmen: s?.htmlRahmen === undefined ? automation.schritte?.[i]?.htmlRahmen !== false : Boolean(s.htmlRahmen)
     }))
 
+    // Das Zeitfenster der Rückgewinnung. Unbrauchbare Werte werden trotzdem gespeichert,
+    // damit sie im Formular stehen bleiben; automationPruefen meldet sie und sperrt das
+    // Einschalten, bis sie stimmen.
+    const fenster = {}
+    if (automation.art === 'rueckgewinnung') {
+      const bisher = automationen.rueckFenster(automation)
+      const ganz = (wert, sonst) => (wert === undefined || wert === '' ? sonst : Math.round(Number(wert)))
+      fenster.abTage = ganz(eingabe.abTage, bisher.abTage)
+      fenster.bisTage = ganz(eingabe.bisTage, bisher.bisTage)
+      if (!Number.isFinite(fenster.abTage)) fenster.abTage = bisher.abTage
+      if (!Number.isFinite(fenster.bisTage)) fenster.bisTage = bisher.bisTage
+    }
+
     daten.automationen = daten.automationen.map((a) =>
       a.id === automation.id
         ? {
             ...a,
             name: String(eingabe.name || a.name).slice(0, 80),
             nurMitZustimmung: eingabe.nurMitZustimmung !== false,
+            ...fenster,
             schritte,
             geaendertAm: Date.now()
           }
@@ -1241,9 +1303,18 @@ module.exports = (ctx) => {
       if (automation.art === 'warenkorb' && !daten.shopify.tokenVerschluesselt) {
         return { ok: false, text: 'Für den Warenkorbabbruch fehlt der Shopify-Zugang (Reiter „Kontakte“).' }
       }
+      if (automation.art === 'rueckgewinnung' && !daten.shopify.tokenVerschluesselt) {
+        return { ok: false, text: 'Für die Rückgewinnung fehlt der Shopify-Zugang (Reiter „Kontakte“).' }
+      }
     }
 
     daten.automationen = daten.automationen.map((a) => (a.id === automation.id ? { ...a, aktiv: an, geaendertAm: Date.now() } : a))
+    // Frisch eingeschaltet: die Rückgewinnung beim nächsten Takt prüfen, nicht erst morgen
+    if (an && automation.art === 'rueckgewinnung') {
+      const ausloeser = { ...(daten.einstellungen.ausloeser || {}) }
+      delete ausloeser.rueckgewinnungAm
+      daten.einstellungen = { ...daten.einstellungen, ausloeser }
+    }
     // Beim Abschalten laufende Läufe beenden: sonst käme die zweite Mail noch Tage später
     if (!an) {
       const beendet = automationen.abbrechen(daten.laeufe, { grund: 'Automation abgeschaltet', automationIds: [automation.id] })
@@ -1277,7 +1348,7 @@ module.exports = (ctx) => {
     if (!schritt) return { fehler: 'Diesen Schritt gibt es nicht.' }
     return {
       betreff: kampagnen.personalisieren(schritt.betreff, kontakt, extra),
-      html: mailBauenAus(daten, schritt, kontakt, extra).html
+      html: mailBauenAus(daten, schritt, kontakt, extra, { utm: `${automation.name || automation.art || 'automation'} schritt ${schrittNummer + 1}` }).html
     }
   }
 
@@ -1329,13 +1400,13 @@ module.exports = (ctx) => {
 
     const stand = daten.einstellungen.ausloeser || {}
     const zugang = shopifyZugang()
-    const bericht = { warenkoerbe: 0, willkommen: 0, abgebrochen: 0 }
+    const bericht = { warenkoerbe: 0, willkommen: 0, rueckgewinnung: 0, abgebrochen: 0 }
 
     // 1. Abmeldungen und Bestellungen brechen laufende Serien ab
     const mitBestellAbbruch = aktive.filter((a) => automationen.AUSLOESER[a.art]?.abbruchBei.includes('bestellung')).map((a) => a.id)
     if (mitBestellAbbruch.length && !zugang.fehler) {
       const seit = Number(stand.bestellerSeit) || jetzt - 86400000
-      const besteller = await shopify.bestellerHolen({ shop: zugang.shop, token: zugang.token, seit })
+      const besteller = await shopify.bestellerHolen({ shop: zugang.shop, token: zugang.token, seit, holen: ctx.abrufen || null })
       if (besteller.ok) {
         let liste = datenLesen().laeufe
         for (const email of besteller.adressen) {
@@ -1373,7 +1444,7 @@ module.exports = (ctx) => {
     const warenkorb = aktive.find((a) => a.art === 'warenkorb')
     if (warenkorb && !zugang.fehler) {
       const seit = Number(stand.warenkorbSeit) || jetzt - 86400000
-      const geholt = await shopify.warenkoerbeHolen({ shop: zugang.shop, token: zugang.token, seit })
+      const geholt = await shopify.warenkoerbeHolen({ shop: zugang.shop, token: zugang.token, seit, holen: ctx.abrufen || null })
       if (geholt.ok) {
         let liste = datenLesen().laeufe
         for (const korb of geholt.koerbe) {
@@ -1428,8 +1499,48 @@ module.exports = (ctx) => {
       ctx.datenSpeichern(d)
     }
 
-    if (bericht.warenkoerbe || bericht.willkommen || bericht.abgebrochen) {
-      console.log(`Newsletter: Automationen - ${bericht.warenkoerbe} Warenkoerbe, ${bericht.willkommen} Willkommen, ${bericht.abgebrochen} abgebrochen.`)
+    // 4. Rückgewinnung: Käufer, deren letzte Bestellung im Fenster liegt. Einmal am Tag
+    // reicht — wer heute 120 Tage weg ist, ist es morgen auch noch, und die Abfrage geht
+    // über alle Käufer.
+    const rueck = aktive.find((a) => a.art === 'rueckgewinnung')
+    const rueckFaellig = jetzt - (Number(stand.rueckgewinnungAm) || 0) >= RUECK_TAKT
+    if (rueck && !zugang.fehler && rueckFaellig) {
+      // `ctx.abrufen` gibt es nur in Tests; in Vendo ist es leer und shopify.js nimmt fetch
+      const geholt = await shopify.kaeuferHolen({ shop: zugang.shop, token: zugang.token, holen: ctx.abrufen || null })
+      if (geholt.ok) {
+        const gemerkt = { ...(datenLesen().rueckgewinnung?.gemerkt || {}) }
+        const kandidaten = automationen.rueckKandidaten(geholt.kaeufer, { ...automationen.rueckFenster(rueck), gemerkt, jetzt })
+        let liste = datenLesen().laeufe
+        for (const k of kandidaten) {
+          const kontakt = kontakte.finden(datenLesen().kontakte, k.email)
+          // Ohne Zustimmung oder abgemeldet: nicht merken. Stimmt die Person später zu,
+          // soll sie noch dran sein können.
+          if (!automationen.darfSenden({ automation: rueck, kontakt }).ok) continue
+          const e = automationen.laufStarten(liste, {
+            automationId: rueck.id,
+            email: k.email,
+            ausloeserId: `rueck:${k.letzteBestellungId}`,
+            schritte: rueck.schritte,
+            jetzt
+          })
+          liste = e.liste
+          gemerkt[k.email] = k.letzteBestellungId
+          if (e.gestartet) bericht.rueckgewinnung++
+        }
+        const d = datenLesen()
+        d.laeufe = liste
+        d.rueckgewinnung = { ...(d.rueckgewinnung || {}), gemerkt }
+        d.einstellungen = { ...d.einstellungen, ausloeser: { ...(d.einstellungen.ausloeser || {}), rueckgewinnungAm: jetzt } }
+        ctx.datenSpeichern(d)
+      } else {
+        console.warn(`Newsletter: Kaeufer fuer die Rueckgewinnung konnten nicht geholt werden: ${geholt.fehler}`)
+      }
+    }
+
+    if (bericht.warenkoerbe || bericht.willkommen || bericht.rueckgewinnung || bericht.abgebrochen) {
+      console.log(
+        `Newsletter: Automationen - ${bericht.warenkoerbe} Warenkoerbe, ${bericht.willkommen} Willkommen, ${bericht.rueckgewinnung} Rueckgewinnung, ${bericht.abgebrochen} abgebrochen.`
+      )
     }
     return { ok: true, ...bericht }
   }
@@ -1707,6 +1818,14 @@ module.exports = (ctx) => {
 
   const rennerStand = (daten, art) => daten[RENNER[art].feld] || {}
 
+  // Produktnamen, die Vendo schon aus dem Shop gelesen hat: sie dürfen einen
+  // Gedankenstrich enthalten (die Hausregel-Prüfung lässt sie aus). Nur im Speicher.
+  const bekannteTitel = new Set()
+  const titelMerken = (produkte) => {
+    for (const p of produkte || []) if (p?.titel) bekannteTitel.add(p.titel)
+  }
+  const produktNamen = (daten) => [...bekannteTitel, ...['bestseller', 'warenkorb'].flatMap((art) => (rennerStand(daten, art).liste || []).map((e) => e.titel))]
+
   // Holt eine Rangliste, wenn der gespeicherte Stand alt ist. `erzwingen` holt sofort.
   const rennerSichern = async (art, { tage = RENNER_TAGE, erzwingen = false } = {}) => {
     const sorte = RENNER[art]
@@ -1724,6 +1843,7 @@ module.exports = (ctx) => {
 
     const domain = await shopAdresseSichern()
     const produkte = domain ? (await shoplinks.produkteLaden(domain, abrufen, { anzahl: 500 })).produkte : []
+    titelMerken(produkte)
     const neu = {
       geholtAm: Date.now(),
       tage,
@@ -1801,10 +1921,44 @@ module.exports = (ctx) => {
     return hinweise
   }
 
-  // Was aus der Vorlage einer Kampagne noch unverändert drinsteht
+  // Was aus der Vorlage einer Kampagne noch unverändert drinsteht — und bei einem Entwurf
+  // der KI, ob sie mehr getan hat, als im Muster Namen, Preise und Bilder zu tauschen.
+  // Felix will, dass die KI das Muster für jede Kampagne verbessert; ein Entwurf, dessen
+  // Aufbau noch zu mindestens AUFBAU_GRENZE dem Muster gleicht, geht nicht zur Freigabe.
+  const AUFBAU_GRENZE = 0.9
+  const DOPPEL_FRIST = 2 * 3600000 // zwei Stunden: so lange gilt ein zweiter Entwurf aus demselben Muster als Dopplung
   const vorlagenReste = (daten, k) => {
-    const rest = unveraendertAusVorlage(kampagnen.htmlVon(k, { marke: daten.marke }), k.vorlageBeispiele)
-    return rest.length ? [`Noch Beispielinhalt aus der Vorlage in: ${rest.map((r) => r.name).join(', ')}. Jedes Feld für diese Kampagne neu schreiben, Bilder aus dem Shop.`] : []
+    const html = kampagnen.htmlVon(k, { marke: daten.marke })
+    const hinweise = []
+    const rest = unveraendertAusVorlage(html, k.vorlageBeispiele)
+    if (rest.length) hinweise.push(`Noch Beispielinhalt aus der Vorlage in: ${rest.map((r) => r.name).join(', ')}. Jedes Feld für diese Kampagne neu schreiben, Bilder aus dem Shop.`)
+    // Nebeneinander gesetzte Zellen ohne class="spalte" bleiben auf dem Handy zweispaltig
+    // und je rund 150 px schmal — Felix hat genau das im Handy-Bild bemängelt
+    const starr = k.erstelltVon ? starreSpalten(html) : 0
+    if (starr) {
+      hinweise.push(
+        `${starr} ${starr === 1 ? 'Zelle steht' : 'Zellen stehen'} nebeneinander (width="50%" o. ä.) ohne class="spalte" — auf dem Handy bleiben sie zweispaltig und winzig. Jeder solchen <td> class="spalte" geben, dann setzt Vendo sie auf dem Handy untereinander, Bilder über die volle Breite.`
+      )
+    }
+    // Jedes Produkt braucht eigenen Text, nicht nur Name und Preis
+    const ohneText = k.erstelltVon ? produkteOhneText(html) : []
+    if (ohneText.length) {
+      hinweise.push(
+        `Produkte ohne eigenen Text (nur Name und Preis): ${ohneText.join(', ')}. Jedes Produkt bekommt im Feld produktN_text ein bis zwei Sätze (mindestens ${PRODUKTTEXT_MIN} Zeichen) aus seiner beschreibung: was das Motiv sagt, ein Fakt wie Stoffgewicht oder Passform, für wen oder wann.`
+      )
+    }
+    // Felix' Hausregeln für Texte: Gedankenstriche und Floskeln der Vermeiden-Liste
+    if (k.erstelltVon) hinweise.push(...hausregelVerstoesse({ betreff: k.betreff, vorschauText: k.vorschauText, html }, { ausnahmen: produktNamen(daten) }))
+    const vorbild = k.erstelltVon && k.vorlageId ? musterAlsVorlage(daten, k.vorlageId) : null
+    if (vorbild) {
+      const gleich = aufbauAehnlichkeit(html, vorbild.html)
+      if (gleich >= AUFBAU_GRENZE) {
+        hinweise.push(
+          `Der Aufbau ist noch ${Math.round(gleich * 100)} % das Muster „${vorbild.name}“ — nur Inhalte getauscht. Verbessere den Aufbau für genau diese Kampagne: Abschnitte ergänzen, streichen oder umstellen (z. B. eine kurze Geschichte zum Motiv, ein Band „Für Sie / Für Ihn“, ein zweiter Knopf, weniger Produkte, dafür größer). Farben, Schrift und Breite bleiben. Den bestehenden Entwurf ändern, keinen neuen anlegen.`
+        )
+      }
+    }
+    return hinweise
   }
 
   // Mit Netz: jede Adresse gehört zum Shop und ist erreichbar. Ohne bekannte Shop-Adresse
@@ -1819,6 +1973,7 @@ module.exports = (ctx) => {
     const domain = datenLesen().shopify?.primaerDomain
     if (domain) {
       const geladen = await shoplinks.produkteLaden(domain, abrufen, { anzahl: 500 })
+      titelMerken(geladen.produkte)
       const erfunden = shoplinks.erfundenePreise(html, geladen.produkte)
       if (erfunden.length) {
         return {
@@ -1834,15 +1989,38 @@ module.exports = (ctx) => {
     return { ok: false, probleme: ergebnis.probleme, text: `Keine echten Adressen aus deinem Shop: ${ergebnis.probleme.slice(0, 8).map((p) => `${p.url} — ${p.grund}`).join('; ')}. Nimm die Adressen aus shop_produkte.` }
   }
 
+  // ── Entwürfe als .html-Dateien (Begründung in entwurfsdateien.js) ──
+  // Vendo selbst setzt weder `ctx.entwurfOrdner` noch `ctx.eingangOrdner` — dann gilt der
+  // echte Ordner. Tests setzen `eingangOrdner` und bekommen ohne eigenen `entwurfOrdner`
+  // keine Dateien, damit nie etwas im echten daten/-Ordner landet.
+  const entwurfOrdner = ctx.entwurfOrdner !== undefined ? ctx.entwurfOrdner : ctx.eingangOrdner === undefined ? entwurfsdateien.ORDNER : false
+  let entwurfOffen = {} // Datei → Grund, warum eine Änderung darin nicht übernommen wurde
+  const entwurfMerker = {}
+
+  // Wo der Entwurf einer Kampagne als Datei liegt — nur, wenn sie gespiegelt wird
+  const kampagneDatei = (k) => {
+    if (!entwurfOrdner || !alsDatei(k)) return null
+    const name = entwurfsdateien.dateiName({ art: 'kampagne', id: k.id })
+    return name ? path.join(entwurfOrdner, name) : null
+  }
+
+  // Was in der Datei steht und nicht übernommen wurde, gehört zu den Hinweisen
+  const dateiHinweis = (datei) => {
+    const grund = datei && entwurfOffen[path.basename(datei)]
+    return grund ? [`Deine Änderung in ${path.basename(datei)} wurde nicht übernommen: ${grund}`] : []
+  }
+
   const kampagneGanz = (daten, k) => {
     const html = kampagnen.htmlVon(k, { marke: daten.marke })
+    const datei = kampagneDatei(k)
     return {
       ...kampagneKurz(k),
       vorschauText: k.vorschauText || '',
       html,
       htmlRahmen: k.htmlRahmen !== false,
+      ...(datei ? { datei } : {}),
       ...(k.vorlageId ? { vorlageId: k.vorlageId } : {}),
-      hinweise: [...kampagnePruefenMitMarke(daten, k.id).fehler, ...shopHinweise(daten, html), ...vorlagenReste(daten, k)]
+      hinweise: [...dateiHinweis(datei), ...kampagnePruefenMitMarke(daten, k.id).fehler, ...shopHinweise(daten, html), ...vorlagenReste(daten, k)]
     }
   }
 
@@ -1855,6 +2033,7 @@ module.exports = (ctx) => {
       beschreibung: v.beschreibung || '',
       html,
       htmlRahmen: v.htmlRahmen !== false,
+      ...(v.muster ? { muster: true } : {}),
       felder: geprueft.felder,
       hinweise: [...geprueft.fehler, ...shopHinweise(daten, html)]
     }
@@ -1866,6 +2045,8 @@ module.exports = (ctx) => {
     art: a.art,
     aktiv: Boolean(a.aktiv),
     aenderbar: !a.aktiv,
+    // Wen die Rückgewinnung anschreibt: damit der Bot die Texte zum Abstand passend schreibt
+    ...(a.art === 'rueckgewinnung' ? automationen.rueckFenster(a) : {}),
     schritte: (a.schritte || []).map((s, i) => ({
       schritt: i + 1,
       nachStunden: Math.round((Number(s.nach) || 0) / automationen.STUNDE),
@@ -1875,6 +2056,18 @@ module.exports = (ctx) => {
     })),
     hinweise: [
       ...automationen.automationPruefen(a).fehler,
+      // Dieselben Text- und Handy-Prüfungen wie bei Kampagnen-Entwürfen, hier als Hinweis
+      // (einschalten tut ohnehin nur Felix)
+      ...(a.schritte || []).flatMap((s, i) => {
+        const html = kampagnen.htmlVon(s, { marke: daten.marke })
+        const starr = starreSpalten(html)
+        const ohne = produkteOhneText(html)
+        return [
+          ...hausregelVerstoesse({ betreff: s.betreff, html }, { ausnahmen: produktNamen(daten) }),
+          ...(starr ? [`${starr} Zellen nebeneinander ohne class="spalte" (bleiben auf dem Handy zweispaltig).`] : []),
+          ...(ohne.length ? [`Produkte ohne eigenen Text: ${ohne.join(', ')}.`] : [])
+        ].map((h) => `Schritt ${i + 1}: ${h}`)
+      }),
       ...(a.schritte || []).flatMap((s, i) => shopHinweise(daten, kampagnen.htmlVon(s, { marke: daten.marke })).map((h) => `Schritt ${i + 1}: ${h}`))
     ]
   })
@@ -1903,18 +2096,23 @@ module.exports = (ctx) => {
         : ' Es sind keine Bestseller geholt. Für eine Verkaufsmail aktion=shop_bestseller aufrufen, sonst aktion=shop_produkte — niemals Produkte erfinden.'
       return {
         ok: true,
-        text: `${daten.kampagnen.length} Kampagnen, ${daten.vorlagen.length} Vorlagen, ${daten.automationen.length} Automationen.${rennerSatz}`,
+        text: `${daten.kampagnen.length} Kampagnen, ${muster.musterListe().length} Vorlagen aus dem Plugin-Ordner (nur die darfst du als Grundlage nehmen), ${daten.automationen.length} Automationen.${rennerSatz}`,
         daten: {
           marke: { titel: marke.titel || '', logo: marke.logo || '', farben: { ...STANDARD_FARBEN, ...(marke.farben || {}) } },
           bestseller: renner,
-          // Die fertigen Muster stehen hier, weil vorlage_aus_muster immer eine Kennung
-          // braucht — eine Aktion ohne id lehnt die Auftragsprüfung grundsätzlich ab.
-          muster: muster.musterListe(),
           empfaenger: kontakte.empfaenger(daten.kontakte).length,
           platzhalter: ['{{vorname}}', '{{nachname}}', '{{name}}', '{{email}}'],
           platzhalterWarenkorb: ['{{warenkorb}}', '{{warenkorbLink}}', '{{summe}}'],
-          kampagnen: daten.kampagnen.map(kampagneKurz),
-          vorlagen: daten.vorlagen.map((v) => ({ id: v.id, name: v.name, beschreibung: v.beschreibung || '' })),
+          // Jeder Kampagnen-Entwurf der KI liegt auch als .html-Datei: dort lässt er sich
+          // gezielt weiterbearbeiten
+          ...(entwurfOrdner ? { entwurfsdateien: entwurfOrdner } : {}),
+          kampagnen: daten.kampagnen.map((k) => {
+            const datei = kampagneDatei(k)
+            return { ...kampagneKurz(k), ...(datei ? { datei } : {}) }
+          }),
+          // Für einen Bot gibt es nur die Muster aus plugins/newsletter/vorlagen/ — Felix'
+          // eigene Vorlagen in Vendo sieht und ändert er nicht.
+          vorlagen: muster.musterListe(),
           automationen: daten.automationen.map((x) => {
             const g = automationGanz(daten, x)
             return { ...g, schritte: g.schritte.map(({ html, ...rest }) => rest) }
@@ -1939,10 +2137,31 @@ module.exports = (ctx) => {
         const fremd = fremdePlatzhalter(wert)
         if (fremd.length) return { ok: false, text: `Im ${wie} stehen Platzhalter, die Vendo nicht ersetzt (${fremd.join(', ')}). Schreib den echten Text.` }
       }
+      // Ein Fehler im Entwurf wird im Entwurf behoben, nicht mit einem neuen. Die KI legte
+      // sonst bei jeder Rückmeldung „Noch offen“ den nächsten an — drei gleiche Entwürfe
+      // in vier Minuten. Gleich heißt: offener Entwurf einer KI mit demselben Namen oder
+      // Betreff, oder aus demselben Muster innerhalb der letzten DOPPEL_FRIST.
+      const gleich = (x, y) => String(x ?? '').trim().toLowerCase() === String(y ?? '').trim().toLowerCase()
+      const vorhanden = daten.kampagnen.find(
+        (x) =>
+          x.erstelltVon &&
+          bots.BOT_AENDERBAR.includes(x.zustand) &&
+          (gleich(x.name, a.name || `Entwurf von ${von}`) || gleich(x.betreff, a.betreff) || (a.vorlage_id && x.vorlageId === a.vorlage_id && Date.now() - Number(x.erstelltAm || 0) < DOPPEL_FRIST))
+      )
+      if (vorhanden) {
+        const datei = kampagneDatei(vorhanden)
+        return {
+          ok: false,
+          text: `Den Entwurf gibt es schon: „${vorhanden.name}“ (ID ${vorhanden.id})${datei ? `, Datei ${datei}` : ''}. Fehler darin behebst du in genau diesem Entwurf — mit kampagne_aendern und dieser ID oder direkt in der Datei —, nicht mit einem neuen. Soll es wirklich eine zweite Kampagne werden, frag erst Felix.`,
+          daten: { id: vorhanden.id, ...(datei ? { datei } : {}) }
+        }
+      }
       let quelle = null
       if (a.vorlage_id) {
-        quelle = vorlageHolen(daten, a.vorlage_id)
-        if (!quelle) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
+        // Grundlage für einen Bot ist immer das Muster aus dem Plugin-Ordner, nie eine
+        // eigene Vorlage aus Vendo — auch nicht die angepasste Fassung eines Musters
+        quelle = musterAlsVorlage(daten, a.vorlage_id)
+        if (!quelle) return { ok: false, text: `Diese Vorlage gibt es nicht. Erlaubt sind nur die Muster aus dem Plugin-Ordner: ${muster.musterListe().map((x) => x.id).join(', ')}.` }
       }
       const k = kampagnen.neueKampagne({ name: a.name || `Entwurf von ${von}`, marke })
       k.betreff = a.betreff ?? ''
@@ -2001,7 +2220,7 @@ module.exports = (ctx) => {
       const banner = freigabeBanner(von, `zur Freigabe, ${wann}. Bestätigen in Vendo unter Newsletter → Kampagnen. Ohne deine Bestätigung geht nichts raus.`)
       const probe = { ...k, html: banner + kampagnen.htmlVon(k, { marke }) }
       const versand = an
-        ? await einzelSenden({ art: 'test', an, betreff: `[Freigabe] ${kampagnen.personalisieren(k.betreff, beispiel)}`, html: mailBauenAus(daten, probe, beispiel).html, kampagneId: k.id })
+        ? await einzelSenden({ art: 'test', an, betreff: `[Freigabe] ${kampagnen.personalisieren(k.betreff, beispiel)}`, html: mailBauenAus(daten, probe, beispiel, {}, { utm: k.name }).html, kampagneId: k.id })
         : { ok: false, text: 'Es ist kein Postfach eingerichtet.' }
 
       // Neu lesen: während die Mail rausging, kann Felix etwas geändert haben
@@ -2025,35 +2244,12 @@ module.exports = (ctx) => {
     }
 
     // ── Vorlagen ──
+    // Ein Bot liest nur die Muster aus plugins/newsletter/vorlagen/. Vorlagen anlegen,
+    // ändern oder löschen gibt es für ihn nicht — das bleibt Felix in Vendo.
     if (aktion === 'vorlage_zeigen') {
-      const v = vorlageHolen(daten, a.id)
-      if (!v) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
-      return { ok: true, text: `Vorlage „${v.name}“.`, daten: vorlageGanz(daten, v) }
-    }
-
-    if (aktion === 'vorlage_neu' || aktion === 'vorlage_aendern') {
-      if (a.html !== undefined && !felderLesen(a.html).length) {
-        return { ok: false, text: 'Das ist eine fertige Mail, keine Vorlage: es fehlen markierte Felder. Jede Stelle, die pro Kampagne neu geschrieben wird, braucht data-feld="name" und data-feld-hinweis="was hier hinkommt" (siehe Skill vendo-newsletter).' }
-      }
-    }
-
-    if (aktion === 'vorlage_neu') {
-      if (daten.vorlagen.length >= vorlagen.MAX_VORLAGEN) return { ok: false, text: `Mehr als ${vorlagen.MAX_VORLAGEN} Vorlagen sind nicht vorgesehen.` }
-      const v = vorlagen.neueVorlage({ name: a.name || `Vorlage von ${von}`, beschreibung: a.beschreibung, html: a.html, htmlRahmen: a.htmlRahmen, marke })
-      daten.vorlagen = [...daten.vorlagen, v]
-      ctx.datenSpeichern(daten)
-      console.log(`Newsletter: ${von} hat eine Vorlage angelegt.`)
-      return { ok: true, text: `Vorlage „${v.name}“ angelegt (ID ${v.id}).`, daten: vorlageGanz(datenLesen(), v) }
-    }
-
-    if (aktion === 'vorlage_aendern') {
-      const v = vorlageHolen(daten, a.id)
-      if (!v) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
-      const aenderung = {}
-      for (const feld of ['name', 'beschreibung', 'html', 'htmlRahmen']) if (a[feld] !== undefined) aenderung[feld] = a[feld]
-      daten.vorlagen = vorlagen.vorlageAendern(daten.vorlagen, v.id, aenderung).liste
-      ctx.datenSpeichern(daten)
-      return { ok: true, text: 'Vorlage geändert.', daten: vorlageGanz(datenLesen(), vorlageHolen(datenLesen(), v.id)) }
+      const v = musterAlsVorlage(daten, a.id)
+      if (!v) return { ok: false, text: `Diese Vorlage gibt es nicht. Erlaubt sind nur die Muster aus dem Plugin-Ordner: ${muster.musterListe().map((x) => x.id).join(', ')}.` }
+      return { ok: true, text: `Vorlage „${v.name}“ aus dem Plugin-Ordner.`, daten: vorlageGanz(daten, v) }
     }
 
     // ── Automationen ──
@@ -2121,25 +2317,6 @@ module.exports = (ctx) => {
       ctx.datenSpeichern(daten)
       console.log(`Newsletter: ${von} hat einen Kampagnen-Entwurf geloescht.`)
       return { ok: true, text: `Entwurf „${k.name}“ gelöscht.` }
-    }
-
-    // ── Weitere Vorlagen-Aktionen ──
-    if (aktion === 'vorlage_aus_kampagne') {
-      const k = kampagneHolen(daten, a.id)
-      if (!k) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
-      if (daten.vorlagen.length >= vorlagen.MAX_VORLAGEN) return { ok: false, text: `Mehr als ${vorlagen.MAX_VORLAGEN} Vorlagen sind nicht vorgesehen.` }
-      const v = vorlagen.ausHtml(kampagnen.htmlVon(k, { marke }), { name: a.name || k.name, beschreibung: a.beschreibung, htmlRahmen: k.htmlRahmen !== false, marke })
-      daten.vorlagen = [...daten.vorlagen, v]
-      ctx.datenSpeichern(daten)
-      return { ok: true, text: `Vorlage „${v.name}“ aus der Kampagne angelegt (ID ${v.id}).`, daten: vorlageGanz(datenLesen(), v) }
-    }
-
-    if (aktion === 'vorlage_loeschen') {
-      const v = vorlageHolen(daten, a.id)
-      if (!v) return { ok: false, text: 'Diese Vorlage gibt es nicht.' }
-      daten.vorlagen = daten.vorlagen.filter((x) => x.id !== v.id)
-      ctx.datenSpeichern(daten)
-      return { ok: true, text: `Vorlage „${v.name}“ gelöscht. Kampagnen, die sie schon übernommen haben, bleiben unverändert.` }
     }
 
     // ── Weitere Automations-Aktionen ──
@@ -2239,13 +2416,6 @@ module.exports = (ctx) => {
       }
     }
 
-    if (aktion === 'vorlage_aus_muster') {
-      const r = eigene.get('vorlageAusMuster')({ id: a.id })
-      // Bei falscher Kennung die gültigen mitschicken, statt den Bot raten zu lassen
-      if (!r.ok) return { ...r, text: `${r.text} Vorhanden: ${muster.musterListe().map((x) => x.id).join(', ')}.`, daten: { muster: muster.musterListe() } }
-      return { ok: true, text: r.text, daten: { id: r.id } }
-    }
-
     if (aktion === 'shop_bestseller' || aktion === 'shop_warenkorb') {
       const art = aktion === 'shop_warenkorb' ? 'warenkorb' : 'bestseller'
       const r = await rennerSichern(art, { tage: Number(a.tage) || RENNER_TAGE })
@@ -2270,6 +2440,7 @@ module.exports = (ctx) => {
       const domain = await shopAdresseSichern()
       if (!domain) return { ok: false, text: 'Vendo kennt die Adresse des Shops nicht. Felix muss im Reiter „Kontakte“ den Shop eintragen.' }
       const [produkte, sammlungen] = await Promise.all([shoplinks.produkteLaden(domain, abrufen, { suche: a.suche }), shoplinks.sammlungenLaden(domain, abrufen)])
+      titelMerken(produkte.produkte)
       if (!produkte.gesamt) return { ok: false, text: `Die Produktliste von ${domain} ist gerade nicht lesbar.` }
       return {
         ok: true,
@@ -2281,9 +2452,13 @@ module.exports = (ctx) => {
     if (aktion === 'links_pruefen') {
       const id = String(a.id)
       let html = ''
-      if (id.startsWith('k')) html = kampagnen.htmlVon(kampagneHolen(daten, id) || {}, { marke })
-      else if (id.startsWith('v')) html = kampagnen.htmlVon(vorlageHolen(daten, id) || {}, { marke })
-      else if (id.startsWith('a')) html = ((automationHolen(daten, id) || {}).schritte || []).map((s) => kampagnen.htmlVon(s, { marke })).join(' ')
+      // Nachschlagen statt am Anfangsbuchstaben raten: Muster heißen wie ihre Datei
+      const k = kampagneHolen(daten, id)
+      const v = !k && musterAlsVorlage(daten, id)
+      const x = !k && !v && automationHolen(daten, id)
+      if (k) html = kampagnen.htmlVon(k, { marke })
+      else if (v) html = kampagnen.htmlVon(v, { marke })
+      else if (x) html = (x.schritte || []).map((s) => kampagnen.htmlVon(s, { marke })).join(' ')
       if (!html) return { ok: false, text: 'Dazu gibt es keinen Inhalt (ID aus ueberblick nehmen).' }
       const ergebnis = await shopAdressenPruefen(html)
       return ergebnis.ok
@@ -2360,13 +2535,68 @@ module.exports = (ctx) => {
   let botStand = 0
   const botAenderungen = []
 
+  const aenderungMelden = (aktion, id, von) => {
+    botStand += 1
+    botAenderungen.push({ aktion, id: id || null, von, zeit: Date.now() })
+    if (botAenderungen.length > 20) botAenderungen.shift()
+  }
+
+  // Gespiegelt werden nur Kampagnen-Entwürfe, die eine KI angelegt hat (`erstelltVon`),
+  // solange sie Entwurf sind oder auf Freigabe warten. Vorlagen nicht — die Muster liegen
+  // schon in plugins/newsletter/vorlagen/, eine zweite Kopie hier wäre nur Verwirrung —,
+  // und auch keine Automationen und keine Kampagnen, die Felix selbst angelegt hat. Wird
+  // eine Kampagne geplant, verschwindet ihre Datei.
+  const alsDatei = (k) => Boolean(k?.erstelltVon) && bots.BOT_AENDERBAR.includes(k.zustand)
+
+  const entwurfEintraege = (daten) =>
+    daten.kampagnen.filter(alsDatei).flatMap((k) => {
+      const datei = entwurfsdateien.dateiName({ art: 'kampagne', id: k.id })
+      return datei ? [{ art: 'kampagne', id: k.id, datei, titel: `Kampagnen-Entwurf „${k.name}“ (ID ${k.id})`, html: kampagnen.htmlVon(k, { marke: daten.marke }), aenderbar: true, geaendertAm: k.geaendertAm }] : []
+    })
+
+  // Eine geänderte Datei in Vendos Daten übernehmen — mit denselben Grenzen wie
+  // kampagne_aendern: Geplantes bleibt unberührt, eine offene Freigabe ist zurückgezogen.
+  const DATEI_VON = 'Die KI (über die .html-Datei)'
+  const entwurfUebernehmen = (eintrag, html) => {
+    if (!hatInhalt(html)) return { ok: false, text: 'Die Datei ist leer. Eine leere Mail übernimmt Vendo nicht.' }
+    if (html.length > MAX_HTML) return { ok: false, text: `Die Datei ist zu groß (höchstens ${MAX_HTML} Zeichen).` }
+    const daten = datenLesen()
+    const k = kampagneHolen(daten, eintrag.id)
+    if (!k) return { ok: false, text: 'Diese Kampagne gibt es nicht mehr.' }
+    if (!bots.BOT_AENDERBAR.includes(k.zustand)) return { ok: false, text: `Die Kampagne ist ${k.zustand}. Ändern kann sie jetzt nur Felix in Vendo.` }
+    daten.kampagnen = kampagnen.kampagneAendern(daten.kampagnen, k.id, { html, zustand: 'entwurf', freigabe: null }).liste
+    ctx.datenSpeichern(daten)
+    aenderungMelden('datei', eintrag.id, DATEI_VON)
+    console.log(`Newsletter: Aenderung aus ${eintrag.datei} uebernommen.`)
+    return { ok: true }
+  }
+
+  // Ein Abgleich zwischen Vendos Daten und den Dateien. Läuft jede Sekunde und vor und nach
+  // jedem Bot-Auftrag — so sieht der Bot immer seine letzte Dateiänderung, und eine eben
+  // angelegte Kampagne hat ihre Datei, bevor die Antwort rausgeht.
+  const entwuerfeAbgleichen = () => {
+    if (!entwurfOrdner) return null
+    try {
+      const r = entwurfsdateien.abgleichen(entwurfEintraege(datenLesen()), { ordner: entwurfOrdner, uebernehmen: entwurfUebernehmen, merker: entwurfMerker })
+      entwurfOffen = r.offen
+      for (const a of r.abgelehnt) console.warn(`Newsletter: Aenderung in ${a.datei} nicht uebernommen.`)
+      for (const v of r.verworfen) console.warn(`Newsletter: Datei und Vendo gleichzeitig geaendert - Vendo gilt, die Datei liegt als ${v} daneben.`)
+      return r
+    } catch (fehler) {
+      console.warn(`Newsletter: Abgleich der Entwurfsdateien gescheitert: ${fehler?.message || fehler}`)
+      return null
+    }
+  }
+
   const botAuftrag = async (roh) => {
+    entwuerfeAbgleichen()
     const antwort = await botAuftragAusfuehren(roh)
     const aktion = String(roh?.aktion || '')
-    if (antwort.ok && !bots.NUR_LESEN.includes(aktion)) {
-      botStand += 1
-      botAenderungen.push({ aktion, id: roh?.argumente?.id || antwort.daten?.id || null, von: botName(roh), zeit: Date.now() })
-      if (botAenderungen.length > 20) botAenderungen.shift()
+    entwuerfeAbgleichen()
+    if (antwort.ok && !bots.NUR_LESEN.includes(aktion)) aenderungMelden(aktion, roh?.argumente?.id || antwort.daten?.id, botName(roh))
+    // Wo der neue Entwurf als Datei liegt, gehört in den Text — dort arbeitet die KI weiter
+    if (antwort.ok && antwort.daten?.datei && ['kampagne_neu', 'kampagne_kopieren'].includes(aktion)) {
+      antwort.text = `${antwort.text} Als Datei: ${antwort.daten.datei}. Den Aufbau umbauen: kampagne_aendern mit dem kompletten html. Nur eine kleine Stelle: patch auf die Datei, nie write_file.`
     }
     // Was noch fehlt, gehört in den Text — sonst überliest es der Bot im JSON darunter
     if (antwort.ok && antwort.daten?.hinweise?.length && !NUR_LESEN_OHNE_HINWEIS.includes(aktion)) {
@@ -2421,6 +2651,13 @@ module.exports = (ctx) => {
         arbeitet = false
       }
     }, 1000).unref?.()
+  }
+
+  // Entwurfsdateien jede Sekunde abgleichen: was die KI in einer Datei speichert, steht kurz
+  // darauf in Vendo, und was Felix in Vendo ändert, kurz darauf in der Datei.
+  if (entwurfOrdner && !entwurfLaeuft) {
+    entwurfLaeuft = true
+    setInterval(entwuerfeAbgleichen, 1000).unref?.()
   }
 
   // ── Takt ──

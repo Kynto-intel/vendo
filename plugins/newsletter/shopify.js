@@ -108,6 +108,18 @@ const KORB_RENNER_SCHLANK = `query($cursor: String, $filter: String!) {
   }
 }`
 
+// Kunden mit Zustimmung, die schon bestellt haben, samt ihrer letzten Bestellung: daraus
+// sucht die Rückgewinnung aus, wer lange nichts gekauft hat. Der Zeitraum wird hier bewusst
+// nicht im `query` gefiltert, sondern danach im Modul — `order_date` meint bei Shopify
+// irgendeine Bestellung, nicht die letzte, und ein falsch verstandener Filter würde still
+// die Falschen anschreiben. Ohne Bestellung (`orders_count:0`) gibt es nichts zurückzugewinnen.
+const KAEUFER = `query($cursor: String) {
+  customers(first: ${SEITE}, after: $cursor, query: "accepts_marketing:true AND orders_count:>0") {
+    pageInfo { hasNextPage endCursor }
+    nodes { id email firstName lastOrder { id createdAt } }
+  }
+}`
+
 const ABMELDUNG = `mutation($input: CustomerEmailMarketingConsentUpdateInput!) {
   customerEmailMarketingConsentUpdate(input: $input) {
     customer { id }
@@ -320,6 +332,42 @@ async function bestellerHolen({ shop, token, seit, holen = null } = {}) {
   return { ok: true, adressen: [...adressen], seiten }
 }
 
+function kaeuferAus(knoten) {
+  const email = String(knoten?.email || '').trim().toLowerCase()
+  const bestellung = knoten?.lastOrder
+  const am = Date.parse(bestellung?.createdAt || '')
+  if (!email || !bestellung?.id || !Number.isFinite(am)) return null
+  return {
+    email,
+    vorname: String(knoten?.firstName || '').trim(),
+    shopifyId: knoten?.id || null,
+    letzteBestellungId: String(bestellung.id),
+    letzteBestellungAm: am
+  }
+}
+
+// Alle Kunden mit Zustimmung und mindestens einer Bestellung, jeweils mit der letzten.
+// Läuft höchstens einmal am Tag (siehe ausloeserPruefen in haupt.js).
+async function kaeuferHolen({ shop, token, holen = null } = {}) {
+  let cursor = null
+  let seiten = 0
+  const kaeufer = []
+  while (seiten < MAX_SEITEN) {
+    const { daten, fehler } = await anfrage({ shop, token, query: KAEUFER, variables: { cursor }, holen })
+    if (fehler) return { ok: false, fehler, kaeufer }
+    const block = daten?.customers
+    if (!block) return { ok: false, fehler: 'Shopify hat keine Kundenliste geliefert.', kaeufer }
+    for (const knoten of block.nodes || []) {
+      const k = kaeuferAus(knoten)
+      if (k) kaeufer.push(k)
+    }
+    seiten++
+    if (!block.pageInfo?.hasNextPage) break
+    cursor = block.pageInfo.endCursor
+  }
+  return { ok: true, kaeufer, seiten, abgebrochen: seiten >= MAX_SEITEN }
+}
+
 // Welche Produkte sich seit einem Zeitpunkt am häufigsten verkauft haben. Gezählt werden
 // Stückzahlen, nicht Bestellungen: zwei Hoodies in einer Bestellung sind zwei verkaufte
 // Hoodies. Zurück kommt die ganze Rangliste, das Kürzen auf die besten fünf macht der
@@ -391,6 +439,8 @@ module.exports = {
   bestsellerHolen,
   korbRennerHolen,
   bestellerHolen,
+  kaeuferHolen,
+  kaeuferAus,
   kontaktAus,
   warenkorbAus,
   istFeldFehler,
@@ -406,5 +456,6 @@ module.exports = {
   RENNER_SCHLANK,
   WARENKOERBE_REICH,
   WARENKOERBE_SCHLANK,
-  BESTELLUNGEN
+  BESTELLUNGEN,
+  KAEUFER
 }

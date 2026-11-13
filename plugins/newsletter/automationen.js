@@ -4,7 +4,8 @@
 // Eine Automation ist eine Folge von Mails mit Wartezeiten, ausgelöst durch ein Ereignis:
 //   warenkorb       — jemand hat einen Warenkorb stehen gelassen
 //   willkommen      — jemand ist neu als Abonnent dazugekommen
-//   rueckgewinnung   — jemand hat lange nichts gekauft (Auslöser kommt später)
+//   rueckgewinnung  — jemand hat lange nichts gekauft: die letzte Bestellung liegt im
+//                     eingestellten Fenster (Voreinstellung 120 bis 365 Tage zurück)
 //
 // Ein „Lauf“ ist eine Person in einer Automation: er merkt sich, welcher Schritt dran ist und
 // wann. Was hier nie passieren darf:
@@ -43,7 +44,7 @@ const AUSLOESER = {
   },
   rueckgewinnung: {
     name: 'Rückgewinnung',
-    beschreibung: 'Jemand hat lange nichts gekauft. Der Auslöser dafür ist noch nicht gebaut.',
+    beschreibung: 'Jemand hat lange nichts gekauft: die letzte Bestellung liegt im eingestellten Zeitraum zurück. Vendo sieht einmal am Tag bei Shopify nach.',
     abbruchBei: ['bestellung', 'abmeldung'],
     standardSchritte: [{ nach: STUNDE, verfallNach: 30 * 24 * STUNDE, betreff: 'Lange nichts gehört', html: '' }]
   }
@@ -53,6 +54,59 @@ const ARTEN = Object.keys(AUSLOESER)
 const neueId = (prefix) => `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 const sauber = (wert) => String(wert ?? '').trim()
 const alsListe = (liste) => (Array.isArray(liste) ? liste.filter((x) => x && typeof x === 'object') : [])
+
+// ── Rückgewinnung: wer ist dran? ──
+// Das Fenster: letzte Bestellung mindestens `abTage` und höchstens `bisTage` her. Die
+// Obergrenze hält Leute heraus, die vor Jahren einmal bestellt haben und Vendo kaum noch
+// kennen — eine Mail an sie bringt eher Beschwerden als Käufe.
+const TAG = 24 * STUNDE
+const RUECK_FENSTER = { abTage: 120, bisTage: 365 }
+const RUECK_GRENZEN = { abMin: 30, bisMax: 1825 }
+// Neue Serien je Tag. Beim ersten Einschalten liegen oft Hunderte im Fenster; die sollen
+// nicht an einem Tag aus dem Postfach gehen, das auch der Kundenservice benutzt.
+const RUECK_JE_TAG = 100
+
+function rueckFenster(automation = {}) {
+  const ab = Number(automation.abTage)
+  const bis = Number(automation.bisTage)
+  return {
+    abTage: Number.isInteger(ab) ? ab : RUECK_FENSTER.abTage,
+    bisTage: Number.isInteger(bis) ? bis : RUECK_FENSTER.bisTage
+  }
+}
+
+function rueckFensterFehler({ abTage, bisTage }) {
+  const fehler = []
+  if (!Number.isInteger(abTage) || abTage < RUECK_GRENZEN.abMin) fehler.push(`Rückgewinnung: „ab“ muss mindestens ${RUECK_GRENZEN.abMin} Tage sein.`)
+  if (!Number.isInteger(bisTage) || bisTage > RUECK_GRENZEN.bisMax) fehler.push(`Rückgewinnung: „bis“ darf höchstens ${RUECK_GRENZEN.bisMax} Tage sein.`)
+  if (Number.isInteger(abTage) && Number.isInteger(bisTage) && bisTage <= abTage) fehler.push('Rückgewinnung: „bis“ muss größer sein als „ab“.')
+  return fehler
+}
+
+// Aus den Käufern (shopify.kaeuferHolen) die heraussuchen, deren letzte Bestellung im
+// Fenster liegt und für die es noch keine Serie gab. `gemerkt` ist { email: bestellungId }
+// der schon angeschriebenen — es überdauert das Aufräumen alter Läufe, sonst bekäme dieselbe
+// Person nach 30 Tagen dieselbe Mail noch einmal. Kauft sie wieder und bleibt dann erneut
+// weg, ist ihre letzte Bestellung eine andere, und sie darf wieder dran sein.
+// Die mit der jüngsten Bestellung zuerst: sie sind am ehesten zurückzuholen.
+function rueckKandidaten(kaeufer, { abTage, bisTage, gemerkt = {}, jetzt = Date.now(), grenze = RUECK_JE_TAG } = {}) {
+  const frueheste = jetzt - bisTage * TAG
+  const spaeteste = jetzt - abTage * TAG
+  const gesehen = new Set()
+  return alsListe(kaeufer)
+    .filter((k) => {
+      const email = sauber(k.email).toLowerCase()
+      const am = Number(k.letzteBestellungAm)
+      if (!email || !k.letzteBestellungId || !Number.isFinite(am)) return false
+      if (am < frueheste || am > spaeteste) return false
+      if (gemerkt[email] === k.letzteBestellungId) return false
+      if (gesehen.has(email)) return false
+      gesehen.add(email)
+      return true
+    })
+    .sort((a, b) => b.letzteBestellungAm - a.letzteBestellungAm)
+    .slice(0, Math.max(Number(grenze) || 0, 0))
+}
 
 function neueAutomation(art, { jetzt = Date.now() } = {}) {
   const vorlage = AUSLOESER[art]
@@ -64,6 +118,7 @@ function neueAutomation(art, { jetzt = Date.now() } = {}) {
     aktiv: false, // bewusst aus: erst Texte schreiben, Testmail prüfen, dann einschalten
     nurMitZustimmung: true,
     schritte: vorlage.standardSchritte.map((s) => ({ ...s, html: '' })),
+    ...(art === 'rueckgewinnung' ? { ...RUECK_FENSTER } : {}),
     erstelltAm: jetzt,
     geaendertAm: jetzt
   }
@@ -75,6 +130,7 @@ function automationPruefen(automation = {}) {
   if (!ARTEN.includes(automation.art)) fehler.push('Unbekannte Art von Automation.')
   const schritte = Array.isArray(automation.schritte) ? automation.schritte : []
   if (!schritte.length) fehler.push('Die Automation hat keinen Schritt.')
+  if (automation.art === 'rueckgewinnung') fehler.push(...rueckFensterFehler(rueckFenster(automation)))
   schritte.forEach((schritt, i) => {
     const nummer = i + 1
     if (!sauber(schritt?.betreff)) fehler.push(`Schritt ${nummer}: der Betreff fehlt.`)
@@ -221,5 +277,11 @@ module.exports = {
   aufraeumen,
   stand,
   darfSenden,
-  schluesselVon
+  schluesselVon,
+  rueckFenster,
+  rueckFensterFehler,
+  rueckKandidaten,
+  RUECK_FENSTER,
+  RUECK_GRENZEN,
+  RUECK_JE_TAG
 }

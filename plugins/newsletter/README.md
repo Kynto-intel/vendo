@@ -9,7 +9,7 @@ zulässt — eine `PLAN.md` würde als Fehler gemeldet.
 
 ## Stand
 
-Letzte Änderung: 2026-11-11
+Letzte Änderung: 2026-11-13
 
 **Gebaut:**
 
@@ -501,7 +501,152 @@ Letzte Änderung: 2026-11-11
   Tests: newsletter-muster.test.js (63) — **478 insgesamt**.
   Bericht: test-results/newsletter-muster.result.md.
 
-**Gesamtstand der Tests: 478 in achtzehn Dateien, alle bestanden, plus der App-Lauf.**
+- **Jeder Entwurf auch als .html-Datei** (2026-11-12): Ein Entwurf der KI lag nur in
+  `newsletter.json`, und dort schreibt nur Vendo. Weiterarbeiten konnte die KI nur, indem
+  sie das ganze HTML über `kampagne_aendern` neu schickte — gezielt eine Stelle ändern ging
+  nicht. Jetzt spiegelt `entwurfsdateien.js` jede Kampagne, jede Vorlage und jeden
+  Automationsschritt als eigene Datei in `daten/plugins/newsletter/entwuerfe/`
+  (`kampagne-<id>.html`, `vorlage-<id>.html`, `automation-<id>-schritt-<n>.html`), mit einem
+  Kommentar oben, der sagt, was die Datei ist. Der Abgleich läuft jede Sekunde und vor und
+  nach jedem Bot-Auftrag, in beide Richtungen: was Felix in Vendo ändert, steht kurz darauf
+  in der Datei; was die KI in der Datei speichert, übernimmt Vendo — mit denselben Grenzen
+  wie ein Bot-Auftrag (geplante Kampagnen und eingeschaltete Automationen bleiben, eine
+  Vorlage braucht `data-feld`, eine leere Datei zählt nicht; eine offene Freigabe ist danach
+  zurückgezogen). Eine abgelehnte Änderung bleibt in der Datei stehen, der Grund steht in den
+  Hinweisen von `kampagne_zeigen` & Co. Ändern beide gleichzeitig, gewinnt das Jüngere, das
+  andere liegt als `*.verworfen.html` daneben. Gelöscht werden nur Dateien, die Vendo selbst
+  angelegt hat (gemerkt in `entwuerfe/.stand.json`, übersteht einen Neustart). Die Antworten
+  des Bots nennen den Pfad im Feld `datei`, `ueberblick` den Ordner unter `entwurfsdateien`.
+  Die Ansicht zeigt eine übernommene Dateiänderung wie eine Bot-Änderung an.
+  Auf Hermes-Seite: Systemprompt im Plugin `vendo-newsletter` (jetzt 3988 von 4000 Zeichen)
+  und der Skill `vendo-newsletter` (0.5.0) erklären den Weg; vorher gesichert als
+  `*.vor-entwurfsdateien-20261112.bak`.
+  Tests: newsletter-entwurfsdateien.test.js (16) — **490 insgesamt**.
+  Bericht: test-results/newsletter-entwurfsdateien.result.md.
+
+- **Muster sind Vorlagen, eine Liste** (2026-11-12, nachmittags): Im Reiter „Vorlagen“
+  standen elf Vorlagen und darunter noch einmal die sieben Muster — jeder Klick auf eine
+  Musterkarte hatte ohne Rückfrage eine Kopie angelegt, auch doppelt, und keine Kopie
+  folgte einer späteren Änderung der Muster-Datei. Jetzt stehen die Muster **selbst** in
+  der Vorlagenliste (Marke „Muster“, ID = Dateiname), lassen sich ansehen, testen und
+  anwenden, ohne dass etwas kopiert wird. Eine eigene Fassung (`musterId` in den Daten)
+  entsteht erst, wenn jemand ein Muster wirklich ändert — in Vendo, über `vorlage_aendern`
+  oder über die .html-Datei —, und sie steht dann an Stelle des Musters (Marke
+  „Angepasst“, Knopf „Auf Muster zurücksetzen“). Selbstspeichern mit gleichem Inhalt legt
+  keine Fassung an. Ein Muster selbst lässt sich nicht löschen; ältere Kopien ohne
+  `musterId` ordnet der gleiche Name zu. `vorlage_aus_muster` legt nichts mehr an und
+  nennt nur die ID, `ueberblick` hat keine eigene Liste `muster` mehr. `muster.js` liest
+  die Dateien neu, sobald sich eine ändert — ohne Neustart. Systemprompt und Skill der
+  Newsletter-Texterin nachgezogen (gesichert als `*.vor-muster-als-vorlagen-20261112.bak`).
+  Tests: newsletter-muster.test.js (66) — **493 insgesamt**.
+  Bericht: test-results/newsletter-muster.result.md.
+
+- **Die KI baut nur aus den Mustern, gespiegelt werden nur ihre Entwürfe** (2026-11-12,
+  abends): Felix' Regel — `daten/plugins/newsletter/entwuerfe/` enthält nur noch
+  Kampagnen-Entwürfe, die eine KI angelegt hat (`erstelltVon`), solange sie Entwurf sind
+  oder auf Freigabe warten. Keine Vorlagen und Muster mehr (die lagen dort doppelt zum
+  Ordner `vorlagen/`), keine Automationsschritte, keine Kampagnen, die Felix selbst angelegt
+  hat; wird ein Entwurf geplant, verschwindet seine Datei. Und ein Bot nimmt als Grundlage
+  **nur** die Muster aus `plugins/newsletter/vorlagen/`: `ueberblick` nennt nur sie,
+  `vorlage_zeigen` und `kampagne_neu` (`vorlage_id`) nehmen nur ihre IDs — immer das
+  Original aus der Datei, auch wenn Felix in Vendo eine angepasste Fassung hat. Die Aktionen
+  `vorlage_neu`, `vorlage_aendern`, `vorlage_aus_kampagne`, `vorlage_aus_muster` und
+  `vorlage_loeschen` gibt es nicht mehr; Vorlagen pflegt nur Felix. Hermes-Werkzeug,
+  Systemprompt (3772 Zeichen) und Skill (0.7.0) der Texterin nachgezogen, vorher gesichert
+  als `*.vor-nur-muster-20261112.bak`; die Aktionslisten von Werkzeug und `bots.js` sind
+  deckungsgleich geprüft.
+  Tests: newsletter-bots (31), newsletter-entwurfsdateien (16), newsletter-muster (65) —
+  **491 insgesamt**. Berichte: test-results/newsletter-entwurfsdateien.result.md,
+  newsletter-muster.result.md.
+
+- **Ein Entwurf, und das Muster verbessern** (2026-11-12, abends): Die Texterin legte bei
+  jedem Fehler einen neuen Entwurf an (dreimal in vier Minuten) und tauschte im Muster nur
+  Produkte (Aufbau zu 99,8 % gleich). Jetzt lehnt `kampagne_neu` eines Bots einen zweiten
+  offenen Entwurf mit gleichem Namen, gleichem Betreff oder aus demselben Muster (zwei
+  Stunden) ab und nennt die ID des vorhandenen. Und `aufbauAehnlichkeit` (html-mail.js)
+  misst die Folge der Elemente gegen das Muster: ab 90 % steht es unter „Noch offen“, und
+  die Freigabe ist gesperrt. Felix selbst betrifft beides nicht. Systemprompt und Skill
+  der Texterin nachgezogen (gesichert als `*.vor-ein-entwurf-20261112.bak`).
+  Tests: newsletter-bots (33), newsletter-mailpruefung (25) — **494 insgesamt**.
+  Bericht: test-results/newsletter-bots.result.md (Nachtrag).
+
+- **Umbauten über `kampagne_aendern`** (2026-11-12, später Abend): Ein Umbau der Texterin
+  ging verloren, weil Hermes' Dateiwerkzeug `write_file` das Überschreiben der
+  Entwurfsdatei ablehnte (Schutz gegen veraltete Lesestände). Seitdem: Aufbau umbauen nur
+  mit `kampagne_aendern` und komplettem HTML, kleine Stellen per `patch`, nie
+  `write_file`; bei Ablehnung sofort `kampagne_aendern`. Steht im Skill, im Systemprompt,
+  im Antworttext von `kampagne_neu` und im Kopfkommentar der Datei.
+  Bericht: test-results/newsletter-bots.result.md (Nachtrag).
+
+- **Spalten brechen auf dem Handy um** (2026-11-12, nachts): Auf Felix' Handy-Bild standen
+  die Produkte zweispaltig und winzig — alle Spalten waren starre `width="50%"`-Zellen, und
+  die Bausteine der Texterin nannten das sogar „gewollt“. Jetzt bringt Vendos Hülle einen
+  einzigen Handy-Stil im Kopf mit (Media Query bis 620 px, Klassen `spalte`, `bild-voll`,
+  `nur-gross`, `aussen`); das Layout bleibt Inline-CSS. Die Muster tragen `class="spalte"`,
+  `starreSpalten` meldet Zellen ohne die Klasse und sperrt bei KI-Entwürfen die Freigabe.
+  Gemessen bei 375 px: Produktbilder 309–311 px statt 140–146 px; bei 900 px weiter zwei
+  Spalten. Bausteine und Skill der Texterin nachgezogen (gesichert als
+  `*.vor-handy-spalten-20261112.bak`).
+  Tests: bausteine (18), mailpruefung (26), muster (66), bots (34) — **497 insgesamt**.
+  Bericht: test-results/newsletter-handy.result.md.
+
+- **Verkaufsstarke Texte: Fakten und Hausregeln** (2026-11-12, nachts): Die KI schrieb
+  Allgemeinplätze, weil sie über die Produkte nichts wusste. Jetzt liefern Produktliste,
+  Bestseller und Warenkorb-Renner je Produkt die `beschreibung` aus dem Shop (Klartext,
+  höchstens 400 Zeichen; `shoplinks.kurzText`). `hausregelVerstoesse` (html-mail.js) prüft
+  Betreff, Vorschautext und Text auf Gedankenstriche und die Floskeln aus Felix'
+  Vermeiden-Liste samt falscher Dringlichkeit; bei KI-Entwürfen sperrt das die Freigabe.
+  Produktnamen aus dem Shop mit Strich sind ausgenommen. Dazu eine Text-Anleitung
+  `references/verkaufstexte.md` im Skill der Texterin (gesichert als
+  `*.vor-verkaufstexte-20261112.bak`).
+  Tests: bots (35), mailpruefung (27), renner (23) — **500 insgesamt**.
+  Bericht: test-results/newsletter-texte.result.md.
+
+- **Produkte mit eigenem Text, Hinweise für Automationen, 429** (2026-11-12, nachts): Die
+  Produktkarten von vier Mustern hatten gar keinen Platz für einen Beschreibungstext — die
+  Muster brachten der KI bei, Produkte nicht zu beschreiben. Jetzt hat jede Karte ein Feld
+  `produktN_text`, und `produkteOhneText` sperrt bei KI-Entwürfen die Freigabe, solange ein
+  Produkt nur Name und Preis hat. Automationsschritte zeigen dieselben Prüfungen als
+  Hinweis. Die Linkprüfung merkt sich 429 und Serverfehler nicht mehr. Der Skill der
+  Texterin ist nach einer Web-Recherche neu geschrieben (aus Mustern Entwürfe machen, keine
+  Vorlagen bauen; Betreff, Vorschautext, Produkttexte, Aufbau je Mailart mit Quellen),
+  zwölf Widersprüche sind bereinigt.
+  Tests: bots (36), mailpruefung (29), muster (66) — **503 insgesamt**.
+  Bericht: test-results/newsletter-skill.result.md.
+
+- **UTM-Parameter beim Bauen der Mail** (2026-11-13): Vendo-Mails sind eigenes HTML, und
+  ohne UTM ordnet Shopify Analytics Besuche keiner Mail zu (bei Felix im September
+  nachgewiesen: 2,2 % Klicks, 0 Sitzungen). Jetzt hängt `mailBauenAus` an jeden Link in den
+  eigenen Shop `utm_source=vendo&utm_medium=email&utm_campaign=<Kurzname>` an — bei
+  Kampagnen aus dem Namen, bei Automationen aus Name und Schritt. Fremde Links, `mailto`,
+  Platzhalter wie `{{warenkorbLink}}`, schon gesetzte UTM, Bilder, der Fuß, Vorlagen und
+  die Beispielmail bleiben unberührt. Gilt für Versand, Vorschau und Testmails, damit Felix
+  sieht, was rausgeht. Die Anweisung „von Hand anhängen“ ist aus den Skills der Texterin
+  wieder entfernt.
+  Tests: newsletter-utm.test.js (5) — **508 insgesamt**.
+  Bericht: test-results/newsletter-utm.result.md.
+
+- **Auslöser für die Rückgewinnung** (2026-11-13): Die Automation war angelegt, aber nichts
+  setzte sie in Gang. Jetzt holt `shopify.kaeuferHolen` **einmal am Tag** alle Kunden mit
+  Zustimmung und mindestens einer Bestellung (`accepts_marketing:true AND orders_count:>0`),
+  jeweils mit `lastOrder { id createdAt }`. `automationen.rueckKandidaten` nimmt die, deren
+  **letzte** Bestellung im Fenster liegt (Voreinstellung 120 bis 365 Tage, im Editor
+  einstellbar). Den Zeitraum prüft das Modul selbst, nicht Shopify: `order_date` meint dort
+  irgendeine Bestellung, nicht die letzte. Jede Person kommt **einmal je letzter Bestellung**
+  dran. Das merkt sich `rueckgewinnung.gemerkt` in den Plugin-Daten, damit es das Aufräumen
+  alter Läufe überdauert. Kauft jemand wieder und bleibt erneut weg, ist das ein neuer Anlass.
+  Höchstens **100 neue Serien am Tag**, die jüngsten Bestellungen zuerst, damit das
+  gemeinsame Postfach beim ersten Einschalten nicht flutet. Eine Bestellung bricht die Serie
+  ab wie beim Warenkorb. Einschalten braucht den Shopify-Zugang. Frisch eingeschaltet wird
+  beim nächsten Takt geprüft, nicht erst am nächsten Tag. Im Editor: zwei Felder für das
+  Fenster und „Zuletzt geprüft“.
+  Tests: newsletter-rueckgewinnung.test.js (18) — **526 insgesamt**.
+  Bericht: test-results/newsletter-rueckgewinnung.result.md.
+- **Gast-Checkouts und Double-Opt-In gestrichen** (2026-11-13, Felix' Entscheidung): Beides
+  wird nicht gebraucht. Anmeldungen kommen nur über Shopify, und Bestellungen ohne
+  Kundenkonto bleiben bei Warenkorb-Mails und beim Abbruch außen vor.
+
+**Gesamtstand der Tests: 526 in zwanzig Dateien, alle bestanden, plus der App-Lauf.**
 
 **Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
 
@@ -517,8 +662,14 @@ Letzte Änderung: 2026-11-11
 4. **Eine Kampagne von Luzzy entwerfen lassen**, Vorschau ansehen, Testmail schicken und in
    Outlook, Gmail und auf dem Handy anschauen. Erst das belegt die Bausteine.
 5. **SPF, DKIM und DMARC** für die Domain prüfen, bevor die erste echte Kampagne rausgeht.
-6. **Offene Punkte** aus „Offene Entscheidungen", vor allem IMAP für Abmeldungen per Mail
-   und Double-Opt-In. **Rückgewinnung** hat noch keinen Auslöser (siehe Phase 4).
+6. **Abmeldungen per Mail** (steht seit 2026-11-09): bei IONOS die Filterregel anlegen, die
+   Mails an die Abmeldeadresse in den Ordner `Abmeldungen` legt, dann im Reiter „Kontakte“
+   „Verbindung prüfen“ und den Schalter einschalten.
+7. **Rückgewinnung**: Texte schreiben, Testmail, einschalten. Nach dem ersten Takt zeigt der
+   Editor „Zuletzt geprüft“. Steht stattdessen im Terminal eine Warnung, hat Shopify die
+   Abfrage abgelehnt.
+
+Nach Felix' Stand vom 2026-11-13 sind die Punkte 1 bis 3 erledigt.
 
 **Noch nicht geprüft:** Das Plugin wurde in Vendo noch nicht geöffnet — dass der Bereich
 erscheint, die Reiter umschalten und das Formular speichert, steht aus. Weil `haupt.js` neu
@@ -570,6 +721,7 @@ plugins/newsletter/
   kampagnen.js       prüfen, personalisieren, Zeitplan, KI-Auftrag und -Antwort
   vorlagen.js        wiederverwendbare Bausteinfolgen, eigener KI-Auftrag
   automationen.js    Zustandsmaschine: Läufe, Schritte, Verfall, Abbruch
+  entwurfsdateien.js jeder Entwurf auch als .html-Datei, Abgleich in beide Richtungen
   protokoll.js       eine Zeile je Mail in Monatsdateien
   README.md          diese Datei
 ```
@@ -623,7 +775,7 @@ Vendos Plugin-Speicher (`daten/plugins/newsletter.json`) hält die Stammdaten:
 {
   "zugang":       { "benutzer", "passwortVerschluesselt", "absenderName", "antwortAn" },
   "kontakte":     [ { "email", "vorname", "nachname", "quelle", "zustimmungAm", "gesperrt", "shopifyId" } ],
-  "vorlagen":     [ { "id", "name", "bausteine" } ],
+  "vorlagen":     [ { "id", "name", "beschreibung", "html", "musterId" } ],  (nur eigene; Muster kommen aus vorlagen/)
   "kampagnen":    [ { "id", "name", "betreff", "vorschau", "bausteine", "zielgruppe", "geplantAm", "zustand" } ],
   "automationen": [ { "id", "name", "ausloeser", "schritte", "aktiv", "nurMitZustimmung" } ],
   "laeufe":       [ { "id", "kampagneId", "begonnenAm", "gesendet", "fehler", "zustand" } ]
@@ -682,7 +834,6 @@ query($cursor: String) {
 - Abmeldungen per Mail auslesen — **steht** (`imap.js`): eine Filterregel bei IONOS sortiert
   sie in einen eigenen Ordner, den nur das Plugin liest, damit Vendos Wächter sie nicht als
   neue Kundenmails meldet. Verarbeitetes wird nur als gelesen markiert, nie gelöscht.
-- **Offen: Double-Opt-In** für Anmeldungen außerhalb von Shopify.
 
 **Fertig, wenn:** Der Sync läuft ohne Doppelte und eine Abmeldung wirkt sofort und übersteht
 den nächsten Sync.
@@ -754,15 +905,10 @@ query($cursor: String, $filter: String!) {
   Bestandskunden-Ausnahme in § 7 Abs. 3 UWG. Pro Automation umschaltbar, aber nicht
   stillschweigend.
 
-**Bekannte Lücken:**
-
-- **Gast-Checkouts** (ohne Kundenkonto) werden übersprungen, weil die Abfrage die Adresse
-  nur über `customer.email` bekommt. Ob Shopify sie anders liefert, ist am echten Shop zu
-  prüfen — sonst fehlt ein Teil der Abbrecher.
-- **Gastbestellungen** brechen eine laufende Serie nicht ab, aus demselben Grund.
-- **Rückgewinnung** ist als Art angelegt, hat aber keinen Auslöser: eine Abfrage „hat lange
-  nichts gekauft" gibt es noch nicht. Die Automation lässt sich einschalten, wird aber von
-  nichts in Gang gesetzt.
+- Rückgewinnung: Käufer, deren letzte Bestellung im eingestellten Fenster liegt, einmal am
+  Tag aus Shopify, einmal je letzter Bestellung, höchstens 100 neue Serien am Tag —
+  **steht** (2026-11-13).
+- Bestellungen ohne Kundenkonto (Gäste) bleiben außen vor — **so entschieden** (2026-11-13).
 
 **Fertig, wenn:** Ein Testabbruch löst die Mail aus, eine Bestellung bricht die Serie ab,
 und ein Neustart erzeugt keinen zweiten Versand. **Der Code steht, alle drei Nachweise
@@ -772,8 +918,9 @@ brauchen den echten Shop und die laufende App.**
 
 Kein Rechtsrat, aber ohne diese Punkte sollte nichts rausgehen:
 
-- Double-Opt-In für Anmeldungen außerhalb von Shopify, mit Protokoll (Zeitpunkt, IP wenn
-  verfügbar, Bestätigungszeitpunkt).
+- ~~Double-Opt-In~~: entfällt (entschieden 2026-11-13), Anmeldungen kommen nur über
+  Shopify. Kommt je ein eigenes Anmeldeformular dazu, braucht es ihn doch, mit Protokoll
+  (Zeitpunkt, IP wenn verfügbar, Bestätigungszeitpunkt).
 - Abmeldelink in jeder Mail, sichtbar, ein Klick ohne Rückfrage.
 - Impressum und Anbieterangaben im Fuß jeder Mail.
 - Löschfunktion: Kontakt vollständig entfernen, nicht nur sperren.
@@ -811,8 +958,6 @@ Tests mit konkretem Dateipfad starten, nicht per `node --test` über das ganze P
 - **Stundenbudget:** 300/h ist ein Startwert. Nach dem ersten großen Versand anpassen.
 - **Geschützte Kundendaten bei Shopify:** für den Kontakt-Sync erledigt (820 Abonnenten kamen
   an). Ob die Freigabe auch für abgebrochene Warenkörbe reicht, zeigt der erste Abruf.
-- **Double-Opt-In** für Anmeldungen außerhalb von Shopify ist weiterhin nicht gebaut.
-- **Rückgewinnung** hat weiterhin keinen Auslöser.
 
 ## Später: Server
 

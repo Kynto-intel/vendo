@@ -23,6 +23,30 @@ const ergebnisse = new Map() // url → { status, zeit }
 
 const sauber = (wert) => String(wert ?? '').trim()
 
+// Produktbeschreibung aus dem Shop als kurzer Klartext. Ohne sie schreibt eine KI über
+// ein Produkt nur „Das Motiv spricht für sich“ — sie weiß nichts über Stoff, Schnitt oder
+// das Motiv. Gekürzt am Satzende, höchstens BESCHREIBUNG_MAX Zeichen, damit 30 Produkte
+// die Antwort an den Bot nicht sprengen.
+const BESCHREIBUNG_MAX = 400
+const BENANNT = { nbsp: ' ', amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', auml: 'ä', ouml: 'ö', uuml: 'ü', Auml: 'Ä', Ouml: 'Ö', Uuml: 'Ü', szlig: 'ß', ndash: '-', mdash: '-', hellip: '…', bdquo: '„', ldquo: '“', rdquo: '”', euro: '€' }
+function kurzText(html, max = BESCHREIBUNG_MAX) {
+  const text = String(html ?? '')
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6])\s*>|<br\s*\/?>/gi, '. ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (ganz, name) => BENANNT[name] ?? ganz)
+    .replace(/\s+/g, ' ')
+    .replace(/(\s*\.\s*){2,}/g, '. ')
+    .replace(/^[\s.]+/, '')
+    .trim()
+  if (text.length <= max) return text
+  const schnitt = text.slice(0, max)
+  const satzende = Math.max(schnitt.lastIndexOf('. '), schnitt.lastIndexOf('! '), schnitt.lastIndexOf('? '))
+  return satzende > max * 0.5 ? schnitt.slice(0, satzende + 1) : `${schnitt.replace(/\s+\S*$/, '')} …`
+}
+
 function hostVon(url) {
   try {
     return new URL(url).host.toLowerCase()
@@ -88,6 +112,7 @@ async function produkteLaden(domain, abrufen, { suche = '', anzahl = 30 } = {}) 
         verfuegbar: (p.variants || []).some((v) => v.available !== false),
         bild: (p.images || [])[0]?.src || '',
         typ: sauber(p.product_type),
+        beschreibung: kurzText(p.body_html),
         tags: Array.isArray(p.tags) ? p.tags.slice(0, 10) : String(p.tags || '').split(',').map(sauber).filter(Boolean).slice(0, 10)
       })
     }
@@ -152,7 +177,10 @@ async function statusVon(url, abrufen) {
   } catch {
     status = 0
   }
-  if (status) ergebnisse.set(url, { status, zeit: Date.now() })
+  // Nur eindeutige Antworten merken. „Zu viele Anfragen“ (429) und Serverfehler sind
+  // vorübergehend: gemerkt, sperrten sie die Freigabe zehn Minuten lang, auch wenn ein
+  // erneuter Versuch eine Minute später längst durchginge.
+  if (status && status !== 429 && status < 500) ergebnisse.set(url, { status, zeit: Date.now() })
   return status
 }
 
@@ -208,6 +236,7 @@ function rennerVerbinden(liste, produkte = []) {
       bild: treffer?.bild || '',
       preis: treffer?.preis || '',
       vergleichspreis: treffer?.vergleichspreis || '',
+      beschreibung: treffer?.beschreibung || '',
       verfuegbar: treffer ? treffer.verfuegbar : null,
       imShop: Boolean(treffer)
     }
@@ -284,4 +313,4 @@ module.exports = {
   doppelteProdukte,
   erfundenePreise,
   preisKern,
-  rennerVerbinden, BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }
+  rennerVerbinden, kurzText, BESCHREIBUNG_MAX, BILD_HOSTS, shopHosts, primaerDomain, produkteLaden, sammlungenLaden, adressenSammeln, fremdeAdressen, adressenPruefen, vergessen }
