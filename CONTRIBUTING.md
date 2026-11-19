@@ -32,6 +32,6 @@ There is no general automated test command configured yet. Run `git diff --check
 1. Fork the repository and create a branch for your change.
 2. Make the change and verify the affected workflow locally.
 3. Open a pull request with a short summary, relevant screenshots for UI changes, and the checks you ran.
-4. Make sure every contribution is your own work or that you have permission to submit it. Contributions accepted into Vendo are distributed under the repository's license.
+4. Make sure every contribution is your own work or that you have permission to submit it. Contributions accepted into Vendo are distributed under the repository's license, the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
 
 Please be respectful and constructive in issues and reviews. Thanks for helping improve Vendo.

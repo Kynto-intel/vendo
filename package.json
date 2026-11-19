@@ -1,6 +1,7 @@
 {
   "name": "vendo",
   "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
   "productName": "Vendo",
   "description": "Vendo: Felix' Kommandozentrale für Hermes mit Luzzy",
   "main": "src/main/main.js",

@@ -65,4 +65,4 @@ This launches the Electron application from source. Hermes Agent must be install
 
 ## License
 
-Vendo is licensed under the [Vendo Attribution License](LICENSE). Personal and internal business use are allowed. Selling Vendo or offering it to others as a product or service is not allowed, and the original project must not be presented as someone else's work. This is a custom license, not a standard MIT or OSI-approved license.
+Vendo is free software licensed under the [GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later). You may use, study, modify and share it. If you distribute Vendo or a modified version, or let others use a modified version over a network, you must make the complete corresponding source code available under the same license. Copyright (c) 2026 Kynto-intel.
