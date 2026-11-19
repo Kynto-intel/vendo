@@ -8,6 +8,8 @@ import test from 'node:test'
 import { readFile } from 'node:fs/promises'
 import shopify from '../plugins/newsletter/shopify.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { zugangPruefen, abonnentenHolen, abmeldungSchreiben, warenkoerbeHolen, bestellerHolen, kontaktAus, warenkorbAus, istFeldFehler, seitFilter, API_VERSION } = shopify
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/newsletter/shopify-kunden.json', import.meta.url), 'utf8'))

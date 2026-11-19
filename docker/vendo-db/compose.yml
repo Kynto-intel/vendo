@@ -1,0 +1,26 @@
+# Vendos Datenbank (PostgreSQL), nur auf diesem Rechner erreichbar (127.0.0.1).
+# Vendo startet den Container selbst (src/main/datenbank.js) und übergibt das Passwort für die Ersteinrichtung als
+# Umgebungsvariable; es steht nirgends im Klartext auf der Platte. Von Hand starten:
+#   $env:VENDO_DB_ADMIN_PASSWORT = '<Passwort>'; docker compose -p vendo-db -f docker/vendo-db/compose.yml up -d
+# Das Passwort braucht PostgreSQL nur beim allerersten Start (leeres Volume); danach genügt ein beliebiger Wert.
+# Sicherung: node scripts/datenbank-sicherung.js (pg_dump im Container, Stände unter daten/datenbank-sicherungen/).
+name: vendo-db
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vendo
+      POSTGRES_USER: vendo_admin
+      POSTGRES_PASSWORD: ${VENDO_DB_ADMIN_PASSWORT:?VENDO_DB_ADMIN_PASSWORT setzen (beim ersten Start das echte, danach beliebig)}
+    ports:
+      - "127.0.0.1:${VENDO_DB_PORT:-5432}:5432"
+    volumes:
+      - daten:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendo_admin -d vendo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  daten:

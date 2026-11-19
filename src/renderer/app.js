@@ -1277,7 +1277,7 @@ cockpitEinrichten({
   zentraleSichtbar: () => offeneAnsicht() === 'zentrale'
 })
 
-// Terminal-Bereich (siehe terminal.js): echte PowerShell, „Meine Befehle“ in daten/terminal-befehle.json
+// Terminal-Bereich (siehe terminal.js): echte PowerShell, „Meine Befehle“ in der Datenbank (terminal-befehle)
 terminalEinrichten()
 
 // Kosten-Wächter im System-Tab, warnt bei 80 % / 100 % des Budgets (siehe kosten.js)

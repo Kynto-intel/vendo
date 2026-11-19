@@ -12,7 +12,7 @@ plugins/
     ansicht.js          Oberfläche (JavaScript-Modul)
     stil.css            Pflicht: eigene Plugin-Styles
     haupt.js            optional: Hintergrundteil (Node, z. B. für Dateien oder Internet)
-    (Speicher)          legt Vendo selbst an: daten/plugins/mein-plugin.json, nicht im Plugin-Ordner
+    (Speicher)          verwaltet Vendo in PostgreSQL (vendo.plugin_daten), nicht im Plugin-Ordner
 ```
 
 ### plugin.json
@@ -30,6 +30,10 @@ plugins/
 ```
 
 `"aktiv": false` schaltet ein Plugin ab, ohne es zu löschen.
+
+`"austausch": true` (z. B. Kalender, Aufgaben): Vendo schreibt zusätzlich eine
+Kopie nach `daten/austausch/<id>.json`. Luzzys Werkzeuge lesen und schreiben diese Datei; Vendo liest jede fremde Änderung
+sofort (und beim Start) ein und meldet sie über `ctx.daten.beiAenderung`. Die Datei ist nie das Original.
 
 `symbol` ist Pflicht und bestimmt das Sidebar-Icon. Wähle genau einen passenden Schlüssel aus dieser geprüften Auswahl:
 `checklist`, `target`, `message`, `calendar`, `star`, `repeat`, `cloud-sun`, `tools`, `receipt`, `box`, `book`, `chart`, `clock`, `folder`, `heart`, `search`, `shield`.
@@ -56,7 +60,7 @@ export async function starten(ctx) {
 |---|---|
 | `ctx.element` | der Inhaltsbereich des Plugins |
 | `ctx.kopfKnoepfe` | Platz für Knöpfe oben rechts im Bereich |
-| `ctx.daten.laden()` / `ctx.daten.speichern(obj)` | eigener Speicher (`daten/plugins/<id>.json`, bei Felix Daten und im Backup) |
+| `ctx.daten.laden()` / `ctx.daten.speichern(obj)` | eigener Speicher in PostgreSQL (`vendo.plugin_daten`). Startdaten kann ein neues Plugin als `daten.json` im Plugin-Ordner mitbringen; sie gelten nur, solange die Datenbank nichts für das Plugin hat. Solange die Datenbank nicht geladen ist, warten beide; scheitert sie, kommt ein Fehler, nie ein leerer Stand |
 | `ctx.karte(titel)` | Karte in der rechten Spalte, gibt das Inhalts-Element zurück |
 | `ctx.melden({ titel, text, anzeige })` | Meldung: erscheint rechts, Luzzy sagt `text` laut (Ruhezeit beachtet) |
 | `ctx.vorlesen(text)` | Luzzy liest etwas vor |
@@ -75,6 +79,7 @@ export async function starten(ctx) {
 | `ctx.nichtStoeren(bis)` | „Nicht stören“ bis zum Zeitpunkt `bis` (ms) setzen, `0` beendet es (Meldungen nur in der Liste) |
 | `ctx.oeffnen()` | öffnet den Bereich des Plugins |
 | `ctx.aufrufen(name, ...)` | ruft eine Funktion aus haupt.js auf |
+| `ctx.pfadVon(datei)` | Dateipfad einer gezogenen oder gewählten Datei (File-Objekt), z. B. um sie an haupt.js zu geben |
 | `ctx.maskieren(text)` | Text sicher in HTML einsetzen |
 | `ctx.markdownZuHtml(text)` | Markdown anzeigen |
 
@@ -83,7 +88,13 @@ export async function starten(ctx) {
 ```js
 module.exports = (ctx) => {
   ctx.bereitstellen('hallo', async (name) => `Hallo ${name}`)
-  // ctx.datenLaden(), ctx.datenSpeichern(obj) gibt es hier auch
+  // ctx.ordner: Plugin-Ordner, wie Vendo ihn sieht (auch wenn plugins\<id> eine Verknüpfung auf einen anderen Ordner ist)
+  // ctx.datenLaden(), ctx.datenSpeichern(obj) gibt es hier auch (Datenbank, siehe ctx.daten); haupt.js startet erst,
+  // wenn die Plugin-Daten geladen sind.
+  // ctx.festschreiben(): wartet, bis der Stand in der Datenbank geschrieben ist
+  // ctx.datenbank: PostgreSQL für eigene Tabellen (nur wenn Docker läuft, vorher ctx.datenbank.bereit() prüfen):
+  //   ctx.datenbank.migrieren([{ version: 1, sql: 'CREATE SCHEMA IF NOT EXISTS <plugin_id> …' }])
+  //   await ctx.datenbank.abfrage(sql, werte), await ctx.datenbank.transaktion(async (c) => …), ctx.datenbank.beiBereit(fn)
   // ctx.vault: in den Vault schreiben, nur in Donnerwolf-Shop\Vendo\ und ohne zu überschreiben:
   //   await ctx.vault.anhaengen('Gedankenspeicher.md', '- Text', { kopf: '# Überschrift' })
   //   await ctx.vault.anlegen('Unterordner', 'Titel', 'Inhalt')   → neue Notiz
@@ -103,6 +114,7 @@ In `ansicht.js` dann: `await ctx.aufrufen('hallo', 'Felix')`.
 
 | Plugin | Was es tut |
 |---|---|
+| `buchhaltung` | Buchhaltung für den Shop: holt Shopify-Bestellungen (Umsatzbeleg als PDF) und Shirtigo-Bestellungen mit Original-Rechnung, liest PDF-Rechnungen lokal ohne Upload, legt alles in ein schreibgeschütztes Belegarchiv mit Prüfkette, Zeitstempel und verschlüsselter USB-Sicherung. Zeigt Gewinn je Bestellung, Umsatz je Jahr, Kleinunternehmergrenzen und Steuerstatus je Zeitraum. Unter „Meine Angaben“: Firmendaten, persönliche Angaben (nur verschlüsselt gespeichert), ELSTER-Übersicht zum Abtippen, ausblendbare Bereiche und Export eines Jahresarchivs als ZIP. Führt zusätzlich einen Index in PostgreSQL, wenn Vendos Datenbank läuft. Eigenes Repository [vendo-buchhaltung](https://github.com/Kynto-intel/vendo-buchhaltung), nicht in Vendo enthalten: nach `plugins\buchhaltung` klonen oder als Verknüpfung einbinden, darin `npm install`. Läuft mit demselben Code auch eigenständig im Browser |
 | `kalender` | Eigener Kalender: Monatsansicht, Termine, Erinnerungen über Luzzy, „Heute“-Karte, liefert Termine an andere Plugins |
 | `routinen` | Standardaufgaben mit Auslösewort und eigenem Prompt (Termine werden automatisch angehängt, wenn der Prompt sie erwähnt), Ergebnis (vorlesen, speichern), Zeitplan und Knopf über der Eingabe |
 | `gedanken` | Gedankenspeicher: „Merk dir: …“ per Sprache oder Tippen, Liste mit erledigt/löschen, jede Notiz auch im Vault (`Vendo\Gedankenspeicher.md`), Luzzy kennt die offenen Notizen |

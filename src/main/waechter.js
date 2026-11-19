@@ -12,21 +12,20 @@ const path = require('node:path')
 const { EventEmitter } = require('node:events')
 
 const HERMES_HOME = path.join(process.env.LOCALAPPDATA || '', 'hermes')
-const STAND_DATEI = path.join(__dirname, '..', '..', 'daten', 'waechter-stand.json')
+const vendospeicher = require('./vendospeicher') // Stand (Zähler, gefeierte Meilensteine) in PostgreSQL mit Startkopie
 const TAKT = 60_000
 const SHOPIFY_VERSION = '2025-07'
 
 function standLaden() {
   try {
-    return JSON.parse(fs.readFileSync(STAND_DATEI, 'utf8'))
+    return vendospeicher.lesen('waechter-stand') || {}
   } catch {
     return {}
   }
 }
 function standSpeichern(stand) {
   try {
-    fs.mkdirSync(path.dirname(STAND_DATEI), { recursive: true })
-    fs.writeFileSync(STAND_DATEI, JSON.stringify(stand, null, 2), 'utf8')
+    vendospeicher.schreiben('waechter-stand', stand)
   } catch {
     // nächstes Mal
   }
@@ -72,11 +71,11 @@ function shopifyZugang() {
 const ungelesenAnzahl = (antwort) => (antwort?.messages || []).length
 
 // Meilensteine bei der Anzahl aller Bestellungen
-// Einstellbar im Bereich Meilensteine (Speicher des Plugins: daten/plugins/meilensteine.json): Schrittweite ab 1.000
+// Einstellbar im Bereich Meilensteine (Speicher des Plugins: Plugin-Daten „meilensteine“ (Datenbank)): Schrittweite ab 1.000
 // und eigene Ziele
 function meilensteinEinstellungen() {
   try {
-    const d = JSON.parse(fs.readFileSync(require('./plugins').datenPfad('meilensteine'), 'utf8'))
+    const d = require('./plugins').datenLaden('meilensteine') // Datei oder Datenbank, je nach Speicher
     return {
       schritt: [250, 500, 1000].includes(Number(d.schritt)) ? Number(d.schritt) : 500,
       eigene: (Array.isArray(d.eigene) ? d.eigene : []).filter((e) => Number.isInteger(e?.anzahl) && e.anzahl > 0)
@@ -346,4 +345,4 @@ class Waechter extends EventEmitter {
   }
 }
 
-module.exports = { bestellSatz, bestellAnzeige, istMeilenstein, meilensteinEinstellungen, STAND_DATEI, Waechter, shopifyZugang }
+module.exports = { bestellSatz, bestellAnzeige, istMeilenstein, meilensteinEinstellungen, Waechter, shopifyZugang }

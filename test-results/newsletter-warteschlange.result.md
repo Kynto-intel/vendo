@@ -1,6 +1,6 @@
 # Newsletter-Plugin: Warteschlange
 
-**Datum:** 2026-11-09
+**Datum:** 2026-11-16 (erneut ausgeführt; erster Lauf 2026-11-09)
 **Gegenstand:** Phase 1, letzter Teil — `plugins/newsletter/warteschlange.js`: Einträge
 einreihen, Idempotenz gegen doppelte Mails, Reihenfolge, Wiederholversuche, Verfall,
 Aufräumen und Abbrechen.
@@ -15,6 +15,10 @@ node --test tests/newsletter-warteschlange.test.js
 es wird nicht gewartet und nichts versendet. Nur erfundene Adressen (`beispiel.de`).
 
 **Ergebnis: PASS — 19 von 19 Tests**
+
+Am 2026-11-16 kamen in `warteschlange.js` die Zustände `sendet` und `unklar` dazu
+(`versandBeginnen`, `versandZuruecknehmen`, `haengendeMarkieren`). Die 19 Tests hier laufen
+unverändert durch; die neuen Funktionen prüft `test-results/newsletter-versandzustand.result.md`.
 
 Abgedeckt:
 
@@ -55,5 +59,7 @@ Das ist wichtig, weil zwei Zeitgeber Mails doppelt verschicken würden.
   Stunden sauber durchläuft, zeigt erst ein echter Lauf in der App.
 - **Der Takt selbst** (alle 15 Sekunden) wurde nicht über die Zeit beobachtet, nur sein
   einmaliger Start.
+- **Ein echter Absturz mitten im SMTP-Versand** ist nur nachgestellt (Eintrag auf `sendet`
+  mit altem Zeitpunkt), nicht in der App erzeugt.
 - **Nachholen nach einem echten Neustart** von Vendo: die Logik ist getestet (Stand liegt in
   den Plugin-Daten), der Ablauf in der App nicht.

@@ -5,12 +5,14 @@
 //   ansicht.js    Oberfläche (ES-Modul): export function starten(ctx) { ... return { laden } }
 //   stil.css      optional: eigenes Design
 //   haupt.js      optional: Hintergrundteil (CommonJS): module.exports = (ctx) => { ctx.bereitstellen('name', fn) }
-//   Speicher      legt Vendo an: daten\plugins\<id>.json (ctx.daten), siehe datenPfad
+//   Speicher      ctx.daten → vendo.plugin_daten (speicher.js); "austausch": true legt für Luzzy daten/austausch/<id>.json an.
 //
 // Plugins sind lokaler Code von Felix/Claude, kein Download aus dem Netz.
 
 const fs = require('node:fs')
 const path = require('node:path')
+const speicher = require('./speicher')
+const datenbank = require('./datenbank')
 
 const ORDNER = path.join(__dirname, '..', '..', 'plugins')
 const GUELTIGE_ID = /^[a-z0-9][a-z0-9-]{1,40}$/
@@ -20,20 +22,20 @@ const geladen = new Map() // id → { manifest, funktionen }
 // ── Notbremse: frisch eingebaute Plugins (Werkstatt) stehen in daten/plugin-start.json unter „neu“. Beim Start wird
 // „laeuft“ gesetzt; meldet die Oberfläche nach dem Start „alles gut“ (startOk), gelten die neuen als bewährt.
 // Kam der letzte Start nie so weit (Absturz, Aufhängen), werden die neuen Plugins diesmal abgeschaltet („aus“).
-const START_DATEI = path.join(__dirname, '..', '..', 'daten', 'plugin-start.json')
+const START_DATEI = () => path.join(speicher.ordner().daten, 'plugin-start.json') // Datei, auch ohne Datenbank
 let startGeprueft = false
 let abgeschaltet = [] // in diesem Start durch die Notbremse abgeschaltet
 function startZustand() {
   try {
-    const z = JSON.parse(fs.readFileSync(START_DATEI, 'utf8'))
+    const z = JSON.parse(fs.readFileSync(START_DATEI(), 'utf8'))
     return { laeuft: Boolean(z.laeuft), neu: Array.isArray(z.neu) ? z.neu : [], aus: Array.isArray(z.aus) ? z.aus : [] }
   } catch {
     return { laeuft: false, neu: [], aus: [] }
   }
 }
 function startZustandSpeichern(z) {
-  fs.mkdirSync(path.dirname(START_DATEI), { recursive: true })
-  fs.writeFileSync(START_DATEI, JSON.stringify(z, null, 2), 'utf8')
+  fs.mkdirSync(path.dirname(START_DATEI()), { recursive: true })
+  fs.writeFileSync(START_DATEI(), JSON.stringify(z, null, 2), 'utf8')
 }
 function startPruefen() {
   if (startGeprueft) return startZustand()
@@ -79,47 +81,19 @@ function vergessen(id) {
 }
 const notbremse = () => ({ jetzt: abgeschaltet, aus: startZustand().aus })
 
-// Speicher eines Plugins: daten\plugins\<id>.json, bei Felix' übrigen Daten (im Backup, nicht im Git-Projekt).
-// Früher lag er als daten.json im Ordner des Plugins: beim ersten Zugriff zieht die Datei einmal um. Auch
-// Startdaten, die ein neues Plugin als daten.json mitbringt, landen so im Datenordner.
-const DATEN_ORDNER = path.join(__dirname, '..', '..', 'daten', 'plugins')
-function datenPfad(id) {
-  const neu = path.join(DATEN_ORDNER, `${id}.json`)
-  const alt = path.join(ORDNER, id, 'daten.json')
-  if (!fs.existsSync(neu) && fs.existsSync(alt)) {
-    try {
-      fs.mkdirSync(DATEN_ORDNER, { recursive: true })
-      fs.renameSync(alt, neu)
-    } catch {
-      // Umzug gerade nicht möglich (Datei gesperrt): kopieren, sonst vorerst am alten Platz bleiben
-      try {
-        fs.copyFileSync(alt, neu)
-      } catch {
-        return alt
-      }
-    }
-  }
-  return neu
-}
-
+// Speicher eines Plugins: vendo.plugin_daten in PostgreSQL (speicher.js). Lesen und Speichern werfen, solange die
+// Daten nicht geladen sind: dann nie mit {} weiterarbeiten.
 function datenLaden(id) {
   if (!geladen.has(id)) throw new Error('Unbekanntes Plugin.')
-  try {
-    return JSON.parse(fs.readFileSync(datenPfad(id), 'utf8'))
-  } catch {
-    return {}
-  }
+  const text = speicher.lesen(id)
+  try { return text ? JSON.parse(text) : {} } catch { return {} }
 }
 
 function datenSpeichern(id, daten) {
   if (!geladen.has(id)) throw new Error('Unbekanntes Plugin.')
   const text = JSON.stringify(daten ?? {}, null, 2)
-  if (text.length > 5_000_000) throw new Error('Plugin-Daten zu groß.')
-  // Erst in eine Zwischendatei schreiben, dann umbenennen: so geht bei einem Absturz nichts kaputt
-  const ziel = datenPfad(id)
-  fs.mkdirSync(path.dirname(ziel), { recursive: true })
-  fs.writeFileSync(`${ziel}.neu`, text, 'utf8')
-  fs.renameSync(`${ziel}.neu`, ziel)
+  if (text.length > speicher.GRENZE) throw new Error('Plugin-Daten zu groß.')
+  speicher.schreiben(id, text)
   return true
 }
 
@@ -128,7 +102,8 @@ function alleLaden() {
   geladen.clear()
   let eintraege = []
   try {
-    eintraege = fs.readdirSync(ORDNER, { withFileTypes: true }).filter((e) => e.isDirectory())
+    // auch Verknüpfungen (Junction/Symlink) auf einen Ordner, z. B. pluginsuchhaltung → eigenes Repository vendo-buchhaltung
+    eintraege = fs.readdirSync(ORDNER, { withFileTypes: true }).filter((e) => e.isDirectory() || (e.isSymbolicLink() && fs.statSync(path.join(ORDNER, e.name), { throwIfNoEntry: false })?.isDirectory()))
   } catch {
     return []
   }
@@ -162,43 +137,54 @@ function alleLaden() {
       funktionen: new Map()
     }
     geladen.set(manifest.id, eintrag)
-    // Optionaler Hintergrundteil
+    if (manifest.austausch === true) speicher.austauschAnmelden(manifest.id) // Luzzy liest und schreibt eine Kopie
+    const startDatei = path.join(ordner, 'daten.json') // Startdaten eines neuen Plugins, nur wenn die Datenbank noch nichts hat
+    if (fs.existsSync(startDatei)) speicher.startdatenAnmelden(manifest.id, startDatei)
+    // Optionaler Hintergrundteil. Liegen die Daten in der Datenbank, startet er erst, wenn sie geladen sind.
     const haupt = path.join(ordner, 'haupt.js')
     if (fs.existsSync(haupt)) {
-      try {
-        const aufbau = require(haupt)
-        aufbau({
-          id: manifest.id,
-          datenLaden: () => datenLaden(manifest.id),
-          datenSpeichern: (d) => datenSpeichern(manifest.id, d),
-          bereitstellen: (name, fn) => eintrag.funktionen.set(String(name), fn),
-          // Schreiben nur in Donnerwolf-Shop\Vendo\ (nie überschreiben), siehe src/main/vaultschreiben.js
-          vault: require('./vaultschreiben')
-        })
-      } catch (fehler) {
-        console.warn(`Plugin ${manifest.id}: haupt.js konnte nicht geladen werden: ${fehler.message}`)
-      }
+      eintrag.aufbau = new Promise((fertig) => speicher.beiGeladen(() => { if (geladen.get(manifest.id) === eintrag) hauptAufbauen(manifest, eintrag, haupt); fertig() }))
     }
   }
   return [...geladen.values()].map((p) => p.manifest)
 }
 
+function hauptAufbauen(manifest, eintrag, haupt) {
+  try {
+    const aufbau = require(haupt)
+    aufbau({
+      id: manifest.id,
+      ordner: path.dirname(haupt), // Plugin-Ordner, wie Vendo ihn sieht (bei einer Verknüpfung nicht das Ziel)
+      datenLaden: () => datenLaden(manifest.id),
+      datenSpeichern: (d) => datenSpeichern(manifest.id, d),
+      festschreiben: () => speicher.festschreiben(), // wartet, bis der Spiegel in der Datenbank geschrieben ist
+      datenbank: datenbank.fuerPlugin(manifest.id), // PostgreSQL für eigene Tabellen (Schema = Plugin-ID)
+      bereitstellen: (name, fn) => eintrag.funktionen.set(String(name), fn),
+      // Schreiben nur in Donnerwolf-Shop\Vendo\ (nie überschreiben), siehe src/main/vaultschreiben.js
+      vault: require('./vaultschreiben')
+    })
+  } catch (fehler) {
+    console.warn(`Plugin ${manifest.id}: haupt.js konnte nicht geladen werden: ${fehler.message}`)
+  }
+}
+
 async function aufrufen(id, name, argumente = []) {
-  const fn = geladen.get(id)?.funktionen.get(name)
+  const e = geladen.get(id)
+  if (e?.aufbau && !speicher.geladen()) await speicher.warten()
+  if (e?.aufbau) await e.aufbau
+  const fn = e?.funktionen.get(name)
   if (!fn) throw new Error(`Plugin-Funktion ${id}.${name} gibt es nicht.`)
   return fn(...argumente)
 }
 
-// Daten-Datei beobachten: ändert jemand anderes sie (z. B. Luzzy trägt einen Termin ein), meldet Vendo das dem Plugin
+// Daten beobachten: ändert jemand anderes sie (z. B. Luzzy trägt einen Termin ein), meldet speicher.js das dem Plugin
 const beobachtet = new Set()
 function beobachten(id, beiAenderung) {
   if (!geladen.has(id)) throw new Error('Unbekanntes Plugin.')
   if (beobachtet.has(id)) return true
   beobachtet.add(id)
-  fs.watchFile(datenPfad(id), { interval: 1000 }, (jetzt, vorher) => {
-    if (jetzt.mtimeMs !== vorher.mtimeMs) beiAenderung(id)
-  })
+  speicher.beobachten(id, beiAenderung)
   return true
 }
 
-module.exports = { ORDNER, datenPfad, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, vergessen, notbremse }
+module.exports = { ORDNER, alleLaden, datenLaden, datenSpeichern, aufrufen, beobachten, startOk, neuMerken, wiederEinschalten, vergessen, notbremse }

@@ -131,6 +131,10 @@ contextBridge.exposeInMainWorld('vendo', {
     laden: () => ipcRenderer.invoke('einstellungen:laden'),
     speichern: (neu) => ipcRenderer.invoke('einstellungen:speichern', neu)
   },
+  datenbank: {
+    zustand: () => ipcRenderer.invoke('datenbank:zustand'), // nur Zustand und Meldung, nie Zugangsdaten
+    exportieren: () => ipcRenderer.invoke('datenbank:exportieren') // Plugin-Daten als JSON-Dateien in daten/datei-sicherungen
+  },
   vault: {
     antwortMerken: (antwort, frage) => ipcRenderer.invoke('vault:antwortMerken', antwort, frage)
   },

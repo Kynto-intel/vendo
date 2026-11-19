@@ -120,6 +120,26 @@ const KAEUFER = `query($cursor: String) {
   }
 }`
 
+// Bestellungen mit dem Besuch, über den sie kamen: daraus liest Vendo, welche Mail Umsatz
+// gebracht hat (utm_source=vendo, utm_campaign=<Kurzname>, siehe html-mail.js). Bewusst
+// ohne jedes Kundenfeld — für die Zuordnung zu einer Mail braucht es niemanden namentlich.
+// `ready` ist falsch, solange Shopify den Weg zur Bestellung noch auswertet; solche
+// Bestellungen kommen beim nächsten Abruf noch einmal (das Fenster überlappt).
+const ERGEBNISSE = `query($cursor: String, $filter: String!) {
+  orders(first: 100, after: $cursor, query: $filter) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      id createdAt cancelledAt
+      totalPriceSet { shopMoney { amount currencyCode } }
+      customerJourneySummary {
+        ready
+        firstVisit { utmParameters { source medium campaign } }
+        lastVisit { utmParameters { source medium campaign } }
+      }
+    }
+  }
+}`
+
 const ABMELDUNG = `mutation($input: CustomerEmailMarketingConsentUpdateInput!) {
   customerEmailMarketingConsentUpdate(input: $input) {
     customer { id }
@@ -368,6 +388,52 @@ async function kaeuferHolen({ shop, token, holen = null } = {}) {
   return { ok: true, kaeufer, seiten, abgebrochen: seiten >= MAX_SEITEN }
 }
 
+const utmAus = (besuch) => {
+  const u = besuch?.utmParameters
+  if (!u) return null
+  return { source: String(u.source || '').trim().toLowerCase(), medium: String(u.medium || '').trim().toLowerCase(), campaign: String(u.campaign || '').trim().toLowerCase() }
+}
+
+function ergebnisBestellungAus(knoten) {
+  const am = Date.parse(knoten?.createdAt || '')
+  if (!knoten?.id || !Number.isFinite(am)) return null
+  const geld = knoten.totalPriceSet?.shopMoney
+  const weg = knoten.customerJourneySummary
+  return {
+    id: String(knoten.id),
+    am,
+    storniert: Boolean(knoten.cancelledAt),
+    betrag: Number(geld?.amount) || 0,
+    waehrung: String(geld?.currencyCode || ''),
+    bereit: weg ? weg.ready !== false : true,
+    erster: utmAus(weg?.firstVisit),
+    letzter: utmAus(weg?.lastVisit)
+  }
+}
+
+// Alle Bestellungen seit einem Zeitpunkt, mit ihren UTM-Angaben. Die Zuordnung zu einer
+// Mail macht ergebnisse.js; hier wird nur geholt.
+async function ergebnisBestellungenHolen({ shop, token, seit, holen = null } = {}) {
+  const filter = seitFilter('created_at', seit || Date.now() - 3 * 86400000)
+  let cursor = null
+  let seiten = 0
+  const bestellungen = []
+  while (seiten < MAX_SEITEN) {
+    const { daten, fehler } = await anfrage({ shop, token, query: ERGEBNISSE, variables: { cursor, filter }, holen })
+    if (fehler) return { ok: false, fehler, bestellungen }
+    const block = daten?.orders
+    if (!block) return { ok: false, fehler: 'Shopify hat keine Bestellungen geliefert.', bestellungen }
+    for (const knoten of block.nodes || []) {
+      const b = ergebnisBestellungAus(knoten)
+      if (b) bestellungen.push(b)
+    }
+    seiten++
+    if (!block.pageInfo?.hasNextPage) break
+    cursor = block.pageInfo.endCursor
+  }
+  return { ok: true, bestellungen, seiten, abgebrochen: seiten >= MAX_SEITEN }
+}
+
 // Welche Produkte sich seit einem Zeitpunkt am häufigsten verkauft haben. Gezählt werden
 // Stückzahlen, nicht Bestellungen: zwei Hoodies in einer Bestellung sind zwei verkaufte
 // Hoodies. Zurück kommt die ganze Rangliste, das Kürzen auf die besten fünf macht der
@@ -430,7 +496,30 @@ async function korbRennerHolen({ shop, token, seit, holen = null } = {}) {
   return r.ok ? { ...r, koerbe: r.quellen } : { ...r, koerbe: 0 }
 }
 
+// Shopify-Zugang aus den Hermes-Einstellungen (wie im Buchhaltungs-Plugin): Den Token erneuert man zentral im System-Tab
+// von Vendo, der ihn in Hermes einträgt; der Newsletter nimmt ihn von dort bei jedem Aufruf (nur lesen, nie schreiben).
+// Gibt null zurück, wenn dort keiner steht. VENDO_TEST_HERMES_HOME lenkt Tests auf einen eigenen Ordner.
+function hermesZugang() {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const home = process.env.VENDO_TEST_HERMES_HOME || path.join(process.env.LOCALAPPDATA || '', 'hermes')
+  const TOKEN = /^[ \t]*SHOPIFY_ACCESS_TOKEN[ \t]*[:=][ \t]*['"]?(shp(?:at|ca|pa)_[A-Za-z0-9]{20,})/m
+  const SHOP = /^[ \t]*SHOPIFY_STORE(?:_DOMAIN)?[ \t]*[:=][ \t]*['"]?([^'"\r\n\s]+)/m
+  let token = null
+  let shop = null
+  for (const ordner of [path.join(home, 'profiles', 'donnerwolf'), home]) {
+    for (const name of ['config.yaml', '.env']) {
+      let text
+      try { text = fs.readFileSync(path.join(ordner, name), 'utf8') } catch { continue }
+      token ||= TOKEN.exec(text)?.[1] || null
+      shop ||= SHOP.exec(text)?.[1]?.replace(/^https?:\/\//, '').replace(/\/$/, '') || null
+    }
+  }
+  return token && shop ? { token, shop } : null
+}
+
 module.exports = {
+  hermesZugang,
   zugangPruefen,
   anfrage,
   abonnentenHolen,
@@ -441,6 +530,8 @@ module.exports = {
   bestellerHolen,
   kaeuferHolen,
   kaeuferAus,
+  ergebnisBestellungenHolen,
+  ergebnisBestellungAus,
   kontaktAus,
   warenkorbAus,
   istFeldFehler,
@@ -457,5 +548,6 @@ module.exports = {
   WARENKOERBE_REICH,
   WARENKOERBE_SCHLANK,
   BESTELLUNGEN,
-  KAEUFER
+  KAEUFER,
+  ERGEBNISSE
 }

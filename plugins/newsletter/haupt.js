@@ -31,10 +31,13 @@ const warteschlange = require('./warteschlange.js')
 const shopify = require('./shopify.js')
 const kontakte = require('./kontakte.js')
 const imap = require('./imap.js')
+const ruecklaeufer = require('./ruecklaeufer.js')
+const zustellung = require('./zustellung.js')
 const kampagnen = require('./kampagnen.js')
 const vorlagen = require('./vorlagen.js')
 const muster = require('./muster.js')
 const automationen = require('./automationen.js')
+const ergebnisse = require('./ergebnisse.js')
 const icons = require('./icons.js')
 const {
   startVorlage,
@@ -66,6 +69,7 @@ const TAKT = 15000 // so oft schaut der Hintergrundteil in die Warteschlange
 const AUFRAEUM_TAKT = 3600000 // einmal pro Stunde Erledigtes wegräumen
 const AUSLOESER_TAKT = 600000 // alle zehn Minuten bei Shopify nach Warenkörben und Bestellungen sehen
 const RUECK_TAKT = 86400000 // die Käufer für die Rückgewinnung nur einmal am Tag
+const ERGEBNIS_TAKT = 86400000 // Bestellungen mit UTM-Angaben einmal am Tag holen
 
 // Vendo ruft diese Aufbaufunktion bei jedem Laden der Plugin-Liste erneut auf, das Modul
 // bleibt dabei im require-Cache. Ohne diesen Schutz liefen mehrere Zeitgeber gleichzeitig
@@ -101,9 +105,13 @@ module.exports = (ctx) => {
       kampagnen: Array.isArray(d.kampagnen) ? d.kampagnen : [],
       vorlagen: Array.isArray(d.vorlagen) ? d.vorlagen : [],
       automationen: Array.isArray(d.automationen) ? d.automationen : [],
-      laeufe: Array.isArray(d.laeufe) ? d.laeufe : []
+      laeufe: Array.isArray(d.laeufe) ? d.laeufe : [],
+      ruecklaeufer: Array.isArray(d.ruecklaeufer) ? d.ruecklaeufer : []
     }
   }
+
+  // Läuft oder ist angehalten: Mails dieser Kampagne stehen noch in der Warteschlange
+  const unterwegs = (k) => k?.zustand === 'laeuft' || k?.zustand === 'pausiert'
 
   // Abmeldeweg: eigene Adresse, sonst das Postfach selbst
   const abmeldeAdresseVon = (daten) => daten.marke.abmeldeAdresse || daten.zugang.benutzer || ''
@@ -143,6 +151,23 @@ module.exports = (ctx) => {
     ctx.datenSpeichern(d)
   }
 
+  // Was jede Mail gebracht hat (ergebnisse.js): Kurznamen und zugeordnete Bestellungen
+  const ergebnisseVon = (daten) => {
+    const e = daten.ergebnisse || {}
+    return { ...e, namen: e.namen && typeof e.namen === 'object' ? e.namen : {}, bestellungen: Array.isArray(e.bestellungen) ? e.bestellungen : [] }
+  }
+
+  // Einen Kurznamen einer Mail zuordnen und sofort speichern (frisch gelesen, damit nichts
+  // Gleichzeitiges überschrieben wird)
+  const kurznameSichern = (kurz, ziel) => {
+    const d = datenLesen()
+    const e = ergebnisseVon(d)
+    const gemerkt = ergebnisse.nameMerken(e.namen, kurz, ziel)
+    if (!gemerkt.neu) return
+    d.ergebnisse = { ...e, namen: gemerkt.namen }
+    ctx.datenSpeichern(d)
+  }
+
   // Drossel aus den gespeicherten Zeitstempeln aufbauen. Der Zustand muss einen Neustart
   // überleben, sonst wäre das Stundenlimit nach jedem Vendo-Start wieder leer.
   const drosselHolen = () => {
@@ -158,7 +183,12 @@ module.exports = (ctx) => {
     return { passwort }
   }
 
+  // Vorrang hat der Token aus den Hermes-Einstellungen (zentral im System-Tab erneuert); der hier gespeicherte gilt nur,
+  // wenn dort keiner steht.
+  const shopifyVorhanden = (d = datenLesen()) => Boolean(shopify.hermesZugang() || d.shopify.tokenVerschluesselt)
   const shopifyZugang = () => {
+    const h = shopify.hermesZugang()
+    if (h) return h
     const s = datenLesen().shopify
     if (!s.shop || !s.tokenVerschluesselt) return { fehler: 'Es ist kein Shopify-Zugang eingerichtet.' }
     const token = tresor.entschluesseln(s.tokenVerschluesselt)
@@ -314,7 +344,7 @@ module.exports = (ctx) => {
 
     if (ergebnis.ok) {
       feldSpeichern('drossel', drossel.gesendetMerken())
-      protokollSchreiben({ an: gebaut.mail.to, betreff: gebaut.mail.subject, art, kampagneId, ok: true })
+      protokollSchreiben({ an: gebaut.mail.to, betreff: gebaut.mail.subject, art, kampagneId, ok: true }, ctx.protokollOrdner)
       console.log(`Newsletter: Mail an ${kuerzen(gebaut.mail.to)} verschickt (${art}).`)
       return { ok: true, text: ergebnis.text }
     }
@@ -324,7 +354,10 @@ module.exports = (ctx) => {
       feldSpeichern('drossel', drossel.pausieren())
       console.warn('Newsletter: Postfach meldet ein Limit, der Versand pausiert.')
     }
-    protokollSchreiben({ an: gebaut.mail.to, betreff: gebaut.mail.subject, art, kampagneId, ok: false, fehler: ergebnis.fehler?.code || ergebnis.fehler?.message })
+    protokollSchreiben(
+      { an: gebaut.mail.to, betreff: gebaut.mail.subject, art, kampagneId, ok: false, fehler: ergebnis.fehler?.code || ergebnis.fehler?.message },
+      ctx.protokollOrdner
+    )
     console.warn(`Newsletter: Mail an ${kuerzen(gebaut.mail.to)} fehlgeschlagen: ${ergebnis.fehler?.code || 'ohne Code'}`)
     return { ok: false, text: ergebnis.text, fehler: ergebnis.fehler }
   }
@@ -372,7 +405,7 @@ module.exports = (ctx) => {
     const kontakt = kontakte.finden(daten.kontakte, eintrag.an) || { email: eintrag.an }
     return {
       betreff: kampagnen.personalisieren(kampagne.betreff, kontakt),
-      html: mailBauenAus(daten, kampagne, kontakt, {}, { utm: kampagne.name }).html
+      html: mailBauenAus(daten, kampagne, kontakt, {}, { utm: kampagne.utm || kampagne.name }).html
     }
   }
 
@@ -389,8 +422,31 @@ module.exports = (ctx) => {
       daten = datenLesen()
     }
 
-    const eintrag = warteschlange.naechster(daten.warteschlange)
+    // Was beim letzten Mal mitten im Versand hängen blieb (Absturz, Rechner aus), wird nicht
+    // blind wiederholt, sondern als „unklar“ gezeigt — es könnte schon angekommen sein.
+    const haengend = warteschlange.haengendeMarkieren(daten.warteschlange)
+    if (haengend.anzahl) {
+      feldSpeichern('warteschlange', haengend.liste)
+      console.warn(`Newsletter: ${haengend.anzahl} Versand/Versaende unterbrochen, Ergebnis unklar - nicht wiederholt.`)
+      daten = datenLesen()
+    }
+
+    // Mails angehaltener Kampagnen warten, bis Felix fortsetzt
+    const angehalten = new Set(daten.kampagnen.filter((k) => k.zustand === 'pausiert').map((k) => k.id))
+    const eintrag = warteschlange.naechster(angehalten.size ? daten.warteschlange.filter((e) => !angehalten.has(e.kampagneId)) : daten.warteschlange)
     if (!eintrag) return { nichts: true }
+
+    // Eine Kampagne läuft Stunden. Wer sich in der Zeit abmeldet, zurückprallt oder sich
+    // beschwert, bekommt die noch wartende Mail nicht mehr. Testmails gehen an das eigene
+    // Postfach und sind ausgenommen.
+    if (eintrag.art !== 'test') {
+      const kontakt = kontakte.finden(daten.kontakte, eintrag.an)
+      if (!kontakt || kontakt.gesperrt) {
+        const grund = kontakt ? `Empfänger inzwischen gesperrt (${kontakt.gesperrtGrund || 'gesperrt'})` : 'Empfänger nicht mehr in den Kontakten'
+        feldSpeichern('warteschlange', warteschlange.ueberspringen(daten.warteschlange, eintrag.id, grund))
+        return { uebersprungen: true, text: grund }
+      }
+    }
 
     const inhalt = inhaltVon(eintrag, daten)
     if (inhalt.fehler) {
@@ -398,16 +454,29 @@ module.exports = (ctx) => {
       return { fehler: inhalt.fehler }
     }
 
-    const ergebnis = await einzelSenden({
-      art: eintrag.art,
-      an: eintrag.an,
-      betreff: inhalt.betreff,
-      html: inhalt.html,
-      kampagneId: eintrag.kampagneId
-    })
+    // Vor dem Versand festhalten, dass er unterwegs ist. Stürzt Vendo ab, nachdem der Server
+    // die Mail angenommen hat, steht der Eintrag danach auf `sendet` statt wieder auf `offen`.
+    feldSpeichern('warteschlange', warteschlange.versandBeginnen(daten.warteschlange, eintrag.id))
+
+    let ergebnis
+    try {
+      ergebnis = await einzelSenden({
+        art: eintrag.art,
+        an: eintrag.an,
+        betreff: inhalt.betreff,
+        html: inhalt.html,
+        kampagneId: eintrag.kampagneId
+      })
+    } catch (fehler) {
+      // Ein Fehler in Vendo selbst, nicht vom Server: als Fehlversuch zählen
+      ergebnis = { ok: false, text: String(fehler?.message || fehler).slice(0, 200) }
+    }
 
     // Gedrosselt heißt: nicht jetzt. Kein Versuch, kein Fehler — beim nächsten Takt wieder.
-    if (ergebnis.gedrosselt) return { gedrosselt: true, text: ergebnis.text }
+    if (ergebnis.gedrosselt) {
+      feldSpeichern('warteschlange', warteschlange.versandZuruecknehmen(datenLesen().warteschlange, eintrag.id))
+      return { gedrosselt: true, text: ergebnis.text }
+    }
 
     const liste = datenLesen().warteschlange
     if (ergebnis.ok) {
@@ -429,11 +498,14 @@ module.exports = (ctx) => {
         .slice(0, 20)
         .map((e) => ({ id: e.id, an: kuerzen(e.an), betreff: e.betreff, faelligAb: e.faelligAb, versuche: e.versuche, letzterFehler: e.letzterFehler })),
       letzteFehler: liste
-        .filter((e) => e.zustand === 'fehler')
+        .filter((e) => e.zustand === 'fehler' || e.zustand === 'unklar')
         .slice(-10)
         .map((e) => ({ id: e.id, an: kuerzen(e.an), letzterFehler: e.letzterFehler }))
     }
   })
+
+  // Einen Takt der Warteschlange von Hand: für Tests, sonst treibt der Takt unten sie an
+  bereitstellen('warteschlangeSchritt', () => schritt())
 
   // Einreihen. Für Tests und später für Kampagnen und Automationen.
   bereitstellen('warteschlangeEinreihen', (eintraege) => {
@@ -454,38 +526,17 @@ module.exports = (ctx) => {
 
   // ── Shopify ──
 
+  // Der Zugang kommt aus den Hermes-Einstellungen (Token zentral in Vendo → System erneuern); hier nur anzeigen
   bereitstellen('shopifyLesen', () => {
     const s = datenLesen().shopify
+    const h = shopify.hermesZugang()
     return {
-      shop: s.shop || '',
-      tokenGesetzt: Boolean(s.tokenVerschluesselt),
+      shop: h?.shop || '',
+      tokenGesetzt: shopifyVorhanden(),
+      ausHermes: Boolean(h),
       letzterSync: s.letzterSync || null,
-      letzterSyncText: s.letzterSyncText || '',
-      tresorVerfuegbar: tresor.verfuegbar()
+      letzterSyncText: s.letzterSyncText || ''
     }
-  })
-
-  bereitstellen('shopifySpeichern', (eingabe = {}) => {
-    const geprueft = shopify.zugangPruefen(eingabe)
-    if (!geprueft.ok) return { ok: false, fehler: geprueft.fehler }
-
-    const daten = datenLesen()
-    let verschluesselt = daten.shopify.tokenVerschluesselt || null
-    if (geprueft.wert.token) {
-      if (!tresor.verfuegbar()) return { ok: false, fehler: ['Windows kann gerade nichts verschlüsseln. Ohne Verschlüsselung wird der Token nicht gespeichert.'] }
-      verschluesselt = tresor.verschluesseln(geprueft.wert.token)
-      if (!verschluesselt) return { ok: false, fehler: ['Der Token konnte nicht verschlüsselt werden, es wurde nichts gespeichert.'] }
-    }
-    daten.shopify = { ...daten.shopify, shop: geprueft.wert.shop, tokenVerschluesselt: verschluesselt }
-    ctx.datenSpeichern(daten)
-    console.log(`Newsletter: Shopify-Zugang gespeichert (${geprueft.wert.shop}).`)
-    return { ok: true, tokenGesetzt: Boolean(verschluesselt) }
-  })
-
-  bereitstellen('shopifyLoeschen', () => {
-    feldSpeichern('shopify', {})
-    console.log('Newsletter: Shopify-Zugang geloescht.')
-    return { ok: true }
   })
 
   // Abonnenten holen und in den Bestand einarbeiten
@@ -559,6 +610,8 @@ module.exports = (ctx) => {
         zustimmungAm: k.zustimmungAm,
         gesperrt: Boolean(k.gesperrt),
         gesperrtGrund: k.gesperrtGrund || null,
+        sperrArt: k.sperrArt || null,
+        ruecklaeufer: k.ruecklaeufer ? { weich: Number(k.ruecklaeufer.weich) || 0, abgelehnt: Number(k.ruecklaeufer.abgelehnt) || 0 } : null,
         hatShopifyId: Boolean(k.shopifyId)
       })),
       gefunden: gefiltert.length
@@ -607,7 +660,11 @@ module.exports = (ctx) => {
     const daten = datenLesen()
     const ergebnis = kontakte.loeschen(daten.kontakte, eingabe.email)
     if (!ergebnis.ok) return { ok: false, text: 'Diesen Kontakt gibt es nicht.' }
-    feldSpeichern('kontakte', ergebnis.liste)
+    // Mit dem Kontakt verschwinden auch seine Rückläufer-Einträge: eine Löschanfrage meint alles
+    const ziel = String(eingabe.email || '').trim().toLowerCase()
+    daten.kontakte = ergebnis.liste
+    daten.ruecklaeufer = daten.ruecklaeufer.filter((e) => e.email !== ziel)
+    ctx.datenSpeichern(daten)
     console.log(`Newsletter: ${kuerzen(eingabe.email)} vollstaendig geloescht.`)
     return { ok: true, text: 'Vollständig gelöscht. Stimmt die Adresse bei Shopify weiter zu, holt der nächste Sync sie wieder herein — dann besser sperren.' }
   })
@@ -727,6 +784,10 @@ module.exports = (ctx) => {
         eingereiht: k.eingereiht || 0,
         geaendertAm: k.geaendertAm || null,
         gestartetAm: k.gestartetAm || null,
+        pausiertAm: k.pausiertAm || null,
+        pausiertVon: k.pausiertVon || null,
+        pausiertGrund: k.pausiertGrund || null,
+        automatischAnhaltenAus: Boolean(k.automatischAnhaltenAus),
         // Ein Bot hat sie zur Freigabe gegeben: wann, von wem, Wunschtermin, ob die Testmail raus ist
         freigabe: k.freigabe || null,
         erstelltVon: k.erstelltVon || null
@@ -746,7 +807,7 @@ module.exports = (ctx) => {
     const daten = datenLesen()
     const kampagne = kampagneHolen(daten, eingabe.id)
     if (!kampagne) return { ok: false, fehler: ['Diese Kampagne gibt es nicht.'] }
-    if (kampagne.zustand === 'laeuft') return { ok: false, fehler: ['Die Kampagne läuft gerade. Erst abbrechen, dann ändern.'] }
+    if (unterwegs(kampagne)) return { ok: false, fehler: ['Die Kampagne läuft gerade oder ist angehalten. Erst abbrechen, dann ändern.'] }
 
     const aenderung = {
       name: String(eingabe.name || kampagne.name).trim().slice(0, 80) || kampagne.name,
@@ -768,7 +829,7 @@ module.exports = (ctx) => {
     const daten = datenLesen()
     const kampagne = kampagneHolen(daten, id)
     if (!kampagne) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
-    if (kampagne.zustand === 'laeuft') return { ok: false, text: 'Die Kampagne läuft gerade. Erst abbrechen.' }
+    if (unterwegs(kampagne)) return { ok: false, text: 'Die Kampagne läuft gerade oder ist angehalten. Erst abbrechen.' }
     daten.kampagnen = daten.kampagnen.filter((k) => k.id !== id)
     ctx.datenSpeichern(daten)
     console.log(`Newsletter: Kampagne "${kampagne.name}" geloescht.`)
@@ -863,6 +924,7 @@ module.exports = (ctx) => {
     if (!geprueft.ok) return { ok: false, fehler: geprueft.fehler }
     const kampagne = geprueft.kampagne
     if (kampagne.zustand === 'laeuft') return { ok: false, fehler: ['Die Kampagne läuft schon.'] }
+    if (kampagne.zustand === 'pausiert') return { ok: false, fehler: ['Die Kampagne ist angehalten. Mit „Fortsetzen“ geht es weiter.'] }
 
     const empfaenger = kontakte.empfaenger(daten.kontakte)
     if (!empfaenger.length) return { ok: false, fehler: ['Es gibt keine Empfänger mit Zustimmung.'] }
@@ -873,9 +935,16 @@ module.exports = (ctx) => {
       { jetzt }
     )
     daten.warteschlange = eingereiht.liste
+    // Der Kurzname für utm_campaign wird beim Start festgelegt und bleibt bei der Kampagne:
+    // eine spätere Umbenennung ändert die Links nicht mehr, und eine gleichnamige neue
+    // Kampagne bekommt einen eigenen (siehe ergebnisse.kurznameVergeben).
+    const e = ergebnisseVon(daten)
+    const utm = kampagne.utm || ergebnisse.kurznameVergeben(e.namen, kampagne.name, { art: 'kampagne', id: kampagne.id })
+    daten.ergebnisse = { ...e, namen: ergebnisse.nameMerken(e.namen, utm, { art: 'kampagne', id: kampagne.id }, { jetzt }).namen }
     daten.kampagnen = kampagnen.kampagneAendern(daten.kampagnen, kampagne.id, {
       zustand: 'laeuft',
       freigabe: null,
+      utm,
       gestartetAm: jetzt,
       geplantAm: null,
       eingereiht: (kampagne.eingereiht || 0) + eingereiht.eingereiht
@@ -944,7 +1013,7 @@ module.exports = (ctx) => {
     const daten = datenLesen()
     const kampagne = kampagneHolen(daten, eingabe.id)
     if (!kampagne) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
-    if (kampagne.zustand === 'laeuft') return { ok: false, text: 'Die Kampagne läuft gerade.' }
+    if (unterwegs(kampagne)) return { ok: false, text: 'Die Kampagne läuft gerade oder ist angehalten.' }
 
     // Kopf und Fuß behalten, den Inhalt dazwischen ersetzen
     const kopf = (kampagne.bausteine || []).filter((b) => b.art === 'kopf')
@@ -1146,7 +1215,7 @@ module.exports = (ctx) => {
     if (eingabe.ziel === 'kampagne') {
       const kampagne = daten.kampagnen.find((k) => k.id === eingabe.id)
       if (!kampagne) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
-      if (kampagne.zustand === 'laeuft') return { ok: false, text: 'Die Kampagne läuft gerade.' }
+      if (unterwegs(kampagne)) return { ok: false, text: 'Die Kampagne läuft gerade oder ist angehalten.' }
       daten.kampagnen = kampagnen.kampagneAendern(daten.kampagnen, kampagne.id, { html: inhalt.html, htmlRahmen: inhalt.htmlRahmen }).liste
       ctx.datenSpeichern(daten)
       return { ok: true, text: `Vorlage „${vorlage.name}“ übernommen. Texte jetzt anpassen.` }
@@ -1213,7 +1282,7 @@ module.exports = (ctx) => {
         beschreibung: automationen.AUSLOESER[art].beschreibung,
         abbruchBei: automationen.AUSLOESER[art].abbruchBei
       })),
-      shopifyBereit: Boolean(datenLesen().shopify.tokenVerschluesselt),
+      shopifyBereit: shopifyVorhanden(),
       liste: daten.automationen.map((a) => ({
         id: a.id,
         art: a.art,
@@ -1300,10 +1369,10 @@ module.exports = (ctx) => {
       if (!geprueft.ok) return { ok: false, text: `Noch nicht sendefertig: ${geprueft.fehler.join(' ')}` }
       if (!abmeldeAdresseVon(daten)) return { ok: false, text: 'Es fehlt eine Adresse für die Abmeldung (Reiter „Zugang“).' }
       if (!daten.marke.impressum) return { ok: false, text: 'Im Fuß fehlt das Impressum (Reiter „Zugang“, Abschnitt Marke).' }
-      if (automation.art === 'warenkorb' && !daten.shopify.tokenVerschluesselt) {
+      if (automation.art === 'warenkorb' && !shopifyVorhanden(daten)) {
         return { ok: false, text: 'Für den Warenkorbabbruch fehlt der Shopify-Zugang (Reiter „Kontakte“).' }
       }
-      if (automation.art === 'rueckgewinnung' && !daten.shopify.tokenVerschluesselt) {
+      if (automation.art === 'rueckgewinnung' && !shopifyVorhanden(daten)) {
         return { ok: false, text: 'Für die Rückgewinnung fehlt der Shopify-Zugang (Reiter „Kontakte“).' }
       }
     }
@@ -1343,12 +1412,30 @@ module.exports = (ctx) => {
     summe: '59,80 EUR'
   }
 
+  // Wohin die Bestellungen eines Automationsschritts zählen (Schritt 1-basiert)
+  const automationZiel = (automation, schrittNummer) => ({ art: 'automation', id: automation.id, schritt: schrittNummer + 1 })
+
+  // Kurzname für utm_campaign eines Automationsschritts. Hat der Schritt schon einen, bleibt
+  // es dabei, auch nach einer Umbenennung. Sonst wird er aus Name und Schritt gebildet; heißt
+  // eine zweite Automation genauso, bekommt sie einen eigenen („willkommen-schritt-1-2“),
+  // damit ihre Bestellungen nicht bei der ersten landen.
+  const automationUtm = (daten, automation, schrittNummer) => {
+    const namen = ergebnisseVon(daten).namen
+    const ziel = automationZiel(automation, schrittNummer)
+    return (
+      ergebnisse.kurznameFinden(namen, ziel) ||
+      ergebnisse.kurznameVergeben(namen, `${automation.name || automation.art || 'automation'} schritt ${schrittNummer + 1}`, ziel)
+    )
+  }
+
   const automationMailBauen = (daten, automation, schrittNummer, kontakt, extra) => {
     const schritt = (automation.schritte || [])[schrittNummer]
     if (!schritt) return { fehler: 'Diesen Schritt gibt es nicht.' }
+    const utm = automationUtm(daten, automation, schrittNummer)
     return {
       betreff: kampagnen.personalisieren(schritt.betreff, kontakt, extra),
-      html: mailBauenAus(daten, schritt, kontakt, extra, { utm: `${automation.name || automation.art || 'automation'} schritt ${schrittNummer + 1}` }).html
+      html: mailBauenAus(daten, schritt, kontakt, extra, { utm }).html,
+      utm
     }
   }
 
@@ -1547,6 +1634,96 @@ module.exports = (ctx) => {
 
   bereitstellen('ausloeserPruefen', () => ausloeserPruefen())
 
+  // ── Ergebnisse: was jede Mail gebracht hat (Phase 5, Schritt 1) ──
+  // Einmal am Tag die Bestellungen seit dem letzten Abruf (drei Tage überlappend) mit ihren
+  // UTM-Angaben holen und den Mails zuordnen. Solange noch keine Mail mit Kurzname raus ist,
+  // wird Shopify gar nicht gefragt.
+  const ergebnissePruefen = async ({ erzwingen = false, jetzt = Date.now() } = {}) => {
+    const daten = datenLesen()
+    const e = ergebnisseVon(daten)
+    if (!erzwingen && jetzt - (Number(e.geholtAm) || 0) < ERGEBNIS_TAKT) return { ok: true, nichts: true, text: 'Heute schon geholt.' }
+    const seit = ergebnisse.abrufSeit(e, { jetzt })
+    if (seit == null) return { ok: true, nichts: true, text: 'Noch keine Mail mit Kurzname verschickt.' }
+    const zugang = shopifyZugang()
+    if (zugang.fehler) return { ok: false, text: zugang.fehler }
+
+    const geholt = await shopify.ergebnisBestellungenHolen({ shop: zugang.shop, token: zugang.token, seit, holen: ctx.abrufen || null })
+    if (!geholt.ok) {
+      console.warn(`Newsletter: Ergebnisse konnten nicht geholt werden: ${geholt.fehler}`)
+      return { ok: false, text: geholt.fehler }
+    }
+
+    const frisch = datenLesen()
+    const fe = ergebnisseVon(frisch)
+    const aufgenommen = ergebnisse.bestellungenAufnehmen(fe.bestellungen, geholt.bestellungen, { jetzt })
+    frisch.ergebnisse = { ...fe, bestellungen: aufgenommen.liste, geholtAm: jetzt }
+    ctx.datenSpeichern(frisch)
+    if (aufgenommen.aufgenommen || aufgenommen.entfernt) {
+      console.log(`Newsletter: Ergebnisse - ${aufgenommen.aufgenommen} Bestellung(en) aus Mails neu, ${aufgenommen.entfernt} storniert.`)
+    }
+    return { ok: true, gesehen: geholt.bestellungen.length, aufgenommen: aufgenommen.aufgenommen, entfernt: aufgenommen.entfernt }
+  }
+
+  bereitstellen('ergebnisseHolen', async () => {
+    const r = await ergebnissePruefen({ erzwingen: true })
+    if (r.ok && !r.text) r.text = r.aufgenommen ? `${r.aufgenommen} neue Bestellung(en) aus Mails.` : 'Keine neuen Bestellungen aus Mails.'
+    return r
+  })
+
+  // Die Ergebnisliste im Reiter „Kampagnen“ (Phase 5, Schritt 2). Empfänger sind die
+  // erfolgreich verschickten Mails laut Protokoll; Testmails zählen nicht.
+  bereitstellen('kampagnenErgebnisse', () => {
+    const daten = datenLesen()
+    const e = ergebnisseVon(daten)
+    // `ctx.protokollOrdner` gibt es nur in Tests: dort nie das echte Protokoll lesen
+    const protokoll = protokollLesen({ anzahl: 50000, ...(ctx.protokollOrdner ? { ordner: ctx.protokollOrdner } : {}) })
+    const bewertet = zustellungBewerten(daten, protokoll)
+    return {
+      geholtAm: e.geholtAm || null,
+      shopifyBereit: Boolean(daten.shopify.tokenVerschluesselt),
+      zeilen: ergebnisse
+        .kampagnenZeilen({
+          kampagnen: daten.kampagnen,
+          ziele: ergebnisse.jeZiel(e.bestellungen, e.namen).ziele,
+          abmeldungen: ergebnisse.abmeldungenNachVersand(daten.kampagnen, daten.kontakte),
+          gesendet: ergebnisse.gesendetJeKampagne(protokoll)
+        })
+        .map((z) => ({ ...z, zustellung: bewertet[z.id] || null }))
+    }
+  })
+
+  // Ergebnisse im Reiter „Automationen“ (Phase 5, Schritt 3): je Schritt gesendet,
+  // Bestellungen, Umsatz; je Automation, wie die Serien endeten. Nie Adressen.
+  bereitstellen('automationenErgebnisse', () => {
+    const daten = datenLesen()
+    const e = ergebnisseVon(daten)
+    // `ctx.protokollOrdner` gibt es nur in Tests: dort nie das echte Protokoll lesen
+    const protokoll = protokollLesen({ anzahl: 50000, ...(ctx.protokollOrdner ? { ordner: ctx.protokollOrdner } : {}) })
+    return {
+      geholtAm: e.geholtAm || null,
+      zeilen: ergebnisse.automationenZeilen({
+        automationen: daten.automationen,
+        ziele: ergebnisse.jeZiel(e.bestellungen, e.namen).ziele,
+        gesendet: ergebnisse.gesendetJeAutomationsschritt(protokoll, daten.laeufe),
+        enden: ergebnisse.serienEnden(daten.laeufe)
+      })
+    }
+  })
+
+  // Die Zahlen je Mail, gerechnet beim Lesen. Nie Adressen.
+  bereitstellen('ergebnisseLesen', () => {
+    const daten = datenLesen()
+    const e = ergebnisseVon(daten)
+    const { ziele, ohneMail } = ergebnisse.jeZiel(e.bestellungen, e.namen)
+    return {
+      geholtAm: e.geholtAm || null,
+      ziele,
+      ohneMail,
+      abmeldungen: ergebnisse.abmeldungenNachVersand(daten.kampagnen, daten.kontakte),
+      hinweis: 'Gezählt werden Bestellungen, die Shopify einer Vendo-Mail zuordnen konnte. Wer Cookies ablehnt, fehlt oft — die Zahlen sind eher zu niedrig.'
+    }
+  })
+
   // Fällige Schritte in die Warteschlange legen. Von dort holt sie der Takt gedrosselt ab.
   const laeufeAbarbeiten = ({ jetzt = Date.now() } = {}) => {
     let daten = datenLesen()
@@ -1580,12 +1757,14 @@ module.exports = (ctx) => {
         continue
       }
 
-      // Der Schlüssel aus Lauf und Schritt verhindert, dass derselbe Schritt zweimal rausgeht
+      // Der Schlüssel aus Lauf und Schritt verhindert, dass derselbe Schritt zweimal rausgeht.
+      // Die Automation steht mit drin, damit das Protokoll die Mail auch dann noch ihr
+      // zuordnen kann, wenn der Lauf längst aufgeräumt ist (ergebnisse.autoSchluesselLesen).
       const ergebnis = warteschlange.einreihen(
         frisch.warteschlange,
         [
           {
-            kampagneId: `auto:${lauf.id}:${lauf.schritt}`,
+            kampagneId: `auto:${automation.id}:${lauf.id}:${lauf.schritt}`,
             an: lauf.email,
             betreff: gebaut.betreff,
             html: gebaut.html,
@@ -1599,7 +1778,11 @@ module.exports = (ctx) => {
       d.warteschlange = ergebnis.liste
       d.laeufe = automationen.schrittGemacht(d.laeufe, lauf.id, automation.schritte, { jetzt })
       ctx.datenSpeichern(d)
-      if (ergebnis.eingereiht) eingereiht++
+      if (ergebnis.eingereiht) {
+        eingereiht++
+        // Merken, zu welchem Schritt dieser Kurzname gehört — auch nach einer Umbenennung
+        kurznameSichern(gebaut.utm, automationZiel(automation, lauf.schritt))
+      }
     }
 
     if (eingereiht) console.log(`Newsletter: ${eingereiht} Automationsmail(s) in die Warteschlange gelegt.`)
@@ -1715,6 +1898,235 @@ module.exports = (ctx) => {
 
   bereitstellen('abmeldungenPruefen', () => abmeldungenPruefen())
 
+  // ── Rückläufer und Beschwerden ──
+  // Rückmeldungen von Mailservern liegen, per Filterregel bei IONOS, in einem eigenen Ordner.
+  // Vendo liest sie dort (ruecklaeufer.js), sperrt tote Adressen und Beschwerden und zählt
+  // vorübergehende Fehler. Anders als eine Abmeldung geht eine Rückläufer-Sperre nicht zu
+  // Shopify: die Person hat ihre Zustimmung nicht zurückgezogen, ihre Adresse funktioniert nur
+  // nicht. Server und Port sind dieselben wie bei den Abmeldungen.
+  const rueckEinstellungen = (daten) => {
+    const gespeichert = daten.einstellungen.ruecklaeufer || {}
+    const abm = abmeldeEinstellungen(daten)
+    return {
+      aktiv: Boolean(gespeichert.aktiv),
+      ordner: gespeichert.ordner || imap.RUECK_ORDNER_STANDARD,
+      host: abm.host,
+      port: abm.port,
+      letzterLauf: gespeichert.letzterLauf || null,
+      letzterText: gespeichert.letzterText || ''
+    }
+  }
+
+  // Adressen, die nie gesperrt werden: das eigene Postfach und die Abmeldeadresse
+  const eigeneAdressen = (daten) => [daten.zugang.benutzer, daten.zugang.antwortAn, abmeldeAdresseVon(daten)].filter(Boolean)
+
+  bereitstellen('ruecklaeuferLesen', () => {
+    const daten = datenLesen()
+    const liste = daten.kontakte
+    return {
+      ...rueckEinstellungen(daten),
+      standardOrdner: imap.RUECK_ORDNER_STANDARD,
+      postfachBereit: Boolean(daten.zugang.benutzer && daten.zugang.passwortVerschluesselt),
+      gesperrt: liste.filter((k) => k.gesperrt && k.sperrArt === 'ruecklaeufer').length,
+      beschwerden: liste.filter((k) => k.gesperrt && k.sperrArt === 'beschwerde').length,
+      mitWeichen: liste.filter((k) => !k.gesperrt && (Number(k.ruecklaeufer?.weich) || Number(k.ruecklaeufer?.abgelehnt))).length,
+      letzte: daten.ruecklaeufer.slice(0, 30).map((e) => ({ am: e.am, an: kuerzen(e.email), art: e.art, status: e.status, grund: e.grund }))
+    }
+  })
+
+  bereitstellen('ruecklaeuferEinstellen', (eingabe = {}) => {
+    const geprueft = imap.rueckEinstellungenPruefen(eingabe)
+    if (!geprueft.ok) return { ok: false, fehler: geprueft.fehler }
+    const daten = datenLesen()
+    const bisher = daten.einstellungen.ruecklaeufer || {}
+    daten.einstellungen = { ...daten.einstellungen, ruecklaeufer: { ...bisher, ...geprueft.wert } }
+    ctx.datenSpeichern(daten)
+    console.log(`Newsletter: Rueckläufer per Mail ${geprueft.wert.aktiv ? 'eingeschaltet' : 'ausgeschaltet'} (Ordner ${geprueft.wert.ordner}).`)
+    return { ok: true }
+  })
+
+  bereitstellen('ruecklaeuferVerbindungPruefen', async () => {
+    const daten = datenLesen()
+    const z = daten.zugang
+    if (!z.benutzer || !z.passwortVerschluesselt) return { ok: false, text: 'Es sind noch keine Zugangsdaten gespeichert.' }
+    const { passwort, fehler } = passwortHolen(z)
+    if (fehler) return { ok: false, text: fehler }
+    return imap.verbindungPruefen({ zugang: z, passwort, einstellungen: rueckEinstellungen(daten), erzeuger: ctx.imapErzeuger || null })
+  })
+
+  // Einen Durchgang machen: lesen, einordnen, sperren oder zählen, als gelesen markieren.
+  // Alles Gelesene wird markiert, auch was keine Rückmeldung war (etwa eine Abwesenheitsnotiz):
+  // es liegt im eigenen Ordner, bleibt dort und kommt so nicht bei jedem Lauf wieder.
+  const ruecklaeuferPruefen = async () => {
+    const daten = datenLesen()
+    const einstellungen = rueckEinstellungen(daten)
+    const z = daten.zugang
+    if (!z.benutzer || !z.passwortVerschluesselt) return { ok: false, text: 'Es sind noch keine Zugangsdaten gespeichert.' }
+    const { passwort, fehler } = passwortHolen(z)
+    if (fehler) return { ok: false, text: fehler }
+
+    const erzeuger = ctx.imapErzeuger || null
+    const geholt = await imap.ruecklaeuferHolen({ zugang: z, passwort, einstellungen, erzeuger })
+    if (!geholt.ok) {
+      console.warn(`Newsletter: Rückläufer nicht lesbar: ${geholt.fehler}`)
+      return { ok: false, text: geholt.fehler }
+    }
+
+    const eigene = eigeneAdressen(daten)
+    const alle = []
+    let keine = 0
+    for (const mail of geholt.mails) {
+      const gelesen = ruecklaeufer.lesen(mail.quelle, { eigene })
+      if (!gelesen.rueckmeldung) keine++
+      alle.push(...gelesen.ergebnisse)
+    }
+
+    const frisch = datenLesen()
+    const angewandt = ruecklaeufer.anwenden(frisch.kontakte, alle)
+    const unlesbar = alle.filter((e) => e.art === 'unbekannt').length
+    frisch.kontakte = angewandt.liste
+    frisch.ruecklaeufer = ruecklaeufer.ereignisseMerken(frisch.ruecklaeufer, angewandt.ereignisse)
+
+    let markiert = { ok: true }
+    const uids = geholt.mails.map((m) => m.uid)
+    if (uids.length) {
+      markiert = await imap.alsGelesenMarkieren({ zugang: z, passwort, einstellungen, uids, erzeuger })
+      if (!markiert.ok) console.warn(`Newsletter: Rückläufer konnten nicht als gelesen markiert werden: ${markiert.fehler}`)
+    }
+
+    const text = geholt.mails.length
+      ? [
+          `${geholt.mails.length} gelesen`,
+          `${angewandt.gesperrt} gesperrt`,
+          angewandt.gezaehlt ? `${angewandt.gezaehlt} vorübergehend oder abgelehnt gezählt` : '',
+          angewandt.unbekannt ? `${angewandt.unbekannt} Adressen waren nicht in der Liste` : '',
+          unlesbar ? `${unlesbar} ohne lesbaren Grund` : '',
+          keine ? `${keine} waren keine Rückmeldung` : '',
+          markiert.ok ? '' : 'nicht als gelesen markiert, kommen beim nächsten Lauf noch einmal'
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : 'Keine neuen Rückläufer.'
+
+    frisch.einstellungen = {
+      ...frisch.einstellungen,
+      ruecklaeufer: { ...(frisch.einstellungen.ruecklaeufer || {}), letzterLauf: Date.now(), letzterText: text }
+    }
+    ctx.datenSpeichern(frisch)
+    if (geholt.mails.length) console.log(`Newsletter: Rückläufer per Mail — ${text}`)
+    return { ok: true, text, gesperrt: angewandt.gesperrt, gezaehlt: angewandt.gezaehlt, unbekannt: angewandt.unbekannt, gelesen: geholt.mails.length }
+  }
+
+  bereitstellen('ruecklaeuferPruefen', () => ruecklaeuferPruefen())
+
+  // ── Zustellung beobachten (zustellung.js) ──
+  // Je Kampagne: tote Adressen, Ablehnungen, Beschwerden, Abmeldungen im Verhältnis zu den
+  // verschickten Mails, als Ampel. Bei Rot hält Vendo eine laufende Kampagne an; fortsetzen
+  // kann nur Felix, und danach hält Vendo dieselbe Kampagne nicht noch einmal an.
+  const protokollAlle = () => protokollLesen({ anzahl: 50000, ...(ctx.protokollOrdner ? { ordner: ctx.protokollOrdner } : {}) })
+
+  const zustellungBewerten = (daten, protokoll = protokollAlle(), { jetzt = Date.now() } = {}) => {
+    const zahlen = zustellung.zaehlen({
+      kampagnen: daten.kampagnen,
+      ereignisse: daten.ruecklaeufer,
+      kontakte: daten.kontakte,
+      gesendet: ergebnisse.gesendetJeKampagne(protokoll),
+      jetzt
+    })
+    const bewertet = {}
+    for (const [id, z] of Object.entries(zahlen)) bewertet[id] = { ...zustellung.bewerten(z), zahlen: z }
+    return bewertet
+  }
+
+  const zustellungPruefen = ({ jetzt = Date.now() } = {}) => {
+    const daten = datenLesen()
+    const laufende = daten.kampagnen.filter((k) => k.zustand === 'laeuft' && !k.automatischAnhaltenAus)
+    if (!laufende.length) return { angehalten: 0 }
+    const bewertet = zustellungBewerten(daten, protokollAlle(), { jetzt })
+    let liste = daten.kampagnen
+    let angehalten = 0
+    for (const k of laufende) {
+      const b = bewertet[k.id]
+      if (b?.stufe !== 'rot') continue
+      const grund = b.gruende.filter((g) => g.stufe === 'rot').map((g) => g.text).join('; ')
+      liste = kampagnen.kampagneAendern(liste, k.id, { zustand: 'pausiert', pausiertAm: jetzt, pausiertVon: 'vendo', pausiertGrund: grund }, { jetzt }).liste
+      angehalten++
+      console.warn(`Newsletter: Kampagne "${k.name}" automatisch angehalten - ${grund}.`)
+    }
+    if (angehalten) feldSpeichern('kampagnen', liste)
+    return { angehalten }
+  }
+
+  bereitstellen('zustellungPruefen', () => zustellungPruefen())
+
+  // Für Übersicht und Kampagnen: die Kampagnen der letzten 30 Tage mit Ampel und Rat
+  bereitstellen('zustellungLesen', () => {
+    const daten = datenLesen()
+    const jetzt = Date.now()
+    const bewertet = zustellungBewerten(daten, protokollAlle(), { jetzt })
+    const seit = jetzt - 30 * 86400000
+    const liste = daten.kampagnen
+      .filter((k) => bewertet[k.id] && (Number(k.gestartetAm) >= seit || k.zustand === 'pausiert' || k.zustand === 'laeuft'))
+      .sort((a, b) => Number(b.gestartetAm) - Number(a.gestartetAm))
+      .map((k) => ({
+        id: k.id,
+        name: k.name,
+        zustand: k.zustand,
+        gestartetAm: k.gestartetAm || null,
+        pausiertVon: k.zustand === 'pausiert' ? k.pausiertVon || null : null,
+        pausiertGrund: k.zustand === 'pausiert' ? k.pausiertGrund || null : null,
+        automatischAnhaltenAus: Boolean(k.automatischAnhaltenAus),
+        ...bewertet[k.id]
+      }))
+    return {
+      stufe: zustellung.schwerste(liste.map((x) => x.stufe)),
+      kampagnen: liste,
+      grenzen: { minGesendet: zustellung.MIN_GESENDET, minFuerRot: zustellung.MIN_FUER_ROT }
+    }
+  })
+
+  bereitstellen('kampagneAnhalten', (id) => {
+    const daten = datenLesen()
+    const kampagne = kampagneHolen(daten, id)
+    if (!kampagne) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
+    if (kampagne.zustand !== 'laeuft') return { ok: false, text: 'Anhalten geht nur bei einer laufenden Kampagne.' }
+    daten.kampagnen = kampagnen.kampagneAendern(daten.kampagnen, id, { zustand: 'pausiert', pausiertAm: Date.now(), pausiertVon: 'felix', pausiertGrund: 'von Hand angehalten' }).liste
+    ctx.datenSpeichern(daten)
+    console.log(`Newsletter: Kampagne "${kampagne.name}" angehalten.`)
+    return { ok: true, text: 'Angehalten. Die restlichen Mails warten, bis du fortsetzt.' }
+  })
+
+  // Fortsetzen: Wartende Einträge bekommen eine frische Verfallsfrist, und wer inzwischen aus
+  // der Schlange gefallen ist (verfallen), wird neu eingereiht. Wer die Mail schon hat, nicht.
+  bereitstellen('kampagneFortsetzen', (id) => {
+    const daten = datenLesen()
+    const kampagne = kampagneHolen(daten, id)
+    if (!kampagne) return { ok: false, text: 'Diese Kampagne gibt es nicht.' }
+    if (kampagne.zustand !== 'pausiert') return { ok: false, text: 'Fortsetzen geht nur bei einer angehaltenen Kampagne.' }
+    const jetzt = Date.now()
+    const frisch = daten.warteschlange.map((e) =>
+      e.kampagneId === id && e.zustand === 'offen' ? { ...e, verfaelltAm: jetzt + warteschlange.VERFALL } : e
+    )
+    const eingereiht = warteschlange.einreihen(
+      frisch,
+      kontakte.empfaenger(daten.kontakte).map((k) => ({ kampagneId: id, an: k.email, art: 'kampagne' })),
+      { jetzt }
+    )
+    daten.warteschlange = eingereiht.liste
+    daten.kampagnen = kampagnen.kampagneAendern(daten.kampagnen, id, {
+      zustand: 'laeuft',
+      pausiertAm: null,
+      pausiertGrund: null,
+      // Hat Vendo angehalten und Felix entscheidet sich fürs Weitersenden, gilt seine Entscheidung
+      automatischAnhaltenAus: kampagne.pausiertVon === 'vendo' || Boolean(kampagne.automatischAnhaltenAus),
+      pausiertVon: null,
+      eingereiht: (kampagne.eingereiht || 0) + eingereiht.eingereiht
+    }).liste
+    ctx.datenSpeichern(daten)
+    console.log(`Newsletter: Kampagne "${kampagne.name}" fortgesetzt, ${eingereiht.eingereiht} neu eingereiht.`)
+    return { ok: true, text: `Fortgesetzt.${eingereiht.eingereiht ? ` ${eingereiht.eingereiht} Mails neu eingereiht, die inzwischen verfallen waren.` : ''}` }
+  })
+
   // ── Protokoll und Vorschau ──
 
   bereitstellen('protokollLesen', (eingabe = {}) => {
@@ -1757,7 +2169,7 @@ module.exports = (ctx) => {
       let liste = frisch.kampagnen
       let geaendert = false
       for (const k of laufende) {
-        const offen = frisch.warteschlange.some((e) => e.kampagneId === k.id && e.zustand === 'offen')
+        const offen = frisch.warteschlange.some((e) => e.kampagneId === k.id && (e.zustand === 'offen' || e.zustand === 'sendet'))
         if (offen) continue
         liste = kampagnen.kampagneAendern(liste, k.id, { zustand: 'fertig', fertigAm: jetzt }, { jetzt }).liste
         geaendert = true
@@ -2506,7 +2918,7 @@ module.exports = (ctx) => {
           gesendet: eintraege.filter((e) => e.ok && e.art === 'kampagne').length,
           fehlgeschlagen: eintraege.filter((e) => !e.ok && e.art === 'kampagne').length,
           testmails: eintraege.filter((e) => e.art === 'test').length,
-          offenInWarteschlange: daten.warteschlange.filter((e) => e.kampagneId === k.id && e.zustand === 'offen').length
+          offenInWarteschlange: daten.warteschlange.filter((e) => e.kampagneId === k.id && (e.zustand === 'offen' || e.zustand === 'sendet')).length
         }
       }),
       versandLetzte30Tage: {
@@ -2524,7 +2936,8 @@ module.exports = (ctx) => {
         nachZustand: zaehlen(liste, (x) => x.zustand || 'ohne'),
         nachQuelle: zaehlen(liste, (x) => x.quelle || 'ohne'),
         neuJeMonat: letzteMonate(zaehlen(liste, (x) => monat(x.zustimmungAm || x.angelegtAm))),
-        abmeldungenJeMonat: letzteMonate(zaehlen(liste.filter((x) => x.gesperrt), (x) => monat(x.gesperrtAm)))
+        abmeldungenJeMonat: letzteMonate(zaehlen(liste.filter((x) => x.gesperrt && x.sperrArt !== 'ruecklaeufer'), (x) => monat(x.gesperrtAm))),
+        ruecklaeufer: liste.filter((x) => x.gesperrt && x.sperrArt === 'ruecklaeufer').length
       },
       automationen: daten.automationen.map((x) => ({ id: x.id, name: x.name, art: x.art, aktiv: Boolean(x.aktiv), schritte: (x.schritte || []).length, laeufe: automationen.stand(daten.laeufe, x.id) }))
     }
@@ -2684,6 +3097,12 @@ module.exports = (ctx) => {
           // Abmeldungen im selben Rhythmus: sie müssen zeitnah wirken, aber das Postfach
           // soll deswegen nicht alle 15 Sekunden geöffnet werden.
           if (abmeldeEinstellungen(datenLesen()).aktiv) await abmeldungenPruefen()
+          // Rückläufer im selben Rhythmus: tote Adressen sollen vor der nächsten Mail gesperrt sein
+          if (rueckEinstellungen(datenLesen()).aktiv) await ruecklaeuferPruefen()
+          // Danach die Zustellung bewerten: bei Rot eine laufende Kampagne anhalten
+          zustellungPruefen()
+          // Was die Mails gebracht haben: prüft selbst, ob heute schon geholt wurde
+          if (datenLesen().shopify.tokenVerschluesselt) await ergebnissePruefen()
         }
 
         const ergebnis = await schritt()

@@ -12,6 +12,8 @@ import mailModul from '../plugins/newsletter/mail.js'
 import icons from '../plugins/newsletter/icons.js'
 import starten from '../plugins/newsletter/haupt.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const {
   mailAus,
   fussPruefen,

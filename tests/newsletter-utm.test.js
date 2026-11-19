@@ -10,6 +10,8 @@ import test from 'node:test'
 import htmlMail from '../plugins/newsletter/html-mail.js'
 import starten from '../plugins/newsletter/haupt.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { utmName, utmAnhaengen } = htmlMail
 const HOSTS = ['beispielshop.de', 'www.beispielshop.de']
 const UTM = 'utm_source=vendo&amp;utm_medium=email&amp;utm_campaign='

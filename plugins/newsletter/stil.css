@@ -89,6 +89,7 @@
 .nl-meldung { font-size: 12px; line-height: 1.5; padding: 9px 11px; border: 1px solid var(--rahmen); border-radius: 8px; }
 .nl-meldung.nl-ok { border-color: var(--gruen); color: var(--gruen); }
 .nl-meldung.nl-fehler { border-color: var(--rot); color: var(--rot); }
+.nl-ladefehler { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .nl-warnung { font-size: 12px; line-height: 1.6; padding: 9px 11px; border: 1px solid var(--rot); border-radius: 8px; color: var(--rot); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .nl-form input[readonly] { color: var(--text-leise); border-style: dashed; }
 
@@ -104,6 +105,12 @@
 .nl-tabelle tr.nl-zeile-fehler td { background: rgba(200, 88, 78, 0.07); }
 .nl-mono { font-family: var(--mono); font-size: 11px; color: var(--text-leise); white-space: nowrap; }
 .nl-rot { color: var(--rot); }
+.nl-gelb { color: var(--gold-hell); }
+.nl-zustell { font-size: 12px; line-height: 1.6; padding: 10px 12px; margin: 12px 0; border: 1px solid var(--gold-leise); border-radius: 8px; }
+.nl-zustell.nl-zustell-rot { border-color: var(--rot); }
+.nl-zustell p { margin: 0 0 6px; }
+.nl-zustell ul { margin: 0 0 6px; padding-left: 18px; }
+.nl-zustell li { margin-bottom: 6px; }
 .nl-tabelle .nl-an { color: var(--gruen); }
 
 /* Kampagnen: Liste links, Editor rechts */
@@ -249,3 +256,15 @@
 .nl-mini iframe { position: absolute; top: 0; left: 50%; width: 640px; height: 525px; margin-left: -320px; border: 0; transform: scale(0.4); transform-origin: top center; pointer-events: none; background: #fff; }
 .nl-vorlage-karte:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
 .nl-feld { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 1px 6px; margin: 1px 2px 1px 0; border: 1px solid var(--gold-leise); color: var(--gold-hell); cursor: help; }
+
+/* Ergebnisliste im Reiter „Kampagnen“ (Phase 5) */
+.nl-tabelle .nl-zahl-spalte { text-align: right; }
+.nl-ergebnis-name { color: var(--text); }
+/* Reiter und „Kontakte holen“ in einer Zeile, auch im halben Fenster: Die Reiter dürfen schrumpfen (und umbrechen),
+   der Knopf nicht; der Text zum letzten Sync verschwindet, wenn der Platz fehlt (steht dann im Tooltip des Knopfs). */
+.nl-reiter-zeile { display: flex; align-items: center; justify-content: flex-start; gap: 12px; flex-wrap: nowrap; container-type: inline-size; }
+.nl-reiter-zeile .nl-reiter { flex: 0 1 auto; min-width: 0; }
+.nl-kontakte-kopf { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-width: 0; }
+.nl-kontakte-kopf .knopf-gold { white-space: nowrap; }
+.nl-kontakte-kopf .leise { font-size: 12px; }
+@container (max-width: 1100px) { .nl-kontakte-kopf .leise { display: none; } }

@@ -12,6 +12,8 @@ import bausteineModul from '../plugins/newsletter/bausteine.js'
 import mailModul from '../plugins/newsletter/mail.js'
 import starten from '../plugins/newsletter/haupt.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { htmlSaeubern, mailAusHtml, htmlAusBausteinen, beispielHtml, hatInhalt, istDokument, koerperAus, MAX_HTML } = htmlMail
 const { neueKampagne, kampagnePruefen, personalisierenHtml, htmlVon } = kampagnenModul
 const { startVorlage } = bausteineModul

@@ -14,6 +14,8 @@ import path from 'node:path'
 import modul from '../plugins/newsletter/entwurfsdateien.js'
 import starten from '../plugins/newsletter/haupt.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { abgleichen, dateiName, dateiText, ohneKopf, STAND_DATEI } = modul
 
 const ordnerNeu = (name) => fs.mkdtempSync(path.join(os.tmpdir(), `vendo-newsletter-${name}-`))

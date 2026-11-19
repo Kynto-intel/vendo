@@ -15,6 +15,8 @@ import botsModul from '../plugins/newsletter/bots.js'
 import starten from '../plugins/newsletter/haupt.js'
 import musterModul from '../plugins/newsletter/muster.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { auftragPruefen, zeitpunktLesen, eingangLesen, auftragNehmen, antwortSchreiben, aufraeumen, AKTIONEN } = botsModul
 
 const MORGEN = new Date(Date.now() + 86400000)

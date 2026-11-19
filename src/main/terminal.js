@@ -9,7 +9,6 @@ const os = require('node:os')
 
 const HERMES_BIN = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'bin')
 // „Meine Befehle“: eigene Datei, leicht zu lesen und von Hand zu bearbeiten (Vendo dabei geschlossen lassen)
-const BEFEHLE_DATEI = path.join(__dirname, '..', '..', 'daten', 'terminal-befehle.json')
 
 let pty = null
 let konsole = null
@@ -80,13 +79,8 @@ function beenden() {
 // Gespeicherte Befehle lesen. Noch keine Datei: frühere Befehle aus den Einstellungen übernehmen (einmalig),
 // sonst null (dann zeigt die Oberfläche die Standardbefehle).
 function befehleLaden() {
-  const fs = require('node:fs')
-  try {
-    const liste = JSON.parse(fs.readFileSync(BEFEHLE_DATEI, 'utf8'))
-    if (Array.isArray(liste)) return liste
-  } catch {
-    // noch keine Datei oder kaputt
-  }
+  const liste = require('./vendospeicher').lesen('terminal-befehle')
+  if (Array.isArray(liste)) return liste
   const einstellungen = require('./einstellungen')
   const alt = einstellungen.laden().terminalBefehle
   if (Array.isArray(alt)) {
@@ -98,15 +92,11 @@ function befehleLaden() {
 }
 
 function befehleSpeichern(liste) {
-  const fs = require('node:fs')
   const sauber = (Array.isArray(liste) ? liste : [])
     .filter((b) => b && typeof b.befehl === 'string' && b.befehl.trim())
     .slice(0, 100)
     .map((b) => ({ name: String(b.name || b.befehl).slice(0, 60), befehl: String(b.befehl).trim().slice(0, 1000) }))
-  fs.mkdirSync(path.dirname(BEFEHLE_DATEI), { recursive: true })
-  const tmp = `${BEFEHLE_DATEI}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(sauber, null, 2), 'utf8')
-  fs.renameSync(tmp, BEFEHLE_DATEI) // erst ganz schreiben, dann ersetzen: nie eine halbe Datei
+  require('./vendospeicher').schreiben('terminal-befehle', sauber) // PostgreSQL mit Startkopie
   return sauber
 }
 

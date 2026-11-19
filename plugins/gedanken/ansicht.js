@@ -1,5 +1,5 @@
 // Gedankenspeicher: „Merk dir: Stoffproben bestellen“ (Sprache oder Tippen) oder hier eintippen.
-// Daten in daten/plugins/gedanken.json: { notizen: [{ id, text, zeit, erledigt }] }
+// Daten in Plugin-Daten „gedanken“ (Datenbank): { notizen: [{ id, text, zeit, erledigt }] }
 // Jede neue Notiz landet zusätzlich im Vault (Vendo\Gedankenspeicher.md). Luzzy kennt die offenen Notizen.
 // „Neue Idee: …“ (Sprach-Diktat): Luzzy macht daraus eine saubere Notiz mit Titel und Schlagworten,
 // die als eigene Datei in Vendo\Ideen\ landet; im Gedankenspeicher steht dann „Idee: <Titel>“.

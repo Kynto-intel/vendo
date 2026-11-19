@@ -4,7 +4,9 @@ daten/
 # Daten der Plugins (Termine, Routinen, Einstellungen): gehören Felix, nicht ins Projekt
 plugins/*/daten.json
 
-# Rechnungs-Plugin: nicht in Git oder GitHub aufnehmen
+# Buchhaltungs-Plugin: seit 19.11.2026 eigenes Repository (github.com/Kynto-intel/vendo-buchhaltung). Lokal ist
+# plugins/buchhaltung eine Verknüpfung (Junction) auf den Klon daneben; Vendo versioniert es nicht mehr.
+/plugins/buchhaltung
 /plugins/rechnungen/
 
 # Entwürfe der Plugin-Werkstatt (werden erst nach Felix Ja nach plugins/ kopiert)
@@ -17,7 +19,10 @@ plugins/*/daten.json
 /src/AGENTS.md
 /plugins/AGENTS.md
 
-# Lokale Tests und Berichte des ignorierten Rechnungs-Plugins
+# Berichte des Buchhaltungs-Plugins: enthalten Ergebnisse aus Läufen mit dem echten Archiv, bleiben lokal.
+# Die Tests der Buchhaltung liegen in vendo-buchhaltung; hier nur die beiden, die Vendo selbst brauchen.
+/test-results/buchhaltung.result.md
+/test-results/buchhaltung-*.result.md
 /tests/rechnungen.test.js
 /tests/rechnungen-parser.test.js
 /tests/rechnungen-main.test.js

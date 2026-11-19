@@ -15,7 +15,7 @@ const TEXT_ENDUNGEN = new Set(['.md', '.txt', '.html', '.htm', '.json', '.csv'])
 const UEBERSPRINGEN = new Set(['node_modules', '.git', '.obsidian', 'firecrawl-selfhost', 'Kynto backups', '__pycache__', '.venv'])
 
 // Bibliothek: die Ordner wählt Felix selbst (Bereich Bibliothek → „+ Ordner wählen“), gespeichert in den Einstellungen
-// (daten/einstellungen.json: bibliothek.ordner, ganze Pfade)
+// (Einstellungen in der Datenbank: bibliothek.ordner, ganze Pfade)
 function bibliothekOrdner() {
   const liste = einstellungen.laden().bibliothek?.ordner
   return Array.isArray(liste) ? liste.filter((o) => typeof o === 'string' && path.isAbsolute(o)) : []

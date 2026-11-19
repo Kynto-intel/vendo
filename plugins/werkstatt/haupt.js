@@ -1,7 +1,7 @@
 // Werkstatt, Hintergrundteil: Entwürfe verwalten, prüfen, einbauen.
 // Luzzy baut neue Plugins in vendo\werkstatt\<id>\ (nie direkt in plugins\). Vendo prüft sie hier
 // (Aufbau, Syntax, welche Rechte der Code nutzt) und kopiert sie erst nach Felix' Ja nach plugins\<id>\.
-// Ersetzte Plugins werden vorher nach Desktop\vendo\backup\ gesichert. Felix Daten liegen getrennt in daten/plugins/<id>.json und bleiben.
+// Ersetzte Plugins werden vorher nach Desktop\vendo\backup\ gesichert. Felix Daten liegen getrennt in der Datenbank und bleiben.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -70,7 +70,7 @@ function entwuerfe() {
 
 function installierte() {
   return fs.readdirSync(PLUGINS, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && ID.test(e.name))
+    .filter((e) => (e.isDirectory() || (e.isSymbolicLink() && fs.statSync(path.join(PLUGINS, e.name), { throwIfNoEntry: false })?.isDirectory())) && ID.test(e.name)) // auch verknüpfte Plugins
     .map((e) => {
       const m = manifestVon(path.join(PLUGINS, e.name))
       return m ? { id: e.name, name: m.name || e.name, beschreibung: m.beschreibung || '', version: m.version || '', eigen: EIGENE.has(e.name), inArbeit: fs.existsSync(path.join(WERKSTATT, e.name)) } : null
@@ -176,7 +176,7 @@ function code(idRoh) {
   return aus
 }
 
-// Einbauen: altes Plugin sichern (Felix Daten liegen in daten/plugins/<id>.json und bleiben), Entwurf nach plugins\ kopieren, Entwurf entfernen
+// Einbauen: altes Plugin sichern (Felix Daten liegen in der Datenbank und bleiben), Entwurf nach plugins\ kopieren, Entwurf entfernen
 function einbauen(idRoh) {
   const id = idPruefen(idRoh)
   if (EIGENE.has(id)) throw new Error('Die Werkstatt kann sich nicht selbst ersetzen.')
@@ -212,7 +212,7 @@ async function verwerfen(idRoh) {
   return true
 }
 
-// Vorhandenes Plugin zum Ändern in die Werkstatt holen (ohne Daten, die liegen in daten/plugins/<id>.json)
+// Vorhandenes Plugin zum Ändern in die Werkstatt holen (ohne Daten, die liegen in der Datenbank)
 function zumAendern(idRoh) {
   const id = idPruefen(idRoh)
   if (EIGENE.has(id)) throw new Error('Die Werkstatt kann sich nicht selbst ändern.')
@@ -314,11 +314,11 @@ function testStarten(idRoh) {
   testBeenden()
   const { BrowserWindow } = require('electron')
   const m = manifestVon(ordner)
-  // Testdaten: Startdaten des Entwurfs, sonst Felix' Daten des eingebauten Plugins (daten\plugins\<id>.json)
-  const datenDatei = [path.join(ordner, 'daten.json'), path.join(PLUGINS, '..', 'daten', 'plugins', `${id}.json`), path.join(PLUGINS, id, 'daten.json')].find((d) => fs.existsSync(d))
+  // Testdaten: Startdaten des Entwurfs, sonst Felix' Daten des eingebauten Plugins (über Vendos Speicher: Datei oder Datenbank)
+  const datenDatei = [path.join(ordner, 'daten.json'), path.join(PLUGINS, id, 'daten.json')].find((d) => fs.existsSync(d))
   let daten = {}
   try {
-    daten = datenDatei ? JSON.parse(fs.readFileSync(datenDatei, 'utf8')) : {}
+    daten = datenDatei ? JSON.parse(fs.readFileSync(datenDatei, 'utf8')) : require(path.join(PLUGINS, '..', 'src', 'main', 'plugins')).datenLaden(id)
   } catch {
     daten = {}
   }

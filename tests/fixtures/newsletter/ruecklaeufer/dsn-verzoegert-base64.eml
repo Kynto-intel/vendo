@@ -1,0 +1,20 @@
+From: MAILER-DAEMON@versand.beispiel.invalid
+To: info@beispiel.invalid
+Subject: Delivery Status Notification (Delay)
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type="delivery-status"; boundary=GRENZE2
+
+--GRENZE2
+Content-Type: text/plain
+
+Synthetische Testnachricht: Zustellung verzögert, es wird weiter versucht.
+
+--GRENZE2
+Content-Type: message/delivery-status
+Content-Transfer-Encoding: base64
+
+UmVwb3J0aW5nLU1UQTogZG5zOyB2ZXJzYW5kLmJlaXNwaWVsLmludmFsaWQKCkZpbmFsLVJlY2lw
+aWVudDogcmZjODIyOyBsb3VAa3VuZGVuLmludmFsaWQKQWN0aW9uOiBkZWxheWVkClN0YXR1czog
+NC40LjcKRGlhZ25vc3RpYy1Db2RlOiBzbXRwOyA0NTEgNC40LjcgdHJ5IGFnYWluIGxhdGVyCg==
+
+--GRENZE2--

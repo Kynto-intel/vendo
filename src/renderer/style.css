@@ -336,7 +336,7 @@ body.anim-scanlinie .mitte::after {
 body.anim-welle .welle.aktiv.denkt span { animation: welle 0.9s ease-in-out infinite; }
 
 /* Reaktor */
-.reaktor { width: 100%; height: 100%; filter: drop-shadow(0 0 16px rgba(var(--akzent-rgb), 0.35)); overflow: visible; }
+.reaktor { width: 100%; height: 100%; filter: drop-shadow(0 0 16px rgba(var(--akzent-rgb), 0.35)); }
 .reaktor .r { transform-box: fill-box; transform-origin: center; }
 body.anim-reaktor .reaktor .r1 { animation: dreh 38s linear infinite; }
 body.anim-reaktor .reaktor .r2 { animation: dreh-rueck 22s linear infinite; }

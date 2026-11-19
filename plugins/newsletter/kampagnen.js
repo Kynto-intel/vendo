@@ -19,7 +19,7 @@ const { hatInhalt, fremdePlatzhalter, bilderOhneAdresse, linksOhneZiel, MAX_HTML
 
 // 'freigabe': ein Bot hat die Kampagne vorbereitet und Felix eine Testmail geschickt; sie
 // wartet auf seine Bestätigung in Vendo. Gesendet wird aus diesem Zustand nie.
-const ZUSTAENDE = ['entwurf', 'freigabe', 'geplant', 'laeuft', 'fertig', 'abgebrochen']
+const ZUSTAENDE = ['entwurf', 'freigabe', 'geplant', 'laeuft', 'pausiert', 'fertig', 'abgebrochen']
 const MAX_BAUSTEINE = 40
 
 const neueId = () => `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`

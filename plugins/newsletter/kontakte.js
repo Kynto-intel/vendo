@@ -43,6 +43,7 @@ function stand(liste) {
     gesamt: alle.length,
     empfaenger: empfaenger(alle).length,
     gesperrt: alle.filter((k) => k.gesperrt).length,
+    ruecklaeufer: alle.filter((k) => k.gesperrt && (k.sperrArt === 'ruecklaeufer' || k.sperrArt === 'beschwerde')).length,
     ohneZustimmung: alle.filter((k) => !k.gesperrt && !k.zustimmungAm).length,
     offeneBestaetigung: alle.filter((k) => !k.gesperrt && String(k.zustand || '').toUpperCase() === ZUSTAND_OFFEN).length,
     andererZustand: alle.filter((k) => !k.gesperrt && k.zustand && !zustandErlaubt(k) && String(k.zustand).toUpperCase() !== ZUSTAND_OFFEN).length,
@@ -155,7 +156,7 @@ function freigeben(liste, email, { jetzt = Date.now() } = {}) {
   const neu = alsListe(liste).map((k) => {
     if (adresse(k.email) !== ziel) return k
     getroffen = true
-    return { ...k, gesperrt: false, gesperrtAm: null, gesperrtGrund: null, geaendertAm: jetzt }
+    return { ...k, gesperrt: false, gesperrtAm: null, gesperrtGrund: null, sperrArt: null, geaendertAm: jetzt }
   })
   return { liste: neu, ok: getroffen }
 }

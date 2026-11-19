@@ -34,7 +34,7 @@ Hermes remains a separate application. Vendo does not modify Hermes program code
 - Node.js LTS and npm
 - A locally installed Hermes Agent with a profile configured for Vendo
 
-Optional components include a microphone, `uv` for Pocket TTS, Ollama for local fallback, and accounts or credentials for Shopify, mail, Gemini TTS, or ElevenLabs. Vendo does not bundle these services or credentials.
+Optional components include Docker Desktop for the local PostgreSQL database, a microphone, `uv` for Pocket TTS, Ollama for local fallback, and accounts or credentials for Shopify, mail, Gemini TTS, or ElevenLabs. Vendo does not bundle these services or credentials.
 
 ## Download the Repository
 
@@ -58,6 +58,7 @@ This launches the Electron application from source. Hermes Agent must be install
 ## Data and Integrations
 
 - App settings and plugin data are stored locally and excluded from the public Git repository. Never commit credentials, tokens, personal data, or local backups.
+- If Docker Desktop is installed, Vendo starts it on launch and runs PostgreSQL in a container from `docker/vendo-db/compose.yml`, reachable only on `127.0.0.1`. Vendo generates the database passwords itself and stores them only encrypted with Windows (`safeStorage`). PostgreSQL is the only store for plugin data and for Vendo's own settings and small state (table `vendo.einstellungen`). Vendo loads plugin data from the database at startup; until then plugin views wait, background parts start later, and nothing is saved, so an empty state can never overwrite real data. Changes the database cannot take are kept in `daten/speicher-offen/` and written later. Settings are needed before Docker is up, so Vendo keeps a startup copy in `daten/startkopie.json`; once connected, the database wins. Old JSON files (`daten/plugins/<id>.json`, `daten/einstellungen.json`, `terminal-befehle.json`, `waechter-stand.json`) are imported once if the database has nothing for them and then moved to `daten/datei-sicherungen/`. Calendar and tasks get an exchange copy in `daten/austausch/` that Hermes tools may edit; Vendo reads such changes immediately. System → Database shows the state and exports all plugin data as JSON files. `node scripts/datenbank-sicherung.js` creates a database backup (`--pruefen` also test-restores it into a throwaway database).
 - Prompts sent to Hermes may be processed by the model provider configured in Hermes.
 - Pocket TTS generates speech locally. Gemini TTS and ElevenLabs send speech text to their respective providers.
 - Connected services such as Shopify, mail, and weather communicate with their providers when their integrations are used. Data handling depends on each provider and configuration.

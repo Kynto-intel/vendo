@@ -1,0 +1,41 @@
+From: Mail Delivery Subsystem <postmaster@versand.beispiel.invalid>
+To: info@beispiel.invalid
+Subject: Undelivered Mail Returned to Sender
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+ boundary="=_grenze_drei"
+
+--=_grenze_drei
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Synthetische Testnachricht f=C3=BCr mehrere Empf=C3=A4nger.
+
+--=_grenze_drei
+Content-Type: message/delivery-status
+Content-Transfer-Encoding: quoted-printable
+
+Reporting-MTA: dns; versand.beispiel.invalid
+
+Final-Recipient: rfc822; voll@kunden.invalid
+Action: failed
+Status: 5.2.2
+Diagnostic-Code: smtp; 552 5.2.2 Postfach voll / mailbox full
+
+Final-Recipient: rfc822; spamfilter@kunden.invalid
+Action: failed
+Status: 5.7.1
+Diagnostic-Code: smtp; 554 5.7.1 Message rejected due to content restricti=
+ons (spam score too high)
+
+Final-Recipient: rfc822; weg@kunden.invalid
+Original-Recipient: rfc822; weg@kunden.invalid
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; 550 Mailbox does not exist
+
+Final-Recipient: rfc822; zugestellt@kunden.invalid
+Action: delivered
+Status: 2.0.0
+
+--=_grenze_drei--

@@ -87,6 +87,8 @@ export async function pluginsStarten({ mitte, rechts, vorKarte, schnellbefehle, 
         }
       },
       aufrufen: (name, ...argumente) => api.plugins.aufrufen(m.id, name, ...argumente),
+      // Dateipfad einer gezogenen/gewählten Datei (File-Objekt), damit haupt.js sie lesen kann
+      pfadVon: (datei) => api.pfadVon(datei),
       // Karte in der rechten Spalte (z. B. "Heute")
       karte(titel) {
         const karte = document.createElement('section')

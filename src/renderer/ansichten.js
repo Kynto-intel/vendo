@@ -1,6 +1,7 @@
 // Bereiche der Zentrale: Crew, Jobs, System. Alle Daten kommen live aus Hermes.
 
 import { bestaetigen, hinweis } from './fenster.js'
+import { datenbankKarteLaden } from './datenbankkarte.js'
 import { kostenKarteLaden } from './kosten.js' // Kosten-Wächter im System-Tab
 const api = window.vendo
 const maskieren = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -311,6 +312,7 @@ document.addEventListener('click', async (e) => {
 
 // ── System ──
 export async function systemLaden() {
+  datenbankKarteLaden().catch(() => {}) // PostgreSQL und Plugin-Daten (datenbankkarte.js)
   kostenKarteLaden().catch(() => {}) // Kosten-Wächter (kosten.js), holt höchstens einmal pro Minute neu
   const [status, details, werte, nutzung] = await Promise.all([
     lesen('/api/status'),

@@ -10,6 +10,8 @@ import zugangModul from '../plugins/newsletter/zugang.js'
 import tresorModul from '../plugins/newsletter/tresor.js'
 import smtpModul from '../plugins/newsletter/smtp.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { zugangPruefen, kuerzen, SMTP_STANDARD } = zugangModul
 const { tresorMachen } = tresorModul
 const { smtpFehlerText } = smtpModul

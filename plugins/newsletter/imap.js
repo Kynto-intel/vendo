@@ -17,6 +17,8 @@ const { EMAIL_FORM } = require('./zugang.js')
 
 const IMAP_STANDARD = { host: 'imap.ionos.de', port: 993 }
 const ORDNER_STANDARD = 'Abmeldungen'
+const RUECK_ORDNER_STANDARD = 'Ruecklaeufer' // ohne Umlaut: so tippt ihn jeder gleich
+const RUECK_MAX_BYTES = 262144 // von jeder Rückmeldung nur den Anfang, das reicht zum Lesen
 const MAX_MAILS = 200
 const FRIST = 30000
 
@@ -130,6 +132,59 @@ async function abmeldungenHolen({ zugang, passwort, einstellungen = {}, erzeuger
   }
 }
 
+// Einstellungen für den Rückläufer-Ordner. Anders als bei den Abmeldungen ist die INBOX hier
+// ausgeschlossen: Rückmeldungen sehen keinem Betreff-Muster sicher genug ähnlich, und Vendo
+// soll die Kundenmails dort nicht als gelesen markieren.
+function rueckEinstellungenPruefen(eingabe = {}) {
+  const fehler = []
+  const ordner = String(eingabe.ordner ?? '').trim() || RUECK_ORDNER_STANDARD
+  if (ordner.length > 120) fehler.push('Der Ordnername ist zu lang.')
+  if (/[\r\n]/.test(ordner)) fehler.push('Der Ordnername darf keinen Zeilenumbruch enthalten.')
+  if (istInbox(ordner)) fehler.push('Rückläufer nur aus einem eigenen Ordner, nicht aus der INBOX. Lege bei IONOS eine Filterregel an.')
+  return { ok: fehler.length === 0, fehler, wert: { ordner, aktiv: Boolean(eingabe.aktiv) } }
+}
+
+// Ungelesene Mails im Rückläufer-Ordner holen, mit dem Anfang ihres Quelltexts.
+// Gibt { ok, mails: [{ uid, quelle }], gesehen, fehler } zurück. Gelesen wird in ruecklaeufer.js.
+async function ruecklaeuferHolen({ zugang, passwort, einstellungen = {}, erzeuger = null, grenze = MAX_MAILS } = {}) {
+  const ordner = einstellungen.ordner || RUECK_ORDNER_STANDARD
+  if (istInbox(ordner)) return { ok: false, fehler: 'Rückläufer nur aus einem eigenen Ordner, nicht aus der INBOX.', mails: [] }
+  const client = clientMachen({ zugang, passwort, einstellungen, erzeuger })
+  if (!client) return { ok: false, fehler: 'Die IMAP-Bibliothek fehlt. In Vendos Ordner einmal „npm install“ ausführen.', mails: [] }
+
+  const mails = []
+  let gesehen = 0
+  let sperre = null
+  try {
+    await client.connect()
+    sperre = await client.getMailboxLock(ordner)
+    for await (const nachricht of client.fetch({ seen: false }, { uid: true, source: { start: 0, maxLength: RUECK_MAX_BYTES } })) {
+      gesehen++
+      if (gesehen > grenze) break
+      const quelle = nachricht?.source ? Buffer.from(nachricht.source).toString('utf8') : ''
+      mails.push({ uid: nachricht.uid, quelle })
+    }
+    return { ok: true, mails, gesehen, ordner }
+  } catch (fehler) {
+    return { ok: false, fehler: fehlerText(fehler), mails, gesehen }
+  } finally {
+    try {
+      if (sperre) sperre.release()
+    } catch {
+      // egal
+    }
+    try {
+      await client.logout()
+    } catch {
+      try {
+        client.close?.()
+      } catch {
+        // egal
+      }
+    }
+  }
+}
+
 // Verarbeitete Mails als gelesen markieren, damit sie beim nächsten Lauf nicht noch einmal
 // kommen. Eine eigene Verbindung, damit ein Fehler beim Markieren den Abruf nicht verliert.
 async function alsGelesenMarkieren({ zugang, passwort, einstellungen = {}, uids = [], erzeuger = null } = {}) {
@@ -200,6 +255,8 @@ async function verbindungPruefen({ zugang, passwort, einstellungen = {}, erzeuge
 
 module.exports = {
   abmeldungenHolen,
+  ruecklaeuferHolen,
+  rueckEinstellungenPruefen,
   alsGelesenMarkieren,
   verbindungPruefen,
   einstellungenPruefen,
@@ -209,6 +266,7 @@ module.exports = {
   istInbox,
   IMAP_STANDARD,
   ORDNER_STANDARD,
+  RUECK_ORDNER_STANDARD,
   ABMELDE_MUSTER,
   MAX_MAILS
 }

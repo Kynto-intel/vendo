@@ -9,7 +9,7 @@ zulässt — eine `PLAN.md` würde als Fehler gemeldet.
 
 ## Stand
 
-Letzte Änderung: 2026-11-13
+Letzte Änderung: 2026-11-16
 
 **Gebaut:**
 
@@ -63,6 +63,12 @@ Letzte Änderung: 2026-11-13
   `customerEmailMarketingConsentUpdate` zurück. Eigener Zugang im Plugin: Shop-Adresse und
   verschlüsselter Token, kein Griff in Hermes' Konfiguration.
   Test: `tests/newsletter-shopify.test.js`, 14 von 14 bestanden.
+  Seit 2026-11-18 hat der Token aus den Hermes-Einstellungen Vorrang (nur lesen, wie im
+  Buchhaltungs-Plugin): Wer den Token im System-Tab von Vendo erneuert, muss ihn hier nicht
+  mehr nachtragen. Die Eingabe im Reiter „Kontakte“ (Shop-Adresse, Token, Speichern, Löschen) ist
+  entfallen; oben rechts im Reiter steht der Knopf „Kontakte holen“ mit dem letzten Sync. Ein früher
+  im Plugin gespeicherter Token wird nur noch genutzt, wenn in Hermes keiner steht.
+  Test: `tests/newsletter-hermes-zugang.test.js`.
 - **Kontaktverwaltung** (2026-11-09): `kontakte.js` führt den Bestand zusammen (**ein Sync
   hebt keine Sperre auf**), bestimmt den Empfängerkreis (**ohne Zustimmungsdatum ist niemand
   Empfänger**), sperrt, gibt frei, löscht vollständig und liest CSV (Trennzeichen und
@@ -642,13 +648,117 @@ Letzte Änderung: 2026-11-13
   Fenster und „Zuletzt geprüft“.
   Tests: newsletter-rueckgewinnung.test.js (18) — **526 insgesamt**.
   Bericht: test-results/newsletter-rueckgewinnung.result.md.
+- **Phase 5, Schritt 1: Ergebnisse holen** (2026-11-13): `ergebnisse.js` und
+  `shopify.ergebnisBestellungenHolen`. Einmal am Tag holt Vendo die Bestellungen seit dem
+  letzten Abruf (drei Tage überlappend) mit `customerJourneySummary` und ordnet sie über
+  `utm_source=vendo` und `utm_campaign` den Mails zu, letzter Besuch vor erstem. Gespeichert
+  werden nur ID, Kurzname, Betrag, Währung und Zeitpunkt, kein Kundenfeld. Stornierte fallen
+  heraus, noch nicht ausgewertete (`ready` falsch) kommen beim nächsten Abruf. Solange keine
+  Mail mit Kurzname raus ist, wird Shopify gar nicht gefragt. **Der Kurzname wird beim Start
+  einer Kampagne festgelegt** (Feld `utm`) und bleibt bei ihr; eine gleichnamige neue
+  Kampagne bekommt `name-2`. Automationsschritte merken sich ihren Kurznamen, sobald eine
+  Mail in die Warteschlange geht. Abmeldungen in den 48 Stunden nach einem Versand werden
+  je Kampagne gezählt. Lesen über `ergebnisseLesen`, von Hand holen über `ergebnisseHolen`;
+  angezeigt wird noch nichts (Schritte 2 bis 4).
+  Tests: newsletter-ergebnisse.test.js (19) — **545 insgesamt**.
+  Bericht: test-results/newsletter-ergebnisse.result.md.
+- **Phase 5, Schritt 2: Ergebnisliste im Reiter „Kampagnen“** (2026-11-13): Unter den
+  Kampagnenkarten steht der Abschnitt „Ergebnisse“, eine Zeile je verschickter Kampagne, die
+  neueste oben: Versanddatum, Name und Betreff, Empfänger, Bestellungen, Umsatz, Umsatz je
+  100 Empfänger und Abmeldungen in den 48 Stunden danach. Empfänger sind die erfolgreich
+  verschickten Kampagnenmails laut Protokoll, ohne Testmails. „Jetzt holen“ fragt Shopify
+  sofort statt erst beim nächsten Tagesabruf. Darunter ein Satz, dass Besuche ohne Cookies
+  fehlen und die Zahlen eher zu niedrig sind. Daten über `kampagnenErgebnisse`
+  (`ergebnisse.kampagnenZeilen`, `gesendetJeKampagne`).
+  Tests: newsletter-ergebnisse.test.js (23) — **549 insgesamt**.
+- **Phase 5, Schritt 3: Ergebnisse im Reiter „Automationen“** (2026-11-13): Jede
+  Automationskarte hat oben einen aufklappbaren Block „Ergebnisse“: je Schritt Betreff,
+  gesendet, Bestellungen, Umsatz und Umsatz je 100 Empfänger, darunter, wie die Serien der
+  letzten 30 Tage endeten (laufen, mit Kauf beendet, abgemeldet, zu spät, durchgelaufen,
+  anders beendet). Der Warteschlangen-Schlüssel einer Automationsmail heißt jetzt
+  `auto:<automation>:<lauf>:<schritt>`, damit das Protokoll sie auch nach dem Aufräumen des
+  Laufs noch zuordnen kann; das frühere `auto:<lauf>:<schritt>` wird gelesen, solange der Lauf
+  existiert. Daten über `automationenErgebnisse`. „Jetzt holen“ im Reiter „Kampagnen“
+  aktualisiert beide Reiter.
+  Tests: newsletter-ergebnisse.test.js (28) — **554 insgesamt**.
 - **Gast-Checkouts und Double-Opt-In gestrichen** (2026-11-13, Felix' Entscheidung): Beides
   wird nicht gebraucht. Anmeldungen kommen nur über Shopify, und Bestellungen ohne
   Kundenkonto bleiben bei Warenkorb-Mails und beim Abbruch außen vor.
+- **Nachbesserungen aus dem Review** (2026-11-16, `docs/newsletter-review.md`):
+  - **Eigener Kurzname je Automationsschritt:** Der Kurzname für `utm_campaign` wurde bisher
+    nur aus Name und Schritt gebildet. Eine gelöschte und neu angelegte Automation hieß
+    genauso wie die alte, ihre Bestellungen wären still der gelöschten zugeordnet worden.
+    Jetzt behält ein Schritt seinen einmal vergebenen Kurznamen
+    (`ergebnisse.kurznameFinden`), und eine neue gleichnamige Automation bekommt einen
+    eigenen (`willkommen-schritt-1-2`), wie es bei Kampagnen schon war. Bestehende Zuordnungen
+    bleiben unverändert gültig.
+  - **Versand mit Zwischenzustand:** Ein Eintrag der Warteschlange steht vor dem SMTP-Aufruf
+    auf `sendet`. Stürzt Vendo ab, nachdem IONOS die Mail angenommen hat, ging der Eintrag
+    bisher nach dem Neustart erneut raus. Jetzt wird er nach 15 Minuten zu `unklar`, nicht
+    wiederholt und im Reiter „Protokoll“ sowie in der Kachel „Warteschlange“ gezeigt. Gedrosselt
+    geht er ohne Versuch zurück auf `offen`. „Genau einmal“ kann es mit SMTP trotzdem nicht
+    geben, siehe „Feste Grenzen“.
+  - **Ladefehler sichtbar:** Konnte die Oberfläche etwas nicht vom Hintergrundteil holen,
+    sah das bisher aus wie eine leere Liste. Jetzt steht oben ein roter Hinweis mit dem
+    Bereich und „Erneut laden“.
+  Tests: newsletter-ergebnisse.test.js (31), neu newsletter-versandzustand.test.js (12) und
+  newsletter-ladefehler.test.js (4) — **573 insgesamt**.
+- **Rückläufer und Beschwerden** (2026-11-16, Review-Befund S1): `ruecklaeufer.js` liest
+  Rückmeldungen von Mailservern aus einem eigenen Postfach-Ordner (Standard `Ruecklaeufer`,
+  nie die INBOX): Zustellberichte nach RFC 3464, Spam-Beschwerden nach RFC 5965 und
+  Klartext-Rückmeldungen (`X-Failed-Recipients` oder die angehängte Originalmail). Je Adresse:
+  - **gesperrt** bei toter Adresse (5.1.x, 5.2.1, 5.4.4 oder eindeutiger Text wie „user
+    unknown“) und bei einer Beschwerde, mit eigener Sperrart `ruecklaeufer` bzw. `beschwerde`;
+  - **nur gezählt** bei vorübergehenden Fehlern (4.x.x, Postfach voll) und bei Ablehnungen
+    wegen Spamverdacht oder Richtlinie (5.7.x, unklare 5.x.x) — das sagt etwas über die
+    Mail, nicht über die Adresse;
+  - **nichts** bei unlesbaren Rückmeldungen, bei Abwesenheitsnotizen und bei den eigenen
+    Adressen (Postfach, Antwortadresse, Abmeldeadresse).
+  Im Zweifel wird nicht gesperrt. Eine Rückläufer-Sperre geht **nicht** zu Shopify (die
+  Zustimmung dort bleibt), kein Sync und kein Import hebt sie auf, „Freigeben“ schon.
+  Rückläufer zählen nicht als Abmeldung in den Ergebnissen. Gelesen wird alle zehn Minuten
+  mit den Abmeldungen; alles Gelesene wird als gelesen markiert, nichts gelöscht. Neu ist
+  außerdem eine Sperrprüfung direkt vor jedem Versand: Wer sich während einer laufenden
+  Kampagne abmeldet, zurückprallt oder beschwert, bekommt die noch wartende Mail nicht mehr
+  (Testmails ausgenommen). In der Oberfläche: Reiter „Kontakte“, Abschnitt „Rückläufer per
+  Mail“, mit den letzten Einträgen; in der Liste steht „Rückläufer“ oder „Beschwerde“ statt
+  „gesperrt“ und bei aktiven Kontakten die Zahl gezählter Fehler.
+  Tests: neu newsletter-ruecklaeufer.test.js (23) mit synthetischen Rückmeldungen in
+  `tests/fixtures/newsletter/ruecklaeufer/`, newsletter-ladefehler.test.js (5) — **597
+  insgesamt**.
+- **Zustellung beobachten, Kampagnen anhalten** (2026-11-16): Ob eine Mail im Spam-Ordner
+  landet, sieht kein Absender. `zustellung.js` wertet deshalb die Vorzeichen je Kampagne aus,
+  im Verhältnis zu den verschickten Mails laut Protokoll, und fasst sie zu einer Ampel zusammen:
 
-**Gesamtstand der Tests: 526 in zwanzig Dateien, alle bestanden, plus der App-Lauf.**
+  | Signal | gelb ab | rot ab |
+  |---|---|---|
+  | tote Adressen (Rückläufer „hart“) | 2 % | 5 % |
+  | Ablehnungen wegen Spamverdacht (5.7.x, unklare 5.x.x) | 1 % | 3 % |
+  | Beschwerden | 0,1 % | 0,3 % (Gmail-Grenze) |
+  | Abmeldungen | 1 % | nie |
 
-**Als Nächstes** — der Bauplan ist abgearbeitet. Was bleibt, braucht echte Zugangsdaten:
+  Rot zählt erst ab 50 verschickten Mails und drei Ereignissen derselben Art. Ein Ereignis
+  gehört zur zuletzt davor gestarteten Kampagne, bis 48 Stunden nach ihrem Ende. **Bei Rot
+  hält Vendo eine laufende Kampagne selbst an** (Zustand `pausiert`, geprüft alle zehn
+  Minuten nach den Rückläufern); ihre Mails warten in der Schlange, andere Mails gehen weiter.
+  Fortsetzen kann nur Felix: wartende Einträge bekommen eine frische Frist, Verfallene werden
+  neu eingereiht, wer die Mail schon hat, nicht. Nach einem Fortsetzen hält Vendo dieselbe
+  Kampagne nicht noch einmal an. Von Hand anhalten geht jederzeit. Eine angehaltene Kampagne
+  ist wie eine laufende nicht änderbar; zum Ändern abbrechen, dann geht sie beim Neustart nur
+  an die, die sie noch nicht haben (solange die erledigten Einträge noch in der Schlange
+  stehen, eine Woche). In der Oberfläche: Kachel „Zustellung“ in der Übersicht, darunter ein
+  Kasten je auffälliger Kampagne mit Grund und Rat, Knöpfe „Anhalten“ und „Fortsetzen“ im
+  Kampagnen-Editor, Spalte „Zustellung“ in der Ergebnisliste.
+  Tests: neu newsletter-zustellung.test.js (16), newsletter-ladefehler.test.js (7) — **615
+  insgesamt**.
+
+**Automatisierte Tests:** 615 in fünfundzwanzig Dateien, am 2026-11-16 alle bestanden.
+Das ist kein Nachweis für die manuelle App-Prüfung oder die echten Integrationen.
+
+**Als Nächstes** — Phase 1 bis 4 sind abgearbeitet; Phase 5, Schritte 1 bis 3, stehen.
+Als Nächstes kommt **Schritt 4: Übersicht mit Durchschnitt und Richtung** (Plan weiter
+unten, beschlossen 2026-11-13). Daneben bleibt die Einrichtung, die echte Zugangsdaten
+braucht:
 
 1. **Postfach eintragen** (Reiter „Zugang") → „Anmeldung prüfen" → Testmail an dich selbst.
    Damit sind DPAPI, IONOS-Anmeldung und der Versandweg belegt oder eben nicht.
@@ -657,38 +767,66 @@ Letzte Änderung: 2026-11-13
    für Impressum, Datenschutzerklärung und AGB, die Profil-Adressen der Netzwerke (die Icons
    bringt Vendo mit), die Überschrift darüber, eine freie Zeile unter dem Impressum, die
    Fußfarben und, wenn gewünscht, ein eigenes Logo für den Fuß.
-3. **Shopify-Token** (Reiter „Kontakte") mit `read_customers`, `write_customers`,
+3. **Shopify-Token** (zentral im System-Tab von Vendo) mit `read_customers`, `write_customers`,
    `read_orders` und der Freigabe für geschützte Kundendaten → „Kontakte jetzt holen".
 4. **Eine Kampagne von Luzzy entwerfen lassen**, Vorschau ansehen, Testmail schicken und in
-   Outlook, Gmail und auf dem Handy anschauen. Erst das belegt die Bausteine.
+   Gmail und auf dem Handy anschauen. Erst das belegt die Bausteine. Outlook ist nicht nötig
+   (Felix' Entscheidung vom 2026-11-16).
 5. **SPF, DKIM und DMARC** für die Domain prüfen, bevor die erste echte Kampagne rausgeht.
 6. **Abmeldungen per Mail** (steht seit 2026-11-09): bei IONOS die Filterregel anlegen, die
    Mails an die Abmeldeadresse in den Ordner `Abmeldungen` legt, dann im Reiter „Kontakte“
    „Verbindung prüfen“ und den Schalter einschalten.
-7. **Rückgewinnung**: Texte schreiben, Testmail, einschalten. Nach dem ersten Takt zeigt der
+7. **Rückläufer per Mail**: bei IONOS eine Filterregel anlegen (Absender enthält
+   „mailer-daemon“ oder „postmaster“ → Ordner `Ruecklaeufer`), dann im Reiter „Kontakte“,
+   Abschnitt „Rückläufer per Mail“, „Verbindung prüfen“ und den Schalter einschalten.
+   Zum Prüfen eine Mail an eine Adresse der eigenen Domain schicken, die es nicht gibt; die
+   Rückmeldung muss im Ordner landen, und „Jetzt einlesen“ meldet sie als gelesen.
+8. **Rückgewinnung**: Texte schreiben, Testmail, einschalten. Nach dem ersten Takt zeigt der
    Editor „Zuletzt geprüft“. Steht stattdessen im Terminal eine Warnung, hat Shopify die
    Abfrage abgelehnt.
 
-Nach Felix' Stand vom 2026-11-13 sind die Punkte 1 bis 3 erledigt.
+Nach Felix' Stand vom 2026-11-13 sind die Punkte 1 bis 3 erledigt. Damit sind laut ihm auch
+das Öffnen des Plugins in Vendo, die IONOS-Anmeldung, die Verschlüsselung über Windows und
+der Shopify-Abgleich (820 Abonnenten) belegt.
 
-**Noch nicht geprüft:** Das Plugin wurde in Vendo noch nicht geöffnet — dass der Bereich
-erscheint, die Reiter umschalten und das Formular speichert, steht aus. Weil `haupt.js` neu
-dazugekommen ist, muss Vendo einmal neu starten, sonst zeigt der Reiter „Zugang" nur den
-Hinweis, dass der Hintergrundteil fehlt. Ebenfalls offen: die echte Anmeldung bei IONOS und
-dass Windows auf diesem Rechner verschlüsseln kann.
+Stand 2026-11-16:
+- **Punkt 4:** Testkampagne in Gmail und auf dem Handy angesehen, sieht laut Felix gut aus.
+  Outlook wird bewusst nicht geprüft (Felix' Entscheidung, nicht benötigt).
+- **Punkt 5:** Die DNS-Einträge sind vorhanden (öffentliche Abfrage): SPF schließt IONOS ein,
+  DKIM ist über die IONOS-Selektoren `s1-ionos` und `s2-ionos` eingerichtet, DMARC steht auf
+  `p=none`. Noch nachzusehen: In Gmail bei der Testmail „Original anzeigen“ sollte bei SPF,
+  DKIM und DMARC jeweils PASS stehen. Danach kann DMARC bei Bedarf auf `p=quarantine`.
+- **Punkt 6:** Die Filterregel „Newsletter-Abmeldungen“ steht bei IONOS.
+- **Punkt 7:** Erledigt. Filterregel und Ordner `Ruecklaeufer` stehen, „Verbindung prüfen“
+  klappt, und zwei Testmails an nicht vorhandene Adressen kamen als IONOS-Rückmeldung
+  („Mail delivery failed: returning message to sender“) im Ordner an und wurden von Vendo
+  erkannt.
+
+**Noch nicht geprüft:** PASS bei SPF/DKIM/DMARC an einer echten Mail (Punkt 5) und die
+Rückgewinnung (Punkt 8). Die Ladefehler-Anzeige und der Zustand „unklar“
+vom 2026-11-16 sind nur automatisch getestet, nicht in der laufenden App angesehen.
 
 ## Ziel
 
 E-Mail-Kampagnen und Automationen über ein IONOS-Postfach: Kontakte aus Shopify,
-Kampagnen aus geprüften Bausteinen, Texte von der KI, Versand mit Drossel. Kein
-Kontaktlimit, keine Abo-Kosten pro Empfänger.
+Kampagnen aus geprüften Bausteinen, Texte von der KI, Versand mit Drossel. Der Shopify-Sync
+ist auf höchstens 10.000 Kontakte begrenzt; es gibt keine Abo-Kosten pro Empfänger.
 
-**Nicht Teil des Ziels:** Öffnungs- und Klick-Tracking. Das braucht einen erreichbaren
-HTTP-Endpunkt und kommt erst mit einem Serverbetrieb in Frage (siehe „Später: Server").
+**Nicht Teil des Ziels:** Öffnungs- und Klick-Tracking. Es ist nicht implementiert und braucht
+einen erreichbaren HTTP-Endpunkt; das kommt erst mit einem Serverbetrieb in Frage (siehe
+„Später: Server").
 Erfolgsmessung läuft vorerst über UTM-Parameter und Shopify-Umsatz.
 
 ## Feste Grenzen
 
+- **Shopify-Sync:** höchstens 40 Seiten mit jeweils bis zu 250 Kontakten, also maximal
+  10.000 pro Abgleich. Ein größerer Shopify-Bestand wird damit nicht vollständig synchronisiert.
+- **Kontaktansicht:** Jede Suche fordert 100 Treffer an. Mehr passende Kontakte werden gezählt,
+  aber nicht angezeigt; es gibt keine Seitensteuerung. CSV-Import ist vorhanden, ein vollständiger
+  CSV-Export nicht.
+- **Plugin-Speicher:** Vendos Plugin-API lehnt den serialisierten JSON-Text ab, wenn er mehr als
+  5.000.000 JavaScript-Zeichen (UTF-16-Codeeinheiten) umfasst — ungefähr 5 MB, nicht exakt eine
+  Dateigrößenangabe in Bytes.
 - **Hermes wird nicht verändert.** Das Plugin spricht selbst per SMTP mit IONOS und nutzt
   das Hermes-Plugin `ionos-mail` nicht. Beide senden unabhängig voneinander über dasselbe
   Postfach; SMTP ist zustandslos, es gibt keinen Konflikt.
@@ -696,6 +834,10 @@ Erfolgsmessung läuft vorerst über UTM-Parameter und Shopify-Umsatz.
   in Vendos Speicher. Es liest keine Hermes-Konfiguration.
 - **Das Stundenlimit ist gemeinsam.** Es hängt am Postfach, nicht am Programm. Der Versand
   muss deshalb Luft für den Kundenservice lassen.
+- **Kein „genau einmal“.** SMTP und Vendos Speicher lassen sich nicht in einem Schritt
+  festschreiben. Bricht Vendo genau zwischen der Annahme durch IONOS und dem Speichern ab,
+  steht der Eintrag danach auf `unklar`: Die Mail ist vielleicht angekommen, wird aber nicht
+  von selbst wiederholt. Lieber eine Mail zu wenig als eine doppelt.
 - **Zugangsdaten nie im Klartext.** Postfach-Passwort nur über Electron `safeStorage`
   (Windows-DPAPI). Ohne verfügbare Verschlüsselung wird nichts gespeichert.
 - **Keine echten Kundendaten in Tests.** Fixtures sind synthetisch.
@@ -714,13 +856,16 @@ plugins/newsletter/
   smtp.js            Verbindung zu IONOS: anmelden, verschicken, Fehlertexte
   drossel.js         Stundenbudget, Mindestabstand, Pause bei Limit-Fehler
   warteschlange.js   Einträge, Idempotenz, Versuche, Verfall
-  imap.js            Abmeldungen aus einem Postfach-Ordner lesen
+  imap.js            Abmeldungen und Rückläufer aus einem Postfach-Ordner lesen
+  ruecklaeufer.js    Rückmeldungen von Mailservern lesen, einordnen, Sperren anwenden
+  zustellung.js      Ampel je Kampagne aus Rückläufern, Beschwerden und Abmeldungen
   shopify.js         Abonnenten holen, Abmeldungen zurückschreiben
   kontakte.js        Bestand führen, zusammenführen, CSV lesen
   bausteine.js       HTML-Schnipsel und Zusammenbau der Mail
   kampagnen.js       prüfen, personalisieren, Zeitplan, KI-Auftrag und -Antwort
   vorlagen.js        wiederverwendbare Bausteinfolgen, eigener KI-Auftrag
-  automationen.js    Zustandsmaschine: Läufe, Schritte, Verfall, Abbruch
+  automationen.js    Zustandsmaschine: Läufe, Schritte, Verfall, Abbruch, Rückgewinnung
+  ergebnisse.js      Bestellungen über UTM den Mails zuordnen, Abmeldungen nach Versand
   entwurfsdateien.js jeder Entwurf auch als .html-Datei, Abgleich in beide Richtungen
   protokoll.js       eine Zeile je Mail in Monatsdateien
   README.md          diese Datei
@@ -776,14 +921,18 @@ Vendos Plugin-Speicher (`daten/plugins/newsletter.json`) hält die Stammdaten:
   "zugang":       { "benutzer", "passwortVerschluesselt", "absenderName", "antwortAn" },
   "kontakte":     [ { "email", "vorname", "nachname", "quelle", "zustimmungAm", "gesperrt", "shopifyId" } ],
   "vorlagen":     [ { "id", "name", "beschreibung", "html", "musterId" } ],  (nur eigene; Muster kommen aus vorlagen/)
-  "kampagnen":    [ { "id", "name", "betreff", "vorschau", "bausteine", "zielgruppe", "geplantAm", "zustand" } ],
+  "kampagnen":    [ { "id", "name", "betreff", "vorschau", "bausteine", "zielgruppe", "geplantAm", "zustand", "utm" } ],
   "automationen": [ { "id", "name", "ausloeser", "schritte", "aktiv", "nurMitZustimmung" } ],
-  "laeufe":       [ { "id", "kampagneId", "begonnenAm", "gesendet", "fehler", "zustand" } ]
+  "laeufe":       [ { "id", "kampagneId", "begonnenAm", "gesendet", "fehler", "zustand" } ],
+  "ergebnisse":   { "namen": { "<kurzname>": { "art", "id", "schritt", "seit" } },
+                    "bestellungen": [ { "id", "kurz", "betrag", "waehrung", "am" } ],  (ohne Kundenfelder)
+                    "geholtAm" }
 }
 ```
 
-**Wichtig:** Vendo lehnt Plugin-Daten über 5 MB ab. Das Versandprotokoll gehört deshalb
-nicht in diese Datei, sondern als eine Zeile pro Mail in Monatsdateien unter
+**Wichtig:** Vendo lehnt Plugin-Daten ab, wenn der serialisierte JSON-Text mehr als
+5.000.000 JavaScript-Zeichen (UTF-16-Codeeinheiten, ungefähr 5 MB) umfasst. Das Versandprotokoll
+gehört deshalb nicht in diese Datei, sondern als eine Zeile pro Mail in Monatsdateien unter
 `daten/plugins/newsletter/protokoll-JJJJ-MM.ndjson`. Der Ordner liegt in `daten/` und ist
 damit in der Sicherung und nicht in Git. In der JSON bleiben nur Zusammenfassungen.
 
@@ -846,9 +995,8 @@ Ziel: Eine Kampagne entsteht in wenigen Minuten, ohne HTML von Hand.
   Produktblock, Knopf, Trenner, Fuß mit Abmeldelink: feste Tabellen-Schnipsel mit
   Inline-CSS, 600 px, kein Flexbox, kein Grid, kein `<style>`-Block. Die KI bestimmt
   Reihenfolge und Inhalt, sie erfindet kein Markup.
-  **Noch nicht in echten Mailprogrammen angesehen** — gebaut nach den bekannten Regeln für
-  Outlook, aber der Nachweis fehlt, bis eine Testmail durch Outlook, Gmail und ein Handy
-  gegangen ist.
+  **In echten Mailprogrammen angesehen** (2026-11-16, laut Felix): Gmail und Handy sehen gut
+  aus. Gebaut nach den bekannten Regeln für Outlook; dort nicht geprüft, weil nicht benötigt.
 - Vorlage = gespeicherte Bausteinfolge mit Platzhaltern — **steht**: eigener Reiter,
   anwendbar auf Kampagnen und auf einzelne Automationsschritte, Entwurf durch Luzzy möglich.
 - Freies HTML gibt es als Testmail im Reiter „Zugang“ (mit Textteil-Vorschau). Ein Rohmodus
@@ -863,9 +1011,10 @@ Ziel: Eine Kampagne entsteht in wenigen Minuten, ohne HTML von Hand.
   wird der Versand beim nächsten Start nachgeholt, solange der Zeitpunkt nicht länger als
   24 Stunden her ist. Danach wird die Kampagne wieder ein Entwurf, statt verspätet rauszugehen.
 
-**Fertig, wenn:** Eine KI-erzeugte Kampagne sieht in Outlook, Gmail und auf dem Handy sauber
-aus und der geplante Versand übersteht einen Neustart. **Der Code steht, beide Nachweise
-fehlen** — sie brauchen die laufende App und echte Testmails.
+**Fertig, wenn:** Eine KI-erzeugte Kampagne sieht in Gmail und auf dem Handy sauber aus und
+der geplante Versand übersteht einen Neustart. **Der erste Nachweis ist erbracht** (2026-11-16,
+laut Felix); **offen ist, dass der geplante Versand einen Neustart übersteht** — das braucht
+die laufende App.
 
 ## Phase 4: Automationen
 
@@ -914,6 +1063,83 @@ query($cursor: String, $filter: String!) {
 und ein Neustart erzeugt keinen zweiten Versand. **Der Code steht, alle drei Nachweise
 brauchen den echten Shop und die laufende App.**
 
+## Phase 5: Ergebnisse und Lernen
+
+Beschlossen am 2026-11-13. Ziel: Felix und die KI sehen, was **jede einzelne Mail** gebracht
+hat, und die KI schreibt die nächste danach. Bis jetzt zählt die Auswertung nur Versand,
+Fehler und die Liste. Welche Mail Umsatz brachte, weiß niemand, und ohne diese Rückmeldung
+kann die KI nichts optimieren, nur raten.
+
+**Grundlage:** Seit dem 2026-11-13 hängt `mailBauenAus` an jeden Shop-Link
+`utm_source=vendo&utm_medium=email&utm_campaign=<Kurzname>`. Shopify merkt sich zu jeder
+Bestellung den Besuch, über den sie kam: `Order.customerJourneySummary` mit `firstVisit` und
+`lastVisit`, jeweils mit `utmParameters`. Scope `read_orders`, den der Token schon hat.
+Öffnungs- und Klick-Tracking bleibt draußen (siehe „Ziel“); gemessen wird, was in Shopify
+ankommt.
+
+**Bekannte Grenze:** Wer im Shop das Cookie-Banner ablehnt, dessen Besuch hat oft keine
+Zuordnung. Die Zahlen sind deshalb eher zu niedrig als zu hoch. Für den Vergleich zwischen
+Mails taugen sie, als absolute Umsatzzahl nicht. So soll es auch in der Oberfläche stehen.
+
+### Schritte
+
+1. **Ergebnisse holen** — **steht** (2026-11-13; `ergebnisse.js`, `shopify.js`, Takt in
+   `haupt.js`): einmal am Tag die Bestellungen seit dem letzten Abruf mit `customerJourneySummary { lastVisit { utmParameters } firstVisit
+   { utmParameters } }` und Gesamtbetrag. Zugeordnet wird über `utm_source=vendo` und
+   `utm_campaign`, zuerst `lastVisit`, sonst `firstVisit`. Der Kurzname wird beim Versand an
+   der Kampagne bzw. am Automationsschritt gespeichert, damit eine spätere Umbenennung die
+   Zuordnung nicht verliert. Abgelegt je Kurzname: Bestellungen, Umsatz, Zeitpunkt der
+   ersten und letzten Bestellung. Dazu je Kampagne die **Abmeldungen in den 48 Stunden nach
+   dem Versand** (aus `gesperrtAm` der Kontakte, nur gezählt, keine Adressen).
+2. **Reiter „Kampagnen“: Ergebnisliste** — **steht** (2026-11-13). Für jede gesendete Kampagne eine Zeile: Datum,
+   Name, Betreff, Empfänger, Bestellungen, Umsatz, **Umsatz je 100 Empfänger** (damit Mails
+   an verschieden große Listen vergleichbar sind) und Abmeldungen. Die neueste oben.
+3. **Reiter „Automationen“: Ergebnis je Schritt** — **steht** (2026-11-13). Für jede Automation und jeden Schritt:
+   gesendet, Bestellungen, Umsatz, dazu wie die Serien endeten (Kauf, Abmeldung, zu spät,
+   durchgelaufen). Die Abbruchgründe stehen schon in den Läufen.
+4. **Übersicht: Durchschnitt und Richtung.** Kacheln mit den Durchschnittswerten der
+   Kampagnen (Umsatz je Kampagne, Umsatz je 100 Empfänger, Abmeldequote) und einem Pfeil,
+   ob es **steigt oder fällt**: die letzten drei gesendeten Kampagnen gegen die drei davor,
+   gleich bleibend unter ±10 %. Dazu der Umsatz aus Mails in den letzten 30 Tagen. Außerdem,
+   damit die Übersicht nicht leer wirkt:
+   - **Letzte und nächste Kampagne** mit Datum und, bei der letzten, ihrem Ergebnis.
+   - **Automationen:** wie viele Serien gerade laufen und wie viele mit einem Kauf endeten.
+   - **Liste:** Zugänge und Abmeldungen je Monat als kleine Balken (die Zahlen rechnet
+     `auswertungBauen` schon).
+   - **Wartet auf dich:** Freigaben, Fehler in der Warteschlange und ob SPF, DKIM und DMARC
+     für die Absenderdomain stehen (DNS-Abfrage über Node `dns`, nur lesen).
+5. **Die KI bekommt die Ergebnisse** (Bot-Aktionen `auswertung` und `ueberblick`):
+   - `auswertung` liefert je Kampagne und je Automationsschritt Bestellungen, Umsatz, Umsatz
+     je 100 Empfänger und Abmeldungen, dazu Durchschnitt und Richtung wie in der Übersicht.
+   - **Lernbuch:** `ueberblick` gibt die letzten zehn gesendeten Kampagnen mit, jeweils mit
+     Inhalt und Ergebnis: Betreff, Vorschautext, Muster, gezeigte Produkte, Wochentag und
+     Uhrzeit des Versands, Umsatz je 100 Empfänger, Abmeldungen. Daran sieht die KI, was
+     wirkt, ohne einen zweiten Aufruf.
+   - Systemprompt und Skill `vendo-newsletter` der Texterin werden nachgezogen: erst das
+     Lernbuch lesen, dann entwerfen und im Entwurf kurz sagen, worauf er sich stützt. Die
+     liegen im Hermes-Profil außerhalb dieses Repos und werden vorher gesichert.
+6. **Versandzeit aus echten Daten:** aus den Bestellzeiten der letzten 90 Tage die Stunden
+   und Wochentage, an denen die Kunden kaufen. `ueberblick` nennt sie, die KI schlägt die
+   Zeit beim Einreichen zur Freigabe danach vor. Freigeben und planen bleibt bei Felix.
+7. **Gruppen von Empfängern:** hat schon gekauft / noch nie gekauft, dazu die bevorzugte
+   Produktart aus den Bestellungen. Die KI kann eine Kampagne an eine Gruppe richten und
+   passende Produkte wählen. Der größte Umbau dieser Phase, weil Kampagnen dafür an Teile
+   der Liste gehen müssen. Erst bauen, wenn 1 bis 5 laufen.
+8. **Automationen nachbessern:** Mit den Ergebnissen je Schritt schlägt die KI neue Texte
+   für schwache Schritte vor. Ändern darf sie weiterhin nur ausgeschaltete Automationen;
+   einschalten tut Felix.
+9. **Später: Betreff-Tests (A/B).** Ohne Öffnungsmessung ginge nur der Vergleich über den
+   Umsatz, und bei rund 800 Empfängern streut der zu stark. Erst bei einer größeren Liste.
+
+**Tests:** je Schritt unter `tests/`, mit erfundenen Bestellungen samt UTM-Angaben als
+Fixture: Zuordnung (lastVisit vor firstVisit, fremde Quellen ignoriert, umbenannte
+Kampagne), Umsatz je 100 Empfänger, Richtung mit der ±10-%-Schwelle, Abmeldungen nach dem
+Versand, nie Adressen in Auswertung oder Lernbuch.
+
+**Fertig, wenn:** Nach einer echten Kampagne stehen ihre Bestellungen und ihr Umsatz im
+Reiter „Kampagnen“, die Übersicht zeigt Durchschnitt und Richtung, und die KI nennt beim
+nächsten Entwurf, welche frühere Mail sie als Vorbild nimmt und warum.
+
 ## Pflichten, die mitgebaut werden
 
 Kein Rechtsrat, aber ohne diese Punkte sollte nichts rausgehen:
@@ -941,7 +1167,14 @@ Kunden. Geplant:
 - `tests/newsletter-versand.test.js` — MIME-Aufbau, Header, Fehlerbehandlung; SMTP gestubbt,
   **nie** ein echter Versand im Test.
 - `tests/newsletter-drossel.test.js` — Budget, Reserve, Pause bei Limit-Fehler.
-- `tests/newsletter-queue.test.js` — Idempotenz, Neustart mitten im Versand.
+- `tests/newsletter-warteschlange.test.js` — Idempotenz, Versuche, Verfall, Aufräumen.
+- `tests/newsletter-versandzustand.test.js` — `sendet` vor dem SMTP-Aufruf, `unklar` nach
+  einem Abbruch mitten im Versand, Drossel und Serverfehler.
+- `tests/newsletter-ladefehler.test.js` — Ladefehler in der Oberfläche statt leerer Listen.
+- `tests/newsletter-ruecklaeufer.test.js` — Rückmeldungen lesen und einordnen, Sperren,
+  keine Abmeldung bei Shopify, Sperrprüfung vor dem Versand.
+- `tests/newsletter-zustellung.test.js` — Ampel je Kampagne, automatisches Anhalten bei Rot,
+  Fortsetzen ohne doppelte Mails.
 - `tests/newsletter-shopify.test.js` — Abfragen und Zuordnung gegen Fixtures in
   `tests/fixtures/newsletter/`, synthetisch.
 - `tests/newsletter-automationen.test.js` — Zustandsübergänge, Verfallsfenster, Abbruch.
@@ -966,6 +1199,10 @@ und die Vendo-Oberfläche nur noch Steuerpult sein. Dafür sorgen die zwei Regel
 „Aufbau": kein Electron-API im Kern, Zugangsdaten hinter einer Zwischenschicht. Erst dann
 werden Öffnungs- und Klick-Tracking und ein Anmeldeformular auf der Website sinnvoll, weil
 es dann einen erreichbaren Endpunkt gibt.
+
+**Geplant (2026-11-16, noch nicht gebaut):** Umstellung von Vendos Daten auf PostgreSQL,
+lokal schon in Docker wie später auf dem Server. Der Newsletter bekommt dabei eigene Tabellen
+(Teil N). Phasen, Entscheidungen und Risiken stehen in `docs/postgresql-umbauplan.md`.
 
 ## Quellen
 

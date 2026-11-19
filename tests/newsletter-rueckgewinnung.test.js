@@ -12,6 +12,8 @@ import { createRequire } from 'node:module'
 import automationen from '../plugins/newsletter/automationen.js'
 import shopify from '../plugins/newsletter/shopify.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { neueAutomation, automationPruefen, rueckFenster, rueckFensterFehler, rueckKandidaten, RUECK_FENSTER, RUECK_JE_TAG, AUSLOESER } = automationen
 const { kaeuferHolen, kaeuferAus, KAEUFER } = shopify
 

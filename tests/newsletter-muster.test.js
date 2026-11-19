@@ -17,6 +17,8 @@ import shoplinks from '../plugins/newsletter/shoplinks.js'
 import bots from '../plugins/newsletter/bots.js'
 import starten from '../plugins/newsletter/haupt.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { musterListe, musterHtml, DUNKEL, ORDNER, kopfLesen, ersetzen } = musterModul
 const { vorlagePruefen } = vorlagenModul
 const { bilderOhneAdresse, linksOhneZiel, felderLesen, mailAusHtml } = htmlMail

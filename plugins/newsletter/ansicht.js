@@ -38,7 +38,7 @@ const STUNDE = 3600000
 const TEST_VORLAGE = '<p>Hallo,</p>\n<p>das ist eine Testmail aus Vendo.</p>\n<p>Gruß</p>'
 const CSV_BEISPIEL = 'email;vorname;nachname;zustimmungam\nmax@beispiel.de;Max;Muster;2026-01-15'
 
-const ZUSTAND_TEXT = { entwurf: 'Entwurf', freigabe: 'wartet auf Freigabe', geplant: 'geplant', laeuft: 'läuft', fertig: 'fertig', abgebrochen: 'abgebrochen' }
+const ZUSTAND_TEXT = { entwurf: 'Entwurf', freigabe: 'wartet auf Freigabe', geplant: 'geplant', laeuft: 'läuft', pausiert: 'angehalten', fertig: 'fertig', abgebrochen: 'abgebrochen' }
 
 export async function starten(ctx) {
   const m = ctx.maskieren
@@ -49,6 +49,7 @@ export async function starten(ctx) {
   let kontakte = null
   let shopify = null
   let abmeldungen = null
+  let rueck = null // Rückläufer per Mail
   let marke = null
   let renner = null
   let kampagnen = null
@@ -71,6 +72,9 @@ export async function starten(ctx) {
   let gewaehlt = null // id der offenen Kampagne
   let ki = { thema: '', ton: '' }
   let autos = null
+  let kErgebnisse = null // Ergebnisliste im Reiter „Kampagnen“
+  let zustell = null // Ampel der Zustellung (zustellung.js)
+  let aErgebnisse = null // Ergebnisse im Reiter „Automationen“
   let laeufe = null
   let vorlagen = null
   let gewaehlteVorlage = null
@@ -83,9 +87,12 @@ export async function starten(ctx) {
 
   ctx.element.innerHTML = `
     <div class="nl-raster">
-      <nav class="nl-reiter" data-reiter>
-        ${BEREICHE.map((b) => `<button class="nl-reiter-knopf" data-bereich="${b.id}" type="button">${m(b.name)}</button>`).join('')}
-      </nav>
+      <div class="nl-reiter-zeile">
+        <nav class="nl-reiter" data-reiter>
+          ${BEREICHE.map((b) => `<button class="nl-reiter-knopf" data-bereich="${b.id}" type="button">${m(b.name)}</button>`).join('')}
+        </nav>
+        <div class="nl-reiter-rechts" data-reiter-rechts></div>
+      </div>
       <div class="nl-inhalt hud" data-inhalt></div>
     </div>`
   const $ = (sel) => ctx.element.querySelector(sel)
@@ -97,10 +104,16 @@ export async function starten(ctx) {
       return { ok: false, text: fehler.message, fehler: [fehler.message] }
     }
   }
+  // Leise holen: ein Fehler bricht die Ansicht nicht ab, wird aber gemerkt und oben als
+  // Hinweis mit „Erneut laden“ gezeigt. Sonst sähe ein Ladefehler aus wie eine leere Liste.
+  const ladefehler = new Map()
   const stillHolen = async (name, ...args) => {
     try {
-      return await ctx.aufrufen(name, ...args)
-    } catch {
+      const ergebnis = await ctx.aufrufen(name, ...args)
+      ladefehler.delete(name)
+      return ergebnis
+    } catch (fehler) {
+      ladefehler.set(name, String(fehler?.message || fehler || 'unbekannter Fehler'))
       return null
     }
   }
@@ -112,8 +125,12 @@ export async function starten(ctx) {
   const markeHolen = async () => (marke = await stillHolen('markeLesen'))
   const kontakteHolen = async () => (kontakte = await stillHolen('kontakteLesen', { suche, anzahl: 100 }))
   const abmeldungenHolen = async () => (abmeldungen = await stillHolen('abmeldungenLesen'))
+  const rueckHolen = async () => (rueck = await stillHolen('ruecklaeuferLesen'))
   const rennerHolen = async () => (renner = await stillHolen('rennerLesen'))
   const kampagnenHolen = async () => (kampagnen = await stillHolen('kampagnenLesen'))
+  const kErgebnisseHolen = async () => (kErgebnisse = await stillHolen('kampagnenErgebnisse'))
+  const zustellHolen = async () => (zustell = await stillHolen('zustellungLesen'))
+  const aErgebnisseHolen = async () => (aErgebnisse = await stillHolen('automationenErgebnisse'))
   const autosHolen = async () => (autos = await stillHolen('automationenLesen'))
   const vorlagenHolen = async () => (vorlagen = await stillHolen('vorlagenLesen'))
   const laeufeHolen = async () => (laeufe = await stillHolen('laeufeLesen'))
@@ -125,10 +142,10 @@ export async function starten(ctx) {
     daten = { ...LEER, ...d }
     if (fehlt.length) await ctx.daten.speichern(daten)
     await Promise.all([zugangHolen(), drosselHolen(), schlangeHolen()])
-    if (bereich === 'uebersicht') await rennerHolen()
-    if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
-    if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
-    if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen()])
+    if (bereich === 'uebersicht') await Promise.all([rennerHolen(), zustellHolen()])
+    if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen(), rueckHolen()])
+    if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen(), kErgebnisseHolen(), zustellHolen()])
+    if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), vorlagenHolen(), aErgebnisseHolen()])
     if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
     if (bereich === 'zugang') await markeHolen()
     if (bereich === 'protokoll') await protokollHolen()
@@ -162,6 +179,32 @@ export async function starten(ctx) {
 
   // Der Wert einer Kachel, wenn es keine Zahl ist (Postfach-Adresse, „pausiert“)
   const stand = (text, klasse = '') => `<span class="nl-stand ${klasse}" title="${m(text)}">${m(text)}</span>`
+  // Was nicht geladen werden konnte, mit dem Bereich in Worten
+  const LADE_NAMEN = {
+    zugangLesen: 'Zugang',
+    drosselLesen: 'Drossel',
+    warteschlangeLesen: 'Warteschlange',
+    shopifyLesen: 'Shopify',
+    markeLesen: 'Marke',
+    kontakteLesen: 'Kontakte',
+    abmeldungenLesen: 'Abmeldungen',
+    ruecklaeuferLesen: 'Rückläufer',
+    rennerLesen: 'Renner',
+    kampagnenLesen: 'Kampagnen',
+    kampagnenErgebnisse: 'Kampagnen-Ergebnisse',
+    zustellungLesen: 'Zustellung',
+    automationenErgebnisse: 'Automations-Ergebnisse',
+    automationenLesen: 'Automationen',
+    vorlagenLesen: 'Vorlagen',
+    laeufeLesen: 'Läufe',
+    protokollLesen: 'Protokoll'
+  }
+  const ladefehlerZeile = () => {
+    if (!ladefehler.size) return ''
+    const teile = [...ladefehler].map(([name, text]) => `${LADE_NAMEN[name] || name}: ${text}`)
+    return `<div class="nl-meldung nl-fehler nl-ladefehler" role="alert"><span>Nicht geladen, die Anzeige ist deshalb unvollständig — ${m(teile.join(' · ').slice(0, 300))}</span>
+      <button class="knopf-flach" data-nl="nachladen" type="button">Erneut laden</button></div>`
+  }
   const meldungsZeile = (eintrag) => (eintrag ? `<div class="nl-meldung ${eintrag.ok ? 'nl-ok' : 'nl-fehler'}">${m(eintrag.text)}</div>` : '')
 
   // ── Übersicht ──
@@ -251,9 +294,56 @@ export async function starten(ctx) {
         ${kachel('Automationen', zahl(aktiv), 'davon aktiv')}
         ${kachel('Postfach', stand(p.text, p.klasse), p.hinweis)}
         ${versandKachel()}
-        ${schlange ? kachel('Warteschlange', zahl(schlange.offen), schlange.fehler ? `${schlange.faellig} fällig, ${schlange.fehler} mit Fehler` : `${schlange.faellig} fällig, ${schlange.wartend} wartet`, { betont: Boolean(schlange.fehler) }) : ''}
+        ${zustellKachel()}
+        ${schlange ? kachel('Warteschlange', zahl(schlange.offen), schlange.fehler || schlange.unklar ? `${schlange.faellig} fällig, ${schlange.fehler} mit Fehler${schlange.unklar ? `, ${schlange.unklar} unklar` : ''}` : `${schlange.faellig} fällig, ${schlange.wartend} wartet`, { betont: Boolean(schlange.fehler || schlange.unklar) }) : ''}
       </div>
+      ${zustellHinweise()}
       ${rennerBloecke()}`
+  }
+
+  // ── Zustellung ──
+  // Die Ampel kommt aus zustellung.js. Gelb: beobachten, Rot: Vendo hält eine laufende
+  // Kampagne an. Zu jedem Grund steht dabei, was zu tun ist.
+  const AMPEL_TEXT = { gruen: 'gut', gelb: 'beobachten', rot: 'Problem' }
+  const AMPEL_KLASSE = { gruen: 'nl-an', gelb: 'nl-gelb', rot: 'nl-rot' }
+
+  function zustellKachel() {
+    if (!zustell) return ''
+    const auffaellig = (zustell.kampagnen || []).find((k) => k.stufe !== 'gruen')
+    const zeile = auffaellig ? `${auffaellig.gruende[0]?.text || ''}` : (zustell.kampagnen || []).length ? 'keine Auffälligkeiten' : 'noch nichts verschickt'
+    return kachel('Zustellung', stand(AMPEL_TEXT[zustell.stufe] || 'gut', AMPEL_KLASSE[zustell.stufe] || 'nl-an'), zeile, {
+      betont: zustell.stufe !== 'gruen',
+      titel: 'Tote Adressen, Ablehnungen wegen Spamverdacht, Beschwerden und Abmeldungen der Kampagnen der letzten 30 Tage'
+    })
+  }
+
+  // Ein Kasten je auffälliger Kampagne: was los ist und was zu tun ist
+  function zustellKasten(k) {
+    const gruende = (k.gruende || [])
+      .map((g) => `<li><strong class="${AMPEL_KLASSE[g.stufe]}">${m(g.text)}</strong><br /><span>${m(g.rat)}</span></li>`)
+      .join('')
+    const kopf =
+      k.zustand === 'pausiert'
+        ? k.pausiertVon === 'vendo'
+          ? `Vendo hat „${m(k.name)}“ angehalten.`
+          : `„${m(k.name)}“ ist angehalten.`
+        : `„${m(k.name)}“: ${k.stufe === 'rot' ? 'Problem bei der Zustellung' : 'bitte beobachten'}.`
+    const zusatz =
+      k.zustand === 'pausiert'
+        ? 'Die restlichen Mails warten. Mit „Fortsetzen“ geht es weiter, mit „Abbrechen“ gehen sie nicht mehr raus. Wer die Mail schon hat, bekommt sie auch nach einem Neustart nicht noch einmal.'
+        : k.automatischAnhaltenAus && k.stufe === 'rot'
+          ? 'Du hast nach dem Anhalten fortgesetzt; Vendo hält diese Kampagne nicht noch einmal an.'
+          : ''
+    return `<div class="nl-zustell nl-zustell-${m(k.stufe)}">
+        <p><strong>${kopf}</strong></p>
+        ${gruende ? `<ul>${gruende}</ul>` : ''}
+        ${zusatz ? `<p class="leise">${m(zusatz)}</p>` : ''}
+      </div>`
+  }
+
+  function zustellHinweise() {
+    const auffaellig = (zustell?.kampagnen || []).filter((k) => k.stufe !== 'gruen' || k.zustand === 'pausiert')
+    return auffaellig.map(zustellKasten).join('')
   }
 
   // ── Kampagnen ──
@@ -380,7 +470,8 @@ export async function starten(ctx) {
   function kampagneEditor() {
     const k = kampagnen.liste.find((x) => x.id === gewaehlt)
     if (!k) return ''
-    const laeuft = k.zustand === 'laeuft'
+    const laeuft = k.zustand === 'laeuft' || k.zustand === 'pausiert'
+    const zk = (zustell?.kampagnen || []).find((x) => x.id === k.id)
     return `
       <div class="nl-kampagne">
         <div class="nl-kampagne-kopf">
@@ -394,12 +485,15 @@ export async function starten(ctx) {
             <button class="knopf-flach" type="submit" form="kampagne-form" ${laeuft ? 'disabled' : ''}>Speichern</button>
             <button class="knopf-flach" data-nl="kampagne-test" type="button" ${zugang?.passwortGesetzt ? '' : 'disabled'}>Testmail an mich</button>
             <button class="knopf-gold" data-nl="kampagne-start" type="button" ${laeuft ? 'disabled' : ''}>Jetzt an alle senden</button>
-            ${k.zustand === 'laeuft' || k.zustand === 'geplant' ? '<button class="knopf-flach gefahr" data-nl="kampagne-stop" type="button">Abbrechen</button>' : ''}
+            ${k.zustand === 'laeuft' ? '<button class="knopf-flach" data-nl="kampagne-anhalten" type="button">Anhalten</button>' : ''}
+            ${k.zustand === 'pausiert' ? '<button class="knopf-gold" data-nl="kampagne-fortsetzen" type="button">Fortsetzen</button>' : ''}
+            ${k.zustand === 'laeuft' || k.zustand === 'geplant' || k.zustand === 'pausiert' ? '<button class="knopf-flach gefahr" data-nl="kampagne-stop" type="button">Abbrechen</button>' : ''}
             ${k.zustand === 'fertig' || k.zustand === 'abgebrochen' ? '<button class="knopf-flach" data-nl="kampagne-entwurf" type="button">Zurück zum Entwurf</button>' : ''}
           </span>
         </div>
 
-        ${laeuft ? '<div class="nl-warnung">Die Kampagne läuft. Zum Ändern erst abbrechen.</div>' : ''}
+        ${k.zustand === 'laeuft' ? '<div class="nl-warnung">Die Kampagne läuft. Zum Ändern erst abbrechen.</div>' : ''}
+        ${k.zustand === 'pausiert' || (zk && zk.stufe !== 'gruen') ? zustellKasten(zk || { ...k, stufe: 'gelb', gruende: k.pausiertGrund ? [{ stufe: 'gelb', text: k.pausiertGrund, rat: '' }] : [] }) : ''}
         ${k.zustand === 'freigabe' ? freigabeKasten(k) : ''}
         ${meldungsZeile(kampagneMeldung)}
 
@@ -476,6 +570,60 @@ export async function starten(ctx) {
         </div>
         ${meldungsZeile(kampagneMeldung)}
         <div class="nl-karten">${kampagnenListe()}</div>
+      </div>
+      ${kampagnenErgebnisListe()}`
+  }
+
+  // Betrag mit zwei Nachkommastellen, Euro als Zeichen
+  const geld = (betrag, waehrung) =>
+    `${Number(betrag || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${waehrung === 'EUR' || !waehrung ? '€' : waehrung}`
+
+  // Was jede verschickte Kampagne gebracht hat (Phase 5, Schritt 2). Die Zahlen kommen aus
+  // Shopify über die UTM-Angaben der Links; wer Cookies ablehnt, fehlt oft.
+  // Eine Zelle der Ergebnisliste: Ampelwort, die Gründe beim Darüberfahren
+  function zustellZelle(b) {
+    if (!b) return '<span class="leise">–</span>'
+    const z = b.zahlen || {}
+    const titel = b.gruende?.length ? b.gruende.map((g) => g.text).join(' · ') : `${z.hart || 0} tote Adressen, ${z.abgelehnt || 0} Ablehnungen, ${z.beschwerde || 0} Beschwerden`
+    return `<span class="${AMPEL_KLASSE[b.stufe] || ''}" title="${m(titel)}">${m(AMPEL_TEXT[b.stufe] || '')}</span>`
+  }
+
+  function kampagnenErgebnisListe() {
+    if (!kErgebnisse) return ''
+    const stand = kErgebnisse.geholtAm ? `Stand ${zeit(kErgebnisse.geholtAm)}` : 'noch nicht geholt'
+    const knopf = kErgebnisse.shopifyBereit
+      ? '<button class="knopf-flach" data-nl="ergebnisse-holen" type="button">Jetzt holen</button>'
+      : ''
+    const zeilen = kErgebnisse.zeilen || []
+    const tabelle = zeilen.length
+      ? `<table class="nl-tabelle nl-ergebnisse">
+          <thead><tr><th>Versand</th><th>Kampagne</th><th class="nl-zahl-spalte">Empfänger</th><th class="nl-zahl-spalte">Bestellungen</th><th class="nl-zahl-spalte">Umsatz</th><th class="nl-zahl-spalte" title="Umsatz je 100 Empfänger: macht Mails an verschieden große Listen vergleichbar">je 100 Empf.</th><th class="nl-zahl-spalte" title="Abmeldungen in den 48 Stunden nach dem Versand">Abmeldungen</th><th title="Tote Adressen, Ablehnungen wegen Spamverdacht und Beschwerden">Zustellung</th></tr></thead>
+          <tbody>${zeilen
+            .map(
+              (z) => `<tr>
+                <td class="nl-mono">${m(datum(z.gestartetAm))}${z.zustand === 'laeuft' ? '<br /><small class="leise">läuft noch</small>' : z.zustand === 'pausiert' ? '<br /><small class="nl-rot">angehalten</small>' : ''}</td>
+                <td><span class="nl-ergebnis-name">${m(z.name)}</span><br /><small class="leise" title="${m(z.betreff)}">${m(z.betreff || 'ohne Betreff')}</small></td>
+                <td class="nl-mono nl-zahl-spalte">${z.empfaenger}</td>
+                <td class="nl-mono nl-zahl-spalte">${z.bestellungen}</td>
+                <td class="nl-mono nl-zahl-spalte">${m(geld(z.umsatz, z.waehrung))}</td>
+                <td class="nl-mono nl-zahl-spalte">${z.jeHundert == null ? '–' : m(geld(z.jeHundert, z.waehrung))}</td>
+                <td class="nl-mono nl-zahl-spalte${z.abmeldungen ? ' nl-rot' : ''}">${z.abmeldungen}</td>
+                <td class="nl-mono">${zustellZelle(z.zustellung)}</td>
+              </tr>`
+            )
+            .join('')}</tbody>
+        </table>`
+      : '<p class="nl-form-text leise">Noch keine Kampagne verschickt.</p>'
+    return `
+      <div class="nl-abschnitt">
+        <div class="nl-form-kopf nl-protokoll-kopf">
+          <h3>Ergebnisse</h3>
+          ${knopf}
+        </div>
+        ${tabelle}
+        <p class="nl-form-text leise">Bestellungen, die Shopify einer Mail zuordnen konnte (über die Links der Mail), ${m(stand)}.
+        Wer im Shop Cookies ablehnt, fehlt oft, die Zahlen sind also eher zu niedrig. Zum Vergleichen der Mails taugen sie.
+        ${kErgebnisse.shopifyBereit ? '' : 'Dafür braucht es den Shopify-Zugang im Reiter „Kontakte“.'}</p>
       </div>`
   }
 
@@ -671,6 +819,40 @@ export async function starten(ctx) {
         ${geprueft ? `Zuletzt geprüft: ${m(zeit(geprueft))}.` : 'Noch nicht geprüft.'}</p>`
   }
 
+  // Was die Schritte einer Automation gebracht haben und wie ihre Serien endeten (Phase 5,
+  // Schritt 3). Umsatz aus Shopify über die UTM-Angaben; wer Cookies ablehnt, fehlt oft.
+  function automationErgebnisBlock(id) {
+    const z = aErgebnisse?.zeilen?.find((x) => x.id === id)
+    if (!z) return ''
+    const e = z.enden
+    const serien = e.kauf + e.abmeldung + e.zuSpaet + e.durchgelaufen + e.sonstige
+    const endenText = serien || e.laufen
+      ? `Serien der letzten 30 Tage: ${e.laufen} laufen, ${e.kauf} mit Kauf beendet, ${e.abmeldung} abgemeldet, ${e.zuSpaet} zu spät, ${e.durchgelaufen} durchgelaufen${e.sonstige ? `, ${e.sonstige} anders beendet` : ''}.`
+      : 'Noch keine Serie gelaufen.'
+    const stand = aErgebnisse.geholtAm ? `Umsatz Stand ${zeit(aErgebnisse.geholtAm)}` : 'Umsatz noch nicht geholt'
+    return `
+        <details class="nl-detail-karte nl-auto-ergebnisse" open>
+          <summary><span>Ergebnisse</span></summary>
+          <table class="nl-tabelle nl-ergebnisse">
+            <thead><tr><th>Schritt</th><th>Betreff</th><th class="nl-zahl-spalte">Gesendet</th><th class="nl-zahl-spalte">Bestellungen</th><th class="nl-zahl-spalte">Umsatz</th><th class="nl-zahl-spalte" title="Umsatz je 100 verschickte Mails dieses Schritts">je 100 Empf.</th></tr></thead>
+            <tbody>${z.schritte
+              .map(
+                (s) => `<tr>
+                  <td class="nl-mono">${s.schritt}</td>
+                  <td title="${m(s.betreff)}">${m(s.betreff || 'ohne Betreff')}</td>
+                  <td class="nl-mono nl-zahl-spalte">${s.gesendet}</td>
+                  <td class="nl-mono nl-zahl-spalte">${s.bestellungen}</td>
+                  <td class="nl-mono nl-zahl-spalte">${m(geld(s.umsatz, s.waehrung))}</td>
+                  <td class="nl-mono nl-zahl-spalte">${s.jeHundert == null ? '–' : m(geld(s.jeHundert, s.waehrung))}</td>
+                </tr>`
+              )
+              .join('')}</tbody>
+          </table>
+          <p class="nl-form-text leise">${m(endenText)} ${m(stand)}. Bestellungen zählen, wenn Shopify sie über die
+          Links der Mail zuordnen konnte; wer Cookies ablehnt, fehlt oft.</p>
+        </details>`
+  }
+
   function automationKarte(automation) {
     const art = autos.arten.find((a) => a.art === automation.art)
     const platzhalter = automation.art === 'warenkorb' ? ' Zusätzlich: {{warenkorb}}, {{warenkorbLink}}, {{summe}}.' : ''
@@ -704,6 +886,8 @@ export async function starten(ctx) {
         ein abgebrochener Warenkorb ist kein Kauf und greift nicht unter die
         Bestandskunden-Ausnahme in § 7 Abs. 3 UWG. Das ist kein Rechtsrat — im Zweifel
         angehakt lassen.</p>
+
+        ${automationErgebnisBlock(automation.id)}
 
         ${(automation.schritte || []).map((s, i) => automationSchritt(automation, s, i)).join('')}
 
@@ -771,31 +955,16 @@ export async function starten(ctx) {
 
   // ── Kontakte ──
 
-  function shopifyBlock() {
+  // Kopfzeile der Kontakte: Kontakte bei Shopify holen. Der Zugang kommt aus Vendo → System (Hermes-Einstellungen).
+  function shopifyKopf() {
     if (!shopify) return ''
+    const sync = shopify.letzterSync ? `Letzter Sync: ${m(zeit(shopify.letzterSync))} — ${m(shopify.letzterSyncText || '')}` : 'Noch nie geholt.'
+    const ohne = 'Kein Shopify-Token gefunden. Bitte in Vendo unter System eintragen.'
     return `
-      <details class="nl-detail-karte nl-kontakt-klapp">
-        <summary><span>Shopify</span></summary>
-        <form class="nl-form" data-shopify-form>
-          <p class="nl-form-text">Geholt werden nur Kunden mit Marketing-Zustimmung
-          (<code>accepts_marketing:true</code>). Der Token braucht <code>read_customers</code>,
-          zum Zurückschreiben einer Abmeldung außerdem <code>write_customers</code>.</p>
-          <div class="nl-form-paar">
-            <label>Shop-Adresse
-              <input name="shop" maxlength="120" value="${m(shopify.shop)}" placeholder="meinshop.myshopify.com" />
-              <small>Die myshopify.com-Adresse, nicht die eigene Domain.</small></label>
-            <label>Zugriffstoken
-              <input name="token" type="password" maxlength="200" value="" placeholder="${shopify.tokenGesetzt ? 'gespeichert — leer lassen, um ihn zu behalten' : 'shpat_…'}" autocomplete="new-password" />
-              <small>Wird von Windows verschlüsselt abgelegt.</small></label>
-          </div>
-          ${shopify.letzterSync ? `<p class="nl-form-text leise">Letzter Sync: ${m(zeit(shopify.letzterSync))} — ${m(shopify.letzterSyncText || '')}</p>` : ''}
-          <div class="nl-knoepfe">
-            <button class="knopf-gold" type="submit">Zugang speichern</button>
-            <button class="knopf-flach" data-nl="sync" type="button" ${shopify.tokenGesetzt ? '' : 'disabled'}>Kontakte jetzt holen</button>
-            <button class="knopf-flach gefahr" data-nl="shopify-weg" type="button" ${shopify.shop ? '' : 'disabled'}>Zugang löschen</button>
-          </div>
-        </form>
-      </details>`
+      <div class="nl-kontakte-kopf">
+        <button class="knopf-gold" data-nl="sync" type="button" ${shopify.tokenGesetzt ? '' : 'disabled'} title="Abonnenten mit Marketing-Zustimmung bei Shopify holen${shopify.shop ? ` (${m(shopify.shop)})` : ''}. ${shopify.tokenGesetzt ? sync : ohne}">Kontakte holen</button>
+        <span class="leise">${shopify.tokenGesetzt ? sync : ohne}</span>
+      </div>`
   }
 
   function abmeldeBlock() {
@@ -841,6 +1010,59 @@ export async function starten(ctx) {
       </details>`
   }
 
+  const RUECK_ARTEN = { hart: 'Adresse tot', beschwerde: 'Beschwerde', weich: 'vorübergehend', abgelehnt: 'abgelehnt' }
+
+  function rueckBlock() {
+    if (!rueck) return ''
+    const r = rueck
+    const zeilen = (r.letzte || [])
+      .map(
+        (e) => `<tr>
+          <td class="nl-mono">${m(zeit(e.am))}</td>
+          <td class="nl-mono">${m(e.an || '')}</td>
+          <td class="nl-mono">${e.art === 'hart' || e.art === 'beschwerde' ? `<span class="nl-rot">${m(RUECK_ARTEN[e.art])}</span>` : m(RUECK_ARTEN[e.art] || e.art)}</td>
+          <td>${m(e.grund || '')}</td>
+        </tr>`
+      )
+      .join('')
+    return `
+      <details class="nl-detail-karte nl-kontakt-klapp">
+        <summary><span>Rückläufer per Mail${r.gesperrt || r.beschwerden ? ` · ${r.gesperrt + r.beschwerden} gesperrt` : ''}</span></summary>
+        <form class="nl-form" data-rueck-form>
+          <p class="nl-form-text">Kommt eine Mail nicht an, schickt der Mailserver eine Rückmeldung an dein
+          Postfach. Vendo liest sie und sperrt Adressen, die es nicht mehr gibt, und Personen, die eine Mail
+          als Spam gemeldet haben. Vorübergehende Fehler (Postfach voll, Server nicht erreichbar) und
+          Ablehnungen wegen Spamverdacht werden nur gezählt. Eine Rückläufer-Sperre geht nicht zu Shopify,
+          die Zustimmung dort bleibt, wie sie ist.</p>
+          <p class="nl-form-text leise">Richte bei IONOS eine Filterregel ein: Absender enthält „mailer-daemon“
+          oder „postmaster“ → in den Ordner <strong>${m(r.standardOrdner)}</strong>. Vendo liest nur diesen
+          Ordner (nie die INBOX), markiert alles Gelesene als gelesen und löscht nichts.</p>
+
+          <label class="nl-haken">
+            <input type="checkbox" name="aktiv" ${r.aktiv ? 'checked' : ''} ${r.postfachBereit ? '' : 'disabled'} />
+            Rückläufer alle zehn Minuten einlesen
+          </label>
+          ${r.postfachBereit ? '' : '<div class="nl-warnung">Dafür müssen erst die Zugangsdaten des Postfachs eingetragen sein (Reiter „Zugang“).</div>'}
+
+          <div class="nl-form-paar">
+            <label>Ordner im Postfach
+              <input name="ordner" maxlength="120" value="${m(r.ordner)}" placeholder="${m(r.standardOrdner)}" />
+              <small>Genau wie im Postfach geschrieben. Server und Port wie bei den Abmeldungen (${m(r.host)}).</small></label>
+          </div>
+          <p class="nl-form-text">${zahl(r.gesperrt)} wegen toter Adresse gesperrt, ${zahl(r.beschwerden)} wegen Beschwerde,
+          ${zahl(r.mitWeichen)} aktive Kontakte mit vorübergehenden Fehlern oder Ablehnungen.</p>
+          ${r.letzterLauf ? `<p class="nl-form-text leise">Zuletzt geprüft: ${m(zeit(r.letzterLauf))} — ${m(r.letzterText || '')}</p>` : ''}
+
+          <div class="nl-knoepfe">
+            <button class="knopf-gold" type="submit">Speichern</button>
+            <button class="knopf-flach" data-nl="rueck-pruefen" type="button" ${r.postfachBereit ? '' : 'disabled'}>Verbindung prüfen</button>
+            <button class="knopf-flach" data-nl="rueck-jetzt" type="button" ${r.postfachBereit ? '' : 'disabled'}>Jetzt einlesen</button>
+          </div>
+        </form>
+        ${zeilen ? `<table class="nl-tabelle"><thead><tr><th>Zeit</th><th>An</th><th>Art</th><th>Grund</th></tr></thead><tbody>${zeilen}</tbody></table>` : '<p class="nl-form-text leise">Noch keine Rückläufer eingelesen.</p>'}
+      </details>`
+  }
+
   function kontaktZeilen() {
     if (!kontakte?.liste?.length) {
       return `<div class="nl-leer"><p class="leise">${suche ? 'Keine Adresse passt zur Suche.' : 'Noch keine Kontakte. Oben bei Shopify holen oder eine CSV einfügen.'}</p></div>`
@@ -857,7 +1079,7 @@ export async function starten(ctx) {
             <td class="nl-mono">${m(k.quelle || '')}</td>
             <td class="nl-mono">${k.zustand ? (k.zustand === 'SUBSCRIBED' ? `<span class="nl-an">${m(k.zustand)}</span>` : `<span class="nl-rot">${m(k.zustand)}</span>`) : '<span class="leise">—</span>'}</td>
             <td class="nl-mono">${k.zustimmungAm ? m(datum(k.zustimmungAm)) : '<span class="nl-rot">fehlt</span>'}</td>
-            <td class="nl-mono">${k.gesperrt ? '<span class="nl-rot">gesperrt</span>' : '<span class="nl-an">aktiv</span>'}</td>
+            <td class="nl-mono">${k.gesperrt ? `<span class="nl-rot" title="${m(k.gesperrtGrund || '')}">${k.sperrArt === 'ruecklaeufer' ? 'Rückläufer' : k.sperrArt === 'beschwerde' ? 'Beschwerde' : 'gesperrt'}</span>` : `<span class="nl-an">aktiv</span>${k.ruecklaeufer && (k.ruecklaeufer.weich || k.ruecklaeufer.abgelehnt) ? ` <span class="leise" title="vorübergehende Fehler oder Ablehnungen, nicht gesperrt">· ${k.ruecklaeufer.weich + k.ruecklaeufer.abgelehnt}× Rückläufer</span>` : ''}`}</td>
             <td class="nl-aktionen">
               ${k.gesperrt ? `<button class="knopf-mini" data-nl="frei" data-email="${m(k.email)}" type="button">Freigeben</button>` : `<button class="knopf-mini" data-nl="sperren" data-email="${m(k.email)}" type="button">Abmelden</button>`}
               <button class="knopf-mini" data-nl="weg" data-email="${m(k.email)}" type="button">Löschen</button>
@@ -875,13 +1097,13 @@ export async function starten(ctx) {
       <div class="nl-kacheln nl-kacheln-schmal">
         ${kachel('Empfänger', zahl(kontakte.empfaenger), 'dürfen Kampagnen', { titel: 'dürfen Kampagnen bekommen' })}
         ${kachel('Bestätigung offen', zahl(kontakte.offeneBestaetigung), 'Shopify PENDING', { titel: 'Shopify: PENDING — bekommen nichts' })}
-        ${kachel('Gesperrt', zahl(kontakte.gesperrt), 'abgemeldet')}
+        ${kachel('Gesperrt', zahl(kontakte.gesperrt), kontakte.ruecklaeufer ? `${kontakte.ruecklaeufer} durch Rückläufer` : 'abgemeldet', { titel: 'abgemeldet, Rückläufer oder Beschwerde' })}
         ${kachel('Ohne Nachweis', zahl(kontakte.ohneZustimmung), 'ohne Datum', { titel: 'kein Zustimmungsdatum' })}
         ${kachel('Gesamt', zahl(kontakte.gesamt), `${kontakte.ausShopify} Shopify, ${kontakte.ausImport} Import`, { titel: `${kontakte.ausShopify} aus Shopify, ${kontakte.ausImport} importiert` })}
       </div>
       ${meldungsZeile(kontaktMeldung)}
-      ${shopifyBlock()}
       ${abmeldeBlock()}
+      ${rueckBlock()}
       <details class="nl-detail-karte nl-kontakt-klapp">
         <summary><span>Adressen einfügen (CSV)</span></summary>
         <form class="nl-form" data-import-form>
@@ -1185,7 +1407,7 @@ export async function starten(ctx) {
         </span>
       </div>
       <p class="nl-form-text">${schlange.offen} offen (${schlange.faellig} fällig, ${schlange.wartend} wartet),
-      ${schlange.gesendet} gesendet, ${schlange.fehler} mit Fehler, ${schlange.abgelaufen} verfallen.
+      ${schlange.gesendet} gesendet, ${schlange.fehler} mit Fehler, ${schlange.abgelaufen} verfallen${schlange.unklar ? `, <span class="nl-rot">${schlange.unklar} unklar</span> (Versand unterbrochen, ob sie ankamen, ist offen; Vendo wiederholt sie nicht)` : ''}.
       Der Hintergrundteil arbeitet sie alle 15 Sekunden ab, so weit die Drossel es zulässt.</p>
       ${
         schlange.naechste?.length
@@ -1237,6 +1459,8 @@ export async function starten(ctx) {
     for (const knopf of ctx.element.querySelectorAll('[data-bereich]')) {
       knopf.classList.toggle('gewaehlt', knopf.dataset.bereich === bereich)
     }
+    const rechts = $('[data-reiter-rechts]') // neben den Reitern: „Kontakte holen“ nur im Reiter Kontakte
+    if (rechts) rechts.innerHTML = bereich === 'kontakte' ? shopifyKopf() : ''
     const inhalt =
       bereich === 'uebersicht'
         ? uebersicht()
@@ -1253,7 +1477,7 @@ export async function starten(ctx) {
                 : bereich === 'protokoll'
                   ? protokollAnsicht()
                   : geplant(bereich)
-    $('[data-inhalt]').innerHTML = inhalt
+    $('[data-inhalt]').innerHTML = ladefehlerZeile() + inhalt
     if (offenerEditor()) {
       zeilennummern()
       // Die Spalte ist eben neu entstanden und leer: den Rahmen auch dann füllen,
@@ -1508,11 +1732,11 @@ export async function starten(ctx) {
       vorschauDaten = null
       autoVorschau = null
       if (bereich === 'zugang' || bereich === 'uebersicht') await Promise.all([zugangHolen(), drosselHolen(), schlangeHolen(), markeHolen()])
-      if (bereich === 'uebersicht') await rennerHolen()
-      if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
-      if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen()])
+      if (bereich === 'uebersicht') await Promise.all([rennerHolen(), zustellHolen()])
+      if (bereich === 'kontakte') await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen(), rueckHolen()])
+      if (bereich === 'kampagnen') await Promise.all([kampagnenHolen(), markeHolen(), vorlagenHolen(), kErgebnisseHolen(), zustellHolen()])
       if (bereich === 'vorlagen') await Promise.all([vorlagenHolen(), markeHolen()])
-      if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), kampagnenHolen(), vorlagenHolen()])
+      if (bereich === 'automationen') await Promise.all([autosHolen(), laeufeHolen(), kampagnenHolen(), vorlagenHolen(), aErgebnisseHolen()])
       if (bereich === 'protokoll') await Promise.all([protokollHolen(), schlangeHolen()])
       return zeichnen()
     }
@@ -1544,6 +1768,15 @@ export async function starten(ctx) {
       vorschau = (await stillHolen('textVorschau', testmail.inhalt)) ?? 'Vorschau nicht möglich.'
       return zeichnen()
     }
+    if (aktion === 'ergebnisse-holen') {
+      kampagneMeldung = { ok: true, text: 'Frage Shopify nach den Bestellungen aus Mails …' }
+      zeichnen()
+      const ergebnis = await holen('ergebnisseHolen')
+      kampagneMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      await Promise.all([kErgebnisseHolen(), aErgebnisseHolen()])
+      return zeichnen()
+    }
+
     if (aktion === 'renner-holen') {
       const art = knopf?.dataset.art === 'warenkorb' ? 'warenkorb' : 'bestseller'
       meldung = { ok: true, text: art === 'warenkorb' ? 'Frage Shopify nach den Warenkörben …' : 'Frage Shopify nach den Bestellungen …' }
@@ -1575,6 +1808,10 @@ export async function starten(ctx) {
       return zeichnen()
     }
 
+    if (aktion === 'nachladen') {
+      return laden()
+    }
+
     // ── Protokoll und Warteschlange ──
     if (aktion === 'protokoll-neu') {
       await protokollHolen()
@@ -1598,15 +1835,7 @@ export async function starten(ctx) {
       zeichnen()
       const ergebnis = await holen('kontakteSynchronisieren')
       kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Sync nicht möglich.' }
-      await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen()])
-      return zeichnen()
-    }
-    if (aktion === 'shopify-weg') {
-      const ja = await ctx.bestaetigen('Shopify-Zugang löschen? Danach können keine Kontakte geholt und keine Abmeldungen zurückgeschrieben werden.', { titel: 'Shopify-Zugang löschen', ja: 'Löschen', gefahr: true })
-      if (!ja) return
-      await holen('shopifyLoeschen')
-      kontaktMeldung = { ok: true, text: 'Shopify-Zugang gelöscht.' }
-      await shopifyHolen()
+      await Promise.all([shopifyHolen(), kontakteHolen(), abmeldungenHolen(), rueckHolen()])
       return zeichnen()
     }
     if (aktion === 'abmelde-pruefen') {
@@ -1616,12 +1845,27 @@ export async function starten(ctx) {
       kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Prüfung nicht möglich.' }
       return zeichnen()
     }
+    if (aktion === 'rueck-pruefen') {
+      kontaktMeldung = { ok: true, text: 'Prüfe den Rückläufer-Ordner …' }
+      zeichnen()
+      const ergebnis = await holen('ruecklaeuferVerbindungPruefen')
+      kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Prüfung nicht möglich.' }
+      return zeichnen()
+    }
+    if (aktion === 'rueck-jetzt') {
+      kontaktMeldung = { ok: true, text: 'Lese Rückläufer …' }
+      zeichnen()
+      const ergebnis = await holen('ruecklaeuferPruefen')
+      kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      await Promise.all([kontakteHolen(), rueckHolen()])
+      return zeichnen()
+    }
     if (aktion === 'abmelde-jetzt') {
       kontaktMeldung = { ok: true, text: 'Lese Abmeldungen …' }
       zeichnen()
       const ergebnis = await holen('abmeldungenPruefen')
       kontaktMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
-      await Promise.all([kontakteHolen(), abmeldungenHolen()])
+      await Promise.all([kontakteHolen(), abmeldungenHolen(), rueckHolen()])
       return zeichnen()
     }
 
@@ -1789,6 +2033,25 @@ export async function starten(ctx) {
       const ergebnis = await holen('kampagnePlanen', { id: gewaehlt, geplantAm: zeitpunkt })
       kampagneMeldung = ergebnis?.ok ? { ok: true, text: `Freigegeben und geplant für ${zeit(zeitpunkt)}. Vendo muss dann laufen.` } : { ok: false, text: (ergebnis?.fehler || ['Freigeben nicht möglich.']).join(' ') }
       await kampagnenHolen()
+      return zeichnen()
+    }
+    if (aktion === 'kampagne-anhalten') {
+      const ergebnis = await holen('kampagneAnhalten', gewaehlt)
+      kampagneMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      await Promise.all([kampagnenHolen(), zustellHolen()])
+      return zeichnen()
+    }
+    if (aktion === 'kampagne-fortsetzen') {
+      const k = kampagnen?.liste?.find((x) => x.id === gewaehlt)
+      const frage =
+        k?.pausiertVon === 'vendo'
+          ? `Vendo hat die Kampagne angehalten: ${k.pausiertGrund || 'auffällige Zustellung'}. Trotzdem fortsetzen? Vendo hält sie danach nicht noch einmal an.`
+          : 'Kampagne fortsetzen? Die restlichen Mails gehen wieder raus.'
+      const ja = await ctx.bestaetigen(frage, { titel: 'Fortsetzen', ja: 'Fortsetzen', gefahr: k?.pausiertVon === 'vendo' })
+      if (!ja) return
+      const ergebnis = await holen('kampagneFortsetzen', gewaehlt)
+      kampagneMeldung = { ok: Boolean(ergebnis?.ok), text: ergebnis?.text || 'Nicht möglich.' }
+      await Promise.all([kampagnenHolen(), schlangeHolen(), zustellHolen()])
       return zeichnen()
     }
     if (aktion === 'kampagne-stop') {
@@ -2067,15 +2330,6 @@ export async function starten(ctx) {
       return zeichnen()
     }
 
-    if (form.matches('[data-shopify-form]')) {
-      const ergebnis = await holen('shopifySpeichern', { shop: form.shop.value, token: form.token.value })
-      kontaktMeldung = ergebnis?.ok
-        ? { ok: true, text: ergebnis.tokenGesetzt ? 'Gespeichert. Mit „Kontakte jetzt holen“ den ersten Sync starten.' : 'Gespeichert, aber noch ohne Token.' }
-        : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
-      await shopifyHolen()
-      return zeichnen()
-    }
-
     if (form.matches('[data-abmelde-form]')) {
       const ergebnis = await holen('abmeldungenEinstellen', {
         aktiv: form.aktiv.checked,
@@ -2086,6 +2340,15 @@ export async function starten(ctx) {
         ? { ok: true, text: form.aktiv.checked ? 'Gespeichert. Vendo liest die Abmeldungen alle zehn Minuten.' : 'Gespeichert, Einlesen ist aus.' }
         : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
       await abmeldungenHolen()
+      return zeichnen()
+    }
+
+    if (form.matches('[data-rueck-form]')) {
+      const ergebnis = await holen('ruecklaeuferEinstellen', { aktiv: form.aktiv.checked, ordner: form.ordner.value })
+      kontaktMeldung = ergebnis?.ok
+        ? { ok: true, text: form.aktiv.checked ? 'Gespeichert. Vendo liest die Rückläufer alle zehn Minuten.' : 'Gespeichert, Einlesen ist aus.' }
+        : { ok: false, text: (ergebnis?.fehler || ['Speichern nicht möglich.']).join(' ') }
+      await rueckHolen()
       return zeichnen()
     }
 

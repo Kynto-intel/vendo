@@ -1,0 +1,13 @@
+From: Mail Delivery System <mailer-daemon@versand.beispiel.invalid>
+To: info@beispiel.invalid
+Subject: Mail delivery failed
+X-Failed-Recipients: cem@kunden.invalid
+Content-Type: text/plain; charset=us-ascii
+
+Synthetische Testnachricht.
+
+The following address(es) failed:
+
+  cem@kunden.invalid
+    SMTP error from remote mail server after end of data:
+    554 rejected due to policy reasons

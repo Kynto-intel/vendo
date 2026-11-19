@@ -1,11 +1,8 @@
-// Einstellungen von Vendo, gespeichert in daten/einstellungen.json im Projektordner
-// (so sind sie auch im Backup enthalten).
+// Einstellungen von Vendo, gespeichert in PostgreSQL (vendo.einstellungen, Schlüssel „einstellungen“) mit Startkopie,
+// siehe vendospeicher.js.
 
-const fs = require('node:fs')
-const path = require('node:path')
 const { stimmeGueltig } = require('./pocket')
-
-const DATEI = path.join(__dirname, '..', '..', 'daten', 'einstellungen.json')
+const vendospeicher = require('./vendospeicher')
 
 const STANDARD = {
   stimmeAnbieter: 'pocket',
@@ -42,7 +39,8 @@ function ausspracheBereinigen(eintraege) {
 
 function laden() {
   try {
-    const gespeichert = JSON.parse(fs.readFileSync(DATEI, 'utf8'))
+    const gespeichert = vendospeicher.lesen('einstellungen')
+    if (!gespeichert || typeof gespeichert !== 'object') throw new Error('noch keine Einstellungen')
     return {
       ...STANDARD,
       ...gespeichert,
@@ -68,8 +66,7 @@ function laden() {
 function speichern(neu) {
   const aktuell = { ...laden(), ...neu }
   aktuell.aussprache = ausspracheBereinigen(aktuell.aussprache)
-  fs.mkdirSync(path.dirname(DATEI), { recursive: true })
-  fs.writeFileSync(DATEI, JSON.stringify(aktuell, null, 2), 'utf8')
+  vendospeicher.schreiben('einstellungen', aktuell)
   return aktuell
 }
 

@@ -24,6 +24,8 @@ const { Hermes, PROFIL } = require('./hermes')
 const pocket = require('./pocket')
 const sprachdienste = require('./sprachdienste')
 const einstellungen = require('./einstellungen')
+const datenbank = require('./datenbank')
+const speicher = require('./speicher')
 const dateisuche = require('./dateisuche')
 const pc = require('./pc')
 const notfall = require('./notfall')
@@ -447,8 +449,9 @@ ipcMain.on('wake:fuettern', (_e, bytes) => hermes.wakeFuettern(bytes))
 // Plugins (vendo\plugins\<id>\)
 const plugins = require('./plugins')
 ipcMain.handle('plugins:liste', () => plugins.alleLaden())
-ipcMain.handle('plugins:datenLaden', (_e, id) => plugins.datenLaden(String(id)))
-ipcMain.handle('plugins:datenSpeichern', (_e, id, daten) => plugins.datenSpeichern(String(id), daten))
+// Liegen die Plugin-Daten in der Datenbank, warten Lesen und Speichern, bis sie geladen sind (nie ein leerer Stand)
+ipcMain.handle('plugins:datenLaden', async (_e, id) => { await speicher.warten(); return plugins.datenLaden(String(id)) })
+ipcMain.handle('plugins:datenSpeichern', async (_e, id, daten) => { await speicher.warten(); return plugins.datenSpeichern(String(id), daten) })
 ipcMain.handle('plugins:beobachten', (_e, id) => plugins.beobachten(String(id), (pid) => fenster?.webContents.send('plugins:geaendert', pid)))
 ipcMain.handle('plugins:startOk', () => plugins.startOk()) // Notbremse: Start hat geklappt
 // Notbremse: Wird Vendo normal beendet (auch schnell nach dem Start), zählt das als geglückter Start.
@@ -461,6 +464,10 @@ app.on('web-contents-created', (_e, wc) => {
   wc.on('responsive', () => { if (wc === fenster?.webContents) oberflaecheGestoert = false })
 })
 app.on('before-quit', () => { if (!oberflaecheGestoert) plugins.startOk() })
+app.on('will-quit', () => speicher.sichern()) // noch nicht festgeschriebene Plugin-Daten ins Journal
+ipcMain.handle('datenbank:zustand', () => ({ ...datenbank.zustand(), spiegel: speicher.zustand(), vendo: require('./vendospeicher').zustand() }))
+// Plugin-Daten als JSON-Dateien exportieren (nach daten/datei-sicherungen/, Notfall und Umzug)
+ipcMain.handle('datenbank:exportieren', () => speicher.exportieren())
 ipcMain.handle('plugins:aufrufen', (_e, id, name, argumente) => plugins.aufrufen(String(id), String(name), Array.isArray(argumente) ? argumente : []))
 
 // Wissen (nur lesen, nur im Donnerwolf-Ordner und in den Bibliothek-Ordnern)
@@ -937,6 +944,13 @@ app.whenReady().then(() => {
   })
   dateisuche.vorbereiten()
   pc.vorbereiten()
+  // Datenbank (PostgreSQL in Docker) im Hintergrund starten, danach die Plugin-Daten (Original) aus ihr laden
+  datenbank.beiBereit(() => require('./vendospeicher').laden()) // Einstellungen: Datenbank statt Startkopie
+  datenbank.beiBereit(() => speicher.laden().then((l) => {
+    if (l.journal) console.warn(`Datenbank: ${l.journal} Stand/Stände aus dem Journal nachgeschrieben`)
+    if (l.uebernommen.length) console.warn(`Datenbank: alte Plugin-Dateien übernommen: ${l.uebernommen.join(', ')}`)
+  }))
+  datenbank.starten()
   if (!process.env.VENDO_TEST_STUMM) pcBruecke.starten() // ein Testlauf übernimmt nie die Brücke des echten Vendo
   // Pocket TTS gleich beim Start hochfahren, damit Luzzy schnell sprechen kann (im stummen Testmodus nicht:
   // dort wird nichts vorgelesen, und abgebrochene Testläufe ließen sonst Server zurück)

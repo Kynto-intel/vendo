@@ -11,6 +11,8 @@ import shoplinks from '../plugins/newsletter/shoplinks.js'
 import bots from '../plugins/newsletter/bots.js'
 import starten from '../plugins/newsletter/haupt.js'
 
+// Nie die echten Hermes-Einstellungen (Shopify-Token) lesen: leerer Test-Ordner
+process.env.VENDO_TEST_HERMES_HOME ||= `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/vendo-test-ohne-hermes`
 const { bestsellerHolen, korbRennerHolen, RENNER_REICH, RENNER_SCHLANK, KORB_RENNER_REICH, KORB_RENNER_SCHLANK } = shopify
 
 const ZUGANG = { shop: 'beispiel.myshopify.com', token: 'shpat_abcdefghijklmnopqrstuvwxyz1234' }

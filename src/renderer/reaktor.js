@@ -158,7 +158,7 @@ export function reaktorErstellen(behaelter, optionen = {}) {
   canvas.style.cssText = [
     'width:100%', 'height:auto', 'aspect-ratio:1', 'display:block', 'touch-action:none', 'cursor:grab', 'user-select:none',
     'background:none !important', 'border:0 !important', 'border-radius:0 !important', 'box-shadow:none !important',
-    'outline:0 !important', 'animation:none !important', 'padding:0 !important', 'overflow:visible'
+    'outline:0 !important', 'animation:none !important', 'padding:0 !important'
   ].join(';')
   behaelter.replaceChildren(canvas)
   const ctx = canvas.getContext('2d')
