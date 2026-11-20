@@ -121,6 +121,8 @@ Gemessen: `haupt.js` liest an 143 Stellen mit `datenLesen()` und schreibt an 85 
 - Die Oberfläche liest nicht mehr direkt die Plugin-Daten, sondern über eine Funktion `uebersichtLesen`.
 - *Fertig, wenn* nur noch `speicher.js` die Daten direkt anfasst und alle Tests grün sind.
 
+*Umsetzung N1 (20. November 2026):* gebaut im eigenen Repository `vendo-newsletter` (Pfade dort ohne `plugins/newsletter/`): `speicher.js` mit `lesen`, `speichern`, `feldSpeichern`, `festschreiben`; die Oberfläche fragt `uebersichtLesen` statt die Plugin-Daten zu laden. Festgeschrieben wird vor und nach dem SMTP-Aufruf, beim Sperren und vor dem Markieren von Abmelde- und Rückläufer-Mails. Kampagnenstart und Fortsetzen stoßen das Schreiben nur an, weil dabei noch nichts nach außen geht. Mitbehoben: Rückläufer wurden erst nach dem Markieren im Postfach gespeichert; ein Absturz dazwischen verlor die Sperren, und Änderungen während des Markierens wurden überschrieben. Tests: `tests/newsletter-speicher.test.js`.
+
 **N2 Schema und Migrationen.** SQL-Dateien `plugins/newsletter/db/001_start.sql` usw., ausgeführt über den Migrationslauf aus A2.
 
 | Tabelle | Inhalt | Schlüssel, Indizes |
