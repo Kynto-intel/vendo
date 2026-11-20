@@ -86,6 +86,8 @@ test('Layout wie in der App (alle Plugin-Stylesheets, niedriges Fenster): Felder
   assert.deepEqual([l.statusVersteckt.hidden, l.statusVersteckt.display], [true, 'none'], 'verstecktes Archiv-Status-Feld zeigt keine leere Karte')
   assert.equal(l.goldKnopf.verlauf, true, 'kleiner goldener Knopf hat goldenen Hintergrund')
   assert.ok(l.goldKnopf.kontrast >= 4.5, `Kontrast der Knopfschrift zu gering: ${l.goldKnopf.kontrast}`)
+  assert.equal(l.statusZweizeilig.ueberlappt, false, `Statuszeile überlappt das USB-Feld (Höhe ${l.statusZweizeilig.hoehe})`)
+  assert.ok(l.statusZweizeilig.hoehe > 20, 'zweizeiliger Status behält seine Höhe')
 })
 
 test('Tab „Meine Angaben“ in Electron: Liste ausgeblendet, Gruppen aus dem Schema, Vorschlag, Fehler am Feld, Speichern, zurück zur Liste (Schritt 2.1)', () => {

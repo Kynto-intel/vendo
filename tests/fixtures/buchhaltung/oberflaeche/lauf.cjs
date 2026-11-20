@@ -18,7 +18,7 @@ const stilLinks = stile.map((d) => `<link rel="stylesheet" href="${pathToFileURL
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vendo-oberflaeche-'))
 const seite = path.join(tmp, 'seite.html')
 fs.writeFileSync(seite, `<!doctype html><html lang="de"><head><meta charset="utf-8">${stilLinks}</head><body>
-<main class="mitte" style="position:relative;width:1000px;height:420px"><section class="ansicht ansicht-seite plugin-ansicht" data-ansicht="plugin-rechnungen"><header class="seiten-kopf"><div><h2>Rechnungen</h2></div><div class="seiten-knoepfe plugin-knoepfe" id="kopf"></div></header><div class="plugin-inhalt" id="inhalt"></div></section></main>
+<main class="mitte" style="position:relative;width:1000px;height:420px"><section class="ansicht ansicht-seite plugin-ansicht" data-ansicht="plugin-buchhaltung"><header class="seiten-kopf"><div><h2>Rechnungen</h2></div><div class="seiten-knoepfe plugin-knoepfe" id="kopf"></div></header><div class="plugin-inhalt" id="inhalt"></div></section></main>
 <script type="module">
   const SCHLUESSEL = 'K7QF2-ABCDE-12345-FGHJK-67890-MNPQR'
   const log = []
@@ -219,6 +219,8 @@ app.whenReady().then(async () => {
       const [l1, l2] = [lum(zahlen(s.color)), lum(hinten)].sort((a, b) => b - a)
       return { verlauf, kontrast: Math.round(((l1 + 0.05) / (l2 + 0.05)) * 10) / 10 }
     })()`)
+    // Statuszeile über dem USB-Feld: zweizeiliger Text wird nicht gestaucht und überlappt das Feld nicht (Fehlerbild 20.11.2026)
+    ergebnis.layout.statusZweizeilig = await js(win, `(() => { const st = document.querySelector('[data-status]'); st.textContent = 'USB-Sicherung fertig: 594 neu, 1439 schon vorhanden, 2033 Dateien auf dem Stick geprüft, persönliche Angaben verschlüsselt mit, Kennung TEST-0000. Stick jetzt über Windows auswerfen und getrennt aufbewahren.'.repeat(2); const r = st.getBoundingClientRect(); const u = document.querySelector('[data-usb]').getBoundingClientRect(); const h = r.height; st.textContent = ''; return { hoehe: h, inhalt: st.scrollHeight, ueberlappt: r.bottom > u.top + 0.5 } })()`)
     ergebnis.schritte.einfuehrung = await js(win, `${panel}.textContent.includes('Ein Passwort musst du dir nicht ausdenken')`)
 
     await js(win, `${panel}.querySelector('[data-usb-erzeugen]').click()`)
