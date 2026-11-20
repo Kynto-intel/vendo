@@ -96,7 +96,7 @@ test('Tab „Meine Angaben“ in Electron: Liste ausgeblendet, Gruppen aus dem S
   assert.ok(sichtbar >= 4, `Liste vorher sichtbar (${sichtbar})`)
   assert.equal(s.angTabAktiv, 'true')
   assert.deepEqual(s.listeImAngabenTab.filter(Boolean), [], 'im Angaben-Tab ist nichts von Liste und Filtern zu sehen')
-  assert.deepEqual(s.angabenUnterbereiche, ['Firmendaten', 'Persönliche Angaben', 'ELSTER-Übersicht', 'Bereiche im Menü', 'Export'])
+  assert.deepEqual(s.angabenUnterbereiche, ['Firmendaten', 'Persönliche Angaben', 'ELSTER-Übersicht', 'Verfahrensdokumentation', 'Datenschutz', 'Bereiche im Menü', 'Export'])
   // Plan 11.3 (M.1/M.2/M.3/M.5): nach dem Laden echte Eingaben statt Vorschau, Menü-Schalter blendet Tabs aus
   const g = s.angabenGeladen
   assert.equal(g.persoenlich.eingaben, 4, 'drei Felder und Speichern') // Vorname, Religion, Art, Speichern
