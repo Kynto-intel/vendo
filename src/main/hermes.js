@@ -18,6 +18,8 @@ const HERMES_HOME = path.join(process.env.LOCALAPPDATA || '', 'hermes')
 const HERMES_EXE = path.join(HERMES_HOME, 'bin', 'hermes.exe')
 const ARBEITSORDNER = 'C:\\Users\\Felix\\Documents\\Donnerwolf'
 const PROFIL = 'donnerwolf'
+// Plugins aus eigenen Repositories (Buchhaltung, Newsletter) lesen das Profil hieraus, statt es fest einzutragen
+process.env.VENDO_HERMES_PROFIL ||= PROFIL
 const ZENTRALE_TITEL = 'Vendo'
 const BOT_CHAT = 'Bot Chat'
 const FRAGE_TITEL = 'Vendo Plugins' // eigene Unterhaltung für Plugin-Anfragen (ctx.fragen)
