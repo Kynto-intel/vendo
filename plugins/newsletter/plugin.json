@@ -1,8 +1,0 @@
-{
-  "id": "newsletter",
-  "name": "Newsletter",
-  "version": "0.1.0",
-  "beschreibung": "Newsletter-Kampagnen und Automationen über das eigene IONOS-Postfach. Kontakte kommen aus Shopify; das Plugin bietet Vorlagen, Versand und Auswertungen.",
-  "symbol": "message",
-  "bereich": { "name": "Newsletter" }
-}

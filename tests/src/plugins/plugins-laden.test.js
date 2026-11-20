@@ -18,7 +18,7 @@ test.after(() => { speicher._zuruecksetzen(); fs.rmSync(DATEN, { recursive: true
 
 test('alleLaden listet alle versionierten Plugins und nutzt die Notbremse-Datei im Datenordner', () => {
   const ids = plugins.alleLaden().map((m) => m.id)
-  for (const id of ['aufgaben', 'kalender', 'newsletter', 'wetter', 'werkstatt']) assert.ok(ids.includes(id), `${id} fehlt`)
+  for (const id of ['aufgaben', 'kalender', 'wetter', 'werkstatt']) assert.ok(ids.includes(id), `${id} fehlt`)
   assert.equal(JSON.parse(fs.readFileSync(path.join(DATEN, 'plugin-start.json'), 'utf8')).laeuft, true)
   assert.deepEqual(speicher.zustand().austausch.sort(), ['aufgaben', 'kalender'])
 })
