@@ -7,6 +7,10 @@ plugins/*/daten.json
 # Buchhaltungs-Plugin: seit 19.11.2026 eigenes Repository (github.com/Kynto-intel/vendo-buchhaltung). Lokal ist
 # plugins/buchhaltung eine Verknüpfung (Junction) auf den Klon daneben; Vendo versioniert es nicht mehr.
 /plugins/buchhaltung
+
+# Newsletter-Plugin: seit 20.11.2026 eigenes Repository (github.com/Kynto-intel/vendo-newsletter), lokal als
+# Verknüpfung (Junction) plugins/newsletter auf den Klon daneben eingebunden, wie die Buchhaltung.
+/plugins/newsletter
 /plugins/rechnungen/
 
 # Entwürfe der Plugin-Werkstatt (werden erst nach Felix Ja nach plugins/ kopiert)
